@@ -19,7 +19,7 @@ int heartbeatInterval = 5;
 void onStart(ServiceInstance service) async {
   await Firebase.initializeApp(
     //name: 'uffmobileplus',
-    options: FirebaseOptionsHarpia.currentPlatform,
+    options: DefaultFirebaseOptions.currentPlatform,
   );
 
   // Verificar se o auth state está disponível no isolate do background.

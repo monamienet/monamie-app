@@ -8,13 +8,13 @@ import 'package:flutter/foundation.dart'
 ///
 /// Example:
 /// ```dart
-/// import 'firebase_options_cardapio_ru.dart';
+/// import 'firebase_options.dart';
 /// // ...
 /// await Firebase.initializeApp(
 ///   options: DefaultFirebaseOptions.currentPlatform,
 /// );
 /// ```
-class FirebaseOptionsHarpia {
+class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       return web;
@@ -25,9 +25,15 @@ class FirebaseOptionsHarpia {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        return macos;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for macos - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.windows:
-        return windows;
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for windows - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -42,44 +48,6 @@ class FirebaseOptionsHarpia {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyAwTG9iwUAMKdU2FUS3ecB5MXf7OkR2lIg',
-    appId: '1:14422911132:web:ae815779d5d66516d96559',
-    messagingSenderId: '14422911132',
-    projectId: 'harpia-c699b',
-    authDomain: 'harpia-c699b.firebaseapp.com',
-    storageBucket: 'harpia-c699b.firebasestorage.app',
-    measurementId: 'G-XEEC7NKGNL',
-  );
-
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBa3OVRxW4KGnZUNhwB7TPL5zEMtByHFHI',
-    appId: '1:14422911132:android:b9d23fd52c0ce845d96559',
-    messagingSenderId: '14422911132',
-    projectId: 'harpia-c699b',
-    storageBucket: 'harpia-c699b.firebasestorage.app',
-  );
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBZySXBiQTei1bVZm2lhUDqep6XI3np1hA',
-    appId: '1:14422911132:ios:1f5a5f5042dff87fd96559',
-    messagingSenderId: '14422911132',
-    projectId: 'harpia-c699b',
-    storageBucket: 'harpia-c699b.firebasestorage.app',
-    androidClientId: '14422911132-ac5k471uuq6ajl62ge200i20sc9j6f74.apps.googleusercontent.com',
-    iosClientId: '14422911132-921ubqc5kp7vnuu5kljtv8tini44oj0k.apps.googleusercontent.com',
-    iosBundleId: 'com.example.geotrackingStandalone',
-  );
-  static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBZySXBiQTei1bVZm2lhUDqep6XI3np1hA',
-    appId: '1:14422911132:ios:1f5a5f5042dff87fd96559',
-    messagingSenderId: '14422911132',
-    projectId: 'harpia-c699b',
-    storageBucket: 'harpia-c699b.firebasestorage.app',
-    androidClientId: '14422911132-ac5k471uuq6ajl62ge200i20sc9j6f74.apps.googleusercontent.com',
-    iosClientId: '14422911132-921ubqc5kp7vnuu5kljtv8tini44oj0k.apps.googleusercontent.com',
-    iosBundleId: 'com.example.geotrackingStandalone',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAwTG9iwUAMKdU2FUS3ecB5MXf7OkR2lIg',
     appId: '1:14422911132:web:31b312dc6ab73716d96559',
     messagingSenderId: '14422911132',
     projectId: 'harpia-c699b',
@@ -87,4 +55,24 @@ class FirebaseOptionsHarpia {
     storageBucket: 'harpia-c699b.firebasestorage.app',
     measurementId: 'G-G9DS4P9H89',
   );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyBa3OVRxW4KGnZUNhwB7TPL5zEMtByHFHI',
+    appId: '1:14422911132:android:200ae834563de628d96559',
+    messagingSenderId: '14422911132',
+    projectId: 'harpia-c699b',
+    storageBucket: 'harpia-c699b.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBZySXBiQTei1bVZm2lhUDqep6XI3np1hA',
+    appId: '1:14422911132:ios:1f5a5f5042dff87fd96559',
+    messagingSenderId: '14422911132',
+    projectId: 'harpia-c699b',
+    storageBucket: 'harpia-c699b.firebasestorage.app',
+    androidClientId: '14422911132-0ub3h4lnuhgstta8c3hhsq1mps9ohls2.apps.googleusercontent.com',
+    iosClientId: '14422911132-921ubqc5kp7vnuu5kljtv8tini44oj0k.apps.googleusercontent.com',
+    iosBundleId: 'com.example.geotrackingStandalone',
+  );
+
 }
