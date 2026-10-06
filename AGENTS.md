@@ -12,12 +12,18 @@ Each instance of this app:
 - belongs to one client $c$
 - has its own and unique identity, which includes:
     - name (must be "MonAmie <instance_name>")
-    - applicationId
-    - bundleId
+    - Application ID (Android) `android/app/build.gradle[.kts]`
+    - Bundle Identifier (iOS) `ios/Runner.xcodeproj/project.pbxproj`
     - icons
     - theme
     - etc
 - has its own separated Firebase Project which is associated to $c$'s billing account
+
+## Useful (not mandatory) commands
+
+Considering the white-label aspect:
+
+- `dart run change_app_package_name:main org.monamienet.<instance name>`
 
 
 ## Security & Guardrails
