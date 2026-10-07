@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:harpia/app/modules/monitora_uff/controller/google_groups_controller.dart';
-import 'package:harpia/app/utils/color_pallete.dart';
+import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/utils/color_pallete.dart';
 
 class HighlightedObservedUsersList extends StatelessWidget {
   const HighlightedObservedUsersList({super.key});

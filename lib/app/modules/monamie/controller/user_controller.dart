@@ -1,11 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
-import 'package:harpia/app/data/models/user_google_model.dart';
-import 'package:harpia/app/data/repository/user_google_repository.dart';
-import 'package:harpia/app/modules/monitora_uff/controller/google_groups_controller.dart';
-import 'package:harpia/app/modules/monitora_uff/data/provider/firebase_provider.dart';
-import 'package:harpia/app/modules/monitora_uff/models/google_group_member_model.dart';
-import 'package:harpia/app/modules/monitora_uff/models/user_model.dart';
+import 'package:monamie_app/app/data/models/user_google_model.dart';
+import 'package:monamie_app/app/data/repository/user_google_repository.dart';
+import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
+import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:get/get.dart';
 
 class UserController extends GetxController {

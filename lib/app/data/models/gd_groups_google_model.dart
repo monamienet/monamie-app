@@ -1,4 +1,4 @@
-import 'package:harpia/app/data/models/gdi_groups_model.dart';
+import 'package:monamie_app/app/data/models/gdi_groups_model.dart';
 import 'package:hive/hive.dart';
 
 @HiveType(typeId: 33)

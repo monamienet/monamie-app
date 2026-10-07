@@ -1,4 +1,4 @@
-name: harpia
+name: monamie_app
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -55,6 +55,7 @@ dependencies:
   cloud_functions: ^6.3.3
   latlong2: ^0.10.1
   intl: ^0.20.3
+  rename_app: ^1.6.6
 
 dev_dependencies:
   flutter_test:

@@ -1,4 +1,4 @@
-import 'package:harpia/app/modules/monitora_uff/models/user_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 
 /// Representa um usuário com sua posição animada para renderização suave.

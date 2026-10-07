@@ -1,5 +1,5 @@
-import 'package:harpia/app/data/connections/google_service.dart';
-import 'package:harpia/app/data/provider/google_groups_provider.dart';
+import 'package:monamie_app/app/data/connections/google_service.dart';
+import 'package:monamie_app/app/data/provider/google_groups_provider.dart';
 
 class GoogleGroupsRepository {
   final GoogleService _googleService = GoogleService();

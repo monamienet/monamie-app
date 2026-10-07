@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
-import 'package:harpia/app/modules/monitora_uff/controller/call_controller.dart';
-import 'package:harpia/app/modules/monitora_uff/controller/google_groups_controller.dart';
-import 'package:harpia/app/modules/monitora_uff/controller/tracking_controller.dart';
-import 'package:harpia/app/utils/color_pallete.dart';
+import 'package:monamie_app/app/modules/monamie/controller/call_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
+import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:intl/intl.dart';
 
 class HighlightedUserPanel extends StatelessWidget {

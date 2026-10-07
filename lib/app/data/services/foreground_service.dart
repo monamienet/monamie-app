@@ -6,8 +6,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:harpia/app/modules/monitora_uff/data/provider/firebase_provider.dart';
-import 'package:harpia/firebase_options.dart';
+import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
+import 'package:monamie_app/firebase_options.dart';
 
 Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;

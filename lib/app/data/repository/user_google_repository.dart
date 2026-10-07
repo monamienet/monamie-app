@@ -1,7 +1,7 @@
-import 'package:harpia/app/data/connections/google_service.dart';
-import 'package:harpia/app/data/models/gd_groups_google_model.dart';
-import 'package:harpia/app/data/models/user_google_model.dart';
-import 'package:harpia/app/data/provider/user_google_provider.dart';
+import 'package:monamie_app/app/data/connections/google_service.dart';
+import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
+import 'package:monamie_app/app/data/models/user_google_model.dart';
+import 'package:monamie_app/app/data/provider/user_google_provider.dart';
 
 class UserGoogleRepository {
   final UserGoogleProvider _provider = UserGoogleProvider();

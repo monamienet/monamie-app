@@ -1,4 +1,4 @@
-import 'package:harpia/app/modules/monitora_uff/models/google_group_member_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
 
 class GoogleGroupModel {
   String name;

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:harpia/app/modules/monitora_uff/models/user_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 
 void main() {
   group('Contratos de Dados do FirebaseProvider (Opção 3)', () {

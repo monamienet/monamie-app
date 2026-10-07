@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:harpia/app/data/models/gd_groups_google_model.dart';
-import 'package:harpia/app/data/repository/user_data_repository.dart';
-import 'package:harpia/app/data/repository/user_google_repository.dart';
-import 'package:harpia/app/data/services/harpia_claims_service.dart';
-import 'package:harpia/app/modules/login/services/auth_google_service.dart';
-import 'package:harpia/app/routes/app_pages.dart';
+import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
+import 'package:monamie_app/app/data/repository/user_data_repository.dart';
+import 'package:monamie_app/app/data/repository/user_google_repository.dart';
+import 'package:monamie_app/app/data/services/harpia_claims_service.dart';
+import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
+import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 
 class AuthGoogleController extends GetxController {

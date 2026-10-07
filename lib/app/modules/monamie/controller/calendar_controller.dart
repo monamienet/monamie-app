@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:harpia/app/utils/color_pallete.dart';
+import 'package:monamie_app/app/utils/color_pallete.dart';
 
 class CalendarController extends GetxController {
   final _observedDay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day).obs;

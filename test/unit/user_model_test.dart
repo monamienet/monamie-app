@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:harpia/app/modules/monitora_uff/models/user_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 
 void main() {
   group('UserModel - Testes Unitários de Inicialização e Serialização', () {

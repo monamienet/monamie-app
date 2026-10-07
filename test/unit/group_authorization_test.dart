@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:harpia/app/modules/monitora_uff/models/google_group_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 
 /// Função pura auxiliar que encapsula a lógica de filtragem implementada
 /// em `GoogleGroupsController.getObservableGroupsForUser` para garantir testabilidade

@@ -1,5 +1,5 @@
-import 'package:harpia/app/modules/monitora_uff/bindings/monitora_uff_bindings.dart';
-import 'package:harpia/app/modules/monitora_uff/ui/monitora_uff_page.dart';
+import 'package:monamie_app/app/modules/monamie/bindings/monitora_uff_bindings.dart';
+import 'package:monamie_app/app/modules/monamie/ui/monitora_uff_page.dart';
 import 'package:get/get.dart';
 
 import '../modules/login/bindings/login_binding.dart';

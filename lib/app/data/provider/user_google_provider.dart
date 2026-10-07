@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:harpia/app/data/models/user_google_model.dart';
+import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:hive/hive.dart';
 
 enum UserRole { user }

@@ -6,19 +6,19 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 //import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:harpia/app/data/services/harpia_claims_service.dart';
-import 'package:harpia/app/modules/monitora_uff/controller/permissions_controller.dart';
-import 'package:harpia/app/modules/monitora_uff/controller/user_controller.dart';
-import 'package:harpia/app/modules/monitora_uff/controller/calendar_controller.dart';
-import 'package:harpia/app/modules/monitora_uff/controller/google_groups_controller.dart';
-import 'package:harpia/app/modules/monitora_uff/data/provider/firebase_provider.dart';
-import 'package:harpia/app/modules/monitora_uff/models/animated_user_marker.dart';
-import 'package:harpia/app/modules/monitora_uff/models/google_group_model.dart';
-import 'package:harpia/app/modules/monitora_uff/models/location_point.dart';
-import 'package:harpia/app/modules/monitora_uff/models/user_model.dart';
+import 'package:monamie_app/app/data/services/harpia_claims_service.dart';
+import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
+import 'package:monamie_app/app/modules/monamie/models/animated_user_marker.dart';
+import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
+import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
-import 'package:harpia/app/data/services/foreground_service.dart';
+import 'package:monamie_app/app/data/services/foreground_service.dart';
 
 
 class TrackingController extends GetxController with WidgetsBindingObserver {

@@ -4,9 +4,9 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:harpia/app/config/secrets.dart';
-import 'package:harpia/app/data/models/user_google_model.dart';
-import 'package:harpia/app/data/repository/user_google_repository.dart';
+import 'package:monamie_app/app/config/secrets.dart';
+import 'package:monamie_app/app/data/models/user_google_model.dart';
+import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
@@ -34,7 +34,7 @@ class AuthGoogleService {
         // clientId é obrigatório na web
         // NOTE: estou usando o mesmo id para clientId e serverClientId
         clientId: kIsWeb ? Secrets.umpGoogleServerWebClientId : null,
-        serverClientId: kIsWeb ? null : Secrets.harpiaGoogleServerWebClientId,
+        serverClientId: kIsWeb ? null : Secrets.monamieGoogleServerWebClientId,
       );
 
       debugPrint('AuthGoogleService: initialize done');

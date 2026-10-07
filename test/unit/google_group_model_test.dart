@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:harpia/app/modules/monitora_uff/models/google_group_model.dart';
-import 'package:harpia/app/modules/monitora_uff/models/google_group_member_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
 
 void main() {
   group('GoogleGroupModel & Member - Testes Unitários', () {

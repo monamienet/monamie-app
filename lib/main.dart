@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:harpia/app/data/models/user_google_model.dart';
-import 'package:harpia/firebase_options.dart';
+import 'package:monamie_app/app/data/models/user_google_model.dart';
+import 'package:monamie_app/firebase_options.dart';
 
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';

@@ -19,12 +19,6 @@ Each instance of this app:
     - etc
 - has its own separated Firebase Project which is associated to $c$'s billing account
 
-## Useful (not mandatory) commands
-
-Considering the white-label aspect:
-
-- `dart run change_app_package_name:main org.monamienet.<instance name>`
-
 
 ## Security & Guardrails
 

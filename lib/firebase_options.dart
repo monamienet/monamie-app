@@ -25,15 +25,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -47,32 +41,53 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAwTG9iwUAMKdU2FUS3ecB5MXf7OkR2lIg',
-    appId: '1:14422911132:web:31b312dc6ab73716d96559',
-    messagingSenderId: '14422911132',
-    projectId: 'harpia-c699b',
-    authDomain: 'harpia-c699b.firebaseapp.com',
-    storageBucket: 'harpia-c699b.firebasestorage.app',
-    measurementId: 'G-G9DS4P9H89',
+    apiKey: 'AIzaSyAcgzXkclcX1pcYDzFQECSTXFR06SVP7qc',
+    appId: '1:67044253283:web:9d45aa46668894610f2256',
+    messagingSenderId: '67044253283',
+    projectId: 'monamienet-aquariustur',
+    authDomain: 'monamienet-aquariustur.firebaseapp.com',
+    storageBucket: 'monamienet-aquariustur.firebasestorage.app',
+    measurementId: 'G-VR81CGLEK7',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBa3OVRxW4KGnZUNhwB7TPL5zEMtByHFHI',
-    appId: '1:14422911132:android:200ae834563de628d96559',
-    messagingSenderId: '14422911132',
-    projectId: 'harpia-c699b',
-    storageBucket: 'harpia-c699b.firebasestorage.app',
+    apiKey: 'AIzaSyD-u5cI_cqeQkO03Ivo6MmO_nFmbMO8VXI',
+    appId: '1:67044253283:android:ce06af448c8ba5ea0f2256',
+    messagingSenderId: '67044253283',
+    projectId: 'monamienet-aquariustur',
+    storageBucket: 'monamienet-aquariustur.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBZySXBiQTei1bVZm2lhUDqep6XI3np1hA',
-    appId: '1:14422911132:ios:1f5a5f5042dff87fd96559',
-    messagingSenderId: '14422911132',
-    projectId: 'harpia-c699b',
-    storageBucket: 'harpia-c699b.firebasestorage.app',
-    androidClientId: '14422911132-0ub3h4lnuhgstta8c3hhsq1mps9ohls2.apps.googleusercontent.com',
-    iosClientId: '14422911132-921ubqc5kp7vnuu5kljtv8tini44oj0k.apps.googleusercontent.com',
+    apiKey: 'AIzaSyCdjLo8wBMngHdZmVq0SlUizQq34O1ajVc',
+    appId: '1:67044253283:ios:a972499fe1ed1c580f2256',
+    messagingSenderId: '67044253283',
+    projectId: 'monamienet-aquariustur',
+    storageBucket: 'monamienet-aquariustur.firebasestorage.app',
+    androidClientId: '67044253283-j1duavtdhvr4bjgnt6f5d72lfh90priv.apps.googleusercontent.com',
+    iosClientId: '67044253283-tcuftkgs0r84g0a1fue7gvqarg20fjse.apps.googleusercontent.com',
+    iosBundleId: 'org.monamienet.aquariustur',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyCdjLo8wBMngHdZmVq0SlUizQq34O1ajVc',
+    appId: '1:67044253283:ios:63d78e65e310a8000f2256',
+    messagingSenderId: '67044253283',
+    projectId: 'monamienet-aquariustur',
+    storageBucket: 'monamienet-aquariustur.firebasestorage.app',
+    androidClientId: '67044253283-j1duavtdhvr4bjgnt6f5d72lfh90priv.apps.googleusercontent.com',
+    iosClientId: '67044253283-djpv2blu3r62plrhuqikg86fc5ce4qcn.apps.googleusercontent.com',
     iosBundleId: 'com.example.geotrackingStandalone',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyAcgzXkclcX1pcYDzFQECSTXFR06SVP7qc',
+    appId: '1:67044253283:web:bed4a92b2b48bacf0f2256',
+    messagingSenderId: '67044253283',
+    projectId: 'monamienet-aquariustur',
+    authDomain: 'monamienet-aquariustur.firebaseapp.com',
+    storageBucket: 'monamienet-aquariustur.firebasestorage.app',
+    measurementId: 'G-0YJG5LG89G',
   );
 
 }

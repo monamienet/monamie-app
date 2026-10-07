@@ -1,8 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:harpia/app/data/repository/user_google_repository.dart';
-import 'package:harpia/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/data/repository/user_google_repository.dart';
+import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:get/get.dart';
 
 class LoginController extends GetxController {

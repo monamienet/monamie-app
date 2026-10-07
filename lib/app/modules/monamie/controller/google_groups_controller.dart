@@ -1,10 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:harpia/app/data/repository/google_groups_repository.dart';
-import 'package:harpia/app/data/services/harpia_claims_service.dart';
-import 'package:harpia/app/modules/monitora_uff/models/google_group_model.dart';
-import 'package:harpia/app/modules/monitora_uff/models/google_group_member_model.dart';
+import 'package:monamie_app/app/data/repository/google_groups_repository.dart';
+import 'package:monamie_app/app/data/services/harpia_claims_service.dart';
+import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
 
 class GoogleGroupsController extends GetxController {
   final GoogleGroupsRepository _repository = GoogleGroupsRepository();
@@ -39,9 +39,7 @@ class GoogleGroupsController extends GetxController {
 
   /// Email do grupo raiz que contém os subgrupos do Harpia.
   /// Em debug, usa um grupo de teste; em release, o grupo de produção.
-  static String get rootGroupEmail =>
-      kReleaseMode ? 'grupos.harpia@id.uff.br' : 'grupos.harpia@id.uff.br';
-
+  static String get rootGroupEmail => 'monamie-aquarius@googlegroups.com';
   /// Lista de grupos que o usuário logado pode observar.
   /// Representa os subgrupos (type == GROUP) de [rootGroupEmail].
   final RxList<GoogleGroupModel> _observableGoogleGroups = RxList<GoogleGroupModel>();

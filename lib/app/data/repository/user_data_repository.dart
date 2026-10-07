@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:harpia/app/data/models/gd_groups_google_model.dart';
-import 'package:harpia/app/data/models/gdi_groups_model.dart';
-import 'package:harpia/app/data/models/user_data.dart';
-import 'package:harpia/app/data/provider/user_data_provider.dart';
+import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
+import 'package:monamie_app/app/data/models/gdi_groups_model.dart';
+import 'package:monamie_app/app/data/models/user_data.dart';
+import 'package:monamie_app/app/data/provider/user_data_provider.dart';
 
 class UserDataRepository {
   final UserDataProvider _userDataProvider = UserDataProvider();
