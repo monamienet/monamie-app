@@ -14,6 +14,7 @@ StreamSubscription<Position>? _positionSubscription;
 int interval = 5;
 int distance = 10;
 int heartbeatInterval = 5;
+Position? _lastRecordedPosition;
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
@@ -49,6 +50,7 @@ void onStart(ServiceInstance service) async {
     _heartbeatTimer = null;
     _positionSubscription?.cancel();
     _positionSubscription = null;
+    _lastRecordedPosition = null;
     service.stopSelf();
   });
 
@@ -84,6 +86,8 @@ Future<void> updateLocation(
   String name, [
   String? grupoAtivo,
 ]) async {
+  _lastRecordedPosition = null;
+
   // Configuração do GPS
   late LocationSettings locationSettings;
 
@@ -134,6 +138,7 @@ Future<void> updateLocation(
           timestamp: DateTime.now(),
           grupoAtivo: grupoAtivo,
         );
+        _lastRecordedPosition = initialPosition;
         _consecutivePermissionErrors = 0;
       } catch (e) {
         debugPrint('[ForegroundService] Erro ao sincronizar posição inicial no Firestore: $e');
@@ -161,6 +166,21 @@ Future<void> updateLocation(
       return;
     }
 
+    // Evita duplicatas se a posição for essencialmente idêntica à última registrada
+    // (por exemplo, primeiro evento do stream emitindo o mesmo fix da posição inicial).
+    if (_lastRecordedPosition != null) {
+      final distanceMoved = Geolocator.distanceBetween(
+        _lastRecordedPosition!.latitude,
+        _lastRecordedPosition!.longitude,
+        position.latitude,
+        position.longitude,
+      );
+      if (distanceMoved < distance) {
+        service.invoke('updateLocationLocally', {'position': position});
+        return;
+      }
+    }
+
     // Atualiza firebase 
     if (await FirebaseProvider().doesDocumentExist(email)) {
       try {
@@ -172,6 +192,7 @@ Future<void> updateLocation(
           timestamp: DateTime.now(),
           grupoAtivo: grupoAtivo,
         );
+        _lastRecordedPosition = position;
         // Reset do contador em caso de sucesso
         _consecutivePermissionErrors = 0;
       } catch (e) {

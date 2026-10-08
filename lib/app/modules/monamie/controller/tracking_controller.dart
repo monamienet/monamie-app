@@ -626,19 +626,9 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
     // Registra imediatamente que o usuário atual possui ponto no dia de hoje
     usersWithPointsOnObservedDay.add(userCtrl.user!.email);
 
-    // Informa Firebase que sua posição pode ser visualizada no mapa associada ao grupo ativo
-    // e grava imediatamente as coordenadas e timestamp para não depender de delay de stream.
+    // Informa Firebase que sua posição pode ser visualizada no mapa associada ao grupo ativo.
+    // A persistência de localização e histórico é gerenciada exclusivamente pelo ForegroundService.
     try {
-      if (position.latitude.isFinite && position.longitude.isFinite) {
-        await FirebaseProvider().updateLocationAndTimestamp(
-          email: userCtrl.user!.email,
-          nome: userCtrl.getUserName(),
-          lat: position.latitude,
-          lng: position.longitude,
-          timestamp: DateTime.now(),
-          grupoAtivo: activeGroupEmail,
-        );
-      }
       await FirebaseProvider().updateIsTracked(
         userCtrl.user!.email,
         true,
