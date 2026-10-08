@@ -40,7 +40,7 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
         decoration: BoxDecoration(gradient: AppColors.appBarBottomGradient()),
       ),
       title: Obx(() => Text(
-        'MonAmie - Grupo observado: ${googleGroupsController.observedGroup}', 
+        'Grupo observado: ${googleGroupsController.observedGroup}', 
         style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
       )),
       centerTitle: true,

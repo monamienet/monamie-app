@@ -121,10 +121,6 @@ class GoogleGroupsController extends GetxController {
         _loadError.value = 'Você não participa de nenhum subgrupo de $rootGroupEmail.';
         return;
       }
-
-      if (selectedGroup.value == null) {
-        await updateObservedUsers(_observableGoogleGroups.first, forceRefresh: forceRefresh);
-      }
     } catch(e, stack) {
       debugPrint('$e\n$stack');
       _loadError.value = '$e';
