@@ -119,6 +119,31 @@ Future<void> updateLocation(
     }
   });
 
+  // Tenta obter e sincronizar a localização inicial imediatamente
+  try {
+    final initialPosition = await Geolocator.getCurrentPosition(
+      locationSettings: locationSettings,
+    );
+    if (await FirebaseProvider().doesDocumentExist(email)) {
+      try {
+        await FirebaseProvider().updateLocationAndTimestamp(
+          email: email,
+          nome: name,
+          lat: initialPosition.latitude,
+          lng: initialPosition.longitude,
+          timestamp: DateTime.now(),
+          grupoAtivo: grupoAtivo,
+        );
+        _consecutivePermissionErrors = 0;
+      } catch (e) {
+        debugPrint('[ForegroundService] Erro ao sincronizar posição inicial no Firestore: $e');
+      }
+    }
+    service.invoke('updateLocationLocally', {'position': initialPosition});
+  } catch (e) {
+    debugPrint('[ForegroundService] Erro ao obter posição inicial no serviço: $e');
+  }
+
   await _positionSubscription?.cancel();
   _positionSubscription = Geolocator.getPositionStream(
     locationSettings: locationSettings,

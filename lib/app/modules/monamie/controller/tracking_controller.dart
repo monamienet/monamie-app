@@ -181,6 +181,11 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
       }
       await Future.wait(futures);
 
+      // Usuários atualmente ativos no stream também possuem pontos hoje.
+      for (final user in firebaseUsers) {
+        usersWithPointsOnObservedDay.add(user.email);
+      }
+
       // Remove marcadores de usuários que não possuem pontos hoje.
       final toRemoveToday = _animatedMarkers.keys
           .where((email) => !usersWithPointsOnObservedDay.contains(email))
@@ -359,10 +364,11 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
     bool shouldAnimateMarkers = false;
 
     for (final user in users) {
-      final shouldShowToday = usersWithPointsOnObservedDay.contains(user.email);
+      // Usuários presentes em firebaseUsers estão ativamente transmitindo hoje
+      usersWithPointsOnObservedDay.add(user.email);
       final exists = _animatedMarkers.containsKey(user.email);
 
-      if (exists && shouldShowToday) {
+      if (exists) {
         // Atualiza posição existente
         final didUpdate =
             _animatedMarkers[user.email]!.updateTargetPosition(
@@ -372,15 +378,11 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
         if (didUpdate) {
           shouldAnimateMarkers = true;
         }
-      } else if (!exists && shouldShowToday) {
+      } else {
         // Cria novo marcador animado
         _animatedMarkers[user.email] = AnimatedUserMarker(user: user);
         animatedMarkerPositions[user.email] =
             LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
-      } else if (exists && !shouldShowToday) {
-        // Usuário deixou de ter pontos hoje: remove marcador.
-        _animatedMarkers.remove(user.email);
-        animatedMarkerPositions.remove(user.email);
       }
     }
 
@@ -588,6 +590,13 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
       }
     }
   
+    // Tenta obter a posição GPS atual para sincronizar imediatamente
+    try {
+      position = await Geolocator.getCurrentPosition();
+    } catch (e) {
+      debugPrint('[TrackingController] Erro ao obter posição atual imediata: $e');
+    }
+
     await _setPlatformSpecifics();
     await _readySubscription?.cancel();
     await _locationSubscription?.cancel();
@@ -614,15 +623,29 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
     // Atualiza UI (botão).
     isTrackingEnabled.value = true;
 
-    // Informa Firebase que sua posição pode ser visualizada no mapa associada ao grupo ativo.
+    // Registra imediatamente que o usuário atual possui ponto no dia de hoje
+    usersWithPointsOnObservedDay.add(userCtrl.user!.email);
+
+    // Informa Firebase que sua posição pode ser visualizada no mapa associada ao grupo ativo
+    // e grava imediatamente as coordenadas e timestamp para não depender de delay de stream.
     try {
+      if (position.latitude.isFinite && position.longitude.isFinite) {
+        await FirebaseProvider().updateLocationAndTimestamp(
+          email: userCtrl.user!.email,
+          nome: userCtrl.getUserName(),
+          lat: position.latitude,
+          lng: position.longitude,
+          timestamp: DateTime.now(),
+          grupoAtivo: activeGroupEmail,
+        );
+      }
       await FirebaseProvider().updateIsTracked(
         userCtrl.user!.email,
         true,
         grupoAtivo: activeGroupEmail,
       );
     } catch (e) {
-      debugPrint('[TrackingController] Erro ao atualizar isTracked: $e');
+      debugPrint('[TrackingController] Erro ao atualizar status inicial de rastreamento: $e');
       Get.snackbar(
         'Erro ao iniciar rastreamento',
         'Não foi possível atualizar o status de rastreamento. '

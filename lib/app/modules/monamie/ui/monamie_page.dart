@@ -263,10 +263,8 @@ class MonamiePage extends StatelessWidget {
             return isObservedMember && hasHistoricalPosition;
           }
 
-          // Hoje: exibe apenas usuários observados que possuem pelo menos um
-          // ponto registrado no dia atual (conforme `usersWithPointsOnObservedDay`).
-          final hasPointsToday = trackingCtrl.usersWithPointsOnObservedDay.contains(user.email);
-          return isObservedMember && hasPointsToday;
+          // Hoje: exibe usuários observados transmitindo ativamente no grupo
+          return isObservedMember;
         })
         .map((user) {
           final isCurrentUser = user.email == trackingCtrl.userCtrl.user?.email;
