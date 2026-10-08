@@ -1,12 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:monamie_app/app/config/secrets.dart';
 import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
-import 'package:monamie_app/app/data/models/gdi_groups_model.dart';
 import 'package:monamie_app/app/data/models/user_data.dart';
 import 'package:hive/hive.dart';
-import 'package:http/http.dart' as http;
 
 class UserDataProvider {
   final String _collectionPath = "user_data";
@@ -170,23 +165,23 @@ class UserDataProvider {
     }
   }
 
-  Future<List<GdiGroups>> getGdiGroups(String iduff, String token) async {
-    final path = '${Secrets.gdiGroupsPath}/$iduff${Secrets.gdiGroupsQuery}';
-    var uri = Uri.https(Secrets.gdiGroupsHost, path);
-    try {
-      final response = await http.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        List<dynamic> jsonResponse = jsonDecode(response.body);
-        return jsonResponse.map((group) => GdiGroups.fromJson(group)).toList();
-      }
-    } catch (e) {
-      debugPrint("Erro ao buscar grupos GDI: $e");
-      return [];
-    }
-    return [];
-  }
+  //Future<List<GdiGroups>> getGdiGroups(String iduff, String token) async {
+  //  final path = '${Secrets.gdiGroupsPath}/$iduff${Secrets.gdiGroupsQuery}';
+  //  var uri = Uri.https(Secrets.gdiGroupsHost, path);
+  //  try {
+  //    final response = await http.get(
+  //      uri,
+  //      headers: {'Authorization': 'Bearer $token'},
+  //    );
+  //
+  //    if (response.statusCode == 200) {
+  //      List<dynamic> jsonResponse = jsonDecode(response.body);
+  //      return jsonResponse.map((group) => GdiGroups.fromJson(group)).toList();
+  //    }
+  //  } catch (e) {
+  //    debugPrint("Erro ao buscar grupos GDI: $e");
+  //    return [];
+  //  }
+  //  return [];
+  //}
 }

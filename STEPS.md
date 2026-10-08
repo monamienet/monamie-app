@@ -3,10 +3,20 @@ Below, nesting indicates dependency (*in* depends on *out*).
 - Create a new Firebase Project
     - Enable Firestore (***manually***)
     - Enable Google as a login provider (***manually***)
+        - Copy *web client ID* into `Secrets.monamieGoogleServerWebClientId`
     - Generate sha-(1|256) fingerprints with `cd android/ && ./gradlew signingReport`
         - add fingerprints to the corresponding app in Firebase (***manually***)
             - add `google-services.json`, `GoogleService-Info.plist` and `firebase_options.dart` with `flutterfire configure --project=monamienet-<client_name> -y`
 - Change package name `dart run change_app_package_name:main org.monamienet.<client_name>`
 - Change app name with `dart run rename_app:main all="MonAmie <client_name>"`
+- Create a new subgroup $sg$ (***manually***)
+    - Create custom roles (use later as flavor input?) (***manually***)
 - Create a new google group $g$ (***manually***)
+    - Add $sg$ as a subgroup of $g$
     - Assign $g$ to `rootGroupEmail`
+- Select the Firebase project for the CLI: `firebase login --reauth` (if needed), then `firebase use monamienet-<client_name>`
+    - Confirm `.firebaserc` `default` points to it (edit it if `firebase use` did not)
+- Deploy the claims Cloud Function
+    - Create `functions/.env.monamienet-<client_name>` with `GROUPS_GATEWAY_HOST=<gateway host>` and `ROOT_GROUP_EMAIL=<g>` (no secrets)
+    - `firebase deploy --only functions --project monamienet-<client_name>` (requires the Blaze plan)
+    - Grant Cloud Run callable invocation: `gcloud run services add-iam-policy-binding syncharpiaclaims --region us-central1 --member="allUsers" --role="roles/run.invoker" --project monamienet-<client_name>`

@@ -1,8 +1,8 @@
 {
-  "name": "harpia-functions",
-  "description": "Cloud Functions para o Harpia — sincronização de Custom Claims",
+  "name": "monamie-functions",
+  "description": "Cloud Functions do MonAmie — sincronização de Custom Claims",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {

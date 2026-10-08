@@ -39,7 +39,7 @@ class GoogleGroupsController extends GetxController {
 
   /// Email do grupo raiz que contém os subgrupos do Harpia.
   /// Em debug, usa um grupo de teste; em release, o grupo de produção.
-  static String get rootGroupEmail => 'monamie-aquarius@googlegroups.com';
+  static String get rootGroupEmail => 'monamie-aquariustur@monamienet.org';
   /// Lista de grupos que o usuário logado pode observar.
   /// Representa os subgrupos (type == GROUP) de [rootGroupEmail].
   final RxList<GoogleGroupModel> _observableGoogleGroups = RxList<GoogleGroupModel>();
@@ -54,8 +54,37 @@ class GoogleGroupsController extends GetxController {
     _loadGroups();
   }
 
+  /// Dadas as entidades do grupo raiz e os grupos do usuário (`/groups`),
+  /// retorna os grupos do usuário que são subgrupos diretos do grupo raiz.
+  ///
+  /// Subgrupos são entidades com `type == GROUP` cujo email não começa com
+  /// `space/`. Nome e descrição vêm de [userGroups].
+  @visibleForTesting
+  static List<GoogleGroupModel> userSubgroups(
+    List<Map<String, dynamic>> rootEntities,
+    List<Map<String, dynamic>> userGroups,
+  ) {
+    final subgroupEmails = rootEntities
+        .where((e) => e['type'] == 'GROUP' && (e['email'] as String?)?.startsWith('space/') != true)
+        .map((e) => (e['email'] as String?)?.trim().toLowerCase())
+        .whereType<String>()
+        .toSet();
+
+    return userGroups
+        .where((g) => subgroupEmails.contains((g['email'] as String?)?.trim().toLowerCase()))
+        .map((g) => GoogleGroupModel(
+              name: g['name'] ?? 'Nome indisponível',
+              email: g['email'],
+              description: g['description'] ?? '',
+              members: [], // TODO
+              subgroups: [], // TODO
+            ))
+        .toList();
+  }
+
   Future<void> _loadGroups({bool forceRefresh = false}) async {
     loadError.value = '';
+    _observableGoogleGroups.clear();
     try {
       final user = _auth.currentUser;
       if (user == null) {
@@ -81,41 +110,19 @@ class GoogleGroupsController extends GetxController {
         return;
       }
 
-      // 1. Buscar todas as entidades do grupo raiz 'grupos.harpia@id.uff.br'
-      final entities = await _repository.getGroupEntities(token, rootGroupEmail, forceRefresh: forceRefresh);
+      // 1. Subgrupos do grupo raiz (/members) e grupos do usuário (/groups).
+      final rootEntities = await _repository.getGroupEntities(token, rootGroupEmail, forceRefresh: forceRefresh);
+      final userGroups = await _repository.getUserGroups(token, userEmail, forceRefresh: forceRefresh);
 
-      // 2. Filtrar entidades para manter apenas subgrupos, i.e.,
-      // ficar apenas com as entidades cujo 'type' == 'GROUP'
-      // e cujo 'email' não começa com 'space/'.
-      final subgroups = entities
-        .where((e) => e['type'] == 'GROUP' && (e['email'] as String?)?.startsWith('space/') != true)
-        .toList();
+      // 2. Interseção: subgrupos do raiz dos quais o usuário participa.
+      _observableGoogleGroups.assignAll(userSubgroups(rootEntities, userGroups));
 
-      // 3. Para cada subgrupo, verificar se o usuário logado é membro
-      // e, se for, adicioná-lo a lista a ser 'finalGroups' que é exibida
-      // na aba de grupos da interface.
-      //final List<GoogleGroupModel> finalGroups = [];
-      for (final subgroup in subgroups) {
-        debugPrint('\n\n\n$subgroup\n\n\n');
-        final groupEmail = subgroup['email'] ?? 'Email indisponível';
-        final groupName = subgroup['name'] ?? 'Nome indisponível';
-        final groupDescription = subgroup['description'] ?? 'Descrição indisponível';
-        final groupMembers = await _repository.getGroupEntities(token, groupEmail, forceRefresh: forceRefresh);
-        final isMember = groupMembers.any(
-          (m) => m['email']?.toString().trim().toLowerCase() == userEmail.trim().toLowerCase()
-        );
-        if (isMember) {
-          _observableGoogleGroups.add(GoogleGroupModel(
-            name: groupName,
-            email: groupEmail,
-            description: groupDescription,
-            members: [], // TODO
-            subgroups: [], // TODO
-          ));
-        }
+      if (_observableGoogleGroups.isEmpty) {
+        _loadError.value = 'Você não participa de nenhum subgrupo de $rootGroupEmail.';
+        return;
       }
 
-      if (_observableGoogleGroups.isNotEmpty && selectedGroup.value == null) {
+      if (selectedGroup.value == null) {
         await updateObservedUsers(_observableGoogleGroups.first, forceRefresh: forceRefresh);
       }
     } catch(e, stack) {
@@ -174,12 +181,20 @@ class GoogleGroupsController extends GetxController {
       // Filtrar apenas usuários e mapear para GoogleGroupMember
       observedMembers.value = users
           .where((m) => m['type'] == 'USER')
-          .map((m) => GoogleGroupMember(
-              name: m['name'] as String,
-              email: m['email'] as String,
-              role: _parseRole(m['role'] as String),
-            )
-          )
+          .map((m) {
+            final email = (m['email'] as String?)?.trim() ?? '';
+            final rawName = (m['name'] as String?)?.trim();
+            final name = (rawName != null && rawName.isNotEmpty)
+                ? rawName
+                : (email.isNotEmpty ? email.split('@').first : 'Sem nome');
+            final roleStr = (m['role'] as String?)?.trim() ?? 'MEMBER';
+
+            return GoogleGroupMember(
+              name: name,
+              email: email,
+              role: _parseRole(roleStr),
+            );
+          })
           .toList();
     } catch (e) {
       debugPrint("Erro ao buscar membros do grupo ${selectedGroup.email}: $e");

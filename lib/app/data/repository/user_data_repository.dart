@@ -48,9 +48,9 @@ class UserDataRepository {
     return await _userDataProvider.lastRegisteredTokenCdcUpdate(lastRegisteredTokenCdcUpdate);
   }
 
-  Future<List<GdiGroups>> getGdiGroups(String iduff, String token) async {
-    return await _userDataProvider.getGdiGroups(iduff, token);
-  }
+  //Future<List<GdiGroups>> getGdiGroups(String iduff, String token) async {
+  //  return await _userDataProvider.getGdiGroups(iduff, token);
+  //}
 
   // Future<List<dynamic>> getSaciData(String? token, String? iduffUsuario, AuthIduffService auth) async {
     // return await saciService.getSaciData(token, iduffUsuario, auth);

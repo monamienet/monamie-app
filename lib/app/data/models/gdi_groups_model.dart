@@ -17,7 +17,7 @@ class GdiGroups {
 
   GdiGroups.fromJson(Map<String, dynamic> json) {
     gid = json['gid'] ?? json['id'];
-    description = json['descricao'];
+    description = json['description'] ?? json['descricao'];
     name = json['name'];
     email = json['email'];
     directMembersCount = json['directMembersCount'];

@@ -1,21 +1,28 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAuth } = require("firebase-admin/auth");
+const { defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
-const BACKEND_HOST = "ldap-eqi3irdpda-uc.a.run.app";
-const ROOT_GROUP = "grupos.harpia@id.uff.br";
+// Parâmetros por instância (functions/.env.<projectId>): host do
+// workspace-groups-gateway e e-mail do grupo raiz do cliente.
+const BACKEND_HOST = defineString("GROUPS_GATEWAY_HOST");
+const ROOT_GROUP = defineString("ROOT_GROUP_EMAIL");
 
 /**
  * Callable Cloud Function que sincroniza os Custom Claims do Firebase Auth
- * com os papéis do usuário nos grupos do Harpia (via Google Groups).
+ * com os papéis do usuário nos subgrupos do grupo raiz do cliente
+ * (via workspace-groups-gateway / Google Workspace).
  *
  * Os claims resultantes contêm um mapa `harpia_roles` que associa cada
  * grupo a um role efetivo (MEMBER, MANAGER, OWNER ou METAUSER).
  *
  * Invocada pelo app Flutter após o login e ao atualizar grupos.
  */
-exports.syncHarpiaClaims = onCall(async (request) => {
+exports.syncHarpiaClaims = onCall({ invoker: "public" }, async (request) => {
+  console.log(
+    `[syncHarpiaClaims] Invocado. Auth: ${JSON.stringify(request.auth)}`
+  );
   // 1. Validar autenticação (Callable já faz isso, mas é boa prática checar)
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Autenticação necessária.");
@@ -42,7 +49,7 @@ exports.syncHarpiaClaims = onCall(async (request) => {
   await computeRoles(
     idToken,
     email,
-    ROOT_GROUP,
+    ROOT_GROUP.value(),
     roles,
     /* isAncestorMember= */ false
   );
@@ -95,7 +102,7 @@ async function computeRoles(
   //    - Role direto (MEMBER/MANAGER/OWNER) tem precedência
   //    - Se não há role direto mas é ancestorMember, é METAUSER
   //    - O grupo raiz em si NÃO é registrado nos claims (é estrutural)
-  if (groupEmail !== ROOT_GROUP) {
+  if (groupEmail !== ROOT_GROUP.value()) {
     if (directMember) {
       roles[groupEmail] = directMember.role; // "MEMBER", "MANAGER", ou "OWNER"
     } else if (isAncestorMember) {
@@ -134,7 +141,7 @@ async function computeRoles(
  * @returns {Array<{type: string, email: string, role: string, name?: string}>}
  */
 async function fetchGroupEntities(idToken, groupEmail) {
-  const url = `https://${BACKEND_HOST}/grupos/membros?email=${encodeURIComponent(
+  const url = `https://${BACKEND_HOST.value()}/members?email=${encodeURIComponent(
     groupEmail
   )}`;
   const response = await fetch(url, {

@@ -1,7 +1,6 @@
 {
   "projects": {
-    "default": "harpia-c699b",
-    "harpia": "harpia-c699b"
+    "default": "monamienet-aquariustur"
   },
   "targets": {},
   "etags": {}
