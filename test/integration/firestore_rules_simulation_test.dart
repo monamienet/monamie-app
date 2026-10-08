@@ -18,10 +18,10 @@ class FirestoreRulesSimulator {
     final grupoAtivo = resourceData['grupo_ativo'] as String?;
     if (grupoAtivo == null) return false;
 
-    final harpiaRoles = authToken['harpia_roles'];
-    if (harpiaRoles is! Map) return false;
+    final groupRoles = authToken['group_roles'];
+    if (groupRoles is! Map) return false;
 
-    return harpiaRoles[grupoAtivo] != null;
+    return groupRoles[grupoAtivo] != null;
   }
 
   /// Avalia a regra de criação/atualização em `/usuarios/{usuarioEmail}`
@@ -37,9 +37,9 @@ class FirestoreRulesSimulator {
     if (requesterEmail != targetDocEmail) return false;
 
     // 2. isObservavel (system-wide)
-    final harpiaRoles = authToken['harpia_roles'];
-    if (harpiaRoles is! Map) return false;
-    final hasObservableRole = harpiaRoles.values.any(
+    final groupRoles = authToken['group_roles'];
+    if (groupRoles is! Map) return false;
+    final hasObservableRole = groupRoles.values.any(
       (role) => role == 'MEMBER' || role == 'MANAGER',
     );
     if (!hasObservableRole) return false;
@@ -61,7 +61,7 @@ class FirestoreRulesSimulator {
     // 4. isObservavelInGroup(request.resource.data.grupo_ativo)
     final grupoAtivo = incomingData['grupo_ativo'];
     if (grupoAtivo != null) {
-      final roleInTargetGroup = harpiaRoles[grupoAtivo];
+      final roleInTargetGroup = groupRoles[grupoAtivo];
       if (roleInTargetGroup != 'MEMBER' && roleInTargetGroup != 'MANAGER') {
         return false; // Usuário tentando forjar grupo onde não é MEMBER ou MANAGER!
       }
@@ -84,22 +84,22 @@ class FirestoreRulesSimulator {
     final grupoAtivo = parentUserData['grupo_ativo'] as String?;
     if (grupoAtivo == null) return false;
 
-    final harpiaRoles = authToken['harpia_roles'];
-    if (harpiaRoles is! Map) return false;
+    final groupRoles = authToken['group_roles'];
+    if (groupRoles is! Map) return false;
 
-    return harpiaRoles[grupoAtivo] != null;
+    return groupRoles[grupoAtivo] != null;
   }
 }
 
 void main() {
   group('Simulação e Validação das Regras de Segurança (firestore.rules)', () {
-    const emailGuardaA = 'guarda.a@id.uff.br';
-    const emailGuardaB = 'guarda.b@id.uff.br';
-    const emailObservador = 'chefe.seguranca@id.uff.br';
-    const emailInvasor = 'estudante.externo@id.uff.br';
+    const emailGuardaA = 'guarda.a@monamienet.org';
+    const emailGuardaB = 'guarda.b@monamienet.org';
+    const emailObservador = 'chefe.seguranca@monamienet.org';
+    const emailInvasor = 'estudante.externo@monamienet.org';
 
-    const grupoSeguranca = 'seguranca-gragoata@id.uff.br';
-    const grupoTransporte = 'transporte-vans@id.uff.br';
+    const grupoSeguranca = 'seguranca-operacional@monamienet.org';
+    const grupoTransporte = 'transporte-vans@monamienet.org';
 
     late Map<String, dynamic> tokenGuardaA;
     late Map<String, dynamic> tokenObservadorSeguranca;
@@ -108,22 +108,22 @@ void main() {
     setUp(() {
       tokenGuardaA = {
         'email': emailGuardaA,
-        'harpia_roles': {
+        'group_roles': {
           grupoSeguranca: 'MEMBER',
         },
       };
 
       tokenObservadorSeguranca = {
         'email': emailObservador,
-        'harpia_roles': {
+        'group_roles': {
           grupoSeguranca: 'MANAGER',
         },
       };
 
       tokenInvasorSemGrupo = {
         'email': emailInvasor,
-        'harpia_roles': {
-          'grupo-outro@id.uff.br': 'MEMBER',
+        'group_roles': {
+          'grupo-outro@monamienet.org': 'MEMBER',
         },
       };
     });

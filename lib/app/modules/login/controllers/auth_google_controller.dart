@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
 import 'package:monamie_app/app/data/repository/user_data_repository.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
-import 'package:monamie_app/app/data/services/harpia_claims_service.dart';
+import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
@@ -45,9 +45,9 @@ class AuthGoogleController extends GetxController {
 
         // Sincronizar Custom Claims ANTES de navegar.
         // A criação do doc em `usuarios` exige claims de observável.
-        await _syncHarpiaClaims();
+        await _syncClaims();
 
-        Get.offNamed(Routes.MONITORA_UFF);
+        Get.offNamed(Routes.MONAMIE);
       } catch (e) {
         Get.snackbar(
           "Erro ao finalizar login",
@@ -136,9 +136,9 @@ class AuthGoogleController extends GetxController {
         await _getGdiGroupsGoogle(token ?? '', hasLogged.email);
 
         // Sincronizar Custom Claims ANTES de navegar.
-        await _syncHarpiaClaims();
+        await _syncClaims();
 
-        Get.offNamed(Routes.MONITORA_UFF);
+        Get.offNamed(Routes.MONAMIE);
       } else {
         Get.offNamed(Routes.LOGIN);
       }
@@ -150,11 +150,11 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// Chama a Cloud Function `syncHarpiaClaims` para sincronizar os
+  /// Chama a Cloud Function `syncClaims` para sincronizar os
   /// Custom Claims do Firebase Auth com os papéis do usuário nos
-  /// grupos do Harpia. Após a chamada, força refresh do token.
-  Future<void> _syncHarpiaClaims() async {
-    await HarpiaClaimsService.syncClaims();
+  /// grupos do MonAmie. Após a chamada, força refresh do token.
+  Future<void> _syncClaims() async {
+    await MonAmieClaimsService.syncClaims();
   }
 
   Future<void> logout() async {

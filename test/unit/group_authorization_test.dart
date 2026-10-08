@@ -51,22 +51,22 @@ void main() {
     setUp(() {
       gruposMock = [
         GoogleGroupModel(
-          name: 'Segurança Praia Vermelha',
-          email: 'seguranca-pv@id.uff.br',
+          name: 'Segurança Operacional',
+          email: 'seguranca-operacional@monamienet.org',
           description: '',
           members: [],
           subgroups: [],
         ),
         GoogleGroupModel(
-          name: 'Transporte Gragoatá',
-          email: 'transporte-gragoata@id.uff.br',
+          name: 'Transporte Vans',
+          email: 'transporte-vans@monamienet.org',
           description: '',
           members: [],
           subgroups: [],
         ),
         GoogleGroupModel(
-          name: 'Coordenação Geral Harpia',
-          email: 'coordenacao-harpia@id.uff.br',
+          name: 'Coordenação Geral MonAmie',
+          email: 'coordenacao@monamienet.org',
           description: '',
           members: [],
           subgroups: [],
@@ -80,9 +80,9 @@ void main() {
     test('Happy Path: Deve retornar grupos onde o usuário possui papel MEMBER ou MANAGER', () {
       // 1. Arrange
       final claimsMembroEManager = {
-        'seguranca-pv@id.uff.br': 'MEMBER',
-        'transporte-gragoata@id.uff.br': 'MANAGER',
-        'coordenacao-harpia@id.uff.br': 'OWNER',
+        'seguranca-operacional@monamienet.org': 'MEMBER',
+        'transporte-vans@monamienet.org': 'MANAGER',
+        'coordenacao@monamienet.org': 'OWNER',
       };
 
       // 2. Act
@@ -94,16 +94,16 @@ void main() {
       // 3. Assert
       expect(observaveis.length, 2);
       expect(observaveis.map((g) => g.email), containsAll([
-        'seguranca-pv@id.uff.br',
-        'transporte-gragoata@id.uff.br',
+        'seguranca-operacional@monamienet.org',
+        'transporte-vans@monamienet.org',
       ]));
-      expect(observaveis.map((g) => g.email), isNot(contains('coordenacao-harpia@id.uff.br')));
+      expect(observaveis.map((g) => g.email), isNot(contains('coordenacao@monamienet.org')));
     });
 
     test('Edge Case: Deve ser resiliente a diferenças de maiúsculas/minúsculas e espaços nos emails', () {
       // 1. Arrange
       final claimsComVariacoes = {
-        '  SEGURANCA-PV@ID.UFF.BR ': 'MEMBER',
+        '  SEGURANCA-OPERACIONAL@MONAMIENET.ORG ': 'MEMBER',
       };
 
       // 2. Act
@@ -114,12 +114,12 @@ void main() {
 
       // 3. Assert
       expect(observaveis.length, 1);
-      expect(observaveis.first.email, 'seguranca-pv@id.uff.br');
+      expect(observaveis.first.email, 'seguranca-operacional@monamienet.org');
     });
 
     test('Edge Case: Deve retornar lista vazia quando availableGroups for uma lista vazia', () {
       // 1. Arrange
-      final claims = {'seguranca-pv@id.uff.br': 'MEMBER'};
+      final claims = {'seguranca-operacional@monamienet.org': 'MEMBER'};
 
       // 2. Act
       final observaveis = filterObservableGroups(
@@ -162,8 +162,8 @@ void main() {
     test('Sad Path: NÃO deve considerar grupos onde o usuário é apenas OWNER ou METAUSER', () {
       // 1. Arrange
       final claimsApenasProprietario = {
-        'coordenacao-harpia@id.uff.br': 'OWNER',
-        'transporte-gragoata@id.uff.br': 'METAUSER',
+        'coordenacao@monamienet.org': 'OWNER',
+        'transporte-vans@monamienet.org': 'METAUSER',
       };
 
       // 2. Act
@@ -179,7 +179,7 @@ void main() {
     test('Sad Path: Deve retornar lista vazia quando claims contiver apenas emails que não existem nos grupos disponíveis', () {
       // 1. Arrange
       final claimsInexistentes = {
-        'grupo.fantasma@id.uff.br': 'MEMBER',
+        'grupo.fantasma@monamienet.org': 'MEMBER',
       };
 
       // 2. Act
@@ -206,7 +206,7 @@ void main() {
       );
 
       // 3. Assert
-      expect(active, 'seguranca-pv@id.uff.br');
+      expect(active, 'seguranca-operacional@monamienet.org');
     });
 
     test('Happy Path: Resolução de grupo ativo com múltiplos grupos e grupo atual válido deve usar o atual', () {
@@ -221,7 +221,7 @@ void main() {
       );
 
       // 3. Assert
-      expect(active, 'transporte-gragoata@id.uff.br');
+      expect(active, 'transporte-vans@monamienet.org');
     });
 
     test('Edge Case: Resolução de grupo ativo com múltiplos grupos sem grupo atual selecionado deve exigir seleção', () {
@@ -242,8 +242,8 @@ void main() {
       // 1. Arrange
       final observableGroups = [gruposMock[0], gruposMock[1]];
       final currentWithSpaces = GoogleGroupModel(
-        name: 'Segurança PV',
-        email: '  SEGURANCA-PV@ID.UFF.BR  ',
+        name: 'Segurança Operacional',
+        email: '  SEGURANCA-OPERACIONAL@MONAMIENET.ORG  ',
         description: '',
         members: [],
         subgroups: [],
@@ -256,7 +256,7 @@ void main() {
       );
 
       // 3. Assert
-      expect(active, '  SEGURANCA-PV@ID.UFF.BR  ');
+      expect(active, '  SEGURANCA-OPERACIONAL@MONAMIENET.ORG  ');
     });
 
     test('Sad Path: Resolução de grupo ativo com 0 grupos observáveis deve retornar null (não autorizado)', () {

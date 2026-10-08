@@ -7,8 +7,8 @@ import 'package:monamie_app/app/modules/monamie/controller/google_groups_control
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
-class HarpiaAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const HarpiaAppBar({super.key});
+class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const MonAmieAppBar({super.key});
 
   GoogleGroupsController get googleGroupsController => Get.find<GoogleGroupsController>();
   UserController get userController => Get.find<UserController>();
@@ -40,8 +40,8 @@ class HarpiaAppBar extends StatelessWidget implements PreferredSizeWidget {
         decoration: BoxDecoration(gradient: AppColors.appBarBottomGradient()),
       ),
       title: Obx(() => Text(
-        'Harpia - Grupo observado: ${googleGroupsController.observedGroup}', 
-        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
+        'MonAmie - Grupo observado: ${googleGroupsController.observedGroup}', 
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
       )),
       centerTitle: true,
       elevation: 8,
@@ -78,3 +78,4 @@ class HarpiaAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
+

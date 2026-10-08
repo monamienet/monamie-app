@@ -1,5 +1,5 @@
-import 'package:monamie_app/app/modules/monamie/bindings/monitora_uff_bindings.dart';
-import 'package:monamie_app/app/modules/monamie/ui/monitora_uff_page.dart';
+import 'package:monamie_app/app/modules/monamie/bindings/monamie_bindings.dart';
+import 'package:monamie_app/app/modules/monamie/ui/monamie_page.dart';
 import 'package:get/get.dart';
 
 import '../modules/login/bindings/login_binding.dart';
@@ -19,9 +19,9 @@ class AppPages {
       binding: LoginBinding(),
     ),
     GetPage(
-      name: _Paths.MONITORA_UFF,
-      page: () => const MonitoraUFFPage(),
-      binding: MonitoraUffBindings()
+      name: _Paths.MONAMIE,
+      page: () => const MonamiePage(),
+      binding: MonamieBindings(),
     ),
   ];
 }

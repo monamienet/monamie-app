@@ -15,7 +15,7 @@ class UserData extends HiveObject {
   String? matricula;
 
   @HiveField(3)
-  String? iduff;
+  String? idMonamie;
 
   @HiveField(4)
   String? curso;
@@ -57,7 +57,7 @@ class UserData extends HiveObject {
     this.name,
     this.nomesocial,
     this.matricula,
-    this.iduff,
+    this.idMonamie,
     this.curso,
     this.fotoUrl,
     this.dataValidadeMatricula,
@@ -76,7 +76,7 @@ class UserData extends HiveObject {
     String? name,
     String? nomesocial,
     String? matricula,
-    String? iduff,
+    String? idMonamie,
     String? curso,
     String? fotoUrl,  
   String? dataValidadeMatricula,
@@ -94,7 +94,7 @@ class UserData extends HiveObject {
      name: name ?? this.name,
      nomesocial: nomesocial ?? this.nomesocial,
      matricula: matricula ?? this.matricula,
-     iduff: iduff ?? this.iduff,
+     idMonamie: idMonamie ?? this.idMonamie,
      curso: curso ?? this.curso,
      fotoUrl: fotoUrl ?? this.fotoUrl,
      dataValidadeMatricula: dataValidadeMatricula ?? this.dataValidadeMatricula,
@@ -115,7 +115,7 @@ class UserData extends HiveObject {
       name: json['name'] as String?,
       nomesocial: json['nomesocial'] as String?,
       matricula: json['matricula'] as String?,
-      iduff: json['iduff'] as String?,
+      idMonamie: json['idMonamie'] as String?,
       curso: json['curso'] as String?,
       fotoUrl: json['fotoUrl'] as String?,
       dataValidadeMatricula: json['dataValidadeMatricula'] as String?,
@@ -150,7 +150,7 @@ class UserData extends HiveObject {
       'name': name,
       'nomesocial': nomesocial,
       'matricula': matricula,
-      'iduff': iduff,
+      'idMonamie': idMonamie,
       'curso': curso,
       'fotoUrl': fotoUrl,
       'dataValidadeMatricula': dataValidadeMatricula,
@@ -171,6 +171,6 @@ class UserData extends HiveObject {
 
   @override
   String toString() {
-    return 'UserData(name: $name, nomesocial: $nomesocial, matricula: $matricula, iduff: $iduff, curso: $curso, dataValidadeMatricula: $dataValidadeMatricula, bond: $bond, textoQrCodeCarteirinha: $textoQrCodeCarteirinha,  bondId: $bondId, gdiGroups: $gdiGroups, gdiGroupsGoogle: $gdiGroupsGoogle, lastRegisteredTokenCdcUpdate: $lastRegisteredTokenCdcUpdate)';
+    return 'UserData(name: $name, nomesocial: $nomesocial, matricula: $matricula, idMonamie: $idMonamie, curso: $curso, dataValidadeMatricula: $dataValidadeMatricula, bond: $bond, textoQrCodeCarteirinha: $textoQrCodeCarteirinha,  bondId: $bondId, gdiGroups: $gdiGroups, gdiGroupsGoogle: $gdiGroupsGoogle, lastRegisteredTokenCdcUpdate: $lastRegisteredTokenCdcUpdate)';
   }
 }

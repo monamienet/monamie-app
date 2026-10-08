@@ -96,7 +96,7 @@ class HighlightedUserPanel extends StatelessWidget {
                           child: IconButton(
                             padding: EdgeInsets.zero,
                             icon: SvgPicture.asset(
-                              'assets/monitora_uff/Google_Meet_icon.svg',
+                              'assets/monamie/Google_Meet_icon.svg',
                               width: 24,
                               height: 24,
                               fit: BoxFit.contain,

@@ -10,15 +10,15 @@ import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart'
 import 'package:monamie_app/app/modules/monamie/ui/widgets/calendar.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/group_selector.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_users_list.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/harpia_app_bar.dart';
+import 'package:monamie_app/app/modules/monamie/ui/widgets/monamie_app_bar.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_user_panel.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:monamie_app/app/data/services/foreground_service.dart' as foreground_service;
 
-class MonitoraUFFPage extends StatelessWidget {
-  const MonitoraUFFPage({super.key});
+class MonamiePage extends StatelessWidget {
+  const MonamiePage({super.key});
 
   UserController get userCtrl => Get.find<UserController>();
   PermissionsController get permissionsCtrl => Get.find<PermissionsController>();
@@ -28,7 +28,7 @@ class MonitoraUFFPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: HarpiaAppBar(),
+      appBar: const MonAmieAppBar(),
       drawer: GroupSelector(),
       body: _body(context)
     );
@@ -241,7 +241,7 @@ class MonitoraUFFPage extends StatelessWidget {
   Widget _tile() {
     return TileLayer(
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      userAgentPackageName: 'br.uff.sti.uffmobileplus',
+      userAgentPackageName: 'org.monamienet.aquariustur',
     );
   }
 

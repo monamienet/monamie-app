@@ -5,20 +5,14 @@ import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 
 class FirebaseProvider {
-  //final String firebaseAppName = 'uffmobileplus';
-  //final String firestoreDatabaseId = 'monitora-uff';
-
   CollectionReference get collectionRef => FirebaseFirestore.instanceFor(
     app: Firebase.app(),
-    //databaseId: firestoreDatabaseId,
   ).collection('usuarios');
 
   Future<void> adicionarDados(UserModel userLocation) async {
     // 1. Instanciar o Firestore com o app específico e banco de dados
     FirebaseFirestore firestore = FirebaseFirestore.instanceFor(
-      //app: Firebase.app(firebaseAppName),
       app: Firebase.app(),
-      //databaseId: firestoreDatabaseId,
     );
 
     // 2. Referenciar a coleção e adicionar dados

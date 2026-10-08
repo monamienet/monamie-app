@@ -79,7 +79,7 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
     hasNotificationPermission.value = await Permission.notification.isGranted;
   }
 
-  /// Verifica se todas as permissões necessárias para o monitora funcionar
+  /// Verifica se todas as permissões necessárias para o MonAmie funcionar
   /// adequadamente já foram concedidas ao aplicativo pelo usuário.
   bool arePermissionsGranted() {
     return hasAlwaysLocationPermission.value && hasNotificationPermission.value;
@@ -100,7 +100,7 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
               ],
             ),
             content: const Text(
-              "O Monitora UFF deseja coletar dados de localização mesmo quando o aplicativo estiver fechado ou não estiver em uso.\n\n"
+              "O MonAmie deseja coletar dados de localização mesmo quando o aplicativo estiver fechado ou não estiver em uso.\n\n"
               "Esses dados permitem que os supervisores visualizem sua posição em tempo real.\n\n"
               "Como ativar:\n"
               "1. Toque em 'Prosseguir'.\n"

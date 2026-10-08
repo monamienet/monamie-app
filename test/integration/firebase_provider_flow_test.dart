@@ -8,12 +8,12 @@ void main() {
     // -------------------------------------------------------------
     test('Happy Path: Contrato de escrita de posição e grupo_ativo com campos válidos', () {
       // 1. Arrange
-      const email = 'servidor1@id.uff.br';
+      const email = 'servidor1@monamienet.org';
       const nome = 'Servidor Silva';
       const lat = -22.9035;
       const lng = -43.1320;
       final timestamp = DateTime(2026, 9, 16, 21, 0, 0);
-      const grupoAtivo = 'seguranca-gragoata@id.uff.br';
+      const grupoAtivo = 'seguranca-operacional@monamienet.org';
 
       // 2. Act
       final userUpdates = <String, dynamic>{
@@ -38,7 +38,7 @@ void main() {
 
     test('Edge Case: Contrato de escrita omite grupo_ativo quando este for vazio', () {
       // 1. Arrange
-      const email = 'servidor1@id.uff.br';
+      const email = 'servidor1@monamienet.org';
       const grupoAtivoVazio = '';
 
       // 2. Act
@@ -54,7 +54,7 @@ void main() {
     test('Sad Path: Rejeita chaves não permitidas no contrato de escrita do usuário', () {
       // 1. Arrange
       final allowedKeys = {'email', 'nome', 'lat', 'lng', 'timestamp', 'isTracked', 'grupo_ativo'};
-      final payloadComCampoInvalido = {'email': 'teste@id.uff.br', 'campo_proibido': true};
+      final payloadComCampoInvalido = {'email': 'teste@monamienet.org', 'campo_proibido': true};
 
       // 2. Act
       final hasIllegalKey = payloadComCampoInvalido.keys.any((k) => !allowedKeys.contains(k));
@@ -71,7 +71,7 @@ void main() {
       const lat = -22.9035;
       const lng = -43.1320;
       final timestamp = DateTime(2026, 9, 16, 21, 0, 0);
-      const grupoAtivo = 'seguranca-gragoata@id.uff.br';
+      const grupoAtivo = 'seguranca-operacional@monamienet.org';
 
       // 2. Act
       final pointData = <String, dynamic>{
@@ -107,7 +107,7 @@ void main() {
     // -------------------------------------------------------------
     test('Happy Path: Payload de ativação de rastreamento deve conter isTracked true e grupo_ativo', () {
       // 1. Arrange
-      const activeGroup = 'transporte-vans@id.uff.br';
+      const activeGroup = 'transporte-vans@monamienet.org';
 
       // 2. Act
       final payloadIniciar = <String, dynamic>{
@@ -118,7 +118,7 @@ void main() {
       // 3. Assert
       expect(payloadIniciar, {
         'isTracked': true,
-        'grupo_ativo': 'transporte-vans@id.uff.br',
+        'grupo_ativo': 'transporte-vans@monamienet.org',
       });
     });
 
@@ -144,12 +144,12 @@ void main() {
       // 1. Arrange
       final now = DateTime.now();
       final usuarioRecente = UserModel(
-        email: 'ativo@id.uff.br',
+        email: 'ativo@monamienet.org',
         lat: -22.90,
         lng: -43.13,
         timestamp: now.subtract(const Duration(minutes: 1)),
         isTracked: true,
-        grupoAtivo: 'seguranca@id.uff.br',
+        grupoAtivo: 'seguranca@monamienet.org',
       );
       final limit = now.subtract(const Duration(minutes: 5));
 
@@ -164,7 +164,7 @@ void main() {
       // 1. Arrange
       final now = DateTime.now();
       final usuarioSemTimestamp = UserModel(
-        email: 'sem.timestamp@id.uff.br',
+        email: 'sem.timestamp@monamienet.org',
         timestamp: null,
       );
       final limit = now.subtract(const Duration(minutes: 5));
@@ -180,7 +180,7 @@ void main() {
       // 1. Arrange
       final now = DateTime.now();
       final usuarioAntigo = UserModel(
-        email: 'antigo@id.uff.br',
+        email: 'antigo@monamienet.org',
         timestamp: now.subtract(const Duration(minutes: 10)),
       );
       final limit = now.subtract(const Duration(minutes: 5));

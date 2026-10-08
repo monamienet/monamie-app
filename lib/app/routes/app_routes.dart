@@ -4,11 +4,11 @@ part of 'app_pages.dart';
 abstract class Routes {
   Routes._();
   static const LOGIN = _Paths.LOGIN;
-  static const MONITORA_UFF = _Paths.MONITORA_UFF;
+  static const MONAMIE = _Paths.MONAMIE;
 }
 
 abstract class _Paths {
   _Paths._();
   static const LOGIN = '/login';
-  static const MONITORA_UFF = '/monitora_uff';
+  static const MONAMIE = '/monamie';
 }

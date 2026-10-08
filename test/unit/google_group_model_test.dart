@@ -10,7 +10,7 @@ void main() {
     test('Happy Path: Deve instanciar GoogleGroupMember com propriedades válidas', () {
       // 1. Arrange
       const name = 'Carlos Oliveira';
-      const email = 'carlos@id.uff.br';
+      const email = 'carlos@monamienet.org';
       const role = GoogleGroupRole.member;
 
       // 2. Act
@@ -22,7 +22,7 @@ void main() {
 
       // 3. Assert
       expect(member.name, 'Carlos Oliveira');
-      expect(member.email, 'carlos@id.uff.br');
+      expect(member.email, 'carlos@monamienet.org');
       expect(member.role, GoogleGroupRole.member);
     });
 
@@ -49,29 +49,29 @@ void main() {
       final membersList = [
         GoogleGroupMember(
           name: 'Carlos Oliveira',
-          email: 'carlos@id.uff.br',
+          email: 'carlos@monamienet.org',
           role: GoogleGroupRole.member,
         ),
         GoogleGroupMember(
           name: 'Ana Souza',
-          email: 'ana@id.uff.br',
+          email: 'ana@monamienet.org',
           role: GoogleGroupRole.manager,
         ),
       ];
 
       // 2. Act
       final grupo = GoogleGroupModel(
-        name: 'Vigilância Campus Gragoatá',
-        email: 'vigilancia-gragoata@id.uff.br',
-        description: 'Equipe responsável pela vigilância patrimonial do Campus Gragoatá',
+        name: 'Vigilância MonAmie',
+        email: 'vigilancia@monamienet.org',
+        description: 'Equipe responsável pela vigilância patrimonial da MonAmie',
         members: membersList,
         subgroups: [],
       );
 
       // 3. Assert
-      expect(grupo.name, 'Vigilância Campus Gragoatá');
-      expect(grupo.email, 'vigilancia-gragoata@id.uff.br');
-      expect(grupo.description, contains('Gragoatá'));
+      expect(grupo.name, 'Vigilância MonAmie');
+      expect(grupo.email, 'vigilancia@monamienet.org');
+      expect(grupo.description, contains('MonAmie'));
       expect(grupo.members.length, 2);
       expect(grupo.members.first.role, GoogleGroupRole.member);
       expect(grupo.members.last.role, GoogleGroupRole.manager);
@@ -83,8 +83,8 @@ void main() {
     test('Happy Path: fromJson deve construir o modelo adequadamente a partir de json válido', () {
       // 1. Arrange
       final json = {
-        'name': 'Transporte UFF',
-        'email': 'transporte@id.uff.br',
+        'name': 'Transporte MonAmie',
+        'email': 'transporte@monamienet.org',
         'description': 'Coordenação de frotas',
         'members': <GoogleGroupMember>[],
         'subgroups': <GoogleGroupModel>[],
@@ -94,8 +94,8 @@ void main() {
       final model = GoogleGroupModel.fromJson(json);
 
       // 3. Assert
-      expect(model.name, 'Transporte UFF');
-      expect(model.email, 'transporte@id.uff.br');
+      expect(model.name, 'Transporte MonAmie');
+      expect(model.email, 'transporte@monamienet.org');
       expect(model.description, 'Coordenação de frotas');
       expect(model.members, isEmpty);
       expect(model.subgroups, isEmpty);
@@ -145,7 +145,7 @@ void main() {
       // 1. Arrange
       final jsonInvalido = {
         'name': 'Grupo Inválido',
-        'email': 'invalido@id.uff.br',
+        'email': 'invalido@monamienet.org',
         'description': 'Sem members válidos',
         'members': 'string_invalida_em_vez_de_lista',
         'subgroups': <GoogleGroupModel>[],
@@ -162,7 +162,7 @@ void main() {
       // 1. Arrange
       final jsonInvalido = {
         'name': 'Grupo Inválido',
-        'email': 'invalido@id.uff.br',
+        'email': 'invalido@monamienet.org',
         'description': 'Sem subgroups válidos',
         'members': <GoogleGroupMember>[],
         'subgroups': 'string_invalida_em_vez_de_lista',

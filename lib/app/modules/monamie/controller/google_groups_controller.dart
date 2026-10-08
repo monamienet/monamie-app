@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/data/repository/google_groups_repository.dart';
-import 'package:monamie_app/app/data/services/harpia_claims_service.dart';
+import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
 
@@ -24,7 +24,7 @@ class GoogleGroupsController extends GetxController {
   /// Retorna a lista de grupos onde o usuário logado é observável
   /// (ou seja, possui papel de MEMBER ou MANAGER nos claims).
   Future<List<GoogleGroupModel>> getObservableGroupsForUser() async {
-    final claims = await HarpiaClaimsService.readClaims();
+    final claims = await MonAmieClaimsService.readClaims();
     if (claims == null || claims.isEmpty) return [];
 
     final allowedEmails = claims.entries
@@ -37,7 +37,7 @@ class GoogleGroupsController extends GetxController {
         .toList();
   }
 
-  /// Email do grupo raiz que contém os subgrupos do Harpia.
+  /// Email do grupo raiz que contém os subgrupos do MonAmie.
   /// Em debug, usa um grupo de teste; em release, o grupo de produção.
   static String get rootGroupEmail => 'monamie-aquariustur@monamienet.org';
   /// Lista de grupos que o usuário logado pode observar.
@@ -208,7 +208,7 @@ class GoogleGroupsController extends GetxController {
 
     // Re-sincronizar claims (o usuário pode ter sido
     // adicionado/removido de um grupo desde o último login).
-    await _syncHarpiaClaims();
+    await _syncClaims();
 
     await _loadGroups(forceRefresh: true);
     
@@ -226,9 +226,9 @@ class GoogleGroupsController extends GetxController {
     }
   }
 
-  /// Chama a Cloud Function `syncHarpiaClaims` para re-sincronizar
+  /// Chama a Cloud Function `syncClaims` para re-sincronizar
   /// os Custom Claims do usuário com seus papéis atuais nos grupos.
-  Future<void> _syncHarpiaClaims() async {
-    await HarpiaClaimsService.syncClaims();
+  Future<void> _syncClaims() async {
+    await MonAmieClaimsService.syncClaims();
   }
 }

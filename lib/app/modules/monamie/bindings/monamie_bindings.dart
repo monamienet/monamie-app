@@ -7,7 +7,7 @@ import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.d
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:get/get.dart';
 
-class MonitoraUffBindings implements Bindings {
+class MonamieBindings implements Bindings {
   @override
   void dependencies() {
     Get.lazyPut<UserController>(() => UserController());
@@ -19,3 +19,4 @@ class MonitoraUffBindings implements Bindings {
     Get.lazyPut(() => CallController());
   }
 }
+

@@ -12,7 +12,7 @@ class LoginView extends GetView<LoginController> {
 
   AppBar _appBar() {
     return AppBar(
-        title: const Text('Harpia UFF', style: TextStyle(color: Colors.white),),
+        title: const Text('MonAmie AquariusTur', style: TextStyle(color: Colors.white),),
         centerTitle: true,
         backgroundColor: AppColors.darkBlue(),
       );

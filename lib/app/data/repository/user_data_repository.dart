@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
-import 'package:monamie_app/app/data/models/gdi_groups_model.dart';
 import 'package:monamie_app/app/data/models/user_data.dart';
 import 'package:monamie_app/app/data/provider/user_data_provider.dart';
 
@@ -47,12 +46,4 @@ class UserDataRepository {
   Future<String> lastRegisteredTokenCdcUpdate(DateTime lastRegisteredTokenCdcUpdate) async {
     return await _userDataProvider.lastRegisteredTokenCdcUpdate(lastRegisteredTokenCdcUpdate);
   }
-
-  //Future<List<GdiGroups>> getGdiGroups(String iduff, String token) async {
-  //  return await _userDataProvider.getGdiGroups(iduff, token);
-  //}
-
-  // Future<List<dynamic>> getSaciData(String? token, String? iduffUsuario, AuthIduffService auth) async {
-    // return await saciService.getSaciData(token, iduffUsuario, auth);
-  // }
 }

@@ -15,14 +15,13 @@ Future<void> main() async {
   Hive.registerAdapter(UserGoogleModelAdapter());
 
   await Firebase.initializeApp(
-    //name: 'uffmobileplus',
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
   runApp(
     GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "Application",
+      title: "MonAmie AquariusTur",
       initialRoute: AppPages.INITIAL,
       getPages: AppPages.routes,
     ),

@@ -22,7 +22,6 @@ class LoginController extends GetxController {
   Future<bool> hasActiveGoogleBond() async {
     try{
     final currentUser = fb.FirebaseAuth.instanceFor(
-      //app: Firebase.app('uffmobileplus)
       app: Firebase.app(),
     ).currentUser;
     final storedUser = await userGoogleRepository.getUserGoogleModel();

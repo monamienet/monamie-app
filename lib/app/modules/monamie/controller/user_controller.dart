@@ -25,7 +25,7 @@ class UserController extends GetxController {
   }
 
   /// Verifica nos Custom Claims do token se o usuário é observável
-  /// (MEMBER ou MANAGER em pelo menos um grupo Harpia).
+  /// (MEMBER ou MANAGER em pelo menos um grupo MonAmie).
   /// Retorna false se os claims não estiverem definidos.
   Future<bool> _isObservavelFromClaims() async {
     final user = fb.FirebaseAuth.instance.currentUser;
@@ -35,11 +35,11 @@ class UserController extends GetxController {
     final claims = idTokenResult.claims;
     if (claims == null) return false;
 
-    final harpiaRoles = claims['harpia_roles'];
-    if (harpiaRoles == null || harpiaRoles is! Map) return false;
+    final groupRoles = claims['group_roles'];
+    if (groupRoles == null || groupRoles is! Map) return false;
 
     // Observável se pelo menos um role é MEMBER ou MANAGER
-    return harpiaRoles.values.any(
+    return groupRoles.values.any(
       (role) => role == 'MEMBER' || role == 'MANAGER',
     );
   }

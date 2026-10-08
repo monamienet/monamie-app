@@ -13,13 +13,13 @@ service cloud.firestore {
         && request.auth.token.email != null;
     }
 
-    /// AUTORIZADO: tem role em pelo menos um grupo Harpia.
-    /// Isto é: o mapa harpia_roles existe e não é vazio.
+    /// AUTORIZADO: tem role em pelo menos um grupo MonAmie.
+    /// Isto é: o mapa group_roles existe e não é vazio.
     /// Cobre: participantes, administradores, proprietários e metausuários.
     function isAutorizado() {
       return isAuthenticated()
-        && request.auth.token.harpia_roles is map
-        && request.auth.token.harpia_roles.size() > 0;
+        && request.auth.token.group_roles is map
+        && request.auth.token.group_roles.size() > 0;
     }
 
     /// OBSERVÁVEL: é MEMBER ou MANAGER em pelo menos um grupo.
@@ -32,8 +32,8 @@ service cloud.firestore {
     /// `usuarios` é flat e não está particionada por grupo.
     function isObservavel() {
       return isAuthenticated()
-        && request.auth.token.harpia_roles is map
-        && request.auth.token.harpia_roles.values().hasAny(["MEMBER", "MANAGER"]);
+        && request.auth.token.group_roles is map
+        && request.auth.token.group_roles.values().hasAny(["MEMBER", "MANAGER"]);
     }
 
     /// O email do token corresponde ao ID do documento (coleção `usuarios`).
@@ -45,15 +45,15 @@ service cloud.firestore {
     function hasRoleInGroup(groupEmail) {
       return isAutorizado()
         && groupEmail is string
-        && request.auth.token.harpia_roles[groupEmail] != null;
+        && request.auth.token.group_roles[groupEmail] != null;
     }
 
     /// Verifica se o usuário autenticado é observável (MEMBER ou MANAGER) em um grupo específico.
     function isObservavelInGroup(groupEmail) {
       return isAuthenticated()
         && groupEmail is string
-        && request.auth.token.harpia_roles is map
-        && request.auth.token.harpia_roles[groupEmail] in ["MEMBER", "MANAGER"];
+        && request.auth.token.group_roles is map
+        && request.auth.token.group_roles[groupEmail] in ["MEMBER", "MANAGER"];
     }
 
     // ╔══════════════════════════════════════════════════════════════════════╗

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-///UFF Color Pallete. the alpha parameter can be customized like: ColorPallete.darkBlue(alpha=100).
+/// MonAmie Color Palette. The alpha parameter can be customized like: AppColors.darkBlue(alpha=100).
 class AppColors{
   static Color darkBlue({int alpha=255}) => Color.fromARGB(alpha, 29, 50, 78);
   static Color lightBlue({int alpha=255}) => Color.fromARGB(alpha, 204, 229, 255);

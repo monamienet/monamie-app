@@ -19,4 +19,4 @@ Below, nesting indicates dependency (*in* depends on *out*).
 - Deploy the claims Cloud Function
     - Create `functions/.env.monamienet-<client_name>` with `GROUPS_GATEWAY_HOST=<gateway host>` and `ROOT_GROUP_EMAIL=<g>` (no secrets)
     - `firebase deploy --only functions --project monamienet-<client_name>` (requires the Blaze plan)
-    - Grant Cloud Run callable invocation: `gcloud run services add-iam-policy-binding syncharpiaclaims --region us-central1 --member="allUsers" --role="roles/run.invoker" --project monamienet-<client_name>`
+    - Grant Cloud Run callable invocation: `gcloud run services add-iam-policy-binding syncclaims --region us-central1 --member="allUsers" --role="roles/run.invoker" --project monamienet-<client_name>`

@@ -6,7 +6,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 //import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:monamie_app/app/data/services/harpia_claims_service.dart';
+import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
@@ -492,9 +492,9 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
       return; // Interrompe a execução para não iniciar o serviço sem GPS
     }
 
-    // Garante que os custom claims (harpia_roles) estejam presentes
+    // Garante que os custom claims (group_roles) estejam presentes
     // e contenham MEMBER ou MANAGER antes de escrever no Firestore.
-    final hasClaims = await HarpiaClaimsService.ensureClaims();
+    final hasClaims = await MonAmieClaimsService.ensureClaims();
     if (!hasClaims) {
       debugPrint(
         '[TrackingController] Claims inválidos — tracking não iniciado.',

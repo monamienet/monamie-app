@@ -13,28 +13,28 @@ void main() {
 
       // 2. Act
       final user = UserModel(
-        email: 'servidor.ti@id.uff.br',
+        email: 'servidor.ti@monamienet.org',
         nome: 'Servidor Teste',
         lat: -22.9041,
         lng: -43.1329,
         timestamp: dataHora,
         isTracked: true,
-        grupoAtivo: 'ti-suporte@id.uff.br',
+        grupoAtivo: 'ti-suporte@monamienet.org',
       );
 
       // 3. Assert
-      expect(user.email, 'servidor.ti@id.uff.br');
+      expect(user.email, 'servidor.ti@monamienet.org');
       expect(user.nome, 'Servidor Teste');
       expect(user.lat, -22.9041);
       expect(user.lng, -43.1329);
       expect(user.timestamp, dataHora);
       expect(user.isTracked, isTrue);
-      expect(user.grupoAtivo, 'ti-suporte@id.uff.br');
+      expect(user.grupoAtivo, 'ti-suporte@monamienet.org');
     });
 
     test('Edge Case: Deve inicializar com apenas o email e manter demais campos opcionais como nulos', () {
       // 1. Arrange
-      const email = 'usuario.minimo@id.uff.br';
+      const email = 'usuario.minimo@monamienet.org';
 
       // 2. Act
       final user = UserModel(email: email);
@@ -67,13 +67,13 @@ void main() {
       // 1. Arrange
       final dataHora = DateTime(2026, 9, 16, 21, 0, 0);
       final user = UserModel(
-        email: 'seguranca@id.uff.br',
+        email: 'seguranca@monamienet.org',
         nome: 'Vigilante Silva',
         lat: -22.9000,
         lng: -43.1300,
         timestamp: dataHora,
         isTracked: true,
-        grupoAtivo: 'vigilancia-praia-vermelha@id.uff.br',
+        grupoAtivo: 'vigilancia-praia-vermelha@monamienet.org',
       );
 
       // 2. Act
@@ -81,20 +81,20 @@ void main() {
 
       // 3. Assert
       expect(map, {
-        'email': 'seguranca@id.uff.br',
+        'email': 'seguranca@monamienet.org',
         'nome': 'Vigilante Silva',
         'lat': -22.9000,
         'lng': -43.1300,
         'timestamp': dataHora,
         'isTracked': true,
-        'grupo_ativo': 'vigilancia-praia-vermelha@id.uff.br',
+        'grupo_ativo': 'vigilancia-praia-vermelha@monamienet.org',
       });
     });
 
     test('Edge Case: toMap() NÃO deve incluir o campo grupo_ativo quando for nulo', () {
       // 1. Arrange
       final user = UserModel(
-        email: 'gestor@id.uff.br',
+        email: 'gestor@monamienet.org',
         nome: 'Gestor Teste',
         isTracked: false,
         grupoAtivo: null,
@@ -109,13 +109,13 @@ void main() {
 
     test('Edge Case: toMap() deve omitir todos os campos opcionais quando forem nulos', () {
       // 1. Arrange
-      final user = UserModel(email: 'apenas.email@id.uff.br');
+      final user = UserModel(email: 'apenas.email@monamienet.org');
 
       // 2. Act
       final map = user.toMap();
 
       // 3. Assert
-      expect(map, {'email': 'apenas.email@id.uff.br'});
+      expect(map, {'email': 'apenas.email@monamienet.org'});
     });
 
     // -------------------------------------------------------------
@@ -125,32 +125,32 @@ void main() {
       // 1. Arrange
       final timestampEsperado = DateTime(2026, 9, 16, 15, 0);
       final mapFirestore = {
-        'email': 'motorista@id.uff.br',
+        'email': 'motorista@monamienet.org',
         'nome': 'Motorista Santos',
         'lat': -22.8900,
         'lng': -43.1200,
         'timestamp': Timestamp.fromDate(timestampEsperado),
         'isTracked': true,
-        'grupo_ativo': 'transporte-vans@id.uff.br',
+        'grupo_ativo': 'transporte-vans@monamienet.org',
       };
 
       // 2. Act
       final user = UserModel.fromMap(mapFirestore);
 
       // 3. Assert
-      expect(user.email, 'motorista@id.uff.br');
+      expect(user.email, 'motorista@monamienet.org');
       expect(user.nome, 'Motorista Santos');
       expect(user.lat, -22.8900);
       expect(user.lng, -43.1200);
       expect(user.timestamp, timestampEsperado);
       expect(user.isTracked, isTrue);
-      expect(user.grupoAtivo, 'transporte-vans@id.uff.br');
+      expect(user.grupoAtivo, 'transporte-vans@monamienet.org');
     });
 
     test('Edge Case: fromMap() deve tratar ausência de grupo_ativo atribuindo nulo', () {
       // 1. Arrange
       final mapSemGrupo = {
-        'email': 'usuario.sem.grupo@id.uff.br',
+        'email': 'usuario.sem.grupo@monamienet.org',
         'nome': 'Usuário Sem Grupo',
         'lat': -22.9050,
         'lng': -43.1310,
@@ -167,7 +167,7 @@ void main() {
     test('Edge Case: fromMap() deve converter valor numérico para String no grupo_ativo', () {
       // 1. Arrange
       final mapComTipoInesperado = {
-        'email': 'teste@id.uff.br',
+        'email': 'teste@monamienet.org',
         'grupo_ativo': 12345,
       };
 
@@ -181,7 +181,7 @@ void main() {
     test('Edge Case: fromMap() com coordenadas numéricas zero (0.0, 0.0)', () {
       // 1. Arrange
       final mapCoordenadasZero = {
-        'email': 'zero@id.uff.br',
+        'email': 'zero@monamienet.org',
         'lat': 0.0,
         'lng': 0.0,
       };
@@ -197,7 +197,7 @@ void main() {
     test('Sad Path: fromMap() deve lançar TypeError quando lat não for numérico', () {
       // 1. Arrange
       final mapComLatInvalida = {
-        'email': 'teste.invalido@id.uff.br',
+        'email': 'teste.invalido@monamienet.org',
         'lat': 'coordenada_invalida_string',
       };
 
@@ -211,7 +211,7 @@ void main() {
     test('Sad Path: fromMap() deve lançar TypeError quando isTracked não for booleano', () {
       // 1. Arrange
       final mapComTrackedInvalido = {
-        'email': 'teste.invalido@id.uff.br',
+        'email': 'teste.invalido@monamienet.org',
         'isTracked': 'nao_e_booleano',
       };
 
@@ -228,12 +228,12 @@ void main() {
     test('Happy Path: UserModel reconstruído a partir de mapa serializado preserva todos os dados', () {
       // 1. Arrange
       final mapaOriginal = {
-        'email': 'ronda.noturna@id.uff.br',
+        'email': 'ronda.noturna@monamienet.org',
         'nome': 'Ronda Noturna',
         'lat': -22.9100,
         'lng': -43.1400,
         'isTracked': true,
-        'grupo_ativo': 'seguranca-valonguinho@id.uff.br',
+        'grupo_ativo': 'seguranca-valonguinho@monamienet.org',
       };
 
       // 2. Act

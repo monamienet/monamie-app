@@ -24,7 +24,7 @@ class UserDataProvider {
         name: newUserData.name ?? existingData.name,
         nomesocial: newUserData.nomesocial ?? existingData.nomesocial,
         matricula: newUserData.matricula ?? existingData.matricula,
-        iduff: newUserData.iduff ?? existingData.iduff,
+        idMonamie: newUserData.idMonamie ?? existingData.idMonamie,
         curso: newUserData.curso ?? existingData.curso,
         fotoUrl: newUserData.fotoUrl ?? existingData.fotoUrl,
         dataValidadeMatricula: newUserData.dataValidadeMatricula ?? existingData.dataValidadeMatricula,
@@ -164,24 +164,4 @@ class UserDataProvider {
       return "Erro ao atualizar grupos GDI Google no Hive: $e";
     }
   }
-
-  //Future<List<GdiGroups>> getGdiGroups(String iduff, String token) async {
-  //  final path = '${Secrets.gdiGroupsPath}/$iduff${Secrets.gdiGroupsQuery}';
-  //  var uri = Uri.https(Secrets.gdiGroupsHost, path);
-  //  try {
-  //    final response = await http.get(
-  //      uri,
-  //      headers: {'Authorization': 'Bearer $token'},
-  //    );
-  //
-  //    if (response.statusCode == 200) {
-  //      List<dynamic> jsonResponse = jsonDecode(response.body);
-  //      return jsonResponse.map((group) => GdiGroups.fromJson(group)).toList();
-  //    }
-  //  } catch (e) {
-  //    debugPrint("Erro ao buscar grupos GDI: $e");
-  //    return [];
-  //  }
-  //  return [];
-  //}
 }

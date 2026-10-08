@@ -14,14 +14,14 @@ const ROOT_GROUP = defineString("ROOT_GROUP_EMAIL");
  * com os papéis do usuário nos subgrupos do grupo raiz do cliente
  * (via workspace-groups-gateway / Google Workspace).
  *
- * Os claims resultantes contêm um mapa `harpia_roles` que associa cada
+ * Os claims resultantes contêm um mapa `group_roles` que associa cada
  * grupo a um role efetivo (MEMBER, MANAGER, OWNER ou METAUSER).
  *
  * Invocada pelo app Flutter após o login e ao atualizar grupos.
  */
-exports.syncHarpiaClaims = onCall({ invoker: "public" }, async (request) => {
+exports.syncClaims = onCall({ invoker: "public" }, async (request) => {
   console.log(
-    `[syncHarpiaClaims] Invocado. Auth: ${JSON.stringify(request.auth)}`
+    `[syncClaims] Invocado. Auth: ${JSON.stringify(request.auth)}`
   );
   // 1. Validar autenticação (Callable já faz isso, mas é boa prática checar)
   if (!request.auth) {
@@ -55,10 +55,10 @@ exports.syncHarpiaClaims = onCall({ invoker: "public" }, async (request) => {
   );
 
   // 4. Definir Custom Claims
-  const claims = { harpia_roles: roles };
+  const claims = { group_roles: roles };
   await getAuth().setCustomUserClaims(uid, claims);
 
-  return { harpia_roles: roles };
+  return { group_roles: roles };
 });
 
 /**

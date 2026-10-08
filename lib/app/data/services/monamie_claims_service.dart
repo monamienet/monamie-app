@@ -3,14 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 /// Serviço centralizado para sincronização e validação dos Custom Claims
-/// do Harpia (`harpia_roles`).
+/// do MonAmie (`group_roles`).
 ///
 /// Substitui as implementações duplicadas em `AuthGoogleController` e
 /// `GoogleGroupsController`.
-class HarpiaClaimsService {
-  HarpiaClaimsService._();
+class MonAmieClaimsService {
+  MonAmieClaimsService._();
 
-  /// Sincroniza os Custom Claims chamando a Cloud Function `syncHarpiaClaims`.
+  /// Sincroniza os Custom Claims chamando a Cloud Function `syncClaims`.
   ///
   /// 1. Obtém um token fresco para repassar à Cloud Function.
   /// 2. Chama a Cloud Function que computa os roles via Google Groups.
@@ -22,36 +22,36 @@ class HarpiaClaimsService {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        debugPrint('[HarpiaClaimsService] Usuário não autenticado.');
+        debugPrint('[MonAmieClaimsService] Usuário não autenticado.');
         return null;
       }
 
       // 1. Token fresco para a Cloud Function repassar ao backend
       final rawToken = await user.getIdToken(true);
       if (rawToken == null) {
-        debugPrint('[HarpiaClaimsService] Token nulo.');
+        debugPrint('[MonAmieClaimsService] Token nulo.');
         return null;
       }
 
       // 2. Chamar a Cloud Function
       final callable =
-          FirebaseFunctions.instance.httpsCallable('syncHarpiaClaims');
+          FirebaseFunctions.instance.httpsCallable('syncClaims');
       final result = await callable.call({'idToken': rawToken});
 
       // 3. Forçar refresh para incorporar os claims recém-escritos
       await user.getIdToken(true);
 
       final data = result.data as Map<String, dynamic>?;
-      final roles = data?['harpia_roles'];
-      debugPrint('[HarpiaClaimsService] Claims sincronizados: $roles');
+      final roles = data?['group_roles'];
+      debugPrint('[MonAmieClaimsService] Claims sincronizados: $roles');
       return roles is Map<String, dynamic> ? roles : null;
     } catch (e) {
-      debugPrint('[HarpiaClaimsService] Erro ao sincronizar claims: $e');
+      debugPrint('[MonAmieClaimsService] Erro ao sincronizar claims: $e');
       return null;
     }
   }
 
-  /// Lê os custom claims `harpia_roles` do token atual SEM forçar
+  /// Lê os custom claims `group_roles` do token atual SEM forçar
   /// sincronização com a Cloud Function.
   ///
   /// Retorna o mapa de roles ou `null` se ausente.
@@ -63,17 +63,17 @@ class HarpiaClaimsService {
       final idTokenResult = await user.getIdTokenResult(true);
       final claims = idTokenResult.claims;
       if (claims == null) {
-        debugPrint('[HarpiaClaimsService] Token sem claims.');
+        debugPrint('[MonAmieClaimsService] Token sem claims.');
         return null;
       }
 
-      final harpiaRoles = claims['harpia_roles'];
-      debugPrint('[HarpiaClaimsService] Claims lidos do token: $harpiaRoles');
+      final groupRoles = claims['group_roles'];
+      debugPrint('[MonAmieClaimsService] Claims lidos do token: $groupRoles');
 
-      if (harpiaRoles == null || harpiaRoles is! Map) return null;
-      return Map<String, dynamic>.from(harpiaRoles);
+      if (groupRoles == null || groupRoles is! Map) return null;
+      return Map<String, dynamic>.from(groupRoles);
     } catch (e) {
-      debugPrint('[HarpiaClaimsService] Erro ao ler claims: $e');
+      debugPrint('[MonAmieClaimsService] Erro ao ler claims: $e');
       return null;
     }
   }
@@ -105,7 +105,7 @@ class HarpiaClaimsService {
       );
       if (hasObservableRole) {
         debugPrint(
-          '[HarpiaClaimsService] Claims já válidos: $existingRoles',
+          '[MonAmieClaimsService] Claims já válidos: $existingRoles',
         );
         return true;
       }
@@ -113,13 +113,13 @@ class HarpiaClaimsService {
 
     // Claims ausentes ou inválidos — tentar sincronizar
     debugPrint(
-      '[HarpiaClaimsService] Claims ausentes/inválidos. '
+      '[MonAmieClaimsService] Claims ausentes/inválidos. '
       'Tentando sincronizar...',
     );
     final syncedRoles = await syncClaims();
 
     if (syncedRoles == null || syncedRoles.isEmpty) {
-      debugPrint('[HarpiaClaimsService] Sincronização retornou vazio.');
+      debugPrint('[MonAmieClaimsService] Sincronização retornou vazio.');
       return false;
     }
 
@@ -129,7 +129,7 @@ class HarpiaClaimsService {
 
     if (!hasObservableRole) {
       debugPrint(
-        '[HarpiaClaimsService] Nenhum role observável encontrado '
+        '[MonAmieClaimsService] Nenhum role observável encontrado '
         'após sincronização: $syncedRoles',
       );
     }
