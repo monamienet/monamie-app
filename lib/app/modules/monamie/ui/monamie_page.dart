@@ -12,6 +12,7 @@ import 'package:monamie_app/app/modules/monamie/ui/widgets/group_selector.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_users_list.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/monamie_app_bar.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_user_panel.dart';
+import 'package:monamie_app/app/modules/monamie/ui/widgets/tracking_toggle_button.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart' hide Path;
@@ -329,24 +330,10 @@ class MonamiePage extends StatelessWidget {
   }
 
   Widget _toggleButton() {
-    return Positioned(
+    return const Positioned(
       top: 16,
       right: 16,
-      child: Obx(
-        () => FloatingActionButton(
-          heroTag: "btnToggleTracking",
-          onPressed: trackingCtrl.toggleService,
-          backgroundColor: trackingCtrl.isTrackingEnabled.value
-              ? Colors.green
-              : Colors.red,
-          child: Icon(
-            trackingCtrl.isTrackingEnabled.value
-                ? Icons.location_on
-                : Icons.location_off,
-            color: Colors.white,
-          ),
-        ),
-      ),
+      child: TrackingToggleButton(),
     );
   }
 }

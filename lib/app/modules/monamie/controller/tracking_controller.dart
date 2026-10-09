@@ -19,9 +19,11 @@ import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/data/services/foreground_service.dart';
+import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
 
-
-class TrackingController extends GetxController with WidgetsBindingObserver {
+class TrackingController extends GetxController
+    with WidgetsBindingObserver
+    implements TrackingToggleController {
   final FlutterBackgroundService _service = FlutterBackgroundService();
   Position position = Position(
     latitude: -22.9041, // latitude em Niterói
@@ -38,7 +40,10 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
   RxList<UserModel> firebaseUsers = <UserModel>[].obs;
   final Rxn<UserModel> selectedFirebaseUser = Rxn<UserModel>();
   late final MapController mapController;
+  @override
   final isTrackingEnabled = false.obs;
+  @override
+  final isTrackingLoading = false.obs;
   final UserController userCtrl = Get.find<UserController>();
   final PermissionsController permissionsCtrl = Get.find<PermissionsController>();
   final Rx<double?> heading = Rx<double?>(null);
@@ -347,7 +352,13 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
 
   Future<void> _initPosition() async {
     if (userCtrl.isTrackable()) {
-      position = await Geolocator.getCurrentPosition();
+      try {
+        position = await Geolocator.getCurrentPosition().timeout(
+          const Duration(seconds: 5),
+        );
+      } catch (e) {
+        debugPrint('[TrackingController] Erro ao obter posição inicial no onInit: $e');
+      }
     }
   }
 
@@ -454,13 +465,25 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
     selectedFirebaseUser.value = null;
   }
 
+  @override
   Future<void> toggleService() async {
-    var isRunning = await _service.isRunning();
-  
-    if (isRunning) {
-      _stopService();
-    } else {
-      _startService();
+    if (isTrackingLoading.value) return;
+
+    isTrackingLoading.value = true;
+    try {
+      final isRunning = await _service.isRunning();
+
+      if (isRunning) {
+        await _stopService();
+      } else {
+        await _startService();
+      }
+    } catch (e, stackTrace) {
+      debugPrint(
+        '[TrackingController] Erro ao alternar serviço de rastreamento: $e\n$stackTrace',
+      );
+    } finally {
+      isTrackingLoading.value = false;
     }
   }
 
@@ -592,9 +615,20 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
   
     // Tenta obter a posição GPS atual para sincronizar imediatamente
     try {
-      position = await Geolocator.getCurrentPosition();
+      position = await Geolocator.getCurrentPosition().timeout(
+        const Duration(seconds: 5),
+      );
     } catch (e) {
       debugPrint('[TrackingController] Erro ao obter posição atual imediata: $e');
+      Get.snackbar(
+        'Aguardando sinal de GPS',
+        'O monitoramento foi iniciado, mas a sua posição inicial ainda está sendo obtida pelos satélites.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.amber.shade100,
+        colorText: Colors.black87,
+        icon: const Icon(Icons.satellite_alt, color: Colors.orange),
+        duration: const Duration(seconds: 5),
+      );
     }
 
     await _setPlatformSpecifics();
@@ -645,7 +679,7 @@ class TrackingController extends GetxController with WidgetsBindingObserver {
         duration: const Duration(seconds: 5),
       );
       // Reverter estado — o serviço foi iniciado mas o Firestore recusou
-      _stopService();
+      await _stopService();
     }
   }
   
