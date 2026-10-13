@@ -49,7 +49,8 @@ class LoginView extends GetView<LoginController> {
     final authController = Get.find<AuthGoogleController>();
 
     return Obx(() {
-      if (!authController.googleReady.value) {
+      if (controller.isRestoringSession.value ||
+          !authController.googleReady.value) {
         return CircularProgressIndicator(color: AppColors.primary);
       }
       if (authController.isLoading.value) {
