@@ -315,6 +315,23 @@ class TrackingController extends GetxController
       }
     });
 
+    // Avisa se o app passou a ser restrito em segundo plano durante uma
+    // jornada ativa: o rastreamento vai parar quando o app sair da tela.
+    ever(permissionsCtrl.isBackgroundRestricted, (bool restricted) {
+      if (restricted && isTrackingEnabled.value) {
+        Get.snackbar(
+          'Rastreamento em risco',
+          'O aparelho está restringindo o MonAmie em segundo plano. '
+          'O rastreamento vai parar quando você sair do aplicativo.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.amber.shade100,
+          colorText: Colors.black87,
+          icon: const Icon(Icons.battery_alert, color: Colors.orange),
+          duration: const Duration(seconds: 8),
+        );
+      }
+    });
+
     final initialGroup = Get.find<GoogleGroupsController>().selectedGroup.value;
     if (initialGroup != null) {
       _subscribeToGroupUsers(initialGroup.email);
@@ -510,6 +527,13 @@ class TrackingController extends GetxController
   }
 
   Future<void> _startService() async {
+    // No modo de bateria "Restrito" o Android remove o status de foreground
+    // do serviço assim que o app sai da tela; não adianta iniciar.
+    if (await permissionsCtrl.refreshBackgroundRestriction()) {
+      await permissionsCtrl.openBackgroundUsageSettings();
+      return;
+    }
+
     // Verifica se GPS está ativado.
     bool gpsEnabled = await Geolocator.isLocationServiceEnabled();
     if (!gpsEnabled) {

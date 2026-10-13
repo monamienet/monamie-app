@@ -231,6 +231,29 @@ class MonamiePage extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.darkBlue(),
+                        ),
+                        onPressed: permissionsCtrl.openBackgroundUsageSettings,
+                        child: const Text("Permitir uso em segundo plano"),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      permissionsCtrl.isBackgroundRestricted.value
+                          ? Icons.check_box_outline_blank
+                          : Icons.check_box,
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
