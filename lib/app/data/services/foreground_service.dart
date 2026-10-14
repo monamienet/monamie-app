@@ -11,6 +11,7 @@ import 'package:monamie_app/firebase_options.dart';
 
 Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;
+StreamSubscription<User?>? _authSubscription;
 int interval = 5;
 int distance = 10;
 int heartbeatInterval = 5;
@@ -45,13 +46,27 @@ void onStart(ServiceInstance service) async {
     );
   }
 
+  // Rede de segurança do logout: o app para o serviço antes do signOut, mas se
+  // a parada não for confirmada a tempo o próprio isolate se encerra ao ver o
+  // usuário sair. O FirebaseAuth nativo é compartilhado entre as engines do
+  // processo, então o signOut do app chega aqui. Só a transição de logado
+  // para deslogado dispara a parada; um usuário nulo na partida não muda o
+  // comportamento anterior.
+  var hadUser = currentUser != null;
+  await _authSubscription?.cancel();
+  _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+    if (user != null) {
+      hadUser = true;
+    } else if (hadUser) {
+      debugPrint(
+        '[ForegroundService] Usuário deslogado — encerrando serviço.',
+      );
+      _stopTracking(service);
+    }
+  });
+
   service.on('stopService').listen((event) {
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = null;
-    _positionSubscription?.cancel();
-    _positionSubscription = null;
-    _lastRecordedPosition = null;
-    service.stopSelf();
+    _stopTracking(service);
   });
 
   service.on('setUserInfo').listen((event) async {
@@ -66,6 +81,17 @@ void onStart(ServiceInstance service) async {
   });
 
   service.invoke('ready');
+}
+
+void _stopTracking(ServiceInstance service) {
+  _authSubscription?.cancel();
+  _authSubscription = null;
+  _heartbeatTimer?.cancel();
+  _heartbeatTimer = null;
+  _positionSubscription?.cancel();
+  _positionSubscription = null;
+  _lastRecordedPosition = null;
+  service.stopSelf();
 }
 
 @pragma('vm:entry-point')

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
@@ -12,6 +13,8 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   GoogleGroupsController get googleGroupsController => Get.find<GoogleGroupsController>();
   UserController get userController => Get.find<UserController>();
+  AuthGoogleController get authController => Get.find<AuthGoogleController>();
+  TrackingController get trackingController => Get.find<TrackingController>();
 
   Widget _buildProfileAvatar() {
     final avatarBase64 = userController.googleUser?.avatarBase64;
@@ -47,14 +50,19 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 8,
       foregroundColor: Colors.white,
       actions: [
-        PopupMenuButton(
+        Obx(() => PopupMenuButton(
+          // Desabilitado durante o logout e enquanto o rastreamento liga ou
+          // desliga: sair no meio do início do rastreamento poderia ligar o
+          // serviço depois do signOut.
+          enabled: !authController.isLoggingOut.value &&
+              !trackingController.isTrackingLoading.value,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Obx(() => _buildProfileAvatar()),
+            child: _buildProfileAvatar(),
           ),
           onSelected: (value) {
             if (value == 'sair') {
-              Get.find<AuthGoogleController>().logout();
+              authController.logout();
             }
           },
           itemBuilder: (BuildContext context) => [
@@ -70,7 +78,7 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             )
           ],
-        )
+        ))
       ],
     );
   }

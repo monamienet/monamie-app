@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
@@ -10,6 +11,7 @@ import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart'
 import 'package:monamie_app/app/modules/monamie/ui/widgets/calendar.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/group_selector.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_users_list.dart';
+import 'package:monamie_app/app/modules/monamie/ui/widgets/logout_progress_overlay.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/monamie_app_bar.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_user_panel.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/tracking_toggle_button.dart';
@@ -25,13 +27,22 @@ class MonamiePage extends StatelessWidget {
   PermissionsController get permissionsCtrl => Get.find<PermissionsController>();
   TrackingController get trackingCtrl => Get.find<TrackingController>();
   GoogleGroupsController get googleGroupsController => Get.find<GoogleGroupsController>();
+  AuthGoogleController get authCtrl => Get.find<AuthGoogleController>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const MonAmieAppBar(),
       drawer: GroupSelector(),
-      body: _body(context)
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          _body(context),
+          Obx(() => authCtrl.isLoggingOut.value
+              ? const LogoutProgressOverlay()
+              : const SizedBox.shrink()),
+        ],
+      ),
     );
   }
 
