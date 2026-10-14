@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/app/data/services/background_restriction_checker.dart';
+import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/app/data/services/method_channel_background_restriction_checker.dart';
+import 'package:monamie_app/app/data/services/method_channel_background_usage_settings_launcher.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -8,10 +10,14 @@ import 'package:permission_handler/permission_handler.dart';
 class PermissionsController extends GetxController with WidgetsBindingObserver {
   PermissionsController({
     BackgroundRestrictionChecker? backgroundRestrictionChecker,
-  }) : _backgroundRestrictionChecker = backgroundRestrictionChecker ??
-            MethodChannelBackgroundRestrictionChecker();
+    BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
+  })  : _backgroundRestrictionChecker = backgroundRestrictionChecker ??
+            MethodChannelBackgroundRestrictionChecker(),
+        _backgroundUsageSettingsLauncher = backgroundUsageSettingsLauncher ??
+            MethodChannelBackgroundUsageSettingsLauncher();
 
   final BackgroundRestrictionChecker _backgroundRestrictionChecker;
+  final BackgroundUsageSettingsLauncher _backgroundUsageSettingsLauncher;
 
   final hasWhenInUseLocationPermission = false.obs;
   final hasAlwaysLocationPermission = false.obs;
@@ -34,7 +40,31 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed) {
       await _refreshStatuses();
+      _warnIfStillRestrictedAfterSettings();
     }
+  }
+
+  /// `true` entre abrir as configurações de bateria e o retorno ao app.
+  bool _awaitingBackgroundUsageReturn = false;
+
+  /// Avisa quando o usuário volta das configurações de bateria e a restrição
+  /// continua: sem isso, ele fica na tela de permissões sem entender o motivo.
+  void _warnIfStillRestrictedAfterSettings() {
+    if (!_awaitingBackgroundUsageReturn) return;
+    _awaitingBackgroundUsageReturn = false;
+    if (!isBackgroundRestricted.value) return;
+
+    Get.snackbar(
+      'Uso em segundo plano ainda restrito',
+      "A alteração não foi aplicada. Toque em 'Permitir uso em segundo "
+      "plano' e, se o interruptor já estiver ativado, desative-o e "
+      "ative-o novamente.",
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.amber.shade100,
+      colorText: Colors.black87,
+      icon: const Icon(Icons.battery_alert, color: Colors.orange),
+      duration: const Duration(seconds: 8),
+    );
   }
 
   Future<void> _refreshStatuses() async {
@@ -108,7 +138,7 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
         !isBackgroundRestricted.value;
   }
 
-  /// Explica a restrição de bateria e abre as configurações do app, onde o
+  /// Explica a restrição de bateria e abre a tela de bateria do app, onde o
   /// usuário pode trocar o modo de bateria de "Restrito" para outro.
   /// O status é reavaliado em [didChangeAppLifecycleState] ao retornar.
   ///
@@ -139,11 +169,16 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
       "desliga a tela.\n\n"
       "Como ajustar:\n"
       "1. Toque em 'Prosseguir'.\n"
-      "2. Abra 'Uso da bateria pelo app' (ou 'Bateria').\n"
-      "3. Ative 'Permitir o uso em segundo plano' (ou escolha 'Sem restrições').\n\n"
+      "2. Ative 'Permitir o uso em segundo plano' (ou escolha 'Sem restrições').\n"
+      "3. Volte para o MonAmie.\n\n"
+      "Se abrir a tela de informações do app, toque antes em 'Uso da "
+      "bateria pelo app' (ou 'Bateria'). "
       "Se o interruptor já aparecer ativado, desative-o e ative-o novamente.",
     );
-    if (userAgreed) await openAppSettings();
+    if (userAgreed) {
+      _awaitingBackgroundUsageReturn =
+          await _backgroundUsageSettingsLauncher.open();
+    }
   }
 
   Future<bool> _showBackgroundUsageDialog(String message) async {

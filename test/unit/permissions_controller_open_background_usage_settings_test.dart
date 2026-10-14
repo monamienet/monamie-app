@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/data/services/background_restriction_checker.dart';
+import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 
 /// Implementação falsa do contrato, com resposta determinística e contagem
@@ -22,7 +23,25 @@ class FakeBackgroundRestrictionChecker implements BackgroundRestrictionChecker {
   }
 }
 
-/// Canal de métodos usado pelo permission_handler (`openAppSettings`).
+/// Implementação falsa do launcher: não acessa nenhum canal nativo e
+/// contabiliza quantas vezes a tela de configurações foi solicitada.
+class FakeBackgroundUsageSettingsLauncher
+    implements BackgroundUsageSettingsLauncher {
+  FakeBackgroundUsageSettingsLauncher({this.result = true});
+
+  final bool result;
+  int calls = 0;
+
+  @override
+  Future<bool> open() async {
+    calls++;
+    return result;
+  }
+}
+
+/// Canal de métodos usado pelo permission_handler (`openAppSettings`). O
+/// controller não deve acioná-lo diretamente: abrir as configurações é
+/// responsabilidade do launcher injetado.
 const MethodChannel _permissionChannel =
     MethodChannel('flutter.baseflow.com/permissions/methods');
 
@@ -59,8 +78,11 @@ void main() {
       // 1. Arrange
       await tester.pumpWidget(_buildTestApp());
       final checker = FakeBackgroundRestrictionChecker(result: false);
-      final controller =
-          PermissionsController(backgroundRestrictionChecker: checker);
+      final launcher = FakeBackgroundUsageSettingsLauncher();
+      final controller = PermissionsController(
+        backgroundRestrictionChecker: checker,
+        backgroundUsageSettingsLauncher: launcher,
+      );
 
       // 2. Act
       await controller.openBackgroundUsageSettings();
@@ -71,6 +93,7 @@ void main() {
       expect(Get.isDialogOpen, isFalse);
       expect(controller.isBackgroundRestricted.value, isFalse);
       expect(checker.calls, 1);
+      expect(launcher.calls, 0);
       expect(permissionCalls, isEmpty);
     });
 
@@ -80,8 +103,11 @@ void main() {
       // 1. Arrange
       await tester.pumpWidget(_buildTestApp());
       final checker = FakeBackgroundRestrictionChecker(result: false);
-      final controller =
-          PermissionsController(backgroundRestrictionChecker: checker);
+      final launcher = FakeBackgroundUsageSettingsLauncher();
+      final controller = PermissionsController(
+        backgroundRestrictionChecker: checker,
+        backgroundUsageSettingsLauncher: launcher,
+      );
       controller.isBackgroundRestricted.value = true;
 
       // 2. Act
@@ -92,6 +118,7 @@ void main() {
       expect(find.byType(AlertDialog), findsNothing);
       expect(controller.isBackgroundRestricted.value, isFalse);
       expect(checker.calls, 1);
+      expect(launcher.calls, 0);
       expect(permissionCalls, isEmpty);
     });
 
@@ -101,8 +128,11 @@ void main() {
       // 1. Arrange
       await tester.pumpWidget(_buildTestApp());
       final checker = FakeBackgroundRestrictionChecker(result: true);
-      final controller =
-          PermissionsController(backgroundRestrictionChecker: checker);
+      final launcher = FakeBackgroundUsageSettingsLauncher();
+      final controller = PermissionsController(
+        backgroundRestrictionChecker: checker,
+        backgroundUsageSettingsLauncher: launcher,
+      );
 
       // 2. Act
       controller.openBackgroundUsageSettings();
@@ -115,6 +145,7 @@ void main() {
       expect(find.text('PROSSEGUIR'), findsOneWidget);
       expect(controller.isBackgroundRestricted.value, isTrue);
       expect(checker.calls, 1);
+      expect(launcher.calls, 0);
       expect(permissionCalls, isEmpty);
     });
 
@@ -123,9 +154,11 @@ void main() {
         (WidgetTester tester) async {
       // 1. Arrange
       await tester.pumpWidget(_buildTestApp());
+      final launcher = FakeBackgroundUsageSettingsLauncher();
       final controller = PermissionsController(
         backgroundRestrictionChecker:
             FakeBackgroundRestrictionChecker(result: true),
+        backgroundUsageSettingsLauncher: launcher,
       );
       final future = controller.openBackgroundUsageSettings();
       await tester.pumpAndSettle();
@@ -137,18 +170,21 @@ void main() {
       // 3. Assert
       await expectLater(future, completes);
       expect(find.byType(AlertDialog), findsNothing);
+      expect(launcher.calls, 0);
       expect(permissionCalls, isEmpty);
       expect(controller.isBackgroundRestricted.value, isTrue);
     });
 
     testWidgets(
-        'Happy Path: Deve fechar o diálogo e chamar openAppSettings quando o usuário toca em "PROSSEGUIR"',
+        'Happy Path: Deve fechar o diálogo e acionar o launcher injetado uma única vez, sem chamar openAppSettings diretamente, quando o usuário toca em "PROSSEGUIR"',
         (WidgetTester tester) async {
       // 1. Arrange
       await tester.pumpWidget(_buildTestApp());
+      final launcher = FakeBackgroundUsageSettingsLauncher(result: true);
       final controller = PermissionsController(
         backgroundRestrictionChecker:
             FakeBackgroundRestrictionChecker(result: true),
+        backgroundUsageSettingsLauncher: launcher,
       );
       final future = controller.openBackgroundUsageSettings();
       await tester.pumpAndSettle();
@@ -160,10 +196,33 @@ void main() {
       // 3. Assert
       await expectLater(future, completes);
       expect(find.byType(AlertDialog), findsNothing);
-      expect(
-        permissionCalls.map((call) => call.method),
-        ['openAppSettings'],
+      expect(launcher.calls, 1);
+      expect(permissionCalls, isEmpty);
+    });
+
+    testWidgets(
+        'Sad Path: Deve concluir sem erro e sem recorrer ao openAppSettings quando o launcher não consegue abrir nenhuma tela',
+        (WidgetTester tester) async {
+      // 1. Arrange
+      await tester.pumpWidget(_buildTestApp());
+      final launcher = FakeBackgroundUsageSettingsLauncher(result: false);
+      final controller = PermissionsController(
+        backgroundRestrictionChecker:
+            FakeBackgroundRestrictionChecker(result: true),
+        backgroundUsageSettingsLauncher: launcher,
       );
+      final future = controller.openBackgroundUsageSettings();
+      await tester.pumpAndSettle();
+
+      // 2. Act
+      await tester.tap(find.text('PROSSEGUIR'));
+      await tester.pumpAndSettle();
+
+      // 3. Assert
+      await expectLater(future, completes);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(launcher.calls, 1);
+      expect(permissionCalls, isEmpty);
     });
 
     testWidgets(
@@ -171,9 +230,11 @@ void main() {
         (WidgetTester tester) async {
       // 1. Arrange
       await tester.pumpWidget(_buildTestApp());
+      final launcher = FakeBackgroundUsageSettingsLauncher();
       final controller = PermissionsController(
         backgroundRestrictionChecker:
             FakeBackgroundRestrictionChecker(result: true),
+        backgroundUsageSettingsLauncher: launcher,
       );
       controller.openBackgroundUsageSettings();
       await tester.pumpAndSettle();
@@ -184,7 +245,33 @@ void main() {
 
       // 3. Assert
       expect(find.byType(AlertDialog), findsOneWidget);
+      expect(launcher.calls, 0);
       expect(permissionCalls, isEmpty);
+    });
+
+    testWidgets(
+        'Edge Case: Deve exibir um único diálogo e acionar o launcher uma única vez quando a ação é disparada duas vezes seguidas',
+        (WidgetTester tester) async {
+      // 1. Arrange
+      await tester.pumpWidget(_buildTestApp());
+      final launcher = FakeBackgroundUsageSettingsLauncher();
+      final controller = PermissionsController(
+        backgroundRestrictionChecker:
+            FakeBackgroundRestrictionChecker(result: true),
+        backgroundUsageSettingsLauncher: launcher,
+      );
+      // Toques rápidos repetidos no botão antes de o diálogo aparecer.
+      controller.openBackgroundUsageSettings();
+      controller.openBackgroundUsageSettings();
+      await tester.pumpAndSettle();
+
+      // 2. Act
+      await tester.tap(find.text('PROSSEGUIR').last);
+      await tester.pumpAndSettle();
+
+      // 3. Assert
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(launcher.calls, 1);
     });
 
     testWidgets(
@@ -194,8 +281,11 @@ void main() {
       await tester.pumpWidget(_buildTestApp());
       final checker =
           FakeBackgroundRestrictionChecker(error: StateError('falha nativa'));
-      final controller =
-          PermissionsController(backgroundRestrictionChecker: checker);
+      final launcher = FakeBackgroundUsageSettingsLauncher();
+      final controller = PermissionsController(
+        backgroundRestrictionChecker: checker,
+        backgroundUsageSettingsLauncher: launcher,
+      );
 
       // 2. Act
       final future = controller.openBackgroundUsageSettings();
@@ -204,6 +294,7 @@ void main() {
       await expectLater(future, throwsA(isA<StateError>()));
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog), findsNothing);
+      expect(launcher.calls, 0);
       expect(permissionCalls, isEmpty);
     });
   });
