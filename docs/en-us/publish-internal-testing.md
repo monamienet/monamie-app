@@ -13,8 +13,7 @@
       -storepass '<PASSWORD>' -keypass '<PASSWORD>'
     ```
 
-    > [!IMPORTANT]
-    > Back up the keystore generated in the previous step!
+    > **Important:** Back up the keystore generated in the previous step!
 
 1. Inside the Dart/Flutter project, create the file `android/key.properties` with the following content:
 
@@ -25,8 +24,7 @@
     storeFile=<OUTPUT_PATH>
     ```
 
-    > [!IMPORTANT]
-    > Add `key.properties` and `.jks` files to `.gitignore`.
+    > **Important:** Add `key.properties` and `.jks` files to `.gitignore`.
 
 1. Look up the SHA1 and SHA256 keys with the command `keytool -list -v -keystore <keystore_path> -alias <ALIAS> | grep -E "SHA1|SHA256"`
 
