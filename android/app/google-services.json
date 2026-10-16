@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "67044253283-3iei90sjbosqh500ikgtc84bbpf4fs0l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "org.monamienet.aquariustur",
+            "certificate_hash": "5a46105cefb6579e4239ae8899e93f55bd86f8c0"
+          }
+        },
+        {
           "client_id": "67044253283-j1duavtdhvr4bjgnt6f5d72lfh90priv.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
