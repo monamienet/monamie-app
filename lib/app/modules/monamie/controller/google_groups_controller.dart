@@ -39,7 +39,7 @@ class GoogleGroupsController extends GetxController {
 
   /// Email do grupo raiz que contém os subgrupos do MonAmie.
   /// Em debug, usa um grupo de teste; em release, o grupo de produção.
-  static String get rootGroupEmail => 'monamie-aquariustur@monamienet.org';
+  static String get rootGroupEmail => 'aquariustur00@monamienet.org';
   /// Lista de grupos que o usuário logado pode observar.
   /// Representa os subgrupos (type == GROUP) de [rootGroupEmail].
   final RxList<GoogleGroupModel> _observableGoogleGroups = RxList<GoogleGroupModel>();

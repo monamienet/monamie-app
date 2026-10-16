@@ -2,6 +2,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAuth } = require("firebase-admin/auth");
 const { defineString } = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const { normalizeGroupEmail } = require("./group_email");
 admin.initializeApp();
 
 // Parâmetros por instância (functions/.env.<projectId>): host do
@@ -102,11 +103,13 @@ async function computeRoles(
   //    - Role direto (MEMBER/MANAGER/OWNER) tem precedência
   //    - Se não há role direto mas é ancestorMember, é METAUSER
   //    - O grupo raiz em si NÃO é registrado nos claims (é estrutural)
-  if (groupEmail !== ROOT_GROUP.value()) {
+  //    - Key is normalized: Firestore Rules map lookups are case-sensitive
+  const groupKey = normalizeGroupEmail(groupEmail);
+  if (groupKey !== normalizeGroupEmail(ROOT_GROUP.value())) {
     if (directMember) {
-      roles[groupEmail] = directMember.role; // "MEMBER", "MANAGER", ou "OWNER"
+      roles[groupKey] = directMember.role; // "MEMBER", "MANAGER", ou "OWNER"
     } else if (isAncestorMember) {
-      roles[groupEmail] = "METAUSER";
+      roles[groupKey] = "METAUSER";
     }
   }
 

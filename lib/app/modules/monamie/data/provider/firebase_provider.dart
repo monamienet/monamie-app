@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
+import 'package:monamie_app/app/utils/group_email.dart';
 
 class FirebaseProvider {
   CollectionReference get collectionRef => FirebaseFirestore.instanceFor(
@@ -59,7 +60,7 @@ class FirebaseProvider {
   Stream<List<UserModel>> streamUsersByGroup(String groupEmail) {
     try {
       return collectionRef
-          .where('grupo_ativo', isEqualTo: groupEmail)
+          .where('grupo_ativo', isEqualTo: normalizeGroupEmail(groupEmail))
           .where('isTracked', isEqualTo: true)
           .snapshots()
           .map((QuerySnapshot query) {
@@ -138,7 +139,7 @@ class FirebaseProvider {
     try {
       final Map<String, dynamic> data = {'isTracked': isTracked};
       if (grupoAtivo != null) {
-        data['grupo_ativo'] = grupoAtivo;
+        data['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
       }
       await collectionRef.doc(email).update(data);
       debugPrint("Campo isTracked atualizado com sucesso!");
@@ -174,7 +175,7 @@ class FirebaseProvider {
         'timestamp': timestamp,
       };
       if (grupoAtivo != null) {
-        userUpdates['grupo_ativo'] = grupoAtivo;
+        userUpdates['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
       }
 
       await collectionRef.doc(email).update(userUpdates);
@@ -186,7 +187,7 @@ class FirebaseProvider {
         'timestamp': timestamp,
       };
       if (grupoAtivo != null) {
-        pointData['grupo_ativo'] = grupoAtivo;
+        pointData['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
       }
 
       await collectionRef.doc(email).collection('historico_posicoes').add(pointData);
