@@ -36,6 +36,12 @@ Each instance of this app:
 - **Defensive Timeouts**: Guard platform hardware and sensor calls (e.g., `Geolocator.getCurrentPosition()`) with sensible timeouts (e.g., 5 seconds) and `try/catch` blocks to prevent freezing or unhandled crashes during cold starts or weak-signal environments.
 
 
+## Git Workflow
+
+- **One branch per task**: Whenever a new task is assigned, create a new branch from an up-to-date `main` before making any changes (`git fetch origin && git switch -c <type>/<short-description> origin/main`). Never work directly on `main` or reuse a branch from a previous task.
+- **Branch naming**: Prefix the branch with the change type, matching the commit convention (e.g. `feat/`, `fix/`, `chore/`, `docs/`, `build/`).
+- **Pull request after human approval**: When the task is finished, wait for explicit human approval before opening a pull request to merge the branch into `main`. Do not open the PR, or merge it, without that approval.
+
 ## Language Conventions
 
 - Commit messages must be written in English (subject and body), regardless of the language used in the conversation.
