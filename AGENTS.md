@@ -36,6 +36,12 @@ Each instance of this app:
 - **Defensive Timeouts**: Guard platform hardware and sensor calls (e.g., `Geolocator.getCurrentPosition()`) with sensible timeouts (e.g., 5 seconds) and `try/catch` blocks to prevent freezing or unhandled crashes during cold starts or weak-signal environments.
 
 
+## Language Conventions
+
+- Commit messages must be written in English (subject and body), regardless of the language used in the conversation.
+- Code comments (including doc comments `///`) must be written in English, regardless of the language used in the conversation.
+- Exception: documentation files inside `docs/pt-br/` must be written in Brazilian Portuguese (pt-BR).
+
 ## Security & Guardrails
 
 - Never commit or log API keys, access tokens, or secrets.
