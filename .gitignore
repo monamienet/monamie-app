@@ -47,6 +47,10 @@ app.*.map.json
 
 lib/app/config/secrets.dart
 key.properties
+*.jks
+*.keystore
 firepit-log.txt
 .firebase/
 node_modules/
+
+store/
