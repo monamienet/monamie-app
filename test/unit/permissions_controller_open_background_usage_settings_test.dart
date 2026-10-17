@@ -46,7 +46,7 @@ const MethodChannel _permissionChannel =
     MethodChannel('flutter.baseflow.com/permissions/methods');
 
 const String _dialogMessageSnippet =
-    'O seu aparelho está restringindo o MonAmie em segundo plano.';
+    'O seu aparelho está restringindo o aplicativo em segundo plano.';
 
 Widget _buildTestApp() {
   return const GetMaterialApp(home: Scaffold(body: SizedBox.shrink()));
