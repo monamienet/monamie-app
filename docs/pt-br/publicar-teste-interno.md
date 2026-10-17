@@ -100,6 +100,7 @@ GITHUB_ORG_ID=336690459           # gh api orgs/monamienet --jq .id
 
 # App
 REPO=monamienet/monamie-app
+SUBJECT_PREFIX=$(gh api repos/$REPO/actions/oidc/customization/sub --jq .sub_claim_prefix)  # início do subject do token (C10)
 FIREBASE_PROJECT=monamienet-aquariustur
 SA_NAME=wlif-monamie-app-play     # service account do deploy (C9)
 SA_EMAIL=$SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
@@ -279,13 +280,17 @@ gcloud iam service-accounts create $SA_NAME \
 ### C10. Permitir que só o environment `play-internal` assuma a service account
 
 O `--member` é o *subject* exato que o GitHub coloca no token de um job que roda no environment
-`play-internal` deste repositório. Qualquer outro job é recusado.
+`play-internal` deste repositório. Qualquer outro job é recusado. O subject tem a forma
+`<prefixo>:environment:play-internal`. Este repositório usa o formato **imutável** do GitHub, em que o
+prefixo inclui os IDs numéricos da organização e do repositório (`repo:monamienet@336690459/monamie-app@1407450217`).
+Por isso o prefixo é lido da API (`SUBJECT_PREFIX`) em vez de escrito à mão: com o formato antigo,
+`repo:monamienet/monamie-app`, o Google recusa o job.
 
 ```bash
 gcloud iam service-accounts add-iam-policy-binding $SA_EMAIL \
   --project=$GCP_PROJECT \
   --role=roles/iam.workloadIdentityUser \
-  --member="principal://iam.googleapis.com/projects/$GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL/subject/repo:$REPO:environment:play-internal"
+  --member="principal://iam.googleapis.com/projects/$GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL/subject/$SUBJECT_PREFIX:environment:play-internal"
 ```
 
 **Conferir:** `gcloud iam service-accounts get-iam-policy $SA_EMAIL --project=$GCP_PROJECT` deve listar um
@@ -367,7 +372,7 @@ versão enviada, que aparece no Play Console.
 | `Release signing: ...` | O `key.properties` ou a keystore estão incompletos. Localmente, confira B1. No CI, confira os secrets de C12. |
 | `Secret ANDROID_... is empty` | O secret não foi cadastrado no environment `play-internal`, ou foi cadastrado como secret do repositório (C12). |
 | `The given credential is rejected by the attribute condition` | O token não veio da organização `monamienet`. Confira a condição do provider (A4). |
-| `Permission 'iam.serviceAccounts.getAccessToken' denied` | Falta a permissão de C10, ou o job não rodou no environment `play-internal`, e por isso o subject do token é outro. |
+| `Permission 'iam.serviceAccounts.getAccessToken' denied` | O subject liberado em C10 não é o que o GitHub envia. Confira se o binding usa o prefixo da API (`echo $SUBJECT_PREFIX`) e se o job rodou no environment `play-internal`. |
 | `The caller does not have permission` | A service account ainda não tem permissão no Play Console, ou a permissão ainda não propagou (C11). |
 | `Version code ... has already been used` | O versionCode já foi usado. Normalmente o arquivo do workflow foi renomeado. Aumente o `+ 100` no workflow. |
 | `Only releases with status draft may be created on draft app` | O app ainda está em rascunho no Play. Conclua o primeiro lançamento (C7). |

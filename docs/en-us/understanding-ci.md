@@ -253,7 +253,7 @@ that is temporary too:
 | **OIDC token** | A "badge" signed by GitHub describing the job: repository, branch, environment. The job can only request it with the `id-token: write` permission. | issued on every run |
 | **Workload identity pool** | Groups the external (non-Google) identities accepted in the project. | `github-actions` |
 | **Provider** | States which issuer the pool trusts and which tokens it accepts, through an *attribute condition*. | `github`: only tokens from the `monamienet` organization |
-| **Subject** | The token field that identifies the job. For a job with an environment, it looks like `repo:<org>/<repo>:environment:<name>`. | `repo:monamienet/monamie-app:environment:play-internal` |
+| **Subject** | The token field that identifies the job. For a job with an environment, it looks like `repo:<org>@<org id>/<repo>@<repo id>:environment:<name>`. The IDs are there because the repository uses GitHub's *immutable* format. | `repo:monamienet@336690459/monamie-app@1407450217:environment:play-internal` |
 | **Impersonation** | Temporarily taking on a service account's identity. Who may do it is defined by the `roles/iam.workloadIdentityUser` role on the service account itself. | only the subject above |
 | **Service account** | The identity the Play API sees. Its permissions live in the Play Console, not in Google Cloud. | `wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com` |
 
@@ -266,8 +266,9 @@ In the workflow, this means two changes: `permissions: id-token: write` on the j
 1. **Provider:** only accepts tokens from the `monamienet` organization. The condition uses the numeric ID
    (`336690459`), not the name, because a deleted organization's name can be registered by someone else,
    while the ID is never reused.
-2. **Service account permission:** only the subject `repo:monamienet/monamie-app:environment:play-internal`
+2. **Service account permission:** only the subject `repo:monamienet@336690459/monamie-app@1407450217:environment:play-internal`
    can impersonate it. Other repositories in the organization, or jobs without that environment, are refused.
+   Because the subject includes the IDs, a repository recreated with the same name is refused too.
 3. **`play-internal` environment:** GitHub only lets jobs from the `main` branch use this environment.
 
 The provider ID and the service account email are written in the workflow itself, and that is fine:

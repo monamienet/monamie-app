@@ -255,7 +255,7 @@ do Google, também temporário:
 | **Token OIDC** | "Crachá" assinado pelo GitHub que descreve o job: repositório, branch, environment. O job só pode pedi-lo com a permissão `id-token: write`. | emitido a cada execução |
 | **Workload identity pool** | Agrupa as identidades externas (de fora do Google) aceitas no projeto. | `github-actions` |
 | **Provider** | Diz em qual emissor o pool confia e quais tokens aceita, por meio de uma *condição de atributo*. | `github`: só tokens da organização `monamienet` |
-| **Subject** | O campo do token que identifica o job. Num job com environment, ele tem a forma `repo:<org>/<repo>:environment:<nome>`. | `repo:monamienet/monamie-app:environment:play-internal` |
+| **Subject** | O campo do token que identifica o job. Num job com environment, ele tem a forma `repo:<org>@<id da org>/<repo>@<id do repo>:environment:<nome>`. Os IDs aparecem porque o repositório usa o formato *imutável* do GitHub. | `repo:monamienet@336690459/monamie-app@1407450217:environment:play-internal` |
 | **Impersonação** | Assumir temporariamente a identidade de uma service account. Quem pode fazer isso é definido pelo papel `roles/iam.workloadIdentityUser` na própria service account. | só o subject acima |
 | **Service account** | A identidade que a API do Play enxerga. As permissões dela ficam no Play Console, não no Google Cloud. | `wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com` |
 
@@ -268,8 +268,9 @@ No workflow, isso corresponde a duas mudanças: `permissions: id-token: write` n
 1. **Provider:** só aceita tokens da organização `monamienet`. A condição usa o ID numérico (`336690459`)
    e não o nome, porque o nome de uma organização apagada pode ser registrado por outra pessoa, e o ID
    nunca é reutilizado.
-2. **Permissão na service account:** só o subject `repo:monamienet/monamie-app:environment:play-internal`
-   pode assumi-la. Outros repositórios da organização, ou jobs sem esse environment, são recusados.
+2. **Permissão na service account:** só o subject `repo:monamienet@336690459/monamie-app@1407450217:environment:play-internal`
+   pode assumi-la. Outros repositórios da organização, ou jobs sem esse environment, são recusados. Como o
+   subject inclui os IDs, um repositório recriado com o mesmo nome também é recusado.
 3. **Environment `play-internal`:** o GitHub só deixa jobs da branch `main` usarem esse environment.
 
 O ID do provider e o e-mail da service account ficam escritos no próprio workflow, e isso não é um
