@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:monamie_app/app/config/secrets.dart';
+import 'package:monamie_app/app/config/google_config.dart';
 import 'package:monamie_app/app/data/connections/groups_api_exception.dart';
 import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
 import 'package:monamie_app/app/data/models/gdi_groups_model.dart';
@@ -19,8 +19,8 @@ class GoogleService {
   /// Lança [GroupsApiException] se o gateway não responder 200.
   Future<List<Map<String, dynamic>>> getUserGroups(String token, String userEmail) async {
     final url = Uri.https(
-      Secrets.gdiGoogleHost,
-      Secrets.gdiUserGoogleGroupsPath,
+      GoogleConfig.gdiGoogleHost,
+      GoogleConfig.gdiUserGoogleGroupsPath,
       {'email': userEmail},
     );
 
@@ -50,7 +50,7 @@ class GoogleService {
   /// Cada membro possui: id, email, role, type (USER ou GROUP), status.
   /// Lança [GroupsApiException] se o gateway não responder 200.
   Future<List<Map<String, dynamic>>> getGroupEntities(String token, String groupEmail) async {
-    final url = Uri.https(Secrets.gdiGoogleHost, Secrets.gdiGroupMembers, {'email': groupEmail});
+    final url = Uri.https(GoogleConfig.gdiGoogleHost, GoogleConfig.gdiGroupMembers, {'email': groupEmail});
 
     final response = await http.get(url, headers: _headers(token));
     if (response.statusCode != 200) {

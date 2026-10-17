@@ -49,14 +49,40 @@ android {
 
     buildTypes {
         release {
-            // Uses the upload key from android/key.properties; falls back to the
-            // debug key when it is absent so `flutter run --release` keeps working.
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            // Always signs with the upload key from android/key.properties.
+            // validateReleaseSigning fails the build when it is missing instead
+            // of falling back to the debug key, which Google Play rejects.
+            signingConfig = signingConfigs.getByName("release")
         }
+    }
+}
+
+val releaseSigningKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+
+val validateReleaseSigning by tasks.registering {
+    description = "Fails fast when the release signing config is incomplete."
+    val propertiesFile = keystorePropertiesFile
+    val properties = keystoreProperties
+    val appDir = projectDir
+    doLast {
+        val guide = "See docs/pt-br/publicar-teste-interno.md (step B1)."
+        if (!propertiesFile.exists()) {
+            throw GradleException("Release signing: ${propertiesFile.path} not found. $guide")
+        }
+        val missing = releaseSigningKeys.filter { properties.getProperty(it).isNullOrBlank() }
+        if (missing.isNotEmpty()) {
+            throw GradleException("Release signing: key.properties is missing ${missing.joinToString()}. $guide")
+        }
+        val storeFile = appDir.resolve(properties.getProperty("storeFile"))
+        if (!storeFile.isFile) {
+            throw GradleException("Release signing: keystore not found at ${storeFile.path}. $guide")
+        }
+    }
+}
+
+tasks.configureEach {
+    if (name == "preReleaseBuild") {
+        dependsOn(validateReleaseSigning)
     }
 }
 
