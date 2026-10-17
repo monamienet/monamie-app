@@ -1,272 +1,374 @@
 # Internal Testing Release
 
-### In the Flutter project
-
-1. Generate a keystore with the command 
-
-    ```
-    keytool -genkey -v \
-      -keystore <OUTPUT_PATH> \
-      -keyalg RSA -keysize 2048 -validity 10000 \
-      -alias <ALIAS> \
-      -dname "CN=MonAmieNet, O=MonAmieNet, C=BR" \
-      -storepass '<PASSWORD>' -keypass '<PASSWORD>'
-    ```
-
-    > **Important:** Back up the keystore generated in the previous step!
-
-1. Inside the Dart/Flutter project, create the file `android/key.properties` with the following content:
-
-    ```
-    storePassword=<PASSWORD>
-    keyPassword=<PASSWORD>
-    keyAlias=<ALIAS>
-    storeFile=<OUTPUT_PATH>
-    ```
-
-    > **Important:** Add `key.properties` and `.jks` files to `.gitignore`.
-
-    > **Fail-fast:** without this file, or with an empty property, **every release build fails** with the
-    > message `Release signing: ...`, raised by the `validateReleaseSigning` task in `android/app/build.gradle.kts`.
-    > There is no longer a fallback to the debug key, whose bundle Play would reject. Debug builds do not need the keystore.
-
-1. Look up the SHA1 and SHA256 keys with the command `keytool -list -v -keystore <keystore_path> -alias <ALIAS> | grep -E "SHA1|SHA256"`
-
-1. Look up the `<APP_ID>` using `firebase apps:list ANDROID --project PROJECT_ID`
-
-1. Register the SHA1 key on the Android app in the Firebase project with `firebase apps:android:sha:create <APP_ID> <SHA1> --project <PROJECT_ID>`
-
-1. Register the SHA256 key on the Android app in the Firebase project with `firebase apps:android:sha:create <APP_ID> <SHA256> --project <PROJECT_ID>`
-
-1. Update `google-services.json` using `firebase apps:sdkconfig ANDROID <APP_ID> --project <PROJECT_ID> --out android/app/google-services.json`
-
-1. Update the version in `pubspec.yaml`, keeping in mind that:
-    - the version has the form `a.b.c+d`, where `a.b.c` is the ***versionName*** and d is the ***versionCode***
-    - changing the ***versionName*** is optional
-    - increasing the ***versionCode*** strictly is mandatory
-
-1. Build the bundle with `flutter build appbundle --release`
-
-### In the Google Play Console:
-
-10. Create a tester list and associate it with the internal testing track
-
-1. Upload the bundle generated in the previous step
-
-1. Fill in the release notes
-
-1. Save → Release
-
-1. Copy the SHA1 and SHA256 keys that Google signs the app with, under *Play Console > App integrity > App signing*
-
-1. Register the SHA1 key (signed by Google) on the Android app in the Firebase project with `firebase apps:android:sha:create <APP_ID> <SHA1> --project <PROJECT_ID>`
-
-1. Register the SHA256 key (signed by Google) on the Android app in the Firebase project with `firebase apps:android:sha:create <APP_ID> <SHA256> --project <PROJECT_ID>`
-
-
-### Automatic release (CI)
-
-The workflow [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml)
-publishes to the internal testing track on every merge into `main`. What it does, line by line, is in
+This guide takes an app from zero to the Google Play **internal testing** track and shows how each new
+version is published after that. Almost everything is done once. **For each new version, the only manual
+step is merging a PR into `main`**: the rest is automatic. How the automation works is explained in
 [understanding-ci.md](understanding-ci.md).
 
-With CI set up, **steps 8, 9, 11 and 13 are no longer manual**:
-- the versionCode becomes `run number + 100`, and the pubspec's `+N` is ignored on CI;
-- the build, upload and release are done by the workflow.
+## Overview
 
-Step 12 (release notes) is optional on the internal track, and the workflow does not fill it in. The
-one-off steps (1 to 7, 10, 14 to 16) still apply.
+Steps are identified by group, according to how often they are done:
 
-#### One-time setup
-
-Authentication with Google Play is **keyless**, through Workload Identity Federation. Each piece is explained
-in [understanding-ci.md](understanding-ci.md#6-how-github-gets-permission-to-publish-on-play-keyless).
-The commands use `gcloud` with an account that can administer IAM in the `ci-cd-management` project.
-
-1. **Enable the Play API in the project:**
-
-    ```bash
-    gcloud services enable androidpublisher.googleapis.com --project=ci-cd-management
-    ```
-
-1. **Create the workload identity pool**, which groups the GitHub identities accepted in the project. It
-   is created once and can serve other pipelines of the organization:
-
-    ```bash
-    gcloud iam workload-identity-pools create github-actions \
-      --project=ci-cd-management \
-      --location=global \
-      --display-name="GitHub Actions" \
-      --description="GitHub Actions workflows of the monamienet organization"
-    ```
-
-1. **Create the GitHub provider** in the `github-actions` pool. The condition only accepts tokens from
-   the `monamienet` organization, identified by its numeric ID `336690459`, because the ID, unlike the name,
-   is never reused:
-
-    ```bash
-    gcloud iam workload-identity-pools providers create-oidc github \
-      --project=ci-cd-management \
-      --location=global \
-      --workload-identity-pool=github-actions \
-      --display-name="GitHub" \
-      --issuer-uri="https://token.actions.githubusercontent.com/" \
-      --attribute-mapping="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id" \
-      --attribute-condition="assertion.repository_owner_id=='336690459'"
-    ```
-
-    > If the `github` provider already exists because another pipeline of the organization created it, skip
-    > this step and check that its condition restricts the organization.
-
-1. **Create the service account dedicated** to this pipeline. It gets no Google Cloud roles:
-
-    ```bash
-    gcloud iam service-accounts create wlif-monamie-app-play \
-      --project=ci-cd-management \
-      --display-name="monamie-app Play publisher" \
-      --description="Publishes monamie-app to the Play internal track from GitHub Actions via WIF. Docs: monamienet/monamie-app docs/pt-br/publicar-teste-interno.md"
-    ```
-
-1. **Allow only this repository's `play-internal` environment to impersonate the service account:**
-
-    ```bash
-    gcloud iam service-accounts add-iam-policy-binding \
-      wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com \
-      --project=ci-cd-management \
-      --role=roles/iam.workloadIdentityUser \
-      --member="principal://iam.googleapis.com/projects/787253151660/locations/global/workloadIdentityPools/github-actions/subject/repo:monamienet/monamie-app:environment:play-internal"
-    ```
-
-1. **Invite the service account in the Play Console:** under *Users and permissions → Invite new users*:
-   - enter the email `wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com`;
-   - under *App permissions*, add the app and check **only** *Release to testing tracks*;
-   - send the invite. According to Google, permission changes may take up to 48 hours to take effect.
-
-1. **GitHub environment and secrets:** under *Settings → Environments → `play-internal`*:
-   - under *Deployment branches and tags*, choose *Selected branches and tags* and add `main`. **This rule is
-     mandatory:** the permission from step 5 trusts the environment, and this rule is what stops other branches
-     from publishing;
-   - under *Environment secrets*, add the signing secrets:
-
-    | Secret | Value |
-    | :--- | :--- |
-    | `ANDROID_KEYSTORE_B64` | the output of `base64 -w0 <storeFile from key.properties>` |
-    | `ANDROID_KEYSTORE_PASSWORD` | `storePassword` from `key.properties` |
-    | `ANDROID_KEY_PASSWORD` | `keyPassword` from `key.properties` |
-    | `ANDROID_KEY_ALIAS` | `keyAlias` from `key.properties` |
-
-    From the terminal, without copying and pasting passwords, at the repository root:
-
-    ```bash
-    REPO=monamienet/monamie-app
-    prop() { grep "^$1=" android/key.properties | cut -d= -f2- | tr -d '\r\n'; }
-
-    gh api -X PUT repos/$REPO/environments/play-internal \
-      -F 'deployment_branch_policy[protected_branches]=false' \
-      -F 'deployment_branch_policy[custom_branch_policies]=true'
-    gh api -X POST repos/$REPO/environments/play-internal/deployment-branch-policies -f name=main
-
-    prop storePassword | gh secret set ANDROID_KEYSTORE_PASSWORD --env play-internal --repo $REPO
-    prop keyPassword   | gh secret set ANDROID_KEY_PASSWORD      --env play-internal --repo $REPO
-    prop keyAlias      | gh secret set ANDROID_KEY_ALIAS         --env play-internal --repo $REPO
-    base64 -w0 "$(prop storeFile)" | gh secret set ANDROID_KEYSTORE_B64 --env play-internal --repo $REPO
-    ```
-
-1. **Play prerequisite:** the API only accepts uploads after the app's first manual upload (steps 10 to 13).
-
-#### Running and monitoring
-
-- **Automatic:** every PR merge into `main`.
-- **Manual:** *Actions → Deploy to Play (internal) → Run workflow*, on the `main` branch. On other branches
-  the run stops at the environment, which only accepts `main`.
-- Each run shows the logs of every step. Uploaded versions are listed in the Play Console under *Internal testing*.
-
-> ⚠️ **Do not rename the workflow file.** The run number, used as versionCode, is counted per file:
-> renaming it restarts the count at 1, and Play would refuse duplicate versionCodes.
-
-#### Common problems
-
-| Message | Cause and fix |
-| :--- | :--- |
-| `Secret ANDROID_... is empty` | The secret was not added to the `play-internal` environment, or it was added as a repository secret instead of an environment secret. |
-| `Release signing: ...` | `key.properties` or the keystore is incomplete. Check the signing secrets. |
-| `The given credential is rejected by the attribute condition` | The token did not come from the `monamienet` organization. Check the provider condition (step 3). |
-| `Permission 'iam.serviceAccounts.getAccessToken' denied` | The permission from step 5 is missing, or the job did not run in the `play-internal` environment (the token subject changes). |
-| `Version code ... has already been used` | A bundle with that versionCode already exists. This usually happens because the workflow file was renamed. Raise the `+ 100` offset in the workflow. |
-| `The caller does not have permission` | The service account has no permission on the app in the Play Console yet, or it has not propagated (step 6). |
-| `Only releases with status draft may be created on draft app` | The app is still a draft on Play. Finish the first manual release. |
-| The app installs but Google sign-in fails | The Google Play signing SHAs are missing in Firebase (steps 14 to 16); this is not a CI problem. |
-
-### How often each step runs
-
-Numbering follows the steps above (1 to 9 in the Flutter project, 10 to 16 in the Google Play Console).
-
-| Frequency | Steps | Notes |
+| Group | Frequency | Steps |
 | :--- | :--- | :--- |
-| Once for the company | 1 | The keystore is the same for all apps and tracks. Back it up right after generating it. |
-| Once per machine or repository clone | 2 | `key.properties` is not versioned, so each environment needs its own. |
-| Once per app (client) | 3, 4, 5, 6, 7, 10, 14, 15, 16 | Steps 14 to 16 can only be done after the first upload to the Play Console. |
-| On every new version | 8, 9, 11, 12, 13 | Step 8 requires a `versionCode` greater than that of any bundle already uploaded. |
+| **A** | Once for the company | A1 keystore · A2 to A4 CI foundation in Google Cloud |
+| **B** | Once per machine or clone | B1 `key.properties` |
+| **C** | Once per app (client) | C1 to C4 Firebase · C5 to C7 first release, manual · C8 Play SHAs · C9 to C12 app CI |
+| **D** | On every new version | D1 merge the PR · D2 automatic release ⚙️ |
 
-### Temporal dependency between steps
+| On every new version | Before CI | With CI |
+| :--- | :--- | :--- |
+| Manual steps | 5: bump the versionCode, build the bundle, upload, fill in release notes and release | 1: merge the PR |
 
-Step numbering is the same as in this guide.
-
-#### How to read
-
-- **Edges** are the steps (label = step number, as in the list above). **Nodes** are instants: the start of steps that depend on what has finished.
-- A node is only reached when **all** the edges that arrive at it have finished.
-- Edges leaving the same node can be done **in parallel**.
+### Dependencies between steps
 
 ```mermaid
 flowchart LR
-    A((" "))
-    B((" "))
-    H((" "))
-    I((" "))
-    K((" "))
-    L((" "))
-    M((" "))
-    O((" "))
-    P((" "))
-    Q((" "))
-    R((" "))
+    nS((" "))
+    nK((" "))
+    nW((" "))
+    nF1((" "))
+    nF2((" "))
+    nB((" "))
+    nU((" "))
+    nP((" "))
+    nSA((" "))
+    nI((" "))
+    nCI((" "))
+    nM((" "))
+    nE((" "))
 
-    A -->|1| B
-    A -->|4| H
-    A -->|8| K
-    A -->|10| O
-
-    B -->|2| K
-    B -->|3| H
-
-    H -->|5| I
-    H -->|6| I
-
-    I -->|7| K
-
-    K -->|9| L
-    L -->|11| M
-    M -->|12| O
-
-    O -->|13| P
-    P -->|14| Q
-    Q -->|15| R
-    Q -->|16| R
+    nS -->|A1| nK
+    nS -->|A2| nCI
+    nS -->|A3| nW
+    nW -->|A4| nCI
+    nK -->|B1| nB
+    nK -->|C1| nF1
+    nS -->|C2| nF1
+    nF1 -->|C3| nF2
+    nF2 -->|C4| nB
+    nS -->|C5| nU
+    nB -->|C6| nU
+    nU -->|C7| nP
+    nP -->|C8| nE
+    nS -->|C9| nSA
+    nSA -.-> nI
+    nP -.-> nI
+    nSA -->|C10| nCI
+    nI -->|C11| nCI
+    nK -->|C12| nCI
+    nCI -->|D1| nM
+    nM -->|D2 ⚙️| nE
 
     %% once for the company (purple)
-    linkStyle 0 stroke:#7b2d8e,stroke-width:3px
+    linkStyle 0,1,2,3 stroke:#7b2d8e,stroke-width:3px
     %% once per machine (orange)
     linkStyle 4 stroke:#e69f00,stroke-width:3px
     %% once per app (blue)
-    linkStyle 1,3,5,6,7,8,13,14,15 stroke:#0072b2,stroke-width:3px
-    %% every version (green)
-    linkStyle 2,9,10,11,12 stroke:#009e73,stroke-width:3px
+    linkStyle 5,6,7,8,9,10,11,12,13,16,17,18 stroke:#0072b2,stroke-width:3px
+    %% dependency only, no work (gray)
+    linkStyle 14,15 stroke:#999999,stroke-width:1px
+    %% every version: manual (green) and automatic (dashed green)
+    linkStyle 19 stroke:#009e73,stroke-width:3px
+    linkStyle 20 stroke:#009e73,stroke-width:3px,stroke-dasharray:6 4
 ```
 
-Edge colors, according to the frequency table:
+**How to read it:**
+- **Edges** are steps, labeled with the step ID. **Nodes** are instants: the moment the following steps
+  can start.
+- A node is only reached when **all** edges arriving at it have finished.
+- Edges leaving the same node can be done **in parallel**.
+- A **thin dotted edge with no label** is a dependency only, with no work. For example, inviting the service
+  account (C11) requires that it already exists (C9) and that the app is already on Play (C7).
+- Colors:
+  - 🟣 once for the company;
+  - 🟠 once per machine;
+  - 🔵 once per app;
+  - 🟢 every version. The **dashed** edge (D2) is run automatically by CI. D1 and D2 repeat for every version.
 
-- 🟣 Once for the company (step 1)
-- 🟠 Once per machine or repository clone (step 2)
-- 🔵 Once per app (steps 3, 4, 5, 6, 7, 10, 14, 15 and 16)
-- 🟢 On every new version (steps 8, 9, 11, 12 and 13)
+## Values used
+
+The commands in this guide use the variables below. Paste the block into your terminal before starting:
+
+```bash
+# Company
+GCP_PROJECT=ci-cd-management      # Google Cloud project dedicated to CI
+GCP_PROJECT_NUMBER=787253151660   # gcloud projects describe $GCP_PROJECT --format='value(projectNumber)'
+POOL=github-actions               # workload identity pool (A3)
+PROVIDER=github                   # GitHub provider (A4)
+GITHUB_ORG_ID=336690459           # gh api orgs/monamienet --jq .id
+
+# App
+REPO=monamienet/monamie-app
+FIREBASE_PROJECT=monamienet-aquariustur
+SA_NAME=wlif-monamie-app-play     # deploy service account (C9)
+SA_EMAIL=$SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
+```
+
+For another app (client):
+- change the values of the *App* group;
+- in the workflow [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml),
+  update `packageName` and `service_account`.
+
+---
+
+## A. Once for the company
+
+### A1. Generate the upload keystore
+
+The keystore signs the bundles uploaded to Play and is the same for all of the company's apps. **Keep a
+backup off the machine:** without it, no app can receive new versions.
+
+```bash
+keytool -genkey -v \
+  -keystore <PATH>/upload.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -alias <ALIAS> \
+  -dname "CN=MonAmieNet, O=MonAmieNet, C=BR" \
+  -storepass '<PASSWORD>' -keypass '<PASSWORD>'
+```
+
+### A2. Enable the Play API in the CI project
+
+Without the API enabled, Google refuses the publishing calls made by CI.
+
+```bash
+gcloud services enable androidpublisher.googleapis.com --project=$GCP_PROJECT
+```
+
+### A3. Create the workload identity pool
+
+The pool groups the external identities (here, GitHub workflows) that Google Cloud accepts. It serves
+every pipeline of the organization.
+
+```bash
+gcloud iam workload-identity-pools create $POOL \
+  --project=$GCP_PROJECT \
+  --location=global \
+  --display-name="GitHub Actions" \
+  --description="GitHub Actions workflows of the monamienet organization"
+```
+
+### A4. Create the GitHub provider
+
+The provider makes the pool trust GitHub Actions tokens, but only those from the `monamienet`
+organization. The condition uses the numeric ID because, unlike the name, it is never reused.
+
+```bash
+gcloud iam workload-identity-pools providers create-oidc $PROVIDER \
+  --project=$GCP_PROJECT \
+  --location=global \
+  --workload-identity-pool=$POOL \
+  --display-name="GitHub" \
+  --issuer-uri="https://token.actions.githubusercontent.com/" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id" \
+  --attribute-condition="assertion.repository_owner_id=='$GITHUB_ORG_ID'"
+```
+
+**Check A2 to A4:**
+
+```bash
+gcloud services list --enabled --project=$GCP_PROJECT --filter="config.name=androidpublisher.googleapis.com"
+gcloud iam workload-identity-pools providers describe $PROVIDER --workload-identity-pool=$POOL \
+  --location=global --project=$GCP_PROJECT --format="yaml(state,attributeCondition)"
+```
+
+The expected result is the API listed, `state: ACTIVE` and the condition with the organization ID.
+
+## B. Once per machine or clone
+
+### B1. Create `android/key.properties`
+
+This file tells Gradle where the keystore is. It is in `.gitignore`, so each machine needs its own. It is
+only needed for **local** release builds, such as the first release (C6), because CI assembles its own
+from the secrets (C12).
+
+```properties
+storePassword=<PASSWORD>
+keyPassword=<PASSWORD>
+keyAlias=<ALIAS>
+storeFile=<PATH>/upload.jks
+```
+
+> **Fail-fast:** without this file, or with an empty property, every release build fails with the message
+> `Release signing: ...`. There is no fallback to the debug key, whose bundle Play would reject. Debug
+> builds (`flutter run`) do not need the keystore.
+
+## C. Once per app (client)
+
+There are three tracks that can run in parallel: Firebase (C1 to C4), first release (C5 to C8) and app CI
+(C9 to C12). The diagram shows what depends on what.
+
+### C1. Get the upload key SHAs
+
+```bash
+keytool -list -v -keystore <PATH>/upload.jks -alias <ALIAS> | grep -E "SHA1|SHA256"
+```
+
+### C2. Get the Android app ID in Firebase
+
+```bash
+firebase apps:list ANDROID --project $FIREBASE_PROJECT
+APP_ID=<value of the "App ID" column>
+```
+
+### C3. Register the SHAs in Firebase
+
+Google sign-in only works for apps whose signature Firebase knows.
+
+```bash
+firebase apps:android:sha:create $APP_ID <SHA1> --project $FIREBASE_PROJECT
+firebase apps:android:sha:create $APP_ID <SHA256> --project $FIREBASE_PROJECT
+```
+
+### C4. Update `google-services.json`
+
+After updating it, commit the file, because it is versioned.
+
+```bash
+firebase apps:sdkconfig ANDROID $APP_ID --project $FIREBASE_PROJECT --out android/app/google-services.json
+```
+
+### C5. Create the tester list
+
+In the Play Console, create a list of tester emails and associate it with the **internal testing** track.
+
+### C6. Build the first bundle
+
+Play only accepts uploads through the API after the app receives its first bundle through the Play
+Console, so **the first version is manual**.
+
+1. In `pubspec.yaml`, set `version: a.b.c+d`. `a.b.c` is the *versionName*, shown in the store, and `d`
+   is the *versionCode*. Use a `d` **below 101**, because numbers from 101 up are used by CI.
+2. Build the bundle:
+
+    ```bash
+    flutter build appbundle --release
+    ```
+
+    The output is `build/app/outputs/bundle/release/app-release.aab`.
+
+### C7. Upload and release the first bundle
+
+In the Play Console, open **internal testing**, create a release, upload the `.aab`, fill in the release
+notes and click **Save → Release**.
+
+### C8. Register the Google Play signing SHAs in Firebase
+
+Play re-signs the app with a Google key (*Play App Signing*). Without that key's SHAs in Firebase, Google
+sign-in fails on testers' devices. Copy the SHA1 and SHA256 from *Play Console → App integrity → App
+signing* and register them:
+
+```bash
+firebase apps:android:sha:create $APP_ID <PLAY_SHA1> --project $FIREBASE_PROJECT
+firebase apps:android:sha:create $APP_ID <PLAY_SHA256> --project $FIREBASE_PROJECT
+```
+
+### C9. Create the deploy service account
+
+This is the identity that publishes to Play. Each pipeline has its own, and it gets no Google Cloud roles.
+The reason is in [understanding-ci.md](understanding-ci.md#why-a-dedicated-service-account).
+
+```bash
+gcloud iam service-accounts create $SA_NAME \
+  --project=$GCP_PROJECT \
+  --display-name="monamie-app Play publisher" \
+  --description="Publishes $REPO to the Play internal track from GitHub Actions via WIF. Docs: docs/pt-br/publicar-teste-interno.md"
+```
+
+### C10. Allow only the `play-internal` environment to impersonate the service account
+
+The `--member` is the exact *subject* GitHub puts in the token of a job running in this repository's
+`play-internal` environment. Any other job is refused.
+
+```bash
+gcloud iam service-accounts add-iam-policy-binding $SA_EMAIL \
+  --project=$GCP_PROJECT \
+  --role=roles/iam.workloadIdentityUser \
+  --member="principal://iam.googleapis.com/projects/$GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL/subject/repo:$REPO:environment:play-internal"
+```
+
+**Check:** `gcloud iam service-accounts get-iam-policy $SA_EMAIL --project=$GCP_PROJECT` must list a
+`roles/iam.workloadIdentityUser` binding with that `principal://...`. If only the `etag` appears, the
+command was not applied.
+
+### C11. Invite the service account in the Play Console
+
+1. In the Play Console, open **Users and permissions → Invite new users**.
+2. Enter the service account email (`echo $SA_EMAIL`).
+3. Under **App permissions**, add the app and check **only** the permission to release to testing tracks.
+4. Click **Invite user**.
+
+The permission may take up to 48 hours to take effect.
+
+### C12. Create the GitHub environment and secrets
+
+The `play-internal` environment holds the signing secrets and can only be used by `main`. **This
+restriction is mandatory:** the permission from C10 trusts the environment, and the restriction is what
+stops other branches from publishing.
+
+| Secret | Value |
+| :--- | :--- |
+| `ANDROID_KEYSTORE_B64` | the keystore encoded in base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | `storePassword` from `key.properties` |
+| `ANDROID_KEY_PASSWORD` | `keyPassword` from `key.properties` |
+| `ANDROID_KEY_ALIAS` | `keyAlias` from `key.properties` |
+
+In the UI, use *Settings → Environments*. From the terminal, at the repository root, the values go straight
+from `key.properties` to GitHub without showing on screen:
+
+```bash
+prop() { grep "^$1=" android/key.properties | cut -d= -f2- | tr -d '\r\n'; }
+
+gh api -X PUT repos/$REPO/environments/play-internal \
+  -F 'deployment_branch_policy[protected_branches]=false' \
+  -F 'deployment_branch_policy[custom_branch_policies]=true'
+gh api -X POST repos/$REPO/environments/play-internal/deployment-branch-policies -f name=main
+
+prop storePassword | gh secret set ANDROID_KEYSTORE_PASSWORD --env play-internal --repo $REPO
+prop keyPassword   | gh secret set ANDROID_KEY_PASSWORD      --env play-internal --repo $REPO
+prop keyAlias      | gh secret set ANDROID_KEY_ALIAS         --env play-internal --repo $REPO
+base64 -w0 "$(prop storeFile)" | gh secret set ANDROID_KEYSTORE_B64 --env play-internal --repo $REPO
+```
+
+**Check:** `gh secret list --env play-internal --repo $REPO` must list the 4 secrets, and
+`gh api repos/$REPO/environments/play-internal/deployment-branch-policies --jq '.branch_policies[].name'`
+must print `main`.
+
+## D. On every new version
+
+### D1. Merge the PR into `main`
+
+This is the only manual step. To change the versionName (for example, from `1.0.0` to `1.1.0`), edit the
+`version:` in `pubspec.yaml` in the PR itself. The versionCode is automatic.
+
+### D2. Automatic release ⚙️
+
+The merge triggers the workflow, which runs the tests, builds and signs the bundle, uploads it to Play and
+releases the version to testers. Nothing needs to be done, but it is worth knowing:
+
+- **Monitoring:** under *Actions → Deploy to Play (internal)*, each run shows the logs of every step. If
+  anything fails, nothing is uploaded and whoever pushed gets an email.
+- **Publishing again without a merge**, for example after fixing a permission: use *Run workflow* on `main`.
+- **Release notes:** optional on the internal track, and the workflow does not fill them in. If you want
+  notes, edit the release in the Play Console.
+- ⚠️ **Do not rename the workflow file.** The run number, used as versionCode, is counted per file.
+  Renaming it restarts the count at 1, and Play refuses duplicate versionCodes.
+
+**Without CI:** if the workflow is unavailable, repeat C6 and C7 with a versionCode greater than the last
+uploaded version's, which is shown in the Play Console.
+
+---
+
+## Common problems
+
+| Message | Cause and fix |
+| :--- | :--- |
+| `Release signing: ...` | `key.properties` or the keystore is incomplete. Locally, check B1. On CI, check the C12 secrets. |
+| `Secret ANDROID_... is empty` | The secret was not added to the `play-internal` environment, or it was added as a repository secret (C12). |
+| `The given credential is rejected by the attribute condition` | The token did not come from the `monamienet` organization. Check the provider condition (A4). |
+| `Permission 'iam.serviceAccounts.getAccessToken' denied` | The C10 permission is missing, or the job did not run in the `play-internal` environment, so the token subject is different. |
+| `The caller does not have permission` | The service account has no permission in the Play Console yet, or it has not propagated (C11). |
+| `Version code ... has already been used` | The versionCode was already used. Usually the workflow file was renamed. Raise the `+ 100` in the workflow. |
+| `Only releases with status draft may be created on draft app` | The app is still a draft on Play. Finish the first release (C7). |
+| The app installs but Google sign-in fails | SHAs are missing in Firebase: from the upload key (C3) or from Google Play signing (C8). |

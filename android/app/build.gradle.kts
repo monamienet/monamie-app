@@ -65,7 +65,7 @@ val validateReleaseSigning by tasks.registering {
     val properties = keystoreProperties
     val appDir = projectDir
     doLast {
-        val guide = "See docs/pt-br/publicar-teste-interno.md (step 2)."
+        val guide = "See docs/pt-br/publicar-teste-interno.md (step B1)."
         if (!propertiesFile.exists()) {
             throw GradleException("Release signing: ${propertiesFile.path} not found. $guide")
         }

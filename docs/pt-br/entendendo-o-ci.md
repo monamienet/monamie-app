@@ -4,8 +4,13 @@ Este documento explica, para quem nunca trabalhou com CI, como funciona o workfl
 [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml).
 Ele publica o app na faixa de **teste interno** do Google Play a cada merge na `main`.
 
-O passo a passo operacional (configuração inicial, secrets e solução de problemas) está em
-[publicar-teste-interno.md](publicar-teste-interno.md#publicação-automática-ci).
+> **Resumo para explicar a alguém:** a cada merge na `main`, o GitHub liga uma máquina limpa, roda os
+> testes, gera o `.aab` assinado com a keystore guardada nos secrets e o envia para o teste interno. Para
+> falar com o Google Play, ele não usa senha nem chave: troca um token temporário do GitHub por um token
+> temporário de uma service account dedicada (Workload Identity Federation).
+
+O passo a passo operacional (configuração, verificação e solução de problemas) está em
+[publicar-teste-interno.md](publicar-teste-interno.md). A configuração do CI corresponde aos passos A2 a A4 e C9 a C12.
 
 ---
 
@@ -209,7 +214,7 @@ CI, isso era o número depois do `+` no `version:` do `pubspec.yaml`, incrementa
 O GitHub dá a cada execução de um workflow um contador, `GITHUB_RUN_NUMBER` (1, 2, 3...), que **só
 cresce**. O flag `--build-number` do `flutter build` substitui o número depois do `+` sem tocar no
 pubspec. Assim, a 1ª execução gera versionCode **101**, a 2ª gera **102**, e assim por diante. O `+100`
-garante começar acima dos envios manuais já feitos.
+reserva os números abaixo de 101 para envios manuais, como o primeiro envio de um app.
 
 - O **versionName** (`1.0.0`, o que o usuário vê na loja) continua vindo do `pubspec.yaml`. Mude-o
   numa PR quando quiser.

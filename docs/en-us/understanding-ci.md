@@ -5,8 +5,13 @@ This document explains how the workflow
 for readers who have never worked with CI. The workflow publishes the app to the Google Play
 **internal testing** track on every merge into `main`.
 
-The operational guide (initial setup, secrets and troubleshooting) is in
-[publish-internal-testing.md](publish-internal-testing.md#automatic-release-ci).
+> **Summary to explain to someone:** on every merge into `main`, GitHub starts a clean machine, runs the
+> tests, builds the `.aab` signed with the keystore stored in the secrets and uploads it to internal
+> testing. To talk to Google Play it uses no password or key: it trades a temporary GitHub token for a
+> temporary token of a dedicated service account (Workload Identity Federation).
+
+The operational guide (setup, checks and troubleshooting) is in
+[publish-internal-testing.md](publish-internal-testing.md). The CI setup corresponds to steps A2 to A4 and C9 to C12.
 
 ---
 
@@ -205,8 +210,8 @@ CI, this was the number after the `+` in the `version:` of `pubspec.yaml`, bumpe
 
 GitHub gives each run of a workflow a counter, `GITHUB_RUN_NUMBER` (1, 2, 3...), that **only grows**.
 The `--build-number` flag of `flutter build` overrides the number after the `+` without touching the
-pubspec. So the 1st run produces versionCode **101**, the 2nd **102**, and so on. The `+100` guarantees
-starting above the manual uploads already made.
+pubspec. So the 1st run produces versionCode **101**, the 2nd **102**, and so on. The `+100` reserves
+the numbers below 101 for manual uploads, such as an app's first release.
 
 - The **versionName** (`1.0.0`, what users see in the store) still comes from `pubspec.yaml`. Change
   it in a PR whenever you want.

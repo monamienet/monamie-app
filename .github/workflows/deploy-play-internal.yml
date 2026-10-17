@@ -77,7 +77,7 @@ jobs:
       - run: flutter build appbundle --release --build-number=$((GITHUB_RUN_NUMBER + 100))
 
       # Keyless auth: impersonates the dedicated publisher service account.
-      # Setup: docs/pt-br/publicar-teste-interno.md#publicação-automática-ci
+      # Setup: docs/pt-br/publicar-teste-interno.md (steps A2-A4, C9-C12)
       - id: auth
         uses: google-github-actions/auth@v3
         with:
