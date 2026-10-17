@@ -22,6 +22,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: play-internal
+    # id-token: write lets the job request the GitHub OIDC token exchanged
+    # for short-lived Google credentials (Workload Identity Federation).
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v7
 
@@ -71,9 +76,17 @@ jobs:
       # versionCode = run number + 100, above the last manually uploaded one (3).
       - run: flutter build appbundle --release --build-number=$((GITHUB_RUN_NUMBER + 100))
 
+      # Keyless auth: impersonates the dedicated publisher service account.
+      # Setup: docs/pt-br/publicar-teste-interno.md#publicação-automática-ci
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/787253151660/locations/global/workloadIdentityPools/github-actions-pool/providers/github
+          service_account: wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com
+
       - uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
           packageName: org.monamienet.aquariustur
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal

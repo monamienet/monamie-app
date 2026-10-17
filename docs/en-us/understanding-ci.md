@@ -25,9 +25,9 @@ On GitHub, this tool is called **GitHub Actions**. Vocabulary:
 | **Trigger** (`on:`) | The event that starts the workflow. | a push to `main`, or a manual click on "Run workflow" |
 | **Runner** | The virtual machine GitHub starts to run the workflow. It starts **empty**: no Flutter, no Java, none of the files that are outside git. It is destroyed when the run ends. | `ubuntu-latest` (Linux) |
 | **Job** | A group of steps that run in sequence on the same runner. | a single job, `deploy` |
-| **Step** | One step of a job. Either a shell command (`run:`) or an **action** (`uses:`). | 9 steps |
+| **Step** | One step of a job. Either a shell command (`run:`) or an **action** (`uses:`). | 10 steps |
 | **Action** | A ready-made, reusable step published by someone, like a "function" you call. | `actions/checkout` downloads the code; `subosito/flutter-action` installs Flutter; `r0adkll/upload-google-play` uploads to Play |
-| **Secret** | A sensitive value stored encrypted on GitHub. The workflow reads it with `${{ secrets.NAME }}`, and GitHub masks it in logs (shown as `***`). | the keystore, its passwords and the Play credential |
+| **Secret** | A sensitive value stored encrypted on GitHub. The workflow reads it with `${{ secrets.NAME }}`, and GitHub masks it in logs (shown as `***`). | the keystore and its passwords. The Play credential is **not** a secret: authentication is keyless (section 6) |
 | **Environment** | A named "vault" (Settings → Environments) that groups secrets and can have rules, such as requiring manual approval before running. | `play-internal` |
 | **Artifact** | A file produced on the runner that GitHub keeps for download after the runner is destroyed. | **not used**: the repository is public, so any signed-in GitHub user could download unreleased test builds. The Play Console already keeps every uploaded version. |
 
@@ -47,7 +47,8 @@ PR opened ──► PR approved ──► "Merge" on GitHub
    │ 5. restores the keystore and key.properties                       │
    │ 6. fetches dependencies  7. runs the unit tests                   │
    │ 8. flutter build appbundle (signed, new versionCode)              │
-   │ 9. uploads to Play (internal track)                               │
+   │ 9. authenticates with Google (WIF, keyless)                       │
+   │ 10. uploads to Play (internal track)                              │
    └────────────────────────────────┬─────────────────────────────────┘
                                     ▼
          Internal testers get the update through the Play Store
@@ -95,8 +96,10 @@ The words on the left are **fixed**, defined by GitHub Actions. The values on th
 | `jobs` | Lists the jobs. Each key inside it is a job **name** of our choosing. | one job named `deploy` |
 | `runs-on` | The runner's operating system. | `ubuntu-latest` |
 | `environment` | Which Environment (secret vault) the job uses. Without it, `secrets.X` is empty. | `play-internal` |
-| `steps` | The **list** of steps, run top to bottom. Each `-` is one step. | 9 steps |
+| `permissions` | What the job's automatic token may do. Anything not listed is forbidden. | `contents: read` (read the code) and `id-token: write` (request the OIDC token from section 6) |
+| `steps` | The **list** of steps, run top to bottom. Each `-` is one step. | 10 steps |
 | `name` (inside a step) | Optional step label in the logs. | e.g. `Limit Gradle memory` |
+| `id` (inside a step) | A nickname for the step. Later steps read its outputs with `${{ steps.<id>.outputs.<name> }}`. | `auth`: the upload reads `steps.auth.outputs.credentials_file_path` |
 | `uses` | The step **calls a ready-made action**, as `owner/repository@version`. | e.g. `actions/setup-java@v6` |
 | `with` | The **parameters** passed to the action in `uses` (section 3.3). | e.g. `java-version: '17'` |
 | `run` | The step **runs shell commands**, as in a terminal. | e.g. `flutter test test/unit` |
@@ -156,7 +159,8 @@ middle one is dropped and only the newest runs after the first. Nothing is lost,
 | 6 | `flutter pub get` | Fetches the dependencies in `pubspec.yaml`. |
 | 7 | `flutter test test/unit` | Runs the unit tests. If any fails, the deploy stops here. Integration tests are skipped because they need the Firebase emulators. |
 | 8 | `flutter build appbundle` | Builds the release `.aab`, signed with the keystore from step 5 and with a new versionCode (section 5). |
-| 9 | `r0adkll/upload-google-play` | Uploads the `.aab` to the `internal` track, authenticating with the service account (section 6). `status: completed` releases it straight to testers. |
+| 9 | `google-github-actions/auth` | Trades GitHub's OIDC token for temporary service account credentials, with no key (section 6). |
+| 10 | `r0adkll/upload-google-play` | Uploads the `.aab` to the `internal` track with the credentials from step 9. `status: completed` releases it straight to testers. |
 
 ## 4. How the keystore reaches the runner (why base64)
 
@@ -211,13 +215,75 @@ starting above the manual uploads already made.
 - ⚠️ **Do not rename the workflow file.** The counter belongs to the file. If it is renamed, the counter
   restarts at 1 and the upload fails with a duplicate versionCode.
 
-## 6. How GitHub gets permission to publish on Play
+## 6. How GitHub gets permission to publish on Play (keyless)
 
-To publish, GitHub has to authenticate with the Play Console without using a person's Google account.
-That is what a **service account** is for: a "robot account" in Google Cloud with a credential file
-(JSON). In the Play Console, this account gets permission **only** to release to the app's testing
-tracks. The JSON is stored in the `PLAY_SERVICE_ACCOUNT_JSON` secret, and the
-`r0adkll/upload-google-play` action uses it to call the Play API.
+To publish, GitHub has to authenticate with the Play API without using a person's Google account. The
+identity the API sees is a **service account**: a "robot account" in Google Cloud. The most common approach
+would be to create a JSON key for it and store it as a secret, but **we use no key**: a key never expires
+and, if leaked, grants access until someone revokes it. Google recommends avoiding keys whenever possible.
 
-We use this action instead of **fastlane**, another popular mobile deploy tool, because it only does the
-upload, needs no Ruby install and fits in a few lines of YAML.
+We use **Workload Identity Federation (WIF)**, where GitHub trades a temporary "badge" for a Google token
+that is temporary too:
+
+```
+ GitHub Actions                          Google Cloud (ci-cd-management project)
+ ──────────────                          ───────────────────────────────────────
+ 1. the job, in the play-internal
+    environment, asks GitHub for an
+    OIDC token: "I am the repo
+    monamienet/monamie-app,
+    environment play-internal"   ──────► 2. the "github" provider checks: was the
+                                            token signed by GitHub? does it come
+                                            from the organization with ID 336690459?
+                                         3. does the wlif-monamie-app-play service
+                                            account accept this subject?
+ 4. gets an access token for the ◄────── yes: returns a token valid for ~1 hour
+    service account
+ 5. calls the Play API with it   ──────► Play Console: was this account invited,
+                                         and can it release to the app's testing tracks?
+```
+
+| Term | What it is | In this project |
+| :--- | :--- | :--- |
+| **OIDC token** | A "badge" signed by GitHub describing the job: repository, branch, environment. The job can only request it with the `id-token: write` permission. | issued on every run |
+| **Workload identity pool** | Groups the external (non-Google) identities accepted in the project. | `github-actions-pool` |
+| **Provider** | States which issuer the pool trusts and which tokens it accepts, through an *attribute condition*. | `github`: only tokens from the `monamienet` organization |
+| **Subject** | The token field that identifies the job. For a job with an environment, it looks like `repo:<org>/<repo>:environment:<name>`. | `repo:monamienet/monamie-app:environment:play-internal` |
+| **Impersonation** | Temporarily taking on a service account's identity. Who may do it is defined by the `roles/iam.workloadIdentityUser` role on the service account itself. | only the subject above |
+| **Service account** | The identity the Play API sees. Its permissions live in the Play Console, not in Google Cloud. | `wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com` |
+
+In the workflow, this means two changes: `permissions: id-token: write` on the job and the
+`google-github-actions/auth` step. That step writes a temporary credential file, and its path
+(`steps.auth.outputs.credentials_file_path`) is passed to the upload action.
+
+### Three layers decide who can publish
+
+1. **Provider:** only accepts tokens from the `monamienet` organization. The condition uses the numeric ID
+   (`336690459`), not the name, because a deleted organization's name can be registered by someone else,
+   while the ID is never reused.
+2. **Service account permission:** only the subject `repo:monamienet/monamie-app:environment:play-internal`
+   can impersonate it. Other repositories in the organization, or jobs without that environment, are refused.
+3. **`play-internal` environment:** GitHub only lets jobs from the `main` branch use this environment.
+
+The provider ID and the service account email are written in the workflow itself, and that is fine:
+without an OIDC token issued by GitHub for this repository and environment, they are useless.
+
+### Why a dedicated service account
+
+`wlif-monamie-app-play` exists only for this pipeline and has no Google Cloud roles. Its only permission
+is the Play Console one to release to testing tracks. This follows Google's official recommendations:
+
+- [Best practices for using service accounts in deployment pipelines](https://docs.cloud.google.com/iam/docs/best-practices-for-using-service-accounts-in-deployment-pipelines):
+  *"Use dedicated service accounts per deployment pipeline"*, keeping a 1:1 relationship between pipelines
+  and service accounts, and *"Use Workload Identity Federation whenever possible"*.
+- [Best practices for using service accounts](https://docs.cloud.google.com/iam/docs/best-practices-service-accounts):
+  *"Create single-purpose service accounts"*. Sharing an account across applications makes it unclear
+  whether it can be decommissioned, lets its permissions grow, and makes audit logs ambiguous. The `wlif-`
+  prefix follows the same guide's naming convention for accounts used by Workload Identity Federation.
+- [Best practices for using Workload Identity Federation](https://docs.cloud.google.com/iam/docs/best-practices-for-using-workload-identity-federation):
+  use an attribute condition with multi-tenant providers such as GitHub, and attributes that cannot be reused.
+
+### Why this upload action
+
+We use `r0adkll/upload-google-play` instead of **fastlane**, another popular mobile deploy tool, because it
+only does the upload, needs no Ruby install and accepts Workload Identity Federation credentials.

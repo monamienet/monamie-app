@@ -79,42 +79,94 @@ O passo 12 (notas de versão) é opcional na faixa interna, e o workflow não o 
 
 #### Configuração única
 
-Ela é feita uma vez para a conta de desenvolvedor, mais o passo 3 para cada app novo.
+A autenticação no Google Play é feita **sem chave**, por Workload Identity Federation. A explicação de cada
+peça está em [entendendo-o-ci.md](entendendo-o-ci.md#6-como-o-github-ganha-permissão-para-publicar-no-play-sem-chave).
+Os comandos usam o `gcloud` com uma conta que possa administrar IAM no projeto `ci-cd-management`.
 
-1. **Service account (a "conta de robô" que publica):**
-   1. No [Google Cloud Console](https://console.cloud.google.com), escolha um projeto da MonAmieNet, e
-      não um projeto de cliente, já que a conta de desenvolvedor do Play é da MonAmieNet.
-   1. Em *APIs e serviços → Biblioteca*, ative a **Google Play Android Developer API**.
-   1. Em *IAM e administrador → Contas de serviço → Criar conta de serviço*, use um nome como
-      `play-publisher`. Ela não precisa de papéis no Cloud.
-   1. Na conta criada, abra *Chaves → Adicionar chave → Criar nova chave → JSON*. O arquivo é baixado.
-      Se a organização bloquear a criação de chaves (política `iam.disableServiceAccountKeyCreation`),
-      será preciso uma exceção para esse projeto.
-1. **Permissão no Play Console:** em *Usuários e permissões → Convidar novos usuários*:
-   - informe o e-mail da service account (`...@<projeto>.iam.gserviceaccount.com`);
-   - em *Permissões do app*, adicione o app e marque **apenas** a permissão de lançar para faixas de teste;
-   - envie o convite. A permissão pode levar algum tempo para valer.
-1. **Secrets no GitHub:** no repositório, abra *Settings → Environments → New environment*, crie o
-   environment `play-internal` e, em *Environment secrets → Add secret*, cadastre:
+1. **Ativar a API do Play no projeto:**
+
+    ```bash
+    gcloud services enable androidpublisher.googleapis.com --project=ci-cd-management
+    ```
+
+1. **Criar o provider do GitHub** no pool `github-actions-pool`. A condição aceita apenas tokens da
+   organização `monamienet`, identificada pelo ID numérico `336690459`, porque o ID, ao contrário do nome,
+   nunca é reutilizado:
+
+    ```bash
+    gcloud iam workload-identity-pools providers create-oidc github \
+      --project=ci-cd-management \
+      --location=global \
+      --workload-identity-pool=github-actions-pool \
+      --display-name="GitHub" \
+      --issuer-uri="https://token.actions.githubusercontent.com/" \
+      --attribute-mapping="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id" \
+      --attribute-condition="assertion.repository_owner_id=='336690459'"
+    ```
+
+    > O pool é compartilhado com outros pipelines da organização. Se o provider `github` já existir, pule
+    > este passo e confira que a condição dele restringe a organização.
+
+1. **Criar a service account dedicada** a este pipeline. Ela não recebe nenhum papel no Google Cloud:
+
+    ```bash
+    gcloud iam service-accounts create wlif-monamie-app-play \
+      --project=ci-cd-management \
+      --display-name="monamie-app Play publisher" \
+      --description="Publishes monamie-app to the Play internal track from GitHub Actions via WIF. Docs: monamienet/monamie-app docs/pt-br/publicar-teste-interno.md"
+    ```
+
+1. **Permitir que só o environment `play-internal` deste repositório assuma a service account:**
+
+    ```bash
+    gcloud iam service-accounts add-iam-policy-binding \
+      wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com \
+      --project=ci-cd-management \
+      --role=roles/iam.workloadIdentityUser \
+      --member="principal://iam.googleapis.com/projects/787253151660/locations/global/workloadIdentityPools/github-actions-pool/subject/repo:monamienet/monamie-app:environment:play-internal"
+    ```
+
+1. **Convidar a service account no Play Console:** em *Usuários e permissões → Convidar novos usuários*:
+   - informe o e-mail `wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com`;
+   - em *Permissões do app*, adicione o app e marque **apenas** *Lançar para faixas de teste*;
+   - envie o convite. Segundo o Google, mudanças de permissão podem levar até 48 horas para valer.
+
+1. **Environment e secrets no GitHub:** em *Settings → Environments → `play-internal`*:
+   - em *Deployment branches and tags*, escolha *Selected branches and tags* e adicione a `main`. **Essa regra
+     é obrigatória:** a permissão do passo 4 confia no environment, e é ela que impede outras branches de publicar;
+   - em *Environment secrets*, cadastre os secrets de assinatura:
 
     | Secret | Valor |
     | :--- | :--- |
-    | `PLAY_SERVICE_ACCOUNT_JSON` | o conteúdo inteiro do JSON baixado no passo 1 |
     | `ANDROID_KEYSTORE_B64` | a saída de `base64 -w0 <storeFile do key.properties>` |
     | `ANDROID_KEYSTORE_PASSWORD` | o `storePassword` do `key.properties` |
     | `ANDROID_KEY_PASSWORD` | o `keyPassword` do `key.properties` |
     | `ANDROID_KEY_ALIAS` | o `keyAlias` do `key.properties` |
 
-    > **Importante:** depois de cadastrar, apague o JSON da pasta de downloads. Ele dá acesso de
-    > publicação ao app e não deve ser versionado.
+    Pelo terminal, sem copiar e colar senhas, a partir da raiz do repositório:
+
+    ```bash
+    REPO=monamienet/monamie-app
+    prop() { grep "^$1=" android/key.properties | cut -d= -f2- | tr -d '\r\n'; }
+
+    gh api -X PUT repos/$REPO/environments/play-internal \
+      -F 'deployment_branch_policy[protected_branches]=false' \
+      -F 'deployment_branch_policy[custom_branch_policies]=true'
+    gh api -X POST repos/$REPO/environments/play-internal/deployment-branch-policies -f name=main
+
+    prop storePassword | gh secret set ANDROID_KEYSTORE_PASSWORD --env play-internal --repo $REPO
+    prop keyPassword   | gh secret set ANDROID_KEY_PASSWORD      --env play-internal --repo $REPO
+    prop keyAlias      | gh secret set ANDROID_KEY_ALIAS         --env play-internal --repo $REPO
+    base64 -w0 "$(prop storeFile)" | gh secret set ANDROID_KEYSTORE_B64 --env play-internal --repo $REPO
+    ```
 
 1. **Pré-requisito do Play:** a API só aceita envios depois do primeiro envio manual do app (passos 10 a 13).
 
 #### Executar e acompanhar
 
 - **Automático:** todo merge de PR na `main`.
-- **Manual:** *Actions → Deploy to Play (internal) → Run workflow*, escolhendo a branch. Isso serve para
-  testar o workflow numa branch antes do merge.
+- **Manual:** *Actions → Deploy to Play (internal) → Run workflow*, na branch `main`. Em outras branches a
+  execução para no environment, que só aceita a `main`.
 - Cada execução mostra os logs de cada passo. As versões enviadas ficam no Play Console, em *Teste interno*.
 
 > ⚠️ **Não renomeie o arquivo do workflow.** O número da execução, usado como versionCode, é contado por
@@ -126,8 +178,10 @@ Ela é feita uma vez para a conta de desenvolvedor, mais o passo 3 para cada app
 | :--- | :--- |
 | `Secret ANDROID_... is empty` | O secret não foi cadastrado no environment `play-internal`, ou foi cadastrado como secret do repositório em vez do environment. |
 | `Release signing: ...` | O `key.properties` ou a keystore estão incompletos. Confira os secrets de assinatura. |
+| `The given credential is rejected by the attribute condition` | O token não veio da organização `monamienet`. Confira a condição do provider (passo 2). |
+| `Permission 'iam.serviceAccounts.getAccessToken' denied` | Falta a permissão do passo 4, ou o job não rodou no environment `play-internal` (o subject do token muda). |
 | `Version code ... has already been used` | Já existe um bundle com esse versionCode. Normalmente isso acontece porque o arquivo do workflow foi renomeado. Aumente o offset `+ 100` no workflow. |
-| `The caller does not have permission` | A service account ainda não tem permissão no app, ou o convite não foi aceito ou ainda não propagou (passo 2 acima). |
+| `The caller does not have permission` | A service account ainda não tem permissão no app no Play Console, ou a permissão ainda não propagou (passo 5). |
 | `Only releases with status draft may be created on draft app` | O app ainda está em rascunho no Play. Conclua o primeiro lançamento manual. |
 | O app instala, mas o login Google falha | Faltam os SHAs da assinatura do Google Play no Firebase (passos 14 a 16), não é um problema do CI. |
 
