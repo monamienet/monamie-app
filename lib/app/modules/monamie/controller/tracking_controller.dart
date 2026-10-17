@@ -519,9 +519,9 @@ class TrackingController extends GetxController
         isForegroundMode: true,
         autoStart: false,
         autoStartOnBoot: false,
-        initialNotificationTitle: "UM+: Monitoramento de jornada ativo",
+        initialNotificationTitle: "Sua localização está sendo compartilhada",
         initialNotificationContent:
-            "O monitoramento está ligado. Certifique-se de desativá-lo assim que terminar suas atividades.",
+            "O compartilhamento está ligado. Para preservar sua privacidade, certifique-se de desativá-lo assim que terminar suas atividades.",
       ),
     );
   }
