@@ -115,7 +115,7 @@ Ela é feita uma vez para a conta de desenvolvedor, mais o passo 3 para cada app
 - **Automático:** todo merge de PR na `main`.
 - **Manual:** *Actions → Deploy to Play (internal) → Run workflow*, escolhendo a branch. Isso serve para
   testar o workflow numa branch antes do merge.
-- Cada execução mostra os logs de cada passo. O `.aab` enviado fica em *Artifacts* por 14 dias.
+- Cada execução mostra os logs de cada passo. As versões enviadas ficam no Play Console, em *Teste interno*.
 
 > ⚠️ **Não renomeie o arquivo do workflow.** O número da execução, usado como versionCode, é contado por
 > arquivo: renomeá-lo reinicia a contagem em 1, e o Play recusaria versionCodes repetidos.

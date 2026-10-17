@@ -24,11 +24,11 @@ No GitHub, essa ferramenta se chama **GitHub Actions**. O vocabulário:
 | **Trigger** (`on:`) | O evento que dispara o workflow. | um push na `main`, ou o clique manual em "Run workflow" |
 | **Runner** | A máquina virtual que o GitHub liga para executar o workflow. Ela começa **vazia**: não tem Flutter, Java, nem os arquivos que estão fora do git. Depois de terminar, ela é destruída. | `ubuntu-latest` (Linux) |
 | **Job** | Um grupo de passos que rodam em sequência no mesmo runner. | um único job, `deploy` |
-| **Step** | Um passo do job. Pode ser um comando de shell (`run:`) ou uma **action** (`uses:`). | 10 passos |
+| **Step** | Um passo do job. Pode ser um comando de shell (`run:`) ou uma **action** (`uses:`). | 9 passos |
 | **Action** | Um passo pronto e reutilizável, publicado por alguém, como uma "função" que você chama. | `actions/checkout` baixa o código; `subosito/flutter-action` instala o Flutter; `r0adkll/upload-google-play` envia ao Play |
 | **Secret** | Um valor sensível guardado criptografado no GitHub. O workflow lê com `${{ secrets.NOME }}`, e o GitHub mascara o valor nos logs (aparece `***`). | a keystore, as senhas dela e a credencial do Play |
 | **Environment** | Um "cofre" com nome (Settings → Environments) que agrupa secrets e pode ter regras, como exigir aprovação manual antes de rodar. | `play-internal` |
-| **Artifact** | Um arquivo gerado no runner que o GitHub guarda para download depois que o runner é destruído. | o `.aab` de cada versão enviada |
+| **Artifact** | Um arquivo gerado no runner que o GitHub guarda para download depois que o runner é destruído. | **não usamos**: o repositório é público, e qualquer pessoa logada no GitHub poderia baixar builds de teste ainda não lançados. O Play Console já guarda cada versão enviada. |
 
 ## 2. O fluxo de ponta a ponta
 
@@ -46,7 +46,7 @@ PR aberta ──► PR aprovada ──► "Merge" no GitHub
    │ 5. recria a keystore e o key.properties                           │
    │ 6. baixa dependências    7. roda os testes unitários              │
    │ 8. flutter build appbundle (assinado, versionCode novo)           │
-   │ 9. envia ao Play (faixa internal)   10. guarda o .aab (artifact)  │
+   │ 9. envia ao Play (faixa internal)                                 │
    └────────────────────────────────┬─────────────────────────────────┘
                                     ▼
          Testadores internos recebem a atualização pela Play Store
@@ -96,7 +96,7 @@ As palavras à esquerda são **fixas**, definidas pelo GitHub Actions. Os valore
 | `jobs` | Lista os jobs. Cada chave dentro dele é o **nome** de um job, à nossa escolha. | um job chamado `deploy` |
 | `runs-on` | O sistema operacional do runner. | `ubuntu-latest` |
 | `environment` | Qual Environment (cofre de secrets) o job usa. Sem isso, `secrets.X` vem vazio. | `play-internal` |
-| `steps` | A **lista** de passos, executados de cima para baixo. Cada `-` é um passo. | 10 passos |
+| `steps` | A **lista** de passos, executados de cima para baixo. Cada `-` é um passo. | 9 passos |
 | `name` (dentro de um step) | Rótulo opcional do passo nos logs. | ex.: `Limit Gradle memory` |
 | `uses` | O passo **chama uma action pronta**, no formato `dono/repositório@versão`. | ex.: `actions/setup-java@v6` |
 | `with` | Os **parâmetros** passados à action do `uses` (seção 3.3). | ex.: `java-version: '17'` |
@@ -159,7 +159,6 @@ a `main` mais nova já contém as mudanças da do meio.
 | 7 | `flutter test test/unit` | Roda os testes unitários. Se algum falhar, o deploy para aqui. Os testes de integração ficam de fora porque dependem dos emuladores do Firebase. |
 | 8 | `flutter build appbundle` | Gera o `.aab` de release, assinado com a keystore do passo 5 e com um versionCode novo (seção 5). |
 | 9 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal`, autenticando com a service account (seção 6). `status: completed` lança o release direto para os testadores. |
-| 10 | `actions/upload-artifact` | Guarda uma cópia do `.aab` por 14 dias (aba Actions → execução → Artifacts), útil para inspecionar uma versão específica. |
 
 ## 4. Como a keystore chega ao runner (por que base64)
 

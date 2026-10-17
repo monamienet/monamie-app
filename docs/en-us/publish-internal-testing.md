@@ -115,7 +115,7 @@ Do this once for the developer account, plus step 3 for each new app.
 - **Automatic:** every PR merge into `main`.
 - **Manual:** *Actions → Deploy to Play (internal) → Run workflow*, picking the branch. Use this to test
   the workflow on a branch before merging.
-- Each run shows the logs of every step. The uploaded `.aab` stays under *Artifacts* for 14 days.
+- Each run shows the logs of every step. Uploaded versions are listed in the Play Console under *Internal testing*.
 
 > ⚠️ **Do not rename the workflow file.** The run number, used as versionCode, is counted per file:
 > renaming it restarts the count at 1, and Play would refuse duplicate versionCodes.

@@ -78,9 +78,3 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: app-release-${{ github.run_number }}
-          path: build/app/outputs/bundle/release/app-release.aab
-          retention-days: 14

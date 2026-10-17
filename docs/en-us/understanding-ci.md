@@ -25,11 +25,11 @@ On GitHub, this tool is called **GitHub Actions**. Vocabulary:
 | **Trigger** (`on:`) | The event that starts the workflow. | a push to `main`, or a manual click on "Run workflow" |
 | **Runner** | The virtual machine GitHub starts to run the workflow. It starts **empty**: no Flutter, no Java, none of the files that are outside git. It is destroyed when the run ends. | `ubuntu-latest` (Linux) |
 | **Job** | A group of steps that run in sequence on the same runner. | a single job, `deploy` |
-| **Step** | One step of a job. Either a shell command (`run:`) or an **action** (`uses:`). | 10 steps |
+| **Step** | One step of a job. Either a shell command (`run:`) or an **action** (`uses:`). | 9 steps |
 | **Action** | A ready-made, reusable step published by someone, like a "function" you call. | `actions/checkout` downloads the code; `subosito/flutter-action` installs Flutter; `r0adkll/upload-google-play` uploads to Play |
 | **Secret** | A sensitive value stored encrypted on GitHub. The workflow reads it with `${{ secrets.NAME }}`, and GitHub masks it in logs (shown as `***`). | the keystore, its passwords and the Play credential |
 | **Environment** | A named "vault" (Settings → Environments) that groups secrets and can have rules, such as requiring manual approval before running. | `play-internal` |
-| **Artifact** | A file produced on the runner that GitHub keeps for download after the runner is destroyed. | the `.aab` of each uploaded version |
+| **Artifact** | A file produced on the runner that GitHub keeps for download after the runner is destroyed. | **not used**: the repository is public, so any signed-in GitHub user could download unreleased test builds. The Play Console already keeps every uploaded version. |
 
 ## 2. End-to-end flow
 
@@ -47,7 +47,7 @@ PR opened ──► PR approved ──► "Merge" on GitHub
    │ 5. restores the keystore and key.properties                       │
    │ 6. fetches dependencies  7. runs the unit tests                   │
    │ 8. flutter build appbundle (signed, new versionCode)              │
-   │ 9. uploads to Play (internal track)  10. keeps the .aab (artifact)│
+   │ 9. uploads to Play (internal track)                               │
    └────────────────────────────────┬─────────────────────────────────┘
                                     ▼
          Internal testers get the update through the Play Store
@@ -95,7 +95,7 @@ The words on the left are **fixed**, defined by GitHub Actions. The values on th
 | `jobs` | Lists the jobs. Each key inside it is a job **name** of our choosing. | one job named `deploy` |
 | `runs-on` | The runner's operating system. | `ubuntu-latest` |
 | `environment` | Which Environment (secret vault) the job uses. Without it, `secrets.X` is empty. | `play-internal` |
-| `steps` | The **list** of steps, run top to bottom. Each `-` is one step. | 10 steps |
+| `steps` | The **list** of steps, run top to bottom. Each `-` is one step. | 9 steps |
 | `name` (inside a step) | Optional step label in the logs. | e.g. `Limit Gradle memory` |
 | `uses` | The step **calls a ready-made action**, as `owner/repository@version`. | e.g. `actions/setup-java@v6` |
 | `with` | The **parameters** passed to the action in `uses` (section 3.3). | e.g. `java-version: '17'` |
@@ -157,7 +157,6 @@ middle one is dropped and only the newest runs after the first. Nothing is lost,
 | 7 | `flutter test test/unit` | Runs the unit tests. If any fails, the deploy stops here. Integration tests are skipped because they need the Firebase emulators. |
 | 8 | `flutter build appbundle` | Builds the release `.aab`, signed with the keystore from step 5 and with a new versionCode (section 5). |
 | 9 | `r0adkll/upload-google-play` | Uploads the `.aab` to the `internal` track, authenticating with the service account (section 6). `status: completed` releases it straight to testers. |
-| 10 | `actions/upload-artifact` | Keeps a copy of the `.aab` for 14 days (Actions tab → run → Artifacts), useful to inspect a specific version. |
 
 ## 4. How the keystore reaches the runner (why base64)
 
