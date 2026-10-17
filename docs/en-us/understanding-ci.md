@@ -246,7 +246,7 @@ that is temporary too:
 | Term | What it is | In this project |
 | :--- | :--- | :--- |
 | **OIDC token** | A "badge" signed by GitHub describing the job: repository, branch, environment. The job can only request it with the `id-token: write` permission. | issued on every run |
-| **Workload identity pool** | Groups the external (non-Google) identities accepted in the project. | `github-actions-pool` |
+| **Workload identity pool** | Groups the external (non-Google) identities accepted in the project. | `github-actions` |
 | **Provider** | States which issuer the pool trusts and which tokens it accepts, through an *attribute condition*. | `github`: only tokens from the `monamienet` organization |
 | **Subject** | The token field that identifies the job. For a job with an environment, it looks like `repo:<org>/<repo>:environment:<name>`. | `repo:monamienet/monamie-app:environment:play-internal` |
 | **Impersonation** | Temporarily taking on a service account's identity. Who may do it is defined by the `roles/iam.workloadIdentityUser` role on the service account itself. | only the subject above |

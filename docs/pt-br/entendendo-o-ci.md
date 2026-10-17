@@ -248,7 +248,7 @@ do Google, também temporário:
 | Termo | O que é | Neste projeto |
 | :--- | :--- | :--- |
 | **Token OIDC** | "Crachá" assinado pelo GitHub que descreve o job: repositório, branch, environment. O job só pode pedi-lo com a permissão `id-token: write`. | emitido a cada execução |
-| **Workload identity pool** | Agrupa as identidades externas (de fora do Google) aceitas no projeto. | `github-actions-pool` |
+| **Workload identity pool** | Agrupa as identidades externas (de fora do Google) aceitas no projeto. | `github-actions` |
 | **Provider** | Diz em qual emissor o pool confia e quais tokens aceita, por meio de uma *condição de atributo*. | `github`: só tokens da organização `monamienet` |
 | **Subject** | O campo do token que identifica o job. Num job com environment, ele tem a forma `repo:<org>/<repo>:environment:<nome>`. | `repo:monamienet/monamie-app:environment:play-internal` |
 | **Impersonação** | Assumir temporariamente a identidade de uma service account. Quem pode fazer isso é definido pelo papel `roles/iam.workloadIdentityUser` na própria service account. | só o subject acima |

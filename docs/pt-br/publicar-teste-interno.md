@@ -89,7 +89,18 @@ Os comandos usam o `gcloud` com uma conta que possa administrar IAM no projeto `
     gcloud services enable androidpublisher.googleapis.com --project=ci-cd-management
     ```
 
-1. **Criar o provider do GitHub** no pool `github-actions-pool`. A condição aceita apenas tokens da
+1. **Criar o workload identity pool**, que agrupa as identidades do GitHub aceitas no projeto. Ele é
+   criado uma vez e pode servir a outros pipelines da organização:
+
+    ```bash
+    gcloud iam workload-identity-pools create github-actions \
+      --project=ci-cd-management \
+      --location=global \
+      --display-name="GitHub Actions" \
+      --description="GitHub Actions workflows of the monamienet organization"
+    ```
+
+1. **Criar o provider do GitHub** no pool `github-actions`. A condição aceita apenas tokens da
    organização `monamienet`, identificada pelo ID numérico `336690459`, porque o ID, ao contrário do nome,
    nunca é reutilizado:
 
@@ -97,15 +108,15 @@ Os comandos usam o `gcloud` com uma conta que possa administrar IAM no projeto `
     gcloud iam workload-identity-pools providers create-oidc github \
       --project=ci-cd-management \
       --location=global \
-      --workload-identity-pool=github-actions-pool \
+      --workload-identity-pool=github-actions \
       --display-name="GitHub" \
       --issuer-uri="https://token.actions.githubusercontent.com/" \
       --attribute-mapping="google.subject=assertion.sub,attribute.repository_id=assertion.repository_id,attribute.repository_owner_id=assertion.repository_owner_id" \
       --attribute-condition="assertion.repository_owner_id=='336690459'"
     ```
 
-    > O pool é compartilhado com outros pipelines da organização. Se o provider `github` já existir, pule
-    > este passo e confira que a condição dele restringe a organização.
+    > Se o provider `github` já existir porque outro pipeline da organização o criou, pule este passo e
+    > confira que a condição dele restringe a organização.
 
 1. **Criar a service account dedicada** a este pipeline. Ela não recebe nenhum papel no Google Cloud:
 
@@ -123,7 +134,7 @@ Os comandos usam o `gcloud` com uma conta que possa administrar IAM no projeto `
       wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com \
       --project=ci-cd-management \
       --role=roles/iam.workloadIdentityUser \
-      --member="principal://iam.googleapis.com/projects/787253151660/locations/global/workloadIdentityPools/github-actions-pool/subject/repo:monamienet/monamie-app:environment:play-internal"
+      --member="principal://iam.googleapis.com/projects/787253151660/locations/global/workloadIdentityPools/github-actions/subject/repo:monamienet/monamie-app:environment:play-internal"
     ```
 
 1. **Convidar a service account no Play Console:** em *Usuários e permissões → Convidar novos usuários*:
@@ -133,7 +144,7 @@ Os comandos usam o `gcloud` com uma conta que possa administrar IAM no projeto `
 
 1. **Environment e secrets no GitHub:** em *Settings → Environments → `play-internal`*:
    - em *Deployment branches and tags*, escolha *Selected branches and tags* e adicione a `main`. **Essa regra
-     é obrigatória:** a permissão do passo 4 confia no environment, e é ela que impede outras branches de publicar;
+     é obrigatória:** a permissão do passo 5 confia no environment, e é ela que impede outras branches de publicar;
    - em *Environment secrets*, cadastre os secrets de assinatura:
 
     | Secret | Valor |
@@ -178,10 +189,10 @@ Os comandos usam o `gcloud` com uma conta que possa administrar IAM no projeto `
 | :--- | :--- |
 | `Secret ANDROID_... is empty` | O secret não foi cadastrado no environment `play-internal`, ou foi cadastrado como secret do repositório em vez do environment. |
 | `Release signing: ...` | O `key.properties` ou a keystore estão incompletos. Confira os secrets de assinatura. |
-| `The given credential is rejected by the attribute condition` | O token não veio da organização `monamienet`. Confira a condição do provider (passo 2). |
-| `Permission 'iam.serviceAccounts.getAccessToken' denied` | Falta a permissão do passo 4, ou o job não rodou no environment `play-internal` (o subject do token muda). |
+| `The given credential is rejected by the attribute condition` | O token não veio da organização `monamienet`. Confira a condição do provider (passo 3). |
+| `Permission 'iam.serviceAccounts.getAccessToken' denied` | Falta a permissão do passo 5, ou o job não rodou no environment `play-internal` (o subject do token muda). |
 | `Version code ... has already been used` | Já existe um bundle com esse versionCode. Normalmente isso acontece porque o arquivo do workflow foi renomeado. Aumente o offset `+ 100` no workflow. |
-| `The caller does not have permission` | A service account ainda não tem permissão no app no Play Console, ou a permissão ainda não propagou (passo 5). |
+| `The caller does not have permission` | A service account ainda não tem permissão no app no Play Console, ou a permissão ainda não propagou (passo 6). |
 | `Only releases with status draft may be created on draft app` | O app ainda está em rascunho no Play. Conclua o primeiro lançamento manual. |
 | O app instala, mas o login Google falha | Faltam os SHAs da assinatura do Google Play no Firebase (passos 14 a 16), não é um problema do CI. |
 

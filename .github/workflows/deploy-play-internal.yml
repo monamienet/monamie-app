@@ -81,7 +81,7 @@ jobs:
       - id: auth
         uses: google-github-actions/auth@v3
         with:
-          workload_identity_provider: projects/787253151660/locations/global/workloadIdentityPools/github-actions-pool/providers/github
+          workload_identity_provider: projects/787253151660/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com
 
       - uses: r0adkll/upload-google-play@v1
