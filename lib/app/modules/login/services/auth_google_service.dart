@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:monamie_app/app/config/secrets.dart';
+import 'package:monamie_app/app/config/google_config.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -33,8 +33,8 @@ class AuthGoogleService {
       await _googleSignIn.initialize(
         // clientId é obrigatório na web
         // NOTE: estou usando o mesmo id para clientId e serverClientId
-        clientId: kIsWeb ? Secrets.monamieGoogleServerWebClientId : null,
-        serverClientId: kIsWeb ? null : Secrets.monamieGoogleServerWebClientId,
+        clientId: kIsWeb ? GoogleConfig.monamieGoogleServerWebClientId : null,
+        serverClientId: kIsWeb ? null : GoogleConfig.monamieGoogleServerWebClientId,
       );
 
       debugPrint('AuthGoogleService: initialize done');

@@ -3,7 +3,7 @@ Below, nesting indicates dependency (*in* depends on *out*).
 - Create a new Firebase Project
     - Enable Firestore (***manually***)
     - Enable Google as a login provider (***manually***)
-        - Copy *web client ID* into `Secrets.monamieGoogleServerWebClientId`
+        - Copy *web client ID* into `GoogleConfig.monamieGoogleServerWebClientId` (`lib/app/config/google_config.dart`)
     - Generate sha-(1|256) fingerprints with `cd android/ && ./gradlew signingReport`
         - add fingerprints to the corresponding app in Firebase (***manually***)
             - add `google-services.json`, `GoogleService-Info.plist` and `firebase_options.dart` with `flutterfire configure --project=monamienet-<client_name> -y`

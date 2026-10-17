@@ -308,9 +308,9 @@ No repositório do app (diretório `functions/`):
 
 ### Passo 5: Ajustes no Cliente Flutter
 
-1. **Configuração de Segredos (`lib/app/config/secrets.dart`)**:
+1. **Configuração do Google (`lib/app/config/google_config.dart`, versionado — os valores são públicos)**:
    ```dart
-   class Secrets {
+   class GoogleConfig {
      static const String gdiGoogleHost = 'workspace-groups-gateway-952379262353.southamerica-east1.run.app';
      static const String gdiUserGoogleGroupsPath = '/groups';
      static const String gdiGroupMembers = '/members';
