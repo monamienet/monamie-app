@@ -26,6 +26,10 @@
 
     > **Important:** Add `key.properties` and `.jks` files to `.gitignore`.
 
+    > **Fail-fast:** without this file, or with an empty property, **every release build fails** with the
+    > message `Release signing: ...`, raised by the `validateReleaseSigning` task in `android/app/build.gradle.kts`.
+    > There is no longer a fallback to the debug key, whose bundle Play would reject. Debug builds do not need the keystore.
+
 1. Look up the SHA1 and SHA256 keys with the command `keytool -list -v -keystore <keystore_path> -alias <ALIAS> | grep -E "SHA1|SHA256"`
 
 1. Look up the `<APP_ID>` using `firebase apps:list ANDROID --project PROJECT_ID`
@@ -59,6 +63,73 @@
 
 1. Register the SHA256 key (signed by Google) on the Android app in the Firebase project with `firebase apps:android:sha:create <APP_ID> <SHA256> --project <PROJECT_ID>`
 
+
+### Automatic release (CI)
+
+The workflow [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml)
+publishes to the internal testing track on every merge into `main`. What it does, line by line, is in
+[understanding-ci.md](understanding-ci.md).
+
+With CI set up, **steps 8, 9, 11 and 13 are no longer manual**:
+- the versionCode becomes `run number + 100`, and the pubspec's `+N` is ignored on CI;
+- the build, upload and release are done by the workflow.
+
+Step 12 (release notes) is optional on the internal track, and the workflow does not fill it in. The
+one-off steps (1 to 7, 10, 14 to 16) still apply.
+
+#### One-time setup
+
+Do this once for the developer account, plus step 3 for each new app.
+
+1. **Service account (the "robot account" that publishes):**
+   1. In the [Google Cloud Console](https://console.cloud.google.com), pick a MonAmieNet project, not a
+      client project, since the Play developer account belongs to MonAmieNet.
+   1. Under *APIs & Services → Library*, enable the **Google Play Android Developer API**.
+   1. Under *IAM & Admin → Service Accounts → Create service account*, use a name such as
+      `play-publisher`. It needs no Cloud roles.
+   1. On the new account, open *Keys → Add key → Create new key → JSON*. The file is downloaded.
+      If the organization blocks key creation (policy `iam.disableServiceAccountKeyCreation`), you will
+      need an exception for that project.
+1. **Play Console permission:** under *Users and permissions → Invite new users*:
+   - enter the service account email (`...@<project>.iam.gserviceaccount.com`);
+   - under *App permissions*, add the app and check **only** the permission to release to testing tracks;
+   - send the invite. The permission may take a while to take effect.
+1. **GitHub secrets:** in the repository, open *Settings → Environments → New environment*, create the
+   `play-internal` environment and, under *Environment secrets → Add secret*, add:
+
+    | Secret | Value |
+    | :--- | :--- |
+    | `PLAY_SERVICE_ACCOUNT_JSON` | the whole content of the JSON downloaded in step 1 |
+    | `ANDROID_KEYSTORE_B64` | the output of `base64 -w0 <storeFile from key.properties>` |
+    | `ANDROID_KEYSTORE_PASSWORD` | `storePassword` from `key.properties` |
+    | `ANDROID_KEY_PASSWORD` | `keyPassword` from `key.properties` |
+    | `ANDROID_KEY_ALIAS` | `keyAlias` from `key.properties` |
+
+    > **Important:** after adding it, delete the JSON from your downloads folder. It grants publishing
+    > access to the app and must never be versioned.
+
+1. **Play prerequisite:** the API only accepts uploads after the app's first manual upload (steps 10 to 13).
+
+#### Running and monitoring
+
+- **Automatic:** every PR merge into `main`.
+- **Manual:** *Actions → Deploy to Play (internal) → Run workflow*, picking the branch. Use this to test
+  the workflow on a branch before merging.
+- Each run shows the logs of every step. The uploaded `.aab` stays under *Artifacts* for 14 days.
+
+> ⚠️ **Do not rename the workflow file.** The run number, used as versionCode, is counted per file:
+> renaming it restarts the count at 1, and Play would refuse duplicate versionCodes.
+
+#### Common problems
+
+| Message | Cause and fix |
+| :--- | :--- |
+| `Secret ANDROID_... is empty` | The secret was not added to the `play-internal` environment, or it was added as a repository secret instead of an environment secret. |
+| `Release signing: ...` | `key.properties` or the keystore is incomplete. Check the signing secrets. |
+| `Version code ... has already been used` | A bundle with that versionCode already exists. This usually happens because the workflow file was renamed. Raise the `+ 100` offset in the workflow. |
+| `The caller does not have permission` | The service account has no permission on the app yet, or the invite was not accepted or has not propagated (step 2 above). |
+| `Only releases with status draft may be created on draft app` | The app is still a draft on Play. Finish the first manual release. |
+| The app installs but Google sign-in fails | The Google Play signing SHAs are missing in Firebase (steps 14 to 16); this is not a CI problem. |
 
 ### How often each step runs
 
