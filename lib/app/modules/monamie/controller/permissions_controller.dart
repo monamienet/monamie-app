@@ -164,13 +164,13 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
     if (!await refreshBackgroundRestriction()) return;
 
     final bool userAgreed = await _showBackgroundUsageDialog(
-      "O seu aparelho está restringindo o MonAmie em segundo plano. "
-      "Assim, o rastreamento para quando você sai do aplicativo ou "
+      "O seu aparelho está restringindo o aplicativo em segundo plano. "
+      "Assim, o rastreamento é desabilitado quando você sai do aplicativo ou "
       "desliga a tela.\n\n"
       "Como ajustar:\n"
       "1. Toque em 'Prosseguir'.\n"
       "2. Ative 'Permitir o uso em segundo plano' (ou escolha 'Sem restrições').\n"
-      "3. Volte para o MonAmie.\n\n"
+      "3. Volte para o aplicativo.\n\n"
       "Se abrir a tela de informações do app, toque antes em 'Uso da "
       "bateria pelo app' (ou 'Bateria'). "
       "Se o interruptor já aparecer ativado, desative-o e ative-o novamente.",
@@ -232,8 +232,8 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
               ],
             ),
             content: const Text(
-              "O MonAmie deseja coletar dados de localização mesmo quando o aplicativo estiver fechado ou não estiver em uso.\n\n"
-              "Esses dados permitem que os supervisores visualizem sua posição em tempo real.\n\n"
+              "O app deseja coletar dados de localização mesmo quando o aplicativo estiver fechado ou não estiver em uso.\n\n"
+              "Esses dados permitem que um grupo de pessoas, determinado e gerenciado pela sua empresa, visualize sua posição em tempo real.\n\n"
               "Como ativar:\n"
               "1. Toque em 'Prosseguir'.\n"
               "2. Em Permissões > Localização.\n"
