@@ -20,6 +20,12 @@
       "headers": {
         "X-goog-user-project": "monamie-agents"
       }
+    },
+    "github": {
+      "serverUrl": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_PAT}"
+      }
     }
   }
 }
