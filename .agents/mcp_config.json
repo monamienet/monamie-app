@@ -24,7 +24,8 @@
     "github": {
       "serverUrl": "https://api.githubcopilot.com/mcp/",
       "headers": {
-        "Authorization": "Bearer ${GITHUB_PAT}"
+        "Authorization": "Bearer ${GITHUB_PAT}",
+        "X-MCP-Toolsets": "context,repos,issues,pull_requests,users,actions,projects,labels,dependabot,code_security,secret_protection,code_quality"
       }
     }
   }
