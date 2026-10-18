@@ -1,5 +1,6 @@
 # Builds a signed app bundle and publishes it to the Google Play internal
-# testing track on every push to main (i.e. every merged pull request).
+# testing track on every push to main (i.e. every merged pull request) that
+# changes an input of the Android app bundle.
 #
 # Line-by-line walkthrough: docs/pt-br/entendendo-o-ci.md
 #
@@ -10,6 +11,15 @@ name: Deploy to Play (internal)
 on:
   push:
     branches: [main]
+    # Only inputs of the Android app bundle. Add new build inputs here
+    # (e.g. l10n.yaml, fonts/, local packages) or merges will not deploy.
+    paths:
+      - 'lib/**'
+      - 'android/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/deploy-play-internal.yml'
   workflow_dispatch:
 
 # Serializes deploys: a new run waits for the one in progress instead of

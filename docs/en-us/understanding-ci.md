@@ -3,9 +3,9 @@
 This document explains how the workflow
 [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml) works,
 for readers who have never worked with CI. The workflow publishes the app to the Google Play
-**internal testing** track on every merge into `main`.
+**internal testing** track on every merge into `main` that changes the app.
 
-> **Summary to explain to someone:** on every merge into `main`, GitHub starts a clean machine, runs the
+> **Summary to explain to someone:** on every merge into `main` that changes the app, GitHub starts a clean machine, runs the
 > tests, builds the `.aab` signed with the keystore stored in the secrets and uploads it to internal
 > testing. To talk to Google Play it uses no password or key: it trades a temporary GitHub token for a
 > temporary token of a dedicated service account (Workload Identity Federation).
@@ -27,7 +27,7 @@ On GitHub, this tool is called **GitHub Actions**. Vocabulary:
 | Term | What it is | In this project |
 | :--- | :--- | :--- |
 | **Workflow** | A YAML file in `.github/workflows/` describing *when* to run and *what* to do. GitHub picks it up automatically. | `deploy-play-internal.yml` |
-| **Trigger** (`on:`) | The event that starts the workflow. | a push to `main`, or a manual click on "Run workflow" |
+| **Trigger** (`on:`) | The event that starts the workflow. | a push to `main` that changes app files, or a manual click on "Run workflow" |
 | **Runner** | The virtual machine GitHub starts to run the workflow. It starts **empty**: no Flutter, no Java, none of the files that are outside git. It is destroyed when the run ends. | `ubuntu-latest` (Linux) |
 | **Job** | A group of steps that run in sequence on the same runner. | a single job, `deploy` |
 | **Step** | One step of a job. Either a shell command (`run:`) or an **action** (`uses:`). | 10 steps |
@@ -43,6 +43,8 @@ PR opened ──► PR approved ──► "Merge" on GitHub
                                     │
                the merge creates a new commit on main = "push to main" event
                                     │
+                 did the push touch any app file? ── no ──► nothing runs
+                                    │ yes
                                     ▼
              GitHub Actions starts an empty Ubuntu runner
                                     │
@@ -66,6 +68,39 @@ run and **nothing is sent to Play**. GitHub shows a ❌ on the commit and emails
 produces a push to `main`, and that is the simplest and most reliable event to listen to. One consequence:
 a **direct** push to `main`, without a PR, also triggers the deploy. The rules in
 [AGENTS.md](../../AGENTS.md) already forbid direct pushes.
+
+### Which changes trigger the deploy
+
+Not every merge changes the app. Editing a `.md`, a skill in `.agents/`, the Cloud Functions or the iOS
+code produces an `.aab` **identical** to the previous one. Publishing it would only waste CI minutes and
+send testers an empty "update". That is why the trigger has a `paths` filter: the workflow only runs if
+the push changes at least one of these paths, which are the inputs of the Android build:
+
+| Path | Why it goes into the `.aab` |
+| :--- | :--- |
+| `lib/**` | the Dart code |
+| `android/**` | Gradle, manifest, icons, Firebase configuration |
+| `assets/**` | images declared in `pubspec.yaml` |
+| `pubspec.yaml`, `pubspec.lock` | dependencies and the asset list |
+| `.github/workflows/deploy-play-internal.yml` | the pipeline itself: if it changes, it must run to prove it still works |
+
+`**` means "any file, in any subfolder". For a PR merge, GitHub considers **all** files the PR changed:
+a PR that touches `AGENTS.md` **and** `lib/` deploys as usual.
+
+**Why list what goes in (`paths`) instead of what stays out (`paths-ignore`)?** The build inputs are few
+and rarely change. What does **not** go into the app is a long list (docs, skills, other platforms,
+Firebase backend) that grows with every new tool. A list of exclusions would need constant upkeep, and
+every omission would become a useless build.
+
+The cost of this choice is the opposite mistake. If someone adds a new build input outside the list (an
+`l10n.yaml`, a `fonts/` folder, a local package in `packages/`), changes to it alone will **not** deploy.
+In that case:
+1. add the path to the workflow's `paths` list (a comment in the file is a reminder);
+2. to publish right away, use the **Run workflow** button, which ignores the filter.
+
+Changes only to `test/` do not deploy either, since they do not change the app. One consequence: tests
+currently run only inside the deploy, so a PR that touches **only** tests is not checked by any CI. Run
+`flutter test` locally in those cases.
 
 ## 3. How to read the workflow file
 
@@ -96,7 +131,8 @@ The words on the left are **fixed**, defined by GitHub Actions. The values on th
 | `name` (top level) | Workflow name shown in the Actions tab. | `Deploy to Play (internal)` |
 | `on` | Lists the **events** that trigger the workflow. | `push` and `workflow_dispatch` |
 | `on.push.branches` | Limits the `push` event to certain branches. A push to another branch does not trigger it. | `[main]` |
-| `on.workflow_dispatch` | Adds the "Run workflow" button for manual runs. Needs no value. | empty |
+| `on.push.paths` | Limits the `push` event to pushes that change certain files. If no changed file matches the list, the workflow does not run. | the Android build inputs (section 2) |
+| `on.workflow_dispatch` | Adds the "Run workflow" button for manual runs. Needs no value and ignores the `paths` filter. | empty |
 | `concurrency` | Controls **simultaneous** runs (section 3.4). | — |
 | `jobs` | Lists the jobs. Each key inside it is a job **name** of our choosing. | one job named `deploy` |
 | `runs-on` | The runner's operating system. | `ubuntu-latest` |
@@ -215,6 +251,7 @@ the numbers below 101 for manual uploads, such as an app's first release.
 
 - The **versionName** (`1.0.0`, what users see in the store) still comes from `pubspec.yaml`. Change
   it in a PR whenever you want.
+- Pushes filtered out by `paths` (section 2) do **not** consume a number: the workflow never runs.
 - Failed runs also consume a number. This leaves "gaps" (101, 103...), which is fine: Play only
   requires the number to grow.
 - ⚠️ **Do not rename the workflow file.** The counter belongs to the file. If it is renamed, the counter
