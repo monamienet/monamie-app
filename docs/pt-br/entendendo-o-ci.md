@@ -2,9 +2,9 @@
 
 Este documento explica, para quem nunca trabalhou com CI, como funciona o workflow
 [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml).
-Ele publica o app na faixa de **teste interno** do Google Play a cada merge na `main`.
+Ele publica o app na faixa de **teste interno** do Google Play a cada merge na `main` que altera o app.
 
-> **Resumo para explicar a alguém:** a cada merge na `main`, o GitHub liga uma máquina limpa, roda os
+> **Resumo para explicar a alguém:** a cada merge na `main` que altera o app, o GitHub liga uma máquina limpa, roda os
 > testes, gera o `.aab` assinado com a keystore guardada nos secrets e o envia para o teste interno. Para
 > falar com o Google Play, ele não usa senha nem chave: troca um token temporário do GitHub por um token
 > temporário de uma service account dedicada (Workload Identity Federation).
@@ -26,7 +26,7 @@ No GitHub, essa ferramenta se chama **GitHub Actions**. O vocabulário:
 | Termo | O que é | Neste projeto |
 | :--- | :--- | :--- |
 | **Workflow** | Um arquivo YAML em `.github/workflows/` que descreve *quando* rodar e *o que* fazer. O GitHub detecta o arquivo automaticamente. | `deploy-play-internal.yml` |
-| **Trigger** (`on:`) | O evento que dispara o workflow. | um push na `main`, ou o clique manual em "Run workflow" |
+| **Trigger** (`on:`) | O evento que dispara o workflow. | um push na `main` que altera arquivos do app, ou o clique manual em "Run workflow" |
 | **Runner** | A máquina virtual que o GitHub liga para executar o workflow. Ela começa **vazia**: não tem Flutter, Java, nem os arquivos que estão fora do git. Depois de terminar, ela é destruída. | `ubuntu-latest` (Linux) |
 | **Job** | Um grupo de passos que rodam em sequência no mesmo runner. | um único job, `deploy` |
 | **Step** | Um passo do job. Pode ser um comando de shell (`run:`) ou uma **action** (`uses:`). | 10 passos |
@@ -42,6 +42,8 @@ PR aberta ──► PR aprovada ──► "Merge" no GitHub
                                     │
                o merge cria um commit novo na main = evento "push na main"
                                     │
+                 o push mexeu em algum arquivo do app? ── não ──► nada roda
+                                    │ sim
                                     ▼
              GitHub Actions liga um runner Ubuntu vazio
                                     │
@@ -66,6 +68,39 @@ fez o push.
 de uma PR sempre gera um push na `main`, e esse é o evento mais simples e confiável de escutar. Uma
 consequência: um push feito **direto** na `main`, sem PR, também dispara o deploy. As regras do
 [AGENTS.md](../../AGENTS.md) já proíbem pushes diretos.
+
+### Quais mudanças disparam o deploy
+
+Nem todo merge muda o app. Editar um `.md`, uma skill em `.agents/`, as Cloud Functions ou o código do
+iOS gera um `.aab` **idêntico** ao anterior. Publicar isso só gastaria minutos de CI e mandaria aos
+testadores uma "atualização" vazia. Por isso o trigger tem um filtro `paths`: o workflow só roda se o
+push alterar pelo menos um destes caminhos, que são as entradas do build Android:
+
+| Caminho | Por que entra no `.aab` |
+| :--- | :--- |
+| `lib/**` | o código Dart |
+| `android/**` | Gradle, manifest, ícones, configuração do Firebase |
+| `assets/**` | imagens declaradas no `pubspec.yaml` |
+| `pubspec.yaml`, `pubspec.lock` | dependências e lista de assets |
+| `.github/workflows/deploy-play-internal.yml` | o próprio pipeline: se ele muda, precisa rodar para provar que ainda funciona |
+
+O `**` significa "qualquer arquivo, em qualquer subpasta". Num merge de PR, o GitHub considera **todos**
+os arquivos que o PR mudou: um PR que mexe no `AGENTS.md` **e** em `lib/` publica normalmente.
+
+**Por que listar o que entra (`paths`) e não o que fica de fora (`paths-ignore`)?** As entradas do build
+são poucas e mudam raramente. Já o que **não** entra no app é uma lista grande (docs, skills, outras
+plataformas, backend do Firebase) e que cresce a cada ferramenta nova. Uma lista do que fica de fora
+precisaria de manutenção constante, e cada esquecimento viraria um build inútil.
+
+O custo dessa escolha é o erro oposto. Se alguém criar uma entrada nova do build fora da lista (um
+`l10n.yaml`, uma pasta `fonts/`, um pacote local em `packages/`), mudanças só nela **não** publicam.
+Nesse caso:
+1. adicione o caminho à lista `paths` do workflow (há um comentário lembrando disso no arquivo);
+2. para publicar na hora, use o botão **Run workflow**, que ignora o filtro.
+
+Mudanças só em `test/` também não publicam, porque não alteram o app. Uma consequência: hoje os testes
+só rodam dentro do deploy, então um PR que mexe **apenas** em testes não é verificado por nenhum CI.
+Rode `flutter test` localmente nesses casos.
 
 ## 3. Como ler o arquivo do workflow
 
@@ -97,7 +132,8 @@ As palavras à esquerda são **fixas**, definidas pelo GitHub Actions. Os valore
 | `name` (no topo) | Nome do workflow que aparece na aba Actions. | `Deploy to Play (internal)` |
 | `on` | Lista os **eventos** que disparam o workflow. | `push` e `workflow_dispatch` |
 | `on.push.branches` | Restringe o evento `push` a certas branches. Um push em outra branch não dispara. | `[main]` |
-| `on.workflow_dispatch` | Cria o botão "Run workflow" para disparar à mão. Não precisa de valor. | vazio |
+| `on.push.paths` | Restringe o evento `push` a pushes que alteram certos arquivos. Se nenhum arquivo alterado combinar com a lista, o workflow não roda. | as entradas do build Android (seção 2) |
+| `on.workflow_dispatch` | Cria o botão "Run workflow" para disparar à mão. Não precisa de valor e ignora o filtro `paths`. | vazio |
 | `concurrency` | Controla execuções **simultâneas** (seção 3.4). | — |
 | `jobs` | Lista os jobs. Cada chave dentro dele é o **nome** de um job, à nossa escolha. | um job chamado `deploy` |
 | `runs-on` | O sistema operacional do runner. | `ubuntu-latest` |
@@ -220,6 +256,7 @@ reserva os números abaixo de 101 para envios manuais, como o primeiro envio de 
   numa PR quando quiser.
 - Execuções que falham também consomem um número. Isso cria "buracos" (101, 103...), o que é normal:
   o Play só exige que o número cresça.
+- Pushes barrados pelo filtro `paths` (seção 2) **não** consomem número: o workflow nem chega a rodar.
 - ⚠️ **Não renomeie o arquivo do workflow.** O contador pertence ao arquivo. Se ele for renomeado, o
   contador volta a 1 e o upload falha por versionCode repetido.
 
