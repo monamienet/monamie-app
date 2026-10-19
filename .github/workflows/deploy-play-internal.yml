@@ -17,6 +17,7 @@ on:
       - 'lib/**'
       - 'android/**'
       - 'assets/**'
+      - 'partners/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - '.github/workflows/deploy-play-internal.yml'
@@ -84,7 +85,7 @@ jobs:
       - run: flutter test test/unit
 
       # versionCode = run number + 100, above the last manually uploaded one (3).
-      - run: flutter build appbundle --release --build-number=$((GITHUB_RUN_NUMBER + 100))
+      - run: flutter build appbundle --release --flavor aquariustur --build-number=$((GITHUB_RUN_NUMBER + 100))
 
       # Keyless auth: impersonates the dedicated publisher service account.
       # Setup: docs/pt-br/publicar-teste-interno.md (steps A2-A4, C9-C12)
@@ -98,6 +99,6 @@ jobs:
         with:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
           packageName: org.monamienet.aquariustur
-          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          releaseFiles: build/app/outputs/bundle/aquariusturRelease/app-aquariustur-release.aab
           track: internal
           status: completed

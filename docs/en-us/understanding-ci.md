@@ -81,6 +81,7 @@ the push changes at least one of these paths, which are the inputs of the Androi
 | `lib/**` | the Dart code |
 | `android/**` | Gradle, manifest, icons, Firebase configuration |
 | `assets/**` | images declared in `pubspec.yaml` |
+| `partners/**` | each partner's identity (name, colors), which becomes a Gradle product flavor |
 | `pubspec.yaml`, `pubspec.lock` | dependencies and the asset list |
 | `.github/workflows/deploy-play-internal.yml` | the pipeline itself: if it changes, it must run to prove it still works |
 
@@ -199,7 +200,7 @@ middle one is dropped and only the newest runs after the first. Nothing is lost,
 | 5 | `Restore release signing` | Restores the keystore and `android/key.properties`, which are not in git (section 4). First it checks that no secret is empty. |
 | 6 | `flutter pub get` | Fetches the dependencies in `pubspec.yaml`. |
 | 7 | `flutter test test/unit` | Runs the unit tests. If any fails, the deploy stops here. Integration tests are skipped because they need the Firebase emulators. |
-| 8 | `flutter build appbundle` | Builds the release `.aab`, signed with the keystore from step 5 and with a new versionCode (section 5). |
+| 8 | `flutter build appbundle` | Builds the release `.aab` of the partner chosen with `--flavor aquariustur`, signed with the keystore from step 5 and with a new versionCode (section 5). |
 | 9 | `google-github-actions/auth` | Trades GitHub's OIDC token for temporary service account credentials, with no key (section 6). |
 | 10 | `r0adkll/upload-google-play` | Uploads the `.aab` to the `internal` track with the credentials from step 9. `status: completed` releases it straight to testers. |
 
@@ -230,7 +231,7 @@ There are two safeguards:
    runs before **any** release build, on CI or on a local machine. It fails if `key.properties`, one of
    its properties or the keystore file is missing.
 
-Debug builds (`flutter run`) are not affected and work without a keystore.
+Debug builds (`flutter run --flavor aquariustur`) are not affected and work without a keystore.
 
 ### What about `google_config.dart`?
 
