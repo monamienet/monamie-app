@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 class AppColors {
   // Brand Base Constants
   static const Color brandPrimary = Color(0xFF0ABAB5); // AquariusTur Cyan/Teal
-  static const Color brandDark = Color(0xFF073B40);    // Oceanic Dark Teal
-  static const Color brandLight = Color(0xFFCCF1F0);   // Soft Aqua Accent
+  static const Color brandDark = Color(0xFF073B40); // Oceanic Dark Teal
+  static const Color brandLight = Color(0xFFCCF1F0); // Soft Aqua Accent
   static const Color brandAltDark = Color(0xFF052E32); // Deep Abyss Teal
-  static const Color brandAltMedium = Color(0xFF088F8B);// Vibrant Medium Teal
+  static const Color brandAltMedium = Color(0xFF088F8B); // Vibrant Medium Teal
 
   // Semantic Getters
   static Color get primary => brandPrimary;
@@ -17,8 +17,7 @@ class AppColors {
   static Color get secondary => brandAltMedium;
 
   // Backwards-compatible methods mapped to AquariusTur palette
-  static Color darkBlue({int alpha = 255}) =>
-      Color.fromARGB(alpha, 7, 59, 64);
+  static Color darkBlue({int alpha = 255}) => Color.fromARGB(alpha, 7, 59, 64);
 
   static Color lightBlue({int alpha = 255}) =>
       Color.fromARGB(alpha, 204, 241, 240);
@@ -37,10 +36,7 @@ class AppColors {
     Alignment end = Alignment.bottomRight,
   }) {
     return LinearGradient(
-      colors: [
-        darkBlue(),
-        Colors.black,
-      ],
+      colors: [darkBlue(), Colors.black],
       begin: begin,
       end: end,
     );
@@ -51,10 +47,7 @@ class AppColors {
     Alignment end = Alignment.bottomCenter,
   }) {
     return LinearGradient(
-      colors: [
-        mediumBlue(),
-        darkBlue(),
-      ],
+      colors: [mediumBlue(), darkBlue()],
       begin: begin,
       end: end,
     );
@@ -65,10 +58,7 @@ class AppColors {
     Alignment end = Alignment.bottomCenter,
   }) {
     return LinearGradient(
-      colors: [
-        alternativeMediumBlue(),
-        alternativeDarkBlue(),
-      ],
+      colors: [alternativeMediumBlue(), alternativeDarkBlue()],
       begin: begin,
       end: end,
     );

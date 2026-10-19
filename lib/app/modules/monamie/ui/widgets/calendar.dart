@@ -24,15 +24,20 @@ class Calendar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Column(
               children: [
-                Row(children: [
-                  IconButton(
+                Row(
+                  children: [
+                    IconButton(
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
-                      icon: const Icon(Icons.edit_calendar, color: Colors.white70, size: 18),
+                      icon: const Icon(
+                        Icons.edit_calendar,
+                        color: Colors.white70,
+                        size: 18,
+                      ),
                       onPressed: () => calendarCtrl.pickDay(context),
                     ),
-                    
+
                     if (!isToday) ...[
                       const SizedBox(width: 4),
                       TextButton(
@@ -52,11 +57,15 @@ class Calendar extends StatelessWidget {
                         ),
                       ),
                     ],
-                ]),
+                  ],
+                ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('Dia observado: ', style: TextStyle(color: Colors.white),),
+                    const Text(
+                      'Dia observado: ',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       calendarCtrl.observedDayFormatted,

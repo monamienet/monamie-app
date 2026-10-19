@@ -34,8 +34,7 @@ class MonAmieClaimsService {
       }
 
       // 2. Chamar a Cloud Function
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('syncClaims');
+      final callable = FirebaseFunctions.instance.httpsCallable('syncClaims');
       final result = await callable.call({'idToken': rawToken});
 
       // 3. Forçar refresh para incorporar os claims recém-escritos
@@ -83,9 +82,7 @@ class MonAmieClaimsService {
   static Future<bool> isObservavel() async {
     final roles = await readClaims();
     if (roles == null || roles.isEmpty) return false;
-    return roles.values.any(
-      (role) => role == 'MEMBER' || role == 'MANAGER',
-    );
+    return roles.values.any((role) => role == 'MEMBER' || role == 'MANAGER');
   }
 
   /// Garante que os custom claims estejam presentes e válidos.
@@ -104,9 +101,7 @@ class MonAmieClaimsService {
         (role) => role == 'MEMBER' || role == 'MANAGER',
       );
       if (hasObservableRole) {
-        debugPrint(
-          '[MonAmieClaimsService] Claims já válidos: $existingRoles',
-        );
+        debugPrint('[MonAmieClaimsService] Claims já válidos: $existingRoles');
         return true;
       }
     }
@@ -137,4 +132,3 @@ class MonAmieClaimsService {
     return hasObservableRole;
   }
 }
-

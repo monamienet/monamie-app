@@ -7,7 +7,7 @@ import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CallController extends GetxController {
-    Future<void> launchGoogleMeet(String email) async {
+  Future<void> launchGoogleMeet(String email) async {
     await Clipboard.setData(ClipboardData(text: email));
 
     if (Platform.isAndroid) {

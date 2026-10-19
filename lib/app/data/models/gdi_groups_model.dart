@@ -13,7 +13,13 @@ class GdiGroups {
   @HiveField(4)
   String? directMembersCount;
 
-  GdiGroups(this.gid, this.description, this.name, this.email, this.directMembersCount);
+  GdiGroups(
+    this.gid,
+    this.description,
+    this.name,
+    this.email,
+    this.directMembersCount,
+  );
 
   GdiGroups.fromJson(Map<String, dynamic> json) {
     gid = json['gid'] ?? json['id'];
@@ -29,6 +35,12 @@ class GdiGroups {
   }
 
   Map<String, dynamic> toJson() {
-    return {'gid': gid, 'descricao': description, 'name': name, 'email': email, 'directMembersCount': directMembersCount};
+    return {
+      'gid': gid,
+      'descricao': description,
+      'name': name,
+      'email': email,
+      'directMembersCount': directMembersCount,
+    };
   }
 }

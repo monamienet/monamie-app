@@ -40,8 +40,9 @@ class FakeBackgroundUsageSettingsLauncher
 
 /// Canal do permission_handler: o retorno ao app reconsulta as permissões
 /// por `checkPermissionStatus`, que precisa receber um status inteiro.
-const MethodChannel _permissionChannel =
-    MethodChannel('flutter.baseflow.com/permissions/methods');
+const MethodChannel _permissionChannel = MethodChannel(
+  'flutter.baseflow.com/permissions/methods',
+);
 
 /// Valor de `PermissionStatus.granted` no protocolo do permission_handler.
 const int _permissionGranted = 1;
@@ -97,15 +98,16 @@ void _testWidgetsWithSnackbarCleanup(
 }
 
 void main() {
-  group('PermissionsController - Aviso ao retornar das configurações de bateria',
-      () {
+  group('PermissionsController - Aviso ao retornar das configurações de bateria', () {
     setUp(() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(_permissionChannel, (call) async {
-        if (call.method == 'checkPermissionStatus') return _permissionGranted;
-        if (call.method == 'openAppSettings') return true;
-        return null;
-      });
+            if (call.method == 'checkPermissionStatus') {
+              return _permissionGranted;
+            }
+            if (call.method == 'openAppSettings') return true;
+            return null;
+          });
     });
 
     tearDown(() {
@@ -115,200 +117,216 @@ void main() {
     });
 
     _testWidgetsWithSnackbarCleanup(
-        'Happy Path: Deve exibir o snackbar "Uso em segundo plano ainda restrito" quando o usuário volta das configurações e a restrição continua',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: checker,
-        backgroundUsageSettingsLauncher:
-            FakeBackgroundUsageSettingsLauncher(result: true),
-      );
-      await _goToSettingsThroughDialog(tester, controller);
+      'Happy Path: Deve exibir o snackbar "Uso em segundo plano ainda restrito" quando o usuário volta das configurações e a restrição continua',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final checker = FakeBackgroundRestrictionChecker(result: true);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+          backgroundUsageSettingsLauncher: FakeBackgroundUsageSettingsLauncher(
+            result: true,
+          ),
+        );
+        await _goToSettingsThroughDialog(tester, controller);
 
-      // 2. Act
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await _settleReturnToApp(tester);
+        // 2. Act
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await _settleReturnToApp(tester);
 
-      // 3. Assert
-      expect(find.text(_snackbarTitle), findsOneWidget);
-      expect(Get.isSnackbarOpen, isTrue);
-      expect(controller.isBackgroundRestricted.value, isTrue);
-    });
-
-    _testWidgetsWithSnackbarCleanup(
-        'Happy Path: Deve limpar a restrição sem exibir aviso quando o usuário a remove nas configurações',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: checker,
-        backgroundUsageSettingsLauncher:
-            FakeBackgroundUsageSettingsLauncher(result: true),
-      );
-      await _goToSettingsThroughDialog(tester, controller);
-      checker.result = false; // O usuário removeu a restrição.
-
-      // 2. Act
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await _settleReturnToApp(tester);
-
-      // 3. Assert
-      expect(find.text(_snackbarTitle), findsNothing);
-      expect(Get.isSnackbarOpen, isFalse);
-      expect(controller.isBackgroundRestricted.value, isFalse);
-    });
+        // 3. Assert
+        expect(find.text(_snackbarTitle), findsOneWidget);
+        expect(Get.isSnackbarOpen, isTrue);
+        expect(controller.isBackgroundRestricted.value, isTrue);
+      },
+    );
 
     _testWidgetsWithSnackbarCleanup(
-        'Edge Case: Deve exibir o aviso apenas uma vez por ida às configurações, ignorando um segundo retorno ao app',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: checker,
-        backgroundUsageSettingsLauncher:
-            FakeBackgroundUsageSettingsLauncher(result: true),
-      );
-      await _goToSettingsThroughDialog(tester, controller);
-      // Primeiro retorno: o aviso é exibido e some sozinho após 8 s.
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await tester.pumpAndSettle();
+      'Happy Path: Deve limpar a restrição sem exibir aviso quando o usuário a remove nas configurações',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final checker = FakeBackgroundRestrictionChecker(result: true);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+          backgroundUsageSettingsLauncher: FakeBackgroundUsageSettingsLauncher(
+            result: true,
+          ),
+        );
+        await _goToSettingsThroughDialog(tester, controller);
+        checker.result = false; // O usuário removeu a restrição.
 
-      // 2. Act
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await _settleReturnToApp(tester);
+        // 2. Act
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await _settleReturnToApp(tester);
 
-      // 3. Assert
-      expect(find.text(_snackbarTitle), findsNothing);
-      expect(Get.isSnackbarOpen, isFalse);
-    });
-
-    _testWidgetsWithSnackbarCleanup(
-        'Edge Case: Deve exibir o aviso novamente quando o usuário volta às configurações por um novo "PROSSEGUIR"',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: checker,
-        backgroundUsageSettingsLauncher:
-            FakeBackgroundUsageSettingsLauncher(result: true),
-      );
-      await _goToSettingsThroughDialog(tester, controller);
-      // Primeira ida: o aviso é exibido e some sozinho após 8 s.
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await tester.pumpAndSettle();
-      await _goToSettingsThroughDialog(tester, controller);
-
-      // 2. Act
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await _settleReturnToApp(tester);
-
-      // 3. Assert
-      expect(find.text(_snackbarTitle), findsOneWidget);
-      expect(Get.isSnackbarOpen, isTrue);
-    });
+        // 3. Assert
+        expect(find.text(_snackbarTitle), findsNothing);
+        expect(Get.isSnackbarOpen, isFalse);
+        expect(controller.isBackgroundRestricted.value, isFalse);
+      },
+    );
 
     _testWidgetsWithSnackbarCleanup(
-        'Edge Case: Deve ignorar um retorno posterior em que a restrição reaparece depois de um retorno já sem restrição',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: checker,
-        backgroundUsageSettingsLauncher:
-            FakeBackgroundUsageSettingsLauncher(result: true),
-      );
-      await _goToSettingsThroughDialog(tester, controller);
-      checker.result = false; // Retorno da ida às configurações sem restrição.
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await tester.pumpAndSettle();
-      checker.result = true; // A restrição reaparece depois, fora da ida.
+      'Edge Case: Deve exibir o aviso apenas uma vez por ida às configurações, ignorando um segundo retorno ao app',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final checker = FakeBackgroundRestrictionChecker(result: true);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+          backgroundUsageSettingsLauncher: FakeBackgroundUsageSettingsLauncher(
+            result: true,
+          ),
+        );
+        await _goToSettingsThroughDialog(tester, controller);
+        // Primeiro retorno: o aviso é exibido e some sozinho após 8 s.
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await tester.pumpAndSettle();
 
-      // 2. Act
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await _settleReturnToApp(tester);
+        // 2. Act
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await _settleReturnToApp(tester);
 
-      // 3. Assert
-      expect(find.text(_snackbarTitle), findsNothing);
-      expect(Get.isSnackbarOpen, isFalse);
-      expect(controller.isBackgroundRestricted.value, isTrue);
-    });
-
-    _testWidgetsWithSnackbarCleanup(
-        'Edge Case: Deve ignorar o retorno ao app sem ida às configurações pelo controller, mesmo com a restrição ativa',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-      final launcher = FakeBackgroundUsageSettingsLauncher(result: true);
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: checker,
-        backgroundUsageSettingsLauncher: launcher,
-      );
-
-      // 2. Act
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await _settleReturnToApp(tester);
-
-      // 3. Assert
-      expect(find.text(_snackbarTitle), findsNothing);
-      expect(Get.isSnackbarOpen, isFalse);
-      expect(controller.isBackgroundRestricted.value, isTrue);
-      expect(launcher.calls, 0);
-    });
+        // 3. Assert
+        expect(find.text(_snackbarTitle), findsNothing);
+        expect(Get.isSnackbarOpen, isFalse);
+      },
+    );
 
     _testWidgetsWithSnackbarCleanup(
-        'Edge Case: Deve ignorar o retorno ao app quando o usuário escolheu "AGORA NÃO" no diálogo',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: checker,
-        backgroundUsageSettingsLauncher:
-            FakeBackgroundUsageSettingsLauncher(result: true),
-      );
-      final future = controller.openBackgroundUsageSettings();
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('AGORA NÃO'));
-      await tester.pumpAndSettle();
-      await future;
+      'Edge Case: Deve exibir o aviso novamente quando o usuário volta às configurações por um novo "PROSSEGUIR"',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final checker = FakeBackgroundRestrictionChecker(result: true);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+          backgroundUsageSettingsLauncher: FakeBackgroundUsageSettingsLauncher(
+            result: true,
+          ),
+        );
+        await _goToSettingsThroughDialog(tester, controller);
+        // Primeira ida: o aviso é exibido e some sozinho após 8 s.
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await tester.pumpAndSettle();
+        await _goToSettingsThroughDialog(tester, controller);
 
-      // 2. Act
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await _settleReturnToApp(tester);
+        // 2. Act
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await _settleReturnToApp(tester);
 
-      // 3. Assert
-      expect(find.text(_snackbarTitle), findsNothing);
-      expect(Get.isSnackbarOpen, isFalse);
-    });
+        // 3. Assert
+        expect(find.text(_snackbarTitle), findsOneWidget);
+        expect(Get.isSnackbarOpen, isTrue);
+      },
+    );
 
     _testWidgetsWithSnackbarCleanup(
-        'Sad Path: Deve ignorar o retorno ao app quando o launcher não conseguiu abrir nenhuma tela de configurações',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: checker,
-        backgroundUsageSettingsLauncher:
-            FakeBackgroundUsageSettingsLauncher(result: false),
-      );
-      await _goToSettingsThroughDialog(tester, controller);
+      'Edge Case: Deve ignorar um retorno posterior em que a restrição reaparece depois de um retorno já sem restrição',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final checker = FakeBackgroundRestrictionChecker(result: true);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+          backgroundUsageSettingsLauncher: FakeBackgroundUsageSettingsLauncher(
+            result: true,
+          ),
+        );
+        await _goToSettingsThroughDialog(tester, controller);
+        checker.result =
+            false; // Retorno da ida às configurações sem restrição.
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await tester.pumpAndSettle();
+        checker.result = true; // A restrição reaparece depois, fora da ida.
 
-      // 2. Act
-      controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-      await _settleReturnToApp(tester);
+        // 2. Act
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await _settleReturnToApp(tester);
 
-      // 3. Assert
-      expect(find.text(_snackbarTitle), findsNothing);
-      expect(Get.isSnackbarOpen, isFalse);
-      expect(controller.isBackgroundRestricted.value, isTrue);
-    });
+        // 3. Assert
+        expect(find.text(_snackbarTitle), findsNothing);
+        expect(Get.isSnackbarOpen, isFalse);
+        expect(controller.isBackgroundRestricted.value, isTrue);
+      },
+    );
+
+    _testWidgetsWithSnackbarCleanup(
+      'Edge Case: Deve ignorar o retorno ao app sem ida às configurações pelo controller, mesmo com a restrição ativa',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final checker = FakeBackgroundRestrictionChecker(result: true);
+        final launcher = FakeBackgroundUsageSettingsLauncher(result: true);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+          backgroundUsageSettingsLauncher: launcher,
+        );
+
+        // 2. Act
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await _settleReturnToApp(tester);
+
+        // 3. Assert
+        expect(find.text(_snackbarTitle), findsNothing);
+        expect(Get.isSnackbarOpen, isFalse);
+        expect(controller.isBackgroundRestricted.value, isTrue);
+        expect(launcher.calls, 0);
+      },
+    );
+
+    _testWidgetsWithSnackbarCleanup(
+      'Edge Case: Deve ignorar o retorno ao app quando o usuário escolheu "AGORA NÃO" no diálogo',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final checker = FakeBackgroundRestrictionChecker(result: true);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+          backgroundUsageSettingsLauncher: FakeBackgroundUsageSettingsLauncher(
+            result: true,
+          ),
+        );
+        final future = controller.openBackgroundUsageSettings();
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('AGORA NÃO'));
+        await tester.pumpAndSettle();
+        await future;
+
+        // 2. Act
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await _settleReturnToApp(tester);
+
+        // 3. Assert
+        expect(find.text(_snackbarTitle), findsNothing);
+        expect(Get.isSnackbarOpen, isFalse);
+      },
+    );
+
+    _testWidgetsWithSnackbarCleanup(
+      'Sad Path: Deve ignorar o retorno ao app quando o launcher não conseguiu abrir nenhuma tela de configurações',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final checker = FakeBackgroundRestrictionChecker(result: true);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+          backgroundUsageSettingsLauncher: FakeBackgroundUsageSettingsLauncher(
+            result: false,
+          ),
+        );
+        await _goToSettingsThroughDialog(tester, controller);
+
+        // 2. Act
+        controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+        await _settleReturnToApp(tester);
+
+        // 3. Assert
+        expect(find.text(_snackbarTitle), findsNothing);
+        expect(Get.isSnackbarOpen, isFalse);
+        expect(controller.isBackgroundRestricted.value, isTrue);
+      },
+    );
   });
 }

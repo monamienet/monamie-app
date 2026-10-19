@@ -11,9 +11,9 @@ class UserGoogleRepository {
     String email,
     String name,
     String uid,
-    String urlImage,
-    {String? avatarBase64}
-  ) async {
+    String urlImage, {
+    String? avatarBase64,
+  }) async {
     UserGoogleModel user = await _provider.createUserDoc(
       email,
       name,

@@ -24,17 +24,23 @@ void main() {
       expect(AppColors.lightBlue(), const Color(0xFFCCF1F0));
     });
 
-    test('Transparência/alpha deve ser respeitada nas chamadas customizadas', () {
-      final customAlphaColor = AppColors.darkBlue(alpha: 100);
-      expect(customAlphaColor.a, closeTo(100 / 255.0, 0.01));
-      expect(customAlphaColor.r, closeTo(7 / 255.0, 0.01));
-      expect(customAlphaColor.g, closeTo(59 / 255.0, 0.01));
-      expect(customAlphaColor.b, closeTo(64 / 255.0, 0.01));
-    });
+    test(
+      'Transparência/alpha deve ser respeitada nas chamadas customizadas',
+      () {
+        final customAlphaColor = AppColors.darkBlue(alpha: 100);
+        expect(customAlphaColor.a, closeTo(100 / 255.0, 0.01));
+        expect(customAlphaColor.r, closeTo(7 / 255.0, 0.01));
+        expect(customAlphaColor.g, closeTo(59 / 255.0, 0.01));
+        expect(customAlphaColor.b, closeTo(64 / 255.0, 0.01));
+      },
+    );
 
     test('Gradientes devem utilizar as cores da identidade AquariusTur', () {
       final topGradient = AppColors.appBarTopGradient();
-      expect(topGradient.colors, [AppColors.mediumBlue(), AppColors.darkBlue()]);
+      expect(topGradient.colors, [
+        AppColors.mediumBlue(),
+        AppColors.darkBlue(),
+      ]);
 
       final bottomGradient = AppColors.appBarBottomGradient();
       expect(bottomGradient.colors, [
@@ -62,47 +68,71 @@ void main() {
       expect(theme.useMaterial3, isTrue);
       expect(theme.colorScheme.primary, AppColors.primary);
       expect(theme.primaryColor, AppColors.primary);
-      expect(theme.appBarTheme.backgroundColor, AppColors.alternativeDarkBlue());
+      expect(
+        theme.appBarTheme.backgroundColor,
+        AppColors.alternativeDarkBlue(),
+      );
     });
   });
 
   group('AquariusTur Asset Integrity Tests', () {
-    test('Assets da pasta assets/aquariustur/ devem existir e não estar vazios', () {
-      final requiredAssets = [
-        'assets/aquariustur/AquariusTurLogo.svg',
-        'assets/aquariustur/AquariusTurLogo.png',
-        'assets/aquariustur/AquariusTurLogo320x132.svg',
-        'assets/aquariustur/AquariusTurLogo320x132.png',
-        'assets/aquariustur/AquariusTurSóLogo.svg',
-        'assets/aquariustur/AquariusTurSóLogo.png',
-        'assets/aquariustur/AquariusTurSóLogo64x64.png',
-      ];
+    test(
+      'Assets da pasta assets/aquariustur/ devem existir e não estar vazios',
+      () {
+        final requiredAssets = [
+          'assets/aquariustur/AquariusTurLogo.svg',
+          'assets/aquariustur/AquariusTurLogo.png',
+          'assets/aquariustur/AquariusTurLogo320x132.svg',
+          'assets/aquariustur/AquariusTurLogo320x132.png',
+          'assets/aquariustur/AquariusTurSóLogo.svg',
+          'assets/aquariustur/AquariusTurSóLogo.png',
+          'assets/aquariustur/AquariusTurSóLogo64x64.png',
+        ];
 
-      for (final path in requiredAssets) {
-        final file = File(path);
-        expect(file.existsSync(), isTrue, reason: 'Arquivo deve existir: $path');
-        expect(file.lengthSync(), greaterThan(0), reason: 'Arquivo não pode estar vazio: $path');
-      }
-    });
+        for (final path in requiredAssets) {
+          final file = File(path);
+          expect(
+            file.existsSync(),
+            isTrue,
+            reason: 'Arquivo deve existir: $path',
+          );
+          expect(
+            file.lengthSync(),
+            greaterThan(0),
+            reason: 'Arquivo não pode estar vazio: $path',
+          );
+        }
+      },
+    );
 
-    test('Native splash launch_image e app icons devem existir e ser válidos', () {
-      final nativeFiles = [
-        'android/app/src/main/res/drawable/launch_image.png',
-        'android/app/src/main/res/mipmap-hdpi/ic_launcher.png',
-        'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
-        'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png',
-        'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png',
-        'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
-        'web/favicon.png',
-        'web/icons/Icon-192.png',
-      ];
+    test(
+      'Native splash launch_image e app icons devem existir e ser válidos',
+      () {
+        final nativeFiles = [
+          'android/app/src/main/res/drawable/launch_image.png',
+          'android/app/src/main/res/mipmap-hdpi/ic_launcher.png',
+          'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
+          'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png',
+          'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png',
+          'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
+          'web/favicon.png',
+          'web/icons/Icon-192.png',
+        ];
 
-      for (final path in nativeFiles) {
-        final file = File(path);
-        expect(file.existsSync(), isTrue, reason: 'Arquivo nativo deve existir: $path');
-        expect(file.lengthSync(), greaterThan(100), reason: 'Arquivo deve conter bytes válidos: $path');
-      }
-    });
+        for (final path in nativeFiles) {
+          final file = File(path);
+          expect(
+            file.existsSync(),
+            isTrue,
+            reason: 'Arquivo nativo deve existir: $path',
+          );
+          expect(
+            file.lengthSync(),
+            greaterThan(100),
+            reason: 'Arquivo deve conter bytes válidos: $path',
+          );
+        }
+      },
+    );
   });
 }
-

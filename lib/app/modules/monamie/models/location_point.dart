@@ -23,10 +23,6 @@ class LocationPoint {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'lat': lat,
-      'lng': lng,
-      'timestamp': timestamp,
-    };
+    return {'lat': lat, 'lng': lng, 'timestamp': timestamp};
   }
 }

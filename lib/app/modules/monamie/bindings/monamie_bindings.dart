@@ -19,4 +19,3 @@ class MonamieBindings implements Bindings {
     Get.lazyPut(() => CallController());
   }
 }
-

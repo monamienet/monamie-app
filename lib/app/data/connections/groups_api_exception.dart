@@ -8,9 +8,8 @@ class GroupsApiException implements Exception {
   final String body;
 
   GroupsApiException(this.email, this.statusCode, String body)
-      : body = body.length > 200 ? '${body.substring(0, 200)}…' : body;
+    : body = body.length > 200 ? '${body.substring(0, 200)}…' : body;
 
   @override
   String toString() => 'Erro $statusCode ao consultar $email: $body';
 }
-

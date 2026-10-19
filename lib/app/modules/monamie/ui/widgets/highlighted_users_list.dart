@@ -6,7 +6,8 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 class HighlightedObservedUsersList extends StatelessWidget {
   const HighlightedObservedUsersList({super.key});
 
-  GoogleGroupsController get googleGroupsCtrl => Get.find<GoogleGroupsController>();
+  GoogleGroupsController get googleGroupsCtrl =>
+      Get.find<GoogleGroupsController>();
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +38,11 @@ class HighlightedObservedUsersList extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                     child: Row(
                       children: [
-                        const Icon(Icons.visibility, color: Colors.white70, size: 16),
+                        const Icon(
+                          Icons.visibility,
+                          color: Colors.white70,
+                          size: 16,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Trajetórias (${users.length})',
@@ -67,7 +72,9 @@ class HighlightedObservedUsersList extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  member.name.isNotEmpty ? member.name : member.email,
+                                  member.name.isNotEmpty
+                                      ? member.name
+                                      : member.email,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,

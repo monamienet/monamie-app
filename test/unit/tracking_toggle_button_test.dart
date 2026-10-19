@@ -18,8 +18,8 @@ class FakeTrackingToggleController implements TrackingToggleController {
     bool enabled = false,
     bool loading = false,
     this.onToggle,
-  })  : isTrackingEnabled = enabled.obs,
-        isTrackingLoading = loading.obs;
+  }) : isTrackingEnabled = enabled.obs,
+       isTrackingLoading = loading.obs;
 
   @override
   Future<void> toggleService() async {
@@ -33,148 +33,195 @@ class FakeTrackingToggleController implements TrackingToggleController {
 
 Widget _buildTestApp(TrackingToggleController controller) {
   return MaterialApp(
-    home: Scaffold(
-      body: TrackingToggleButton(controller: controller),
-    ),
+    home: Scaffold(body: TrackingToggleButton(controller: controller)),
   );
 }
 
 void main() {
   group('TrackingToggleButton - Testes de Estados e Feedback Visual', () {
-    testWidgets('Estado Inativo: exibe vermelho, ícone location_off e botão habilitado',
-        (WidgetTester tester) async {
-      final fakeCtrl = FakeTrackingToggleController(enabled: false, loading: false);
+    testWidgets(
+      'Estado Inativo: exibe vermelho, ícone location_off e botão habilitado',
+      (WidgetTester tester) async {
+        final fakeCtrl = FakeTrackingToggleController(
+          enabled: false,
+          loading: false,
+        );
 
-      await tester.pumpWidget(_buildTestApp(fakeCtrl));
+        await tester.pumpWidget(_buildTestApp(fakeCtrl));
 
-      final fab = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(fab.backgroundColor, Colors.red);
-      expect(fab.tooltip, 'Ativar compartilhamento de localização');
-      expect(fab.onPressed, isNotNull);
+        final fab = tester.widget<FloatingActionButton>(
+          find.byType(FloatingActionButton),
+        );
+        expect(fab.backgroundColor, Colors.red);
+        expect(fab.tooltip, 'Ativar compartilhamento de localização');
+        expect(fab.onPressed, isNotNull);
 
-      expect(find.byIcon(Icons.location_off), findsOneWidget);
-      expect(find.byIcon(Icons.location_on), findsNothing);
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(find.byIcon(Icons.location_off), findsOneWidget);
+        expect(find.byIcon(Icons.location_on), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
 
-      // Ao tocar, deve disparar o toggleService
-      await tester.tap(find.byType(FloatingActionButton));
-      await tester.pump();
-      expect(fakeCtrl.toggleCalls, 1);
-    });
+        // Ao tocar, deve disparar o toggleService
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        expect(fakeCtrl.toggleCalls, 1);
+      },
+    );
 
-    testWidgets('Estado Ativando (Loading): exibe laranja, spinner e botão desabilitado',
-        (WidgetTester tester) async {
-      final fakeCtrl = FakeTrackingToggleController(enabled: false, loading: true);
+    testWidgets(
+      'Estado Ativando (Loading): exibe laranja, spinner e botão desabilitado',
+      (WidgetTester tester) async {
+        final fakeCtrl = FakeTrackingToggleController(
+          enabled: false,
+          loading: true,
+        );
 
-      await tester.pumpWidget(_buildTestApp(fakeCtrl));
+        await tester.pumpWidget(_buildTestApp(fakeCtrl));
 
-      final fab = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(fab.backgroundColor, Colors.orange.shade800);
-      expect(fab.tooltip, 'Ativando compartilhamento de localização...');
-      expect(fab.onPressed, isNull);
+        final fab = tester.widget<FloatingActionButton>(
+          find.byType(FloatingActionButton),
+        );
+        expect(fab.backgroundColor, Colors.orange.shade800);
+        expect(fab.tooltip, 'Ativando compartilhamento de localização...');
+        expect(fab.onPressed, isNull);
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.byIcon(Icons.location_off), findsNothing);
-      expect(find.byIcon(Icons.location_on), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(find.byIcon(Icons.location_off), findsNothing);
+        expect(find.byIcon(Icons.location_on), findsNothing);
 
-      // Toque com botão desabilitado não deve incrementar chamadas
-      await tester.tap(find.byType(FloatingActionButton));
-      await tester.pump();
-      expect(fakeCtrl.toggleCalls, 0);
-    });
+        // Toque com botão desabilitado não deve incrementar chamadas
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        expect(fakeCtrl.toggleCalls, 0);
+      },
+    );
 
-    testWidgets('Estado Ativo: exibe verde, ícone location_on e botão habilitado',
-        (WidgetTester tester) async {
-      final fakeCtrl = FakeTrackingToggleController(enabled: true, loading: false);
+    testWidgets(
+      'Estado Ativo: exibe verde, ícone location_on e botão habilitado',
+      (WidgetTester tester) async {
+        final fakeCtrl = FakeTrackingToggleController(
+          enabled: true,
+          loading: false,
+        );
 
-      await tester.pumpWidget(_buildTestApp(fakeCtrl));
+        await tester.pumpWidget(_buildTestApp(fakeCtrl));
 
-      final fab = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(fab.backgroundColor, Colors.green);
-      expect(fab.tooltip, 'Desativar compartilhamento de localização');
-      expect(fab.onPressed, isNotNull);
+        final fab = tester.widget<FloatingActionButton>(
+          find.byType(FloatingActionButton),
+        );
+        expect(fab.backgroundColor, Colors.green);
+        expect(fab.tooltip, 'Desativar compartilhamento de localização');
+        expect(fab.onPressed, isNotNull);
 
-      expect(find.byIcon(Icons.location_on), findsOneWidget);
-      expect(find.byIcon(Icons.location_off), findsNothing);
-      expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(find.byIcon(Icons.location_on), findsOneWidget);
+        expect(find.byIcon(Icons.location_off), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
 
-      // Ao tocar, dispara toggleService
-      await tester.tap(find.byType(FloatingActionButton));
-      await tester.pump();
-      expect(fakeCtrl.toggleCalls, 1);
-    });
+        // Ao tocar, dispara toggleService
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
+        expect(fakeCtrl.toggleCalls, 1);
+      },
+    );
 
-    testWidgets('Estado Desativando (Loading): exibe laranja, spinner e tooltip correto',
-        (WidgetTester tester) async {
-      final fakeCtrl = FakeTrackingToggleController(enabled: true, loading: true);
+    testWidgets(
+      'Estado Desativando (Loading): exibe laranja, spinner e tooltip correto',
+      (WidgetTester tester) async {
+        final fakeCtrl = FakeTrackingToggleController(
+          enabled: true,
+          loading: true,
+        );
 
-      await tester.pumpWidget(_buildTestApp(fakeCtrl));
+        await tester.pumpWidget(_buildTestApp(fakeCtrl));
 
-      final fab = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(fab.backgroundColor, Colors.orange.shade800);
-      expect(fab.tooltip, 'Desativando compartilhamento de localização...');
-      expect(fab.onPressed, isNull);
+        final fab = tester.widget<FloatingActionButton>(
+          find.byType(FloatingActionButton),
+        );
+        expect(fab.backgroundColor, Colors.orange.shade800);
+        expect(fab.tooltip, 'Desativando compartilhamento de localização...');
+        expect(fab.onPressed, isNull);
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    });
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      },
+    );
 
-    testWidgets('Transição Reativa Completa: Vermelho -> Laranja (Loading) -> Verde (Ativo)',
-        (WidgetTester tester) async {
-      final fakeCtrl = FakeTrackingToggleController(enabled: false, loading: false);
+    testWidgets(
+      'Transição Reativa Completa: Vermelho -> Laranja (Loading) -> Verde (Ativo)',
+      (WidgetTester tester) async {
+        final fakeCtrl = FakeTrackingToggleController(
+          enabled: false,
+          loading: false,
+        );
 
-      await tester.pumpWidget(_buildTestApp(fakeCtrl));
+        await tester.pumpWidget(_buildTestApp(fakeCtrl));
 
-      // 1. Inicial: Vermelho e desligado
-      var fab = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(fab.backgroundColor, Colors.red);
-      expect(find.byIcon(Icons.location_off), findsOneWidget);
+        // 1. Inicial: Vermelho e desligado
+        var fab = tester.widget<FloatingActionButton>(
+          find.byType(FloatingActionButton),
+        );
+        expect(fab.backgroundColor, Colors.red);
+        expect(find.byIcon(Icons.location_off), findsOneWidget);
 
-      // 2. Usuário clica: entra em estado de carregamento
-      fakeCtrl.isTrackingLoading.value = true;
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250)); // Animação do AnimatedSwitcher
+        // 2. Usuário clica: entra em estado de carregamento
+        fakeCtrl.isTrackingLoading.value = true;
+        await tester.pump();
+        await tester.pump(
+          const Duration(milliseconds: 250),
+        ); // Animação do AnimatedSwitcher
 
-      fab = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(fab.backgroundColor, Colors.orange.shade800);
-      expect(fab.onPressed, isNull);
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        fab = tester.widget<FloatingActionButton>(
+          find.byType(FloatingActionButton),
+        );
+        expect(fab.backgroundColor, Colors.orange.shade800);
+        expect(fab.onPressed, isNull);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-      // 3. Processo conclui com sucesso: torna-se ativo
-      fakeCtrl.isTrackingEnabled.value = true;
-      fakeCtrl.isTrackingLoading.value = false;
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250)); // Animação do AnimatedSwitcher
+        // 3. Processo conclui com sucesso: torna-se ativo
+        fakeCtrl.isTrackingEnabled.value = true;
+        fakeCtrl.isTrackingLoading.value = false;
+        await tester.pump();
+        await tester.pump(
+          const Duration(milliseconds: 250),
+        ); // Animação do AnimatedSwitcher
 
-      fab = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(fab.backgroundColor, Colors.green);
-      expect(fab.onPressed, isNotNull);
-      expect(find.byIcon(Icons.location_on), findsOneWidget);
-      expect(find.byType(CircularProgressIndicator), findsNothing);
-    });
+        fab = tester.widget<FloatingActionButton>(
+          find.byType(FloatingActionButton),
+        );
+        expect(fab.backgroundColor, Colors.green);
+        expect(fab.onPressed, isNotNull);
+        expect(find.byIcon(Icons.location_on), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+      },
+    );
 
-    testWidgets('Transição com Falha/Cancelamento: Vermelho -> Laranja (Loading) -> Vermelho',
-        (WidgetTester tester) async {
-      final fakeCtrl = FakeTrackingToggleController(enabled: false, loading: false);
+    testWidgets(
+      'Transição com Falha/Cancelamento: Vermelho -> Laranja (Loading) -> Vermelho',
+      (WidgetTester tester) async {
+        final fakeCtrl = FakeTrackingToggleController(
+          enabled: false,
+          loading: false,
+        );
 
-      await tester.pumpWidget(_buildTestApp(fakeCtrl));
+        await tester.pumpWidget(_buildTestApp(fakeCtrl));
 
-      // 1. Inicia carregamento
-      fakeCtrl.isTrackingLoading.value = true;
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
+        // 1. Inicia carregamento
+        fakeCtrl.isTrackingLoading.value = true;
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-      // 2. Operação falha ou é cancelada pelo usuário
-      fakeCtrl.isTrackingLoading.value = false;
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
+        // 2. Operação falha ou é cancelada pelo usuário
+        fakeCtrl.isTrackingLoading.value = false;
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
 
-      final fab = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(fab.backgroundColor, Colors.red);
-      expect(fab.onPressed, isNotNull);
-      expect(find.byIcon(Icons.location_off), findsOneWidget);
-    });
+        final fab = tester.widget<FloatingActionButton>(
+          find.byType(FloatingActionButton),
+        );
+        expect(fab.backgroundColor, Colors.red);
+        expect(fab.onPressed, isNotNull);
+        expect(find.byIcon(Icons.location_off), findsOneWidget);
+      },
+    );
   });
 }
-

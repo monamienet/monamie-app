@@ -68,10 +68,9 @@ class UserController extends GetxController {
         // coordenadas de observáveis (MEMBER/MANAGER).
         final isObservavel = await _isObservavelFromClaims();
         if (isObservavel) {
-          await FirebaseProvider().setUser(UserModel(
-            email: email,
-            nome: _googleName,
-          ));
+          await FirebaseProvider().setUser(
+            UserModel(email: email, nome: _googleName),
+          );
           _user.value = await _initializeUser();
         } else {
           debugPrint(
@@ -107,13 +106,11 @@ class UserController extends GetxController {
     );
 
     // Retorna true se for manager ou member (owner não conta como trackable)
-    return member?.role == GoogleGroupRole.manager
-      || member?.role == GoogleGroupRole.member;
+    return member?.role == GoogleGroupRole.manager ||
+        member?.role == GoogleGroupRole.member;
   }
 
   String getUserName() {
-    return user!.nome ??
-        _googleName ??
-        "Nome não informado";
+    return user!.nome ?? _googleName ?? "Nome não informado";
   }
 }

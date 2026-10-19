@@ -64,8 +64,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '67044253283',
     projectId: 'monamienet-aquariustur',
     storageBucket: 'monamienet-aquariustur.firebasestorage.app',
-    androidClientId: '67044253283-j1duavtdhvr4bjgnt6f5d72lfh90priv.apps.googleusercontent.com',
-    iosClientId: '67044253283-tcuftkgs0r84g0a1fue7gvqarg20fjse.apps.googleusercontent.com',
+    androidClientId:
+        '67044253283-j1duavtdhvr4bjgnt6f5d72lfh90priv.apps.googleusercontent.com',
+    iosClientId:
+        '67044253283-tcuftkgs0r84g0a1fue7gvqarg20fjse.apps.googleusercontent.com',
     iosBundleId: 'org.monamienet.aquariustur',
   );
 
@@ -75,8 +77,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '67044253283',
     projectId: 'monamienet-aquariustur',
     storageBucket: 'monamienet-aquariustur.firebasestorage.app',
-    androidClientId: '67044253283-j1duavtdhvr4bjgnt6f5d72lfh90priv.apps.googleusercontent.com',
-    iosClientId: '67044253283-djpv2blu3r62plrhuqikg86fc5ce4qcn.apps.googleusercontent.com',
+    androidClientId:
+        '67044253283-j1duavtdhvr4bjgnt6f5d72lfh90priv.apps.googleusercontent.com',
+    iosClientId:
+        '67044253283-djpv2blu3r62plrhuqikg86fc5ce4qcn.apps.googleusercontent.com',
     iosBundleId: 'com.example.geotrackingStandalone',
   );
 
@@ -89,5 +93,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'monamienet-aquariustur.firebasestorage.app',
     measurementId: 'G-0YJG5LG89G',
   );
-
 }

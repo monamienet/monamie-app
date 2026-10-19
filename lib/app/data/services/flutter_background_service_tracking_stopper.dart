@@ -16,9 +16,10 @@ class FlutterBackgroundServiceTrackingStopper
     Future<void> Function(String email)? markUntracked,
     this.timeout = const Duration(seconds: 5),
     this.pollInterval = const Duration(milliseconds: 250),
-  })  : _injectedService = service,
-        _markUntracked = markUntracked ??
-            ((email) => FirebaseProvider().updateIsTracked(email, false));
+  }) : _injectedService = service,
+       _markUntracked =
+           markUntracked ??
+           ((email) => FirebaseProvider().updateIsTracked(email, false));
 
   final FlutterBackgroundService? _injectedService;
   final Future<void> Function(String email) _markUntracked;
@@ -55,7 +56,9 @@ class FlutterBackgroundServiceTrackingStopper
       try {
         await _markUntracked(email).timeout(timeout);
       } catch (e) {
-        debugPrint('[BackgroundTrackingStopper] Erro ao desativar isTracked: $e');
+        debugPrint(
+          '[BackgroundTrackingStopper] Erro ao desativar isTracked: $e',
+        );
       }
     }
 

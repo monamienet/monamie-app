@@ -39,20 +39,18 @@ class LoginController extends GetxController {
   }
 
   Future<bool> hasActiveGoogleBond() async {
-    try{
-    final currentUser = fb.FirebaseAuth.instanceFor(
-      app: Firebase.app(),
-    ).currentUser;
-    final storedUser = await userGoogleRepository.getUserGoogleModel();
-    final hasStoredUser = storedUser != null && storedUser.email.isNotEmpty;
-    return currentUser != null && hasStoredUser;
-    }
-    catch(e){
+    try {
+      final currentUser = fb.FirebaseAuth.instanceFor(
+        app: Firebase.app(),
+      ).currentUser;
+      final storedUser = await userGoogleRepository.getUserGoogleModel();
+      final hasStoredUser = storedUser != null && storedUser.email.isNotEmpty;
+      return currentUser != null && hasStoredUser;
+    } catch (e) {
       debugPrint("Error checking Google bond: $e");
       return false;
+    }
   }
-  }
-
 
   void loginGoogle() {
     _loginGoogleController.loginGoogle();

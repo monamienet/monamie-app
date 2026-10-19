@@ -7,19 +7,26 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 class GroupSelector extends StatelessWidget {
   const GroupSelector({super.key});
 
-  GoogleGroupsController get googleGroupsController => Get.find<GoogleGroupsController>();
+  GoogleGroupsController get googleGroupsController =>
+      Get.find<GoogleGroupsController>();
 
   Widget _group(GoogleGroupModel group) {
     return ListTile(
       title: Text(
         group.name,
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 4),
-          Text(group.email, style: TextStyle(color: Colors.white, fontSize: 13)),
+          Text(
+            group.email,
+            style: TextStyle(color: Colors.white, fontSize: 13),
+          ),
           if (group.description.isNotEmpty) ...[
             const SizedBox(height: 2),
             Text(
@@ -27,15 +34,15 @@ class GroupSelector extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(color: Colors.white60, fontSize: 12),
-            )
-          ]
+            ),
+          ],
         ],
       ),
       isThreeLine: true,
       onTap: () {
         googleGroupsController.updateObservedUsers(group);
         Get.back();
-      }
+      },
     );
   }
 
@@ -52,7 +59,14 @@ class GroupSelector extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Grupos', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 24)),
+                Text(
+                  'Grupos',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.refresh, color: Colors.white),
                   onPressed: () {
@@ -68,7 +82,9 @@ class GroupSelector extends StatelessWidget {
             if (googleGroupsController.isLoading.value) {
               return const Padding(
                 padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator(color: Colors.white)),
+                child: Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
               );
             }
 
@@ -78,11 +94,18 @@ class GroupSelector extends StatelessWidget {
                 child: Center(
                   child: Column(
                     children: [
-                      const Text('Nenhum grupo disponível', style: TextStyle(color: Colors.white)),
+                      const Text(
+                        'Nenhum grupo disponível',
+                        style: TextStyle(color: Colors.white),
+                      ),
                       SizedBox(height: 6),
-                      Text('${googleGroupsController.loadError}', style: TextStyle(color: Colors.white60))
+                      Text(
+                        '${googleGroupsController.loadError}',
+                        style: TextStyle(color: Colors.white60),
+                      ),
                     ],
-                  )),
+                  ),
+                ),
               );
             }
 
@@ -97,4 +120,3 @@ class GroupSelector extends StatelessWidget {
     );
   }
 }
-

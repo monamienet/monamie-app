@@ -5,7 +5,12 @@ void main() {
   group('GdiGroups.fromJson - Suíte de Testes Unitários', () {
     test('Happy Path: deve ler description e id como gid', () {
       // 1. Arrange
-      final json = {'id': 'g1', 'description': 'desc', 'name': 'N', 'email': 'e@x.com'};
+      final json = {
+        'id': 'g1',
+        'description': 'desc',
+        'name': 'N',
+        'email': 'e@x.com',
+      };
 
       // 2. Act
       final group = GdiGroups.fromJson(json);
@@ -17,16 +22,19 @@ void main() {
       expect(group.email, 'e@x.com');
     });
 
-    test('Edge Case: deve usar descricao legada quando description ausente', () {
-      // 1. Arrange
-      final json = {'id': 'g1', 'descricao': 'legado'};
+    test(
+      'Edge Case: deve usar descricao legada quando description ausente',
+      () {
+        // 1. Arrange
+        final json = {'id': 'g1', 'descricao': 'legado'};
 
-      // 2. Act
-      final group = GdiGroups.fromJson(json);
+        // 2. Act
+        final group = GdiGroups.fromJson(json);
 
-      // 3. Assert
-      expect(group.description, 'legado');
-    });
+        // 3. Assert
+        expect(group.description, 'legado');
+      },
+    );
 
     test('Edge Case: description tem prioridade sobre descricao', () {
       // 1. Arrange
@@ -52,4 +60,3 @@ void main() {
     });
   });
 }
-

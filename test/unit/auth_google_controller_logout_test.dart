@@ -124,8 +124,7 @@ class _FakeUserGoogleRepository implements UserGoogleRepository {
     String uid,
     String urlImage, {
     String? avatarBase64,
-  }) =>
-      throw UnimplementedError('createUserDoc não é usado no logout');
+  }) => throw UnimplementedError('createUserDoc não é usado no logout');
 
   @override
   Future<String> saveUserGoogleModel(UserGoogleModel user) =>
@@ -166,7 +165,11 @@ class _Harness {
     Completer<bool>? pendingStop,
     Object? logoutError,
   }) {
-    stopper = _FakeTrackingStopper(log, result: stopResult, pending: pendingStop);
+    stopper = _FakeTrackingStopper(
+      log,
+      result: stopResult,
+      pending: pendingStop,
+    );
     authService = _FakeAuthGoogleService(log, logoutError: logoutError);
     userRepository = _FakeUserGoogleRepository(
       log,
@@ -201,11 +204,8 @@ class _LogoutRun {
   final List<String> snackbarTitles;
 }
 
-UserGoogleModel _storedUser() => UserGoogleModel(
-      id: 'uid-123',
-      name: 'Ana Souza',
-      email: _kStoredEmail,
-    );
+UserGoogleModel _storedUser() =>
+    UserGoogleModel(id: 'uid-123', name: 'Ana Souza', email: _kStoredEmail);
 
 /// Monta o app com a rota inicial fictícia e um stub de `Routes.LOGIN`, e
 /// limpa do log os pushes feitos durante a montagem.
@@ -281,80 +281,87 @@ void main() {
     // Happy Path
     // ---------------------------------------------------------------------
     testWidgets(
-        'Happy Path: Deve parar o rastreamento informando o e-mail do usuário salvo',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: _storedUser());
-      await _pumpApp(tester, harness);
+      'Happy Path: Deve parar o rastreamento informando o e-mail do usuário salvo',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser());
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      await _runLogout(tester, harness.controller);
+        // 2. Act
+        await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(harness.stopper.emails, [_kStoredEmail]);
-    });
-
-    testWidgets(
-        'Happy Path: Deve parar o rastreamento antes do signOut, depois limpar o usuário salvo e então navegar para o login',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: _storedUser());
-      await _pumpApp(tester, harness);
-
-      // 2. Act
-      await _runLogout(tester, harness.controller);
-
-      // 3. Assert
-      expect(harness.log, [
-        _kLogStop,
-        _kLogSignOut,
-        _kLogDeleteUser,
-        _kLogNavigateLogin,
-      ]);
-    });
-
-    testWidgets('Happy Path: Deve navegar para Routes.LOGIN ao concluir o logout',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: _storedUser());
-      await _pumpApp(tester, harness);
-
-      // 2. Act
-      await _runLogout(tester, harness.controller);
-
-      // 3. Assert
-      expect(Get.currentRoute, Routes.LOGIN);
-      expect(find.text(_kLoginPlaceholder), findsOneWidget);
-      expect(find.text(_kHomePlaceholder), findsNothing);
-    });
+        // 3. Assert
+        expect(harness.stopper.emails, [_kStoredEmail]);
+      },
+    );
 
     testWidgets(
-        'Happy Path: Deve concluir sem exceção e sem snackbar quando o rastreamento parar normalmente',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: _storedUser());
-      await _pumpApp(tester, harness);
+      'Happy Path: Deve parar o rastreamento antes do signOut, depois limpar o usuário salvo e então navegar para o login',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser());
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      final run = await _runLogout(tester, harness.controller);
+        // 2. Act
+        await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(run.error, isNull);
-      expect(run.snackbarTitles, isEmpty);
-    });
+        // 3. Assert
+        expect(harness.log, [
+          _kLogStop,
+          _kLogSignOut,
+          _kLogDeleteUser,
+          _kLogNavigateLogin,
+        ]);
+      },
+    );
 
-    testWidgets('Happy Path: Deve finalizar isLoggingOut como false após o logout',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: _storedUser());
-      await _pumpApp(tester, harness);
+    testWidgets(
+      'Happy Path: Deve navegar para Routes.LOGIN ao concluir o logout',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser());
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      await _runLogout(tester, harness.controller);
+        // 2. Act
+        await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(harness.controller.isLoggingOut.value, isFalse);
-    });
+        // 3. Assert
+        expect(Get.currentRoute, Routes.LOGIN);
+        expect(find.text(_kLoginPlaceholder), findsOneWidget);
+        expect(find.text(_kHomePlaceholder), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Happy Path: Deve concluir sem exceção e sem snackbar quando o rastreamento parar normalmente',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser());
+        await _pumpApp(tester, harness);
+
+        // 2. Act
+        final run = await _runLogout(tester, harness.controller);
+
+        // 3. Assert
+        expect(run.error, isNull);
+        expect(run.snackbarTitles, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'Happy Path: Deve finalizar isLoggingOut como false após o logout',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser());
+        await _pumpApp(tester, harness);
+
+        // 2. Act
+        await _runLogout(tester, harness.controller);
+
+        // 3. Assert
+        expect(harness.controller.isLoggingOut.value, isFalse);
+      },
+    );
 
     // ---------------------------------------------------------------------
     // Edge Case
@@ -375,289 +382,305 @@ void main() {
     });
 
     testWidgets(
-        'Edge Case: Deve chamar stop com e-mail nulo quando não houver usuário salvo',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: null);
-      await _pumpApp(tester, harness);
+      'Edge Case: Deve chamar stop com e-mail nulo quando não houver usuário salvo',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: null);
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      await _runLogout(tester, harness.controller);
+        // 2. Act
+        await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(harness.stopper.emails, [null]);
-    });
-
-    testWidgets(
-        'Edge Case: Deve prosseguir com signOut, limpeza e navegação quando não houver usuário salvo',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: null);
-      await _pumpApp(tester, harness);
-
-      // 2. Act
-      await _runLogout(tester, harness.controller);
-
-      // 3. Assert
-      expect(harness.log, [
-        _kLogStop,
-        _kLogSignOut,
-        _kLogDeleteUser,
-        _kLogNavigateLogin,
-      ]);
-    });
+        // 3. Assert
+        expect(harness.stopper.emails, [null]);
+      },
+    );
 
     testWidgets(
-        'Edge Case: Deve manter isLoggingOut true enquanto a parada do rastreamento estiver em andamento',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        storedUser: _storedUser(),
-        pendingStop: Completer<bool>(),
-      );
-      await _pumpApp(tester, harness);
+      'Edge Case: Deve prosseguir com signOut, limpeza e navegação quando não houver usuário salvo',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: null);
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      unawaited(harness.controller.logout());
-      await tester.pump();
+        // 2. Act
+        await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(harness.controller.isLoggingOut.value, isTrue);
-    });
-
-    testWidgets(
-        'Edge Case: Não deve fazer signOut nem limpar o usuário enquanto a parada do rastreamento não concluir',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        storedUser: _storedUser(),
-        pendingStop: Completer<bool>(),
-      );
-      await _pumpApp(tester, harness);
-
-      // 2. Act
-      unawaited(harness.controller.logout());
-      await tester.pump();
-
-      // 3. Assert
-      expect(harness.authService.logoutCalls, 0);
-      expect(harness.userRepository.deleteCalls, 0);
-    });
+        // 3. Assert
+        expect(harness.log, [
+          _kLogStop,
+          _kLogSignOut,
+          _kLogDeleteUser,
+          _kLogNavigateLogin,
+        ]);
+      },
+    );
 
     testWidgets(
-        'Edge Case: Deve ignorar um segundo logout enquanto o primeiro estiver em andamento',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        storedUser: _storedUser(),
-        pendingStop: Completer<bool>(),
-      );
-      await _pumpApp(tester, harness);
-      unawaited(harness.controller.logout());
-      await tester.pump();
+      'Edge Case: Deve manter isLoggingOut true enquanto a parada do rastreamento estiver em andamento',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          storedUser: _storedUser(),
+          pendingStop: Completer<bool>(),
+        );
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      await harness.controller.logout();
+        // 2. Act
+        unawaited(harness.controller.logout());
+        await tester.pump();
 
-      // 3. Assert
-      expect(harness.stopper.calls, 1);
-    });
+        // 3. Assert
+        expect(harness.controller.isLoggingOut.value, isTrue);
+      },
+    );
 
     testWidgets(
-        'Edge Case: Deve executar stop e logoutGoogle uma única vez quando logout for chamado duas vezes em sequência',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: _storedUser());
-      await _pumpApp(tester, harness);
+      'Edge Case: Não deve fazer signOut nem limpar o usuário enquanto a parada do rastreamento não concluir',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          storedUser: _storedUser(),
+          pendingStop: Completer<bool>(),
+        );
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      await Future.wait([
-        harness.controller.logout(),
-        harness.controller.logout(),
-      ]);
-      await tester.pumpAndSettle();
+        // 2. Act
+        unawaited(harness.controller.logout());
+        await tester.pump();
 
-      // 3. Assert
-      expect(harness.stopper.calls, 1);
-      expect(harness.authService.logoutCalls, 1);
-    });
+        // 3. Assert
+        expect(harness.authService.logoutCalls, 0);
+        expect(harness.userRepository.deleteCalls, 0);
+      },
+    );
+
+    testWidgets(
+      'Edge Case: Deve ignorar um segundo logout enquanto o primeiro estiver em andamento',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          storedUser: _storedUser(),
+          pendingStop: Completer<bool>(),
+        );
+        await _pumpApp(tester, harness);
+        unawaited(harness.controller.logout());
+        await tester.pump();
+
+        // 2. Act
+        await harness.controller.logout();
+
+        // 3. Assert
+        expect(harness.stopper.calls, 1);
+      },
+    );
+
+    testWidgets(
+      'Edge Case: Deve executar stop e logoutGoogle uma única vez quando logout for chamado duas vezes em sequência',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser());
+        await _pumpApp(tester, harness);
+
+        // 2. Act
+        await Future.wait([
+          harness.controller.logout(),
+          harness.controller.logout(),
+        ]);
+        await tester.pumpAndSettle();
+
+        // 3. Assert
+        expect(harness.stopper.calls, 1);
+        expect(harness.authService.logoutCalls, 1);
+      },
+    );
 
     // ---------------------------------------------------------------------
     // Sad Path
     // ---------------------------------------------------------------------
     testWidgets(
-        'Sad Path: Deve chamar stop com e-mail nulo quando a leitura do usuário salvo lançar',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        getUserError: StateError('box do Hive indisponível'),
-      );
-      await _pumpApp(tester, harness);
+      'Sad Path: Deve chamar stop com e-mail nulo quando a leitura do usuário salvo lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          getUserError: StateError('box do Hive indisponível'),
+        );
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      await _runLogout(tester, harness.controller);
+        // 2. Act
+        await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(harness.stopper.emails, [null]);
-    });
-
-    testWidgets(
-        'Sad Path: Deve prosseguir com signOut, limpeza e navegação quando a leitura do usuário salvo lançar',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        getUserError: StateError('box do Hive indisponível'),
-      );
-      await _pumpApp(tester, harness);
-
-      // 2. Act
-      await _runLogout(tester, harness.controller);
-
-      // 3. Assert
-      expect(harness.log, [
-        _kLogStop,
-        _kLogSignOut,
-        _kLogDeleteUser,
-        _kLogNavigateLogin,
-      ]);
-    });
+        // 3. Assert
+        expect(harness.stopper.emails, [null]);
+      },
+    );
 
     testWidgets(
-        'Sad Path: Deve fazer signOut, limpar o usuário e navegar mesmo quando stop não confirmar a parada',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: _storedUser(), stopResult: false);
-      await _pumpApp(tester, harness);
+      'Sad Path: Deve prosseguir com signOut, limpeza e navegação quando a leitura do usuário salvo lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          getUserError: StateError('box do Hive indisponível'),
+        );
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      await _runLogout(tester, harness.controller);
+        // 2. Act
+        await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(harness.log, [
-        _kLogStop,
-        _kLogSignOut,
-        _kLogDeleteUser,
-        _kLogNavigateLogin,
-      ]);
-      expect(Get.currentRoute, Routes.LOGIN);
-    });
-
-    testWidgets(
-        'Sad Path: Deve exibir um snackbar de aviso quando stop não confirmar a parada',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(storedUser: _storedUser(), stopResult: false);
-      await _pumpApp(tester, harness);
-
-      // 2. Act
-      final run = await _runLogout(tester, harness.controller);
-
-      // 3. Assert
-      expect(run.snackbarTitles, ['Rastreamento']);
-    });
+        // 3. Assert
+        expect(harness.log, [
+          _kLogStop,
+          _kLogSignOut,
+          _kLogDeleteUser,
+          _kLogNavigateLogin,
+        ]);
+      },
+    );
 
     testWidgets(
-        'Sad Path: Não deve apagar o usuário salvo quando logoutGoogle lançar',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        storedUser: _storedUser(),
-        logoutError: Exception('falha de rede no signOut'),
-      );
-      await _pumpApp(tester, harness);
+      'Sad Path: Deve fazer signOut, limpar o usuário e navegar mesmo quando stop não confirmar a parada',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser(), stopResult: false);
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      await _runLogout(tester, harness.controller);
+        // 2. Act
+        await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(harness.userRepository.deleteCalls, 0);
-    });
-
-    testWidgets(
-        'Sad Path: Não deve propagar exceção para fora de logout quando logoutGoogle lançar',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        storedUser: _storedUser(),
-        logoutError: Exception('falha de rede no signOut'),
-      );
-      await _pumpApp(tester, harness);
-
-      // 2. Act
-      final run = await _runLogout(tester, harness.controller);
-
-      // 3. Assert
-      expect(run.error, isNull);
-    });
+        // 3. Assert
+        expect(harness.log, [
+          _kLogStop,
+          _kLogSignOut,
+          _kLogDeleteUser,
+          _kLogNavigateLogin,
+        ]);
+        expect(Get.currentRoute, Routes.LOGIN);
+      },
+    );
 
     testWidgets(
-        'Sad Path: Deve finalizar isLoggingOut como false quando logoutGoogle lançar',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        storedUser: _storedUser(),
-        logoutError: Exception('falha de rede no signOut'),
-      );
-      await _pumpApp(tester, harness);
+      'Sad Path: Deve exibir um snackbar de aviso quando stop não confirmar a parada',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser(), stopResult: false);
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      await _runLogout(tester, harness.controller);
+        // 2. Act
+        final run = await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(harness.controller.isLoggingOut.value, isFalse);
-    });
+        // 3. Assert
+        expect(run.snackbarTitles, ['Rastreamento']);
+      },
+    );
 
     testWidgets(
-        'Sad Path: Deve exibir um snackbar de erro quando logoutGoogle lançar',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        storedUser: _storedUser(),
-        logoutError: Exception('falha de rede no signOut'),
-      );
-      await _pumpApp(tester, harness);
+      'Sad Path: Não deve apagar o usuário salvo quando logoutGoogle lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          storedUser: _storedUser(),
+          logoutError: Exception('falha de rede no signOut'),
+        );
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      final run = await _runLogout(tester, harness.controller);
+        // 2. Act
+        await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(run.snackbarTitles, ['Erro ao sair']);
-    });
-
-    testWidgets(
-        'Sad Path: Deve permanecer na tela atual (sem navegar para o login) quando logoutGoogle lançar',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        storedUser: _storedUser(),
-        logoutError: Exception('falha de rede no signOut'),
-      );
-      await _pumpApp(tester, harness);
-
-      // 2. Act
-      await _runLogout(tester, harness.controller);
-
-      // 3. Assert
-      expect(Get.currentRoute, _kHomeRoute);
-      expect(find.text(_kHomePlaceholder), findsOneWidget);
-    });
+        // 3. Assert
+        expect(harness.userRepository.deleteCalls, 0);
+      },
+    );
 
     testWidgets(
-        'Sad Path: Deve finalizar isLoggingOut como false e não propagar exceção quando a limpeza do usuário salvo lançar',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      final harness = _Harness(
-        storedUser: _storedUser(),
-        deleteError: StateError('falha ao apagar o box do Hive'),
-      );
-      await _pumpApp(tester, harness);
+      'Sad Path: Não deve propagar exceção para fora de logout quando logoutGoogle lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          storedUser: _storedUser(),
+          logoutError: Exception('falha de rede no signOut'),
+        );
+        await _pumpApp(tester, harness);
 
-      // 2. Act
-      final run = await _runLogout(tester, harness.controller);
+        // 2. Act
+        final run = await _runLogout(tester, harness.controller);
 
-      // 3. Assert
-      expect(run.error, isNull);
-      expect(harness.controller.isLoggingOut.value, isFalse);
-    });
+        // 3. Assert
+        expect(run.error, isNull);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve finalizar isLoggingOut como false quando logoutGoogle lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          storedUser: _storedUser(),
+          logoutError: Exception('falha de rede no signOut'),
+        );
+        await _pumpApp(tester, harness);
+
+        // 2. Act
+        await _runLogout(tester, harness.controller);
+
+        // 3. Assert
+        expect(harness.controller.isLoggingOut.value, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve exibir um snackbar de erro quando logoutGoogle lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          storedUser: _storedUser(),
+          logoutError: Exception('falha de rede no signOut'),
+        );
+        await _pumpApp(tester, harness);
+
+        // 2. Act
+        final run = await _runLogout(tester, harness.controller);
+
+        // 3. Assert
+        expect(run.snackbarTitles, ['Erro ao sair']);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve permanecer na tela atual (sem navegar para o login) quando logoutGoogle lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          storedUser: _storedUser(),
+          logoutError: Exception('falha de rede no signOut'),
+        );
+        await _pumpApp(tester, harness);
+
+        // 2. Act
+        await _runLogout(tester, harness.controller);
+
+        // 3. Assert
+        expect(Get.currentRoute, _kHomeRoute);
+        expect(find.text(_kHomePlaceholder), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve finalizar isLoggingOut como false e não propagar exceção quando a limpeza do usuário salvo lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          storedUser: _storedUser(),
+          deleteError: StateError('falha ao apagar o box do Hive'),
+        );
+        await _pumpApp(tester, harness);
+
+        // 2. Act
+        final run = await _runLogout(tester, harness.controller);
+
+        // 3. Assert
+        expect(run.error, isNull);
+        expect(harness.controller.isLoggingOut.value, isFalse);
+      },
+    );
   });
 }

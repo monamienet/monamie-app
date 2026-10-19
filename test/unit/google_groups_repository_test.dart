@@ -10,14 +10,20 @@ class FakeService extends GoogleService {
   int userGroupsCalls = 0;
 
   @override
-  Future<List<Map<String, dynamic>>> getGroupEntities(String token, String groupEmail) async {
+  Future<List<Map<String, dynamic>>> getGroupEntities(
+    String token,
+    String groupEmail,
+  ) async {
     entitiesCalls++;
     if (error != null) throw error!;
     return result;
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getUserGroups(String token, String userEmail) async {
+  Future<List<Map<String, dynamic>>> getUserGroups(
+    String token,
+    String userEmail,
+  ) async {
     userGroupsCalls++;
     if (error != null) throw error!;
     return result;
@@ -29,13 +35,18 @@ class FakeProvider extends GoogleGroupsProvider {
   final List<String> saved = [];
 
   @override
-  Future<void> saveGroupEntities(String groupEmail, List<Map<String, dynamic>> entities) async {
+  Future<void> saveGroupEntities(
+    String groupEmail,
+    List<Map<String, dynamic>> entities,
+  ) async {
     saved.add(groupEmail);
     store[groupEmail] = entities;
   }
 
   @override
-  Future<List<Map<String, dynamic>>?> getGroupEntities(String groupEmail) async => store[groupEmail];
+  Future<List<Map<String, dynamic>>?> getGroupEntities(
+    String groupEmail,
+  ) async => store[groupEmail];
 }
 
 void main() {
@@ -43,10 +54,10 @@ void main() {
   late FakeProvider provider;
   late GoogleGroupsRepository repo;
   final data = [
-    {'email': 'a@x.com'}
+    {'email': 'a@x.com'},
   ];
   final cachedData = [
-    {'email': 'cached@x.com'}
+    {'email': 'cached@x.com'},
   ];
 
   setUp(() {
@@ -112,7 +123,11 @@ void main() {
       service.result = data;
 
       // 2. Act
-      final result = await repo.getGroupEntities('t', 'g@x.com', forceRefresh: true);
+      final result = await repo.getGroupEntities(
+        't',
+        'g@x.com',
+        forceRefresh: true,
+      );
 
       // 3. Assert
       expect(result, data);
@@ -135,17 +150,20 @@ void main() {
   group('GoogleGroupsRepository.getUserGroups', () {
     final key = GoogleGroupsRepository.userGroupsKey('U@x.com');
 
-    test('Happy Path: grava no cache com a chave do usuário após sucesso', () async {
-      // 1. Arrange
-      service.result = data;
+    test(
+      'Happy Path: grava no cache com a chave do usuário após sucesso',
+      () async {
+        // 1. Arrange
+        service.result = data;
 
-      // 2. Act
-      final result = await repo.getUserGroups('t', 'U@x.com');
+        // 2. Act
+        final result = await repo.getUserGroups('t', 'U@x.com');
 
-      // 3. Assert
-      expect(result, data);
-      expect(provider.store[key], data);
-    });
+        // 3. Assert
+        expect(result, data);
+        expect(provider.store[key], data);
+      },
+    );
 
     test('Happy Path: retorna cache não vazio sem chamar o serviço', () async {
       // 1. Arrange
@@ -178,7 +196,11 @@ void main() {
       service.result = data;
 
       // 2. Act
-      final result = await repo.getUserGroups('t', 'U@x.com', forceRefresh: true);
+      final result = await repo.getUserGroups(
+        't',
+        'U@x.com',
+        forceRefresh: true,
+      );
 
       // 3. Assert
       expect(result, data);
@@ -198,4 +220,3 @@ void main() {
     });
   });
 }
-

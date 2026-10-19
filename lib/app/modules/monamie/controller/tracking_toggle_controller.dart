@@ -9,4 +9,3 @@ abstract class TrackingToggleController {
   RxBool get isTrackingLoading;
   Future<void> toggleService();
 }
-

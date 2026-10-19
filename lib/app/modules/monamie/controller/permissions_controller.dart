@@ -11,10 +11,12 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
   PermissionsController({
     BackgroundRestrictionChecker? backgroundRestrictionChecker,
     BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
-  })  : _backgroundRestrictionChecker = backgroundRestrictionChecker ??
-            MethodChannelBackgroundRestrictionChecker(),
-        _backgroundUsageSettingsLauncher = backgroundUsageSettingsLauncher ??
-            MethodChannelBackgroundUsageSettingsLauncher();
+  }) : _backgroundRestrictionChecker =
+           backgroundRestrictionChecker ??
+           MethodChannelBackgroundRestrictionChecker(),
+       _backgroundUsageSettingsLauncher =
+           backgroundUsageSettingsLauncher ??
+           MethodChannelBackgroundUsageSettingsLauncher();
 
   final BackgroundRestrictionChecker _backgroundRestrictionChecker;
   final BackgroundUsageSettingsLauncher _backgroundUsageSettingsLauncher;
@@ -57,8 +59,8 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
     Get.snackbar(
       'Uso em segundo plano ainda restrito',
       "A alteração não foi aplicada. Toque em 'Permitir uso em segundo "
-      "plano' e, se o interruptor já estiver ativado, desative-o e "
-      "ative-o novamente.",
+          "plano' e, se o interruptor já estiver ativado, desative-o e "
+          "ative-o novamente.",
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: Colors.amber.shade100,
       colorText: Colors.black87,
@@ -78,8 +80,8 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
 
   /// Reconsulta o sistema e atualiza [isBackgroundRestricted].
   Future<bool> refreshBackgroundRestriction() async {
-    isBackgroundRestricted.value =
-        await _backgroundRestrictionChecker.isRestricted();
+    isBackgroundRestricted.value = await _backgroundRestrictionChecker
+        .isRestricted();
     return isBackgroundRestricted.value;
   }
 
@@ -176,8 +178,8 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
       "Se o interruptor já aparecer ativado, desative-o e ative-o novamente.",
     );
     if (userAgreed) {
-      _awaitingBackgroundUsageReturn =
-          await _backgroundUsageSettingsLauncher.open();
+      _awaitingBackgroundUsageReturn = await _backgroundUsageSettingsLauncher
+          .open();
     }
   }
 
@@ -281,7 +283,7 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
       barrierDismissible: false,
     );
   }
-  
+
   @override
   void onClose() {
     WidgetsBinding.instance.removeObserver(this);

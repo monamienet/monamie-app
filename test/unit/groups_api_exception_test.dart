@@ -16,28 +16,33 @@ void main() {
       expect(text, contains('forbidden'));
     });
 
-    test('Edge Case: corpo com exatamente 200 caracteres não deve ser truncado', () {
-      // 1. Arrange
-      final body = 'x' * 200;
+    test(
+      'Edge Case: corpo com exatamente 200 caracteres não deve ser truncado',
+      () {
+        // 1. Arrange
+        final body = 'x' * 200;
 
-      // 2. Act
-      final exception = GroupsApiException('a@b.com', 500, body);
+        // 2. Act
+        final exception = GroupsApiException('a@b.com', 500, body);
 
-      // 3. Assert
-      expect(exception.body, body);
-    });
+        // 3. Assert
+        expect(exception.body, body);
+      },
+    );
 
-    test('Sad Path: corpo maior que 200 caracteres deve ser truncado com reticências', () {
-      // 1. Arrange
-      final body = 'y' * 500;
+    test(
+      'Sad Path: corpo maior que 200 caracteres deve ser truncado com reticências',
+      () {
+        // 1. Arrange
+        final body = 'y' * 500;
 
-      // 2. Act
-      final exception = GroupsApiException('a@b.com', 500, body);
+        // 2. Act
+        final exception = GroupsApiException('a@b.com', 500, body);
 
-      // 3. Assert
-      expect(exception.body, '${'y' * 200}…');
-      expect(exception.body.length, 201);
-    });
+        // 3. Assert
+        expect(exception.body, '${'y' * 200}…');
+        expect(exception.body.length, 201);
+      },
+    );
   });
 }
-

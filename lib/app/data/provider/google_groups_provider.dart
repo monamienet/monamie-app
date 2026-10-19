@@ -5,15 +5,18 @@ import 'package:hive/hive.dart';
 class GoogleGroupsProvider {
   final String _hiveBox = 'google_groups_data';
 
-  Future<void> saveGroupEntities(String groupEmail, List<Map<String, dynamic>> entities) async {
+  Future<void> saveGroupEntities(
+    String groupEmail,
+    List<Map<String, dynamic>> entities,
+  ) async {
     try {
       var box = await Hive.openBox(_hiveBox);
-      
+
       final dataToSave = {
         'timestamp': DateTime.now().toIso8601String(),
         'entities': jsonEncode(entities),
       };
-      
+
       await box.put(groupEmail, jsonEncode(dataToSave));
       if (kDebugMode) {
         print('Saved Group Entities in Hive for: $groupEmail');
@@ -25,22 +28,24 @@ class GoogleGroupsProvider {
     }
   }
 
-  Future<List<Map<String, dynamic>>?> getGroupEntities(String groupEmail) async {
+  Future<List<Map<String, dynamic>>?> getGroupEntities(
+    String groupEmail,
+  ) async {
     try {
       var box = await Hive.openBox(_hiveBox);
       final rawData = box.get(groupEmail);
-      
+
       if (rawData == null) return null;
-      
+
       final Map<String, dynamic> data = jsonDecode(rawData as String);
       final String? timestampStr = data['timestamp'] as String?;
       final String? entitiesStr = data['entities'] as String?;
-      
+
       if (timestampStr == null || entitiesStr == null) return null;
-      
+
       final DateTime timestamp = DateTime.parse(timestampStr);
       final DateTime now = DateTime.now();
-      
+
       // Expiration: 7 days
       if (now.difference(timestamp).inDays >= 7) {
         if (kDebugMode) {
@@ -48,10 +53,12 @@ class GoogleGroupsProvider {
         }
         return null;
       }
-      
+
       final List<dynamic> decodedList = jsonDecode(entitiesStr);
-      final List<Map<String, dynamic>> entities = decodedList.map((e) => e as Map<String, dynamic>).toList();
-      
+      final List<Map<String, dynamic>> entities = decodedList
+          .map((e) => e as Map<String, dynamic>)
+          .toList();
+
       if (kDebugMode) {
         print('Read Group Entities from Hive for: $groupEmail');
       }

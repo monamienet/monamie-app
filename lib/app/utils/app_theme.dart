@@ -49,9 +49,7 @@ class AppTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
-        ),
+        style: TextButton.styleFrom(foregroundColor: AppColors.primary),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: AppColors.primary,
@@ -103,9 +101,7 @@ class AppTheme {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.primaryLight,
-        ),
+        style: TextButton.styleFrom(foregroundColor: AppColors.primaryLight),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: AppColors.primary,
@@ -113,4 +109,3 @@ class AppTheme {
     );
   }
 }
-

@@ -16,9 +16,9 @@ class AuthGoogleController extends GetxController {
     AuthGoogleService? authGoogleService,
     UserGoogleRepository? userRepository,
     BackgroundTrackingStopper? trackingStopper,
-  })  : _injectedAuthGoogle = authGoogleService,
-        _injectedUserRepository = userRepository,
-        _injectedTrackingStopper = trackingStopper;
+  }) : _injectedAuthGoogle = authGoogleService,
+       _injectedUserRepository = userRepository,
+       _injectedTrackingStopper = trackingStopper;
 
   final AuthGoogleService? _injectedAuthGoogle;
   final UserGoogleRepository? _injectedUserRepository;
@@ -47,11 +47,14 @@ class AuthGoogleController extends GetxController {
     super.onInit();
     _webSignInSub = _authGoogle.onWebSignIn.listen(_handleLoginResult);
 
-    _authGoogle.ensureInitialized().then((_) {
-      googleReady.value = true;
-    }).catchError((_) {
-      googleReady.value = true;
-    });
+    _authGoogle
+        .ensureInitialized()
+        .then((_) {
+          googleReady.value = true;
+        })
+        .catchError((_) {
+          googleReady.value = true;
+        });
   }
 
   Future<void> _handleLoginResult(dynamic user) async {
@@ -114,7 +117,7 @@ class AuthGoogleController extends GetxController {
   //      token,
   //      groupEmail,
   //    );
-  //    
+  //
   //    // TODO: o comando abaixo retorna a promessa de uma String s,
   //    // mas nada é feito com s. Por isso, talvez eu possa remover o await.
   //    await _userDataRepository.updateGdiGroupsGoogle(gdiGroups);
@@ -122,7 +125,7 @@ class AuthGoogleController extends GetxController {
   //    debugPrint("Erro ao obter grupos GDI Google: $e");
   //  }
   //}
-  
+
   void loginGoogle() async {
     isLoading.value = true;
     try {

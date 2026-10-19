@@ -6,9 +6,8 @@ import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:monamie_app/app/utils/group_email.dart';
 
 class FirebaseProvider {
-  CollectionReference get collectionRef => FirebaseFirestore.instanceFor(
-    app: Firebase.app(),
-  ).collection('usuarios');
+  CollectionReference get collectionRef =>
+      FirebaseFirestore.instanceFor(app: Firebase.app()).collection('usuarios');
 
   Future<void> adicionarDados(UserModel userLocation) async {
     // 1. Instanciar o Firestore com o app específico e banco de dados
@@ -64,16 +63,18 @@ class FirebaseProvider {
           .where('isTracked', isEqualTo: true)
           .snapshots()
           .map((QuerySnapshot query) {
-        List<UserModel> users = [];
-        final limit = DateTime.now().subtract(const Duration(minutes: 5));
-        for (var doc in query.docs) {
-          final user = UserModel.fromMap(doc.data() as Map<String, dynamic>);
-          if (user.timestamp != null && user.timestamp!.isAfter(limit)) {
-            users.add(user);
-          }
-        }
-        return users;
-      });
+            List<UserModel> users = [];
+            final limit = DateTime.now().subtract(const Duration(minutes: 5));
+            for (var doc in query.docs) {
+              final user = UserModel.fromMap(
+                doc.data() as Map<String, dynamic>,
+              );
+              if (user.timestamp != null && user.timestamp!.isAfter(limit)) {
+                users.add(user);
+              }
+            }
+            return users;
+          });
     } catch (e) {
       throw Exception("Erro ao buscar usuários do grupo: $e");
     }
@@ -190,7 +191,10 @@ class FirebaseProvider {
         pointData['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
       }
 
-      await collectionRef.doc(email).collection('historico_posicoes').add(pointData);
+      await collectionRef
+          .doc(email)
+          .collection('historico_posicoes')
+          .add(pointData);
 
       if (kDebugMode) print("Dados atualizados no firestore com sucesso!");
     } catch (e) {
@@ -205,8 +209,9 @@ class FirebaseProvider {
     String email, {
     int limit = 100,
   }) {
-    final twentyFourHoursAgo =
-        DateTime.now().subtract(const Duration(hours: 24));
+    final twentyFourHoursAgo = DateTime.now().subtract(
+      const Duration(hours: 24),
+    );
 
     return collectionRef
         .doc(email)
@@ -216,12 +221,12 @@ class FirebaseProvider {
         .limit(limit)
         .snapshots()
         .map((snapshot) {
-      final points = snapshot.docs
-          .map((doc) => LocationPoint.fromMap(doc.data()))
-          .toList();
-      // Inverte para que a ordem dos pontos no mapa seja consistente cronologicamente
-      return points.reversed.toList();
-    });
+          final points = snapshot.docs
+              .map((doc) => LocationPoint.fromMap(doc.data()))
+              .toList();
+          // Inverte para que a ordem dos pontos no mapa seja consistente cronologicamente
+          return points.reversed.toList();
+        });
   }
 
   /// Retorna o último ponto conhecido de um usuário em um dia específico.
@@ -284,11 +289,11 @@ class FirebaseProvider {
         .limit(limit)
         .snapshots()
         .map((snapshot) {
-      final points = snapshot.docs
-          .map((doc) => LocationPoint.fromMap(doc.data()))
-          .toList();
-      return points.reversed.toList();
-    });
+          final points = snapshot.docs
+              .map((doc) => LocationPoint.fromMap(doc.data()))
+              .toList();
+          return points.reversed.toList();
+        });
   }
 
   Future<bool> doesDocumentExist(String email) async {

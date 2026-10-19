@@ -18,15 +18,18 @@ import 'package:monamie_app/app/modules/monamie/ui/widgets/tracking_toggle_butto
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart' hide Path;
-import 'package:monamie_app/app/data/services/foreground_service.dart' as foreground_service;
+import 'package:monamie_app/app/data/services/foreground_service.dart'
+    as foreground_service;
 
 class MonamiePage extends StatelessWidget {
   const MonamiePage({super.key});
 
   UserController get userCtrl => Get.find<UserController>();
-  PermissionsController get permissionsCtrl => Get.find<PermissionsController>();
+  PermissionsController get permissionsCtrl =>
+      Get.find<PermissionsController>();
   TrackingController get trackingCtrl => Get.find<TrackingController>();
-  GoogleGroupsController get googleGroupsController => Get.find<GoogleGroupsController>();
+  GoogleGroupsController get googleGroupsController =>
+      Get.find<GoogleGroupsController>();
   AuthGoogleController get authCtrl => Get.find<AuthGoogleController>();
 
   @override
@@ -38,9 +41,11 @@ class MonamiePage extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           _body(context),
-          Obx(() => authCtrl.isLoggingOut.value
-              ? const LogoutProgressOverlay()
-              : const SizedBox.shrink()),
+          Obx(
+            () => authCtrl.isLoggingOut.value
+                ? const LogoutProgressOverlay()
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );
@@ -69,7 +74,9 @@ class MonamiePage extends StatelessWidget {
         return const Center(child: CircularProgressIndicator());
       }
 
-      if (userCtrl.isTrackable() & !kIsWeb & !permissionsCtrl.arePermissionsGranted()) {
+      if (userCtrl.isTrackable() &
+          !kIsWeb &
+          !permissionsCtrl.arePermissionsGranted()) {
         return _permissionScreen();
       }
 
@@ -93,10 +100,7 @@ class MonamiePage extends StatelessWidget {
             minZoom: 3.0,
             maxZoom: 19.0,
             cameraConstraint: CameraConstraint.contain(
-              bounds: LatLngBounds(
-                LatLng(-90, -180),
-                LatLng(90, 180),
-              ),
+              bounds: LatLngBounds(LatLng(-90, -180), LatLng(90, 180)),
             ),
             onTap: (tapPosition, latLng) {
               trackingCtrl.closeFirebaseUserDetails();
@@ -112,7 +116,7 @@ class MonamiePage extends StatelessWidget {
         ),
         Calendar(),
         HighlightedObservedUsersList(),
-        HighlightedUserPanel()
+        HighlightedUserPanel(),
       ],
     );
   }
@@ -286,89 +290,104 @@ class MonamiePage extends StatelessWidget {
     return Obx(
       () => MarkerLayer(
         markers: trackingCtrl.firebaseUsers
-        .where((user) {
-          final isObservingToday = trackingCtrl.isObservingToday;
-          final observedMembersEmails = googleGroupsController.observedMembers.map((member) => member.email);
-          final isObservedMember = observedMembersEmails.contains(user.email);
+            .where((user) {
+              final isObservingToday = trackingCtrl.isObservingToday;
+              final observedMembersEmails = googleGroupsController
+                  .observedMembers
+                  .map((member) => member.email);
+              final isObservedMember = observedMembersEmails.contains(
+                user.email,
+              );
 
-          if (!isObservingToday) {
-            // Em dia passado, mantém o comportamento atual: exibe apenas quem
-            // tem posição histórica carregada em `animatedMarkerPositions`.
-            final hasHistoricalPosition = trackingCtrl.animatedMarkerPositions.containsKey(user.email);
-            return isObservedMember && hasHistoricalPosition;
-          }
+              if (!isObservingToday) {
+                // Em dia passado, mantém o comportamento atual: exibe apenas quem
+                // tem posição histórica carregada em `animatedMarkerPositions`.
+                final hasHistoricalPosition = trackingCtrl
+                    .animatedMarkerPositions
+                    .containsKey(user.email);
+                return isObservedMember && hasHistoricalPosition;
+              }
 
-          // Hoje: exibe usuários observados transmitindo ativamente no grupo
-          return isObservedMember;
-        })
-        .map((user) {
-          final isCurrentUser = user.email == trackingCtrl.userCtrl.user?.email;
-          // Usa a posição animada se disponível, caso contrário usa a posição atual
-          final animatedPos = trackingCtrl.animatedMarkerPositions[user.email];
-          final position = animatedPos ?? LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
+              // Hoje: exibe usuários observados transmitindo ativamente no grupo
+              return isObservedMember;
+            })
+            .map((user) {
+              final isCurrentUser =
+                  user.email == trackingCtrl.userCtrl.user?.email;
+              // Usa a posição animada se disponível, caso contrário usa a posição atual
+              final animatedPos =
+                  trackingCtrl.animatedMarkerPositions[user.email];
+              final position =
+                  animatedPos ?? LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
 
-          return Marker(
-            point: position,
-            width: isCurrentUser ? markerSize * 3 : markerSize,
-            height: isCurrentUser ? markerSize * 3 : markerSize,
-            alignment: Alignment.center,
-            child: Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                if (isCurrentUser)
-                  Obx(() {
-                    final heading = trackingCtrl.heading.value;
-                    if (heading == null) return const SizedBox.shrink();
+              return Marker(
+                point: position,
+                width: isCurrentUser ? markerSize * 3 : markerSize,
+                height: isCurrentUser ? markerSize * 3 : markerSize,
+                alignment: Alignment.center,
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    if (isCurrentUser)
+                      Obx(() {
+                        final heading = trackingCtrl.heading.value;
+                        if (heading == null) return const SizedBox.shrink();
 
-                    return Transform.rotate(
-                      angle: heading * (math.pi / 180),
-                      child: SizedBox(
-                        width: markerSize * 3,
-                        height: markerSize * 3,
-                        child: CustomPaint(painter: _BeamPainter()),
-                      ),
-                    );
-                  }),
-                SizedBox(
-                  width: markerSize,
-                  height: markerSize,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => trackingCtrl.openFirebaseUserDetails(user),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: user.isTracked == false || DateTime.now().difference(user.timestamp!) >= Duration(minutes: foreground_service.interval)  
-                          ? trackingCtrl.setMarkerColor(user).withAlpha(100)
-                          : trackingCtrl.setMarkerColor(user),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
+                        return Transform.rotate(
+                          angle: heading * (math.pi / 180),
+                          child: SizedBox(
+                            width: markerSize * 3,
+                            height: markerSize * 3,
+                            child: CustomPaint(painter: _BeamPainter()),
                           ),
-                        ],
+                        );
+                      }),
+                    SizedBox(
+                      width: markerSize,
+                      height: markerSize,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => trackingCtrl.openFirebaseUserDetails(user),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color:
+                                user.isTracked == false ||
+                                    DateTime.now().difference(
+                                          user.timestamp!,
+                                        ) >=
+                                        Duration(
+                                          minutes: foreground_service.interval,
+                                        )
+                                ? trackingCtrl
+                                      .setMarkerColor(user)
+                                      .withAlpha(100)
+                                : trackingCtrl.setMarkerColor(user),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          margin: const EdgeInsets.all(10),
+                        ),
                       ),
-                      margin: const EdgeInsets.all(10),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        }).toList(),
+              );
+            })
+            .toList(),
       ),
     );
   }
 
   Widget _toggleButton() {
-    return const Positioned(
-      top: 16,
-      right: 16,
-      child: TrackingToggleButton(),
-    );
+    return const Positioned(top: 16, right: 16, child: TrackingToggleButton());
   }
 }
 

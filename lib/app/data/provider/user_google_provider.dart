@@ -8,7 +8,7 @@ enum UserRole { user }
 
 class UserGoogleProvider {
   final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(
-    app: Firebase.app()
+    app: Firebase.app(),
   );
   final String _hiveBox = 'user_google_data';
   final String _hiveKey = 'current_user';
@@ -17,9 +17,9 @@ class UserGoogleProvider {
     String email,
     String name,
     String uid,
-    String urlImage,
-    {String? avatarBase64}
-  ) async {
+    String urlImage, {
+    String? avatarBase64,
+  }) async {
     final docRef = _firestore.collection('users').doc(uid);
     final docSnapshot = await docRef.get();
 

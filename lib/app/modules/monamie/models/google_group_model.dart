@@ -5,14 +5,14 @@ class GoogleGroupModel {
   String email;
   String description;
   List<GoogleGroupMember> members;
-  List<GoogleGroupModel> subgroups; 
+  List<GoogleGroupModel> subgroups;
 
   GoogleGroupModel({
     required this.name,
     required this.email,
     required this.description,
     required this.members,
-    required this.subgroups
+    required this.subgroups,
   });
 
   GoogleGroupModel.fromJson(Map<String, dynamic> json)
@@ -21,8 +21,6 @@ class GoogleGroupModel {
       description = json['description'].toString(),
       members = json['members'],
       subgroups = json['subgroups'];
-
-
 
   //GoogleGroupModel.fromMap(Map<String, dynamic> json)
   //  : name = json['name'].toString(),
