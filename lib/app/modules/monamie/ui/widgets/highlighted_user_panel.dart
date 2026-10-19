@@ -11,7 +11,8 @@ class HighlightedUserPanel extends StatelessWidget {
   const HighlightedUserPanel({super.key});
 
   TrackingController get trackingCtrl => Get.find<TrackingController>();
-  GoogleGroupsController get googleGroupsCtrl => Get.find<GoogleGroupsController>();
+  GoogleGroupsController get googleGroupsCtrl =>
+      Get.find<GoogleGroupsController>();
   CallController get callCtrl => Get.find<CallController>();
 
   @override
@@ -27,7 +28,8 @@ class HighlightedUserPanel extends StatelessWidget {
       final member = googleGroupsCtrl.observedMembers.firstWhereOrNull(
         (m) => m.email == user.email,
       );
-      final isHighlighted = member != null && googleGroupsCtrl.isHighlighted(member);
+      final isHighlighted =
+          member != null && googleGroupsCtrl.isHighlighted(member);
 
       return Positioned(
         left: 0,
@@ -125,4 +127,4 @@ class HighlightedUserPanel extends StatelessWidget {
       );
     });
   }
-} 
+}

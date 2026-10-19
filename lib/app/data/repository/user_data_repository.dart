@@ -43,7 +43,11 @@ class UserDataRepository {
     return await _userDataProvider.updateGdiGroupsGoogle(gdiGroupsGoogle);
   }
 
-  Future<String> lastRegisteredTokenCdcUpdate(DateTime lastRegisteredTokenCdcUpdate) async {
-    return await _userDataProvider.lastRegisteredTokenCdcUpdate(lastRegisteredTokenCdcUpdate);
+  Future<String> lastRegisteredTokenCdcUpdate(
+    DateTime lastRegisteredTokenCdcUpdate,
+  ) async {
+    return await _userDataProvider.lastRegisteredTokenCdcUpdate(
+      lastRegisteredTokenCdcUpdate,
+    );
   }
 }

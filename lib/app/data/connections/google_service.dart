@@ -8,16 +8,19 @@ import 'package:http/http.dart' as http;
 
 class GoogleService {
   Map<String, String> _headers(String token) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
 
   /// Busca os grupos dos quais um usuário Google participa (`GET /groups`).
   ///
   /// Retorna a lista bruta conforme a Directory API (id, email, name,
   /// description, directMembersCount...).
   /// Lança [GroupsApiException] se o gateway não responder 200.
-  Future<List<Map<String, dynamic>>> getUserGroups(String token, String userEmail) async {
+  Future<List<Map<String, dynamic>>> getUserGroups(
+    String token,
+    String userEmail,
+  ) async {
     final url = Uri.https(
       GoogleConfig.gdiGoogleHost,
       GoogleConfig.gdiUserGoogleGroupsPath,
@@ -36,7 +39,10 @@ class GoogleService {
 
   /// Busca os grupos GDI de um usuário Google.
   /// Lança [GroupsApiException] em caso de falha.
-  Future<GdiGroupsGoogle> getGdiGroupsGoogle(String token, String userEmail) async {
+  Future<GdiGroupsGoogle> getGdiGroupsGoogle(
+    String token,
+    String userEmail,
+  ) async {
     final groups = await getUserGroups(token, userEmail);
     return GdiGroupsGoogle(
       DateTime.now(),
@@ -49,8 +55,15 @@ class GoogleService {
   /// Retorna a lista bruta de membros (Map) conforme retornado pela API.
   /// Cada membro possui: id, email, role, type (USER ou GROUP), status.
   /// Lança [GroupsApiException] se o gateway não responder 200.
-  Future<List<Map<String, dynamic>>> getGroupEntities(String token, String groupEmail) async {
-    final url = Uri.https(GoogleConfig.gdiGoogleHost, GoogleConfig.gdiGroupMembers, {'email': groupEmail});
+  Future<List<Map<String, dynamic>>> getGroupEntities(
+    String token,
+    String groupEmail,
+  ) async {
+    final url = Uri.https(
+      GoogleConfig.gdiGoogleHost,
+      GoogleConfig.gdiGroupMembers,
+      {'email': groupEmail},
+    );
 
     final response = await http.get(url, headers: _headers(token));
     if (response.statusCode != 200) {

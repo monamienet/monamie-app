@@ -78,8 +78,8 @@ class UserData extends HiveObject {
     String? matricula,
     String? idMonamie,
     String? curso,
-    String? fotoUrl,  
-  String? dataValidadeMatricula,
+    String? fotoUrl,
+    String? dataValidadeMatricula,
     String? bond,
     String? textoQrCodeCarteirinha,
     String? accessToken,
@@ -91,22 +91,25 @@ class UserData extends HiveObject {
     DateTime? lastRegisteredTokenCdcUpdate,
   }) {
     return UserData(
-     name: name ?? this.name,
-     nomesocial: nomesocial ?? this.nomesocial,
-     matricula: matricula ?? this.matricula,
-     idMonamie: idMonamie ?? this.idMonamie,
-     curso: curso ?? this.curso,
-     fotoUrl: fotoUrl ?? this.fotoUrl,
-     dataValidadeMatricula: dataValidadeMatricula ?? this.dataValidadeMatricula,
-     bond: bond ?? this.bond,
-     textoQrCodeCarteirinha: textoQrCodeCarteirinha ?? this.textoQrCodeCarteirinha,
-     accessToken: accessToken ?? this.accessToken,
-     bondId: bondId ?? this.bondId,
-     gdiGroups: gdiGroups ?? this.gdiGroups,
-     profileType: profileType ?? this.profileType,
-     shortcutRoutes: shortcutRoutes ?? this.shortcutRoutes,
-     gdiGroupsGoogle: gdiGroupsGoogle ?? this.gdiGroupsGoogle,
-     lastRegisteredTokenCdcUpdate: lastRegisteredTokenCdcUpdate ?? this.lastRegisteredTokenCdcUpdate,
+      name: name ?? this.name,
+      nomesocial: nomesocial ?? this.nomesocial,
+      matricula: matricula ?? this.matricula,
+      idMonamie: idMonamie ?? this.idMonamie,
+      curso: curso ?? this.curso,
+      fotoUrl: fotoUrl ?? this.fotoUrl,
+      dataValidadeMatricula:
+          dataValidadeMatricula ?? this.dataValidadeMatricula,
+      bond: bond ?? this.bond,
+      textoQrCodeCarteirinha:
+          textoQrCodeCarteirinha ?? this.textoQrCodeCarteirinha,
+      accessToken: accessToken ?? this.accessToken,
+      bondId: bondId ?? this.bondId,
+      gdiGroups: gdiGroups ?? this.gdiGroups,
+      profileType: profileType ?? this.profileType,
+      shortcutRoutes: shortcutRoutes ?? this.shortcutRoutes,
+      gdiGroupsGoogle: gdiGroupsGoogle ?? this.gdiGroupsGoogle,
+      lastRegisteredTokenCdcUpdate:
+          lastRegisteredTokenCdcUpdate ?? this.lastRegisteredTokenCdcUpdate,
     );
   }
 
@@ -164,8 +167,8 @@ class UserData extends HiveObject {
       'profileType': profileType?.toString().split('.').last,
       'shortcutRoutes': shortcutRoutes,
       'gdiGroupsGoogle': gdiGroupsGoogle?.toJson(),
-      'lastRegisteredTokenCdcUpdate':
-          lastRegisteredTokenCdcUpdate?.toIso8601String(),
+      'lastRegisteredTokenCdcUpdate': lastRegisteredTokenCdcUpdate
+          ?.toIso8601String(),
     };
   }
 

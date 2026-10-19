@@ -3,7 +3,11 @@ import 'package:get/get.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 class CalendarController extends GetxController {
-  final _observedDay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day).obs;
+  final _observedDay = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  ).obs;
   Rx<DateTime> get observedDay => _observedDay;
 
   bool get isObservingToday {

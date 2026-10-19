@@ -34,7 +34,9 @@ class AuthGoogleService {
         // clientId é obrigatório na web
         // NOTE: estou usando o mesmo id para clientId e serverClientId
         clientId: kIsWeb ? GoogleConfig.monamieGoogleServerWebClientId : null,
-        serverClientId: kIsWeb ? null : GoogleConfig.monamieGoogleServerWebClientId,
+        serverClientId: kIsWeb
+            ? null
+            : GoogleConfig.monamieGoogleServerWebClientId,
       );
 
       debugPrint('AuthGoogleService: initialize done');
@@ -52,7 +54,7 @@ class AuthGoogleService {
       rethrow;
     }
   }
-  
+
   Future<void> _onWebAuthEvent(GoogleSignInAuthenticationEvent event) async {
     debugPrint('AuthGoogleService _onWebAuthEvent: ${event.runtimeType}');
 
@@ -62,7 +64,7 @@ class AuthGoogleService {
       debugPrint('AuthGoogleService _signIn result: ${user?.email}');
       _webSignInController.add(user);
       return;
-    } 
+    }
     if (event is GoogleSignInAuthenticationEventSignOut) {
       //_webSignInController.add(null);
       debugPrint('AuthGoogleService sign-out event');
@@ -145,7 +147,7 @@ class AuthGoogleService {
 
     if (user != null) {
       // getIdToken(true) força a atualização do token caso ele esteja expirado
-      return await user.getIdToken(true); 
+      return await user.getIdToken(true);
     }
     return null;
   }

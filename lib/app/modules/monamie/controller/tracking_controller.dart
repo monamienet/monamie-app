@@ -45,13 +45,13 @@ class TrackingController extends GetxController
   @override
   final isTrackingLoading = false.obs;
   final UserController userCtrl = Get.find<UserController>();
-  final PermissionsController permissionsCtrl = Get.find<PermissionsController>();
+  final PermissionsController permissionsCtrl =
+      Get.find<PermissionsController>();
   final Rx<double?> heading = Rx<double?>(null);
   //StreamSubscription<CompassEvent>? _compassSubscription;
 
   /// Indica se o dia observado no calendário é o dia atual.
-  bool get isObservingToday =>
-      Get.find<CalendarController>().isObservingToday;
+  bool get isObservingToday => Get.find<CalendarController>().isObservingToday;
 
   /// Mapa de usuários com suas posições animadas para renderização suave.
   final Map<String, AnimatedUserMarker> _animatedMarkers =
@@ -79,7 +79,7 @@ class TrackingController extends GetxController
 
   /// Subscriptions para as trajetórias dos usuários destacados.
   final Map<String, StreamSubscription<List<LocationPoint>>>
-      _highlightedTrajectorySubscriptions = {};
+  _highlightedTrajectorySubscriptions = {};
 
   StreamSubscription? _readySubscription;
   StreamSubscription? _locationSubscription;
@@ -90,18 +90,15 @@ class TrackingController extends GetxController
 
   /// Inicia o worker que observa mudanças em highlightedObservedUsers.
   void _setupHighlightedUsersListener() {
-    ever(
-      Get.find<GoogleGroupsController>().highlightedObservedUsers,
-      (_) {
-        // Debounce para evitar múltiplas reações quando toggleHighlight
-        // é chamado rapidamente (adiciona/remove um item por vez)
-        _highlightedUsersDebounce?.cancel();
-        _highlightedUsersDebounce = Timer(
-          const Duration(milliseconds: 100),
-          _syncHighlightedTrajectories,
-        );
-      },
-    );
+    ever(Get.find<GoogleGroupsController>().highlightedObservedUsers, (_) {
+      // Debounce para evitar múltiplas reações quando toggleHighlight
+      // é chamado rapidamente (adiciona/remove um item por vez)
+      _highlightedUsersDebounce?.cancel();
+      _highlightedUsersDebounce = Timer(
+        const Duration(milliseconds: 100),
+        _syncHighlightedTrajectories,
+      );
+    });
   }
 
   /// Sincroniza as subscriptions de trajetórias com a lista atual de
@@ -168,8 +165,9 @@ class TrackingController extends GetxController
   /// última localização conhecida de cada usuário observado no histórico.
   Future<void> _refreshMarkersForObservedDay(DateTime day) async {
     final googleGroupsCtrl = Get.find<GoogleGroupsController>();
-    final observedEmails =
-        googleGroupsCtrl.observedMembers.map((m) => m.email).toSet();
+    final observedEmails = googleGroupsCtrl.observedMembers
+        .map((m) => m.email)
+        .toSet();
 
     if (isObservingToday) {
       // Verifica, no histórico do dia, quais usuários observados possuem pelo
@@ -178,7 +176,10 @@ class TrackingController extends GetxController
       final futures = <Future<void>>[];
       for (final email in observedEmails) {
         futures.add(() async {
-          final hasPoints = await FirebaseProvider().hasPointsOnDate(email, day);
+          final hasPoints = await FirebaseProvider().hasPointsOnDate(
+            email,
+            day,
+          );
           if (hasPoints) {
             usersWithPointsOnObservedDay.add(email);
           }
@@ -211,7 +212,10 @@ class TrackingController extends GetxController
           } else {
             _animatedMarkers[user.email] = AnimatedUserMarker(user: user);
           }
-          animatedMarkerPositions[user.email] = LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
+          animatedMarkerPositions[user.email] = LatLng(
+            user.lat ?? 0.0,
+            user.lng ?? 0.0,
+          );
         }
       }
       return;
@@ -290,13 +294,15 @@ class TrackingController extends GetxController
     _groupUsersSubscription = FirebaseProvider()
         .streamUsersByGroup(groupEmail)
         .listen(
-      (users) {
-        firebaseUsers.value = users;
-      },
-      onError: (e) {
-        debugPrint('[TrackingController] Erro no stream do grupo $groupEmail: $e');
-      },
-    );
+          (users) {
+            firebaseUsers.value = users;
+          },
+          onError: (e) {
+            debugPrint(
+              '[TrackingController] Erro no stream do grupo $groupEmail: $e',
+            );
+          },
+        );
   }
 
   @override
@@ -322,7 +328,7 @@ class TrackingController extends GetxController
         Get.snackbar(
           'Rastreamento em risco',
           'O aparelho está restringindo o MonAmie em segundo plano. '
-          'O rastreamento vai parar quando você sair do aplicativo.',
+              'O rastreamento vai parar quando você sair do aplicativo.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.amber.shade100,
           colorText: Colors.black87,
@@ -336,7 +342,7 @@ class TrackingController extends GetxController
     if (initialGroup != null) {
       _subscribeToGroupUsers(initialGroup.email);
     }
-    
+
     // Escuta mudanças na lista de usuários para atualizar as animações
     ever(firebaseUsers, _onFirebaseUsersUpdated);
 
@@ -374,7 +380,9 @@ class TrackingController extends GetxController
           const Duration(seconds: 5),
         );
       } catch (e) {
-        debugPrint('[TrackingController] Erro ao obter posição inicial no onInit: $e');
+        debugPrint(
+          '[TrackingController] Erro ao obter posição inicial no onInit: $e',
+        );
       }
     }
   }
@@ -398,8 +406,7 @@ class TrackingController extends GetxController
 
       if (exists) {
         // Atualiza posição existente
-        final didUpdate =
-            _animatedMarkers[user.email]!.updateTargetPosition(
+        final didUpdate = _animatedMarkers[user.email]!.updateTargetPosition(
           user.lat ?? 0.0,
           user.lng ?? 0.0,
         );
@@ -409,8 +416,10 @@ class TrackingController extends GetxController
       } else {
         // Cria novo marcador animado
         _animatedMarkers[user.email] = AnimatedUserMarker(user: user);
-        animatedMarkerPositions[user.email] =
-            LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
+        animatedMarkerPositions[user.email] = LatLng(
+          user.lat ?? 0.0,
+          user.lng ?? 0.0,
+        );
       }
     }
 
@@ -457,8 +466,9 @@ class TrackingController extends GetxController
   /// Atualiza as posições animadas dos marcadores com base no progresso da animação.
   void _updateAnimatedMarkerPositions() {
     for (final entry in _animatedMarkers.entries) {
-      final renderedPosition =
-          entry.value.updateAnimationProgress(_animationProgress);
+      final renderedPosition = entry.value.updateAnimationProgress(
+        _animationProgress,
+      );
       animatedMarkerPositions[entry.key] = renderedPosition;
     }
   }
@@ -551,7 +561,7 @@ class TrackingController extends GetxController
       Get.snackbar(
         'Não foi possível iniciar o rastreamento',
         'Suas permissões de grupo não puderam ser verificadas. '
-        'Tente atualizar seus grupos e tentar novamente.',
+            'Tente atualizar seus grupos e tentar novamente.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade100,
         duration: const Duration(seconds: 5),
@@ -561,10 +571,13 @@ class TrackingController extends GetxController
 
     // Determina o grupo operacional ativo para esta jornada
     final googleGroupsCtrl = Get.find<GoogleGroupsController>();
-    final observableGroups = await googleGroupsCtrl.getObservableGroupsForUser();
+    final observableGroups = await googleGroupsCtrl
+        .getObservableGroupsForUser();
 
     if (observableGroups.isEmpty) {
-      debugPrint('[TrackingController] Usuário não é MEMBER ou MANAGER em nenhum grupo.');
+      debugPrint(
+        '[TrackingController] Usuário não é MEMBER ou MANAGER em nenhum grupo.',
+      );
       Get.snackbar(
         'Rastreamento não autorizado',
         'Você não possui papel de participante (MEMBER ou MANAGER) em nenhum grupo.',
@@ -583,7 +596,11 @@ class TrackingController extends GetxController
       // Se tiver mais de um grupo observável, checa se o grupo atualmente selecionado é um deles
       final currentSelected = googleGroupsCtrl.selectedGroup.value;
       if (currentSelected != null &&
-          observableGroups.any((g) => g.email.trim().toLowerCase() == currentSelected.email.trim().toLowerCase())) {
+          observableGroups.any(
+            (g) =>
+                g.email.trim().toLowerCase() ==
+                currentSelected.email.trim().toLowerCase(),
+          )) {
         activeGroupEmail = currentSelected.email;
       } else {
         // Exibe BottomSheet para seleção explícita do grupo operacional
@@ -600,7 +617,11 @@ class TrackingController extends GetxController
               children: [
                 const Text(
                   'Iniciar Rastreamento de Jornada',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -616,8 +637,17 @@ class TrackingController extends GetxController
                       final g = observableGroups[index];
                       return ListTile(
                         leading: const Icon(Icons.group, color: Colors.indigo),
-                        title: Text(g.name, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87)),
-                        subtitle: Text(g.email, style: const TextStyle(color: Colors.black54)),
+                        title: Text(
+                          g.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        subtitle: Text(
+                          g.email,
+                          style: const TextStyle(color: Colors.black54),
+                        ),
                         onTap: () => Get.back(result: g),
                       );
                     },
@@ -630,20 +660,24 @@ class TrackingController extends GetxController
         );
 
         if (selected == null) {
-          debugPrint('[TrackingController] Usuário cancelou a seleção do grupo.');
+          debugPrint(
+            '[TrackingController] Usuário cancelou a seleção do grupo.',
+          );
           return;
         }
         activeGroupEmail = selected.email;
       }
     }
-  
+
     // Tenta obter a posição GPS atual para sincronizar imediatamente
     try {
       position = await Geolocator.getCurrentPosition().timeout(
         const Duration(seconds: 5),
       );
     } catch (e) {
-      debugPrint('[TrackingController] Erro ao obter posição atual imediata: $e');
+      debugPrint(
+        '[TrackingController] Erro ao obter posição atual imediata: $e',
+      );
       Get.snackbar(
         'Aguardando sinal de GPS',
         'O monitoramento foi iniciado, mas a sua posição inicial ainda está sendo obtida pelos satélites.',
@@ -659,7 +693,7 @@ class TrackingController extends GetxController
     await _readySubscription?.cancel();
     await _locationSubscription?.cancel();
     await _service.startService();
-  
+
     // Este listener ouve o serviço em foreground avisar que está pronto para
     // receber informações do usuário.
     _readySubscription = _service.on('ready').listen((event) async {
@@ -669,15 +703,17 @@ class TrackingController extends GetxController
         "grupoAtivo": activeGroupEmail,
       });
     });
-  
+
     // Este listener ouve atualizações da posição por parte do serviço em
     // foreground.
-    _locationSubscription = _service.on('updateLocationLocally').listen((event) {
+    _locationSubscription = _service.on('updateLocationLocally').listen((
+      event,
+    ) {
       if (event != null) {
         position = Position.fromMap(event['position']);
       }
     });
-  
+
     // Atualiza UI (botão).
     isTrackingEnabled.value = true;
 
@@ -693,11 +729,13 @@ class TrackingController extends GetxController
         grupoAtivo: activeGroupEmail,
       );
     } catch (e) {
-      debugPrint('[TrackingController] Erro ao atualizar status inicial de rastreamento: $e');
+      debugPrint(
+        '[TrackingController] Erro ao atualizar status inicial de rastreamento: $e',
+      );
       Get.snackbar(
         'Erro ao iniciar rastreamento',
         'Não foi possível atualizar o status de rastreamento. '
-        'Verifique suas permissões de grupo.',
+            'Verifique suas permissões de grupo.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade100,
         duration: const Duration(seconds: 5),
@@ -706,7 +744,7 @@ class TrackingController extends GetxController
       await _stopService();
     }
   }
-  
+
   Future<void> _stopService() async {
     await _readySubscription?.cancel();
     _readySubscription = null;

@@ -2,7 +2,7 @@ import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 
 /// Representa um usuário com sua posição animada para renderização suave.
-/// 
+///
 /// Esta classe encapsula um UserModel e fornece interpolação suave
 /// entre posições anteriores e novas.
 class AnimatedUserMarker {
@@ -26,7 +26,7 @@ class AnimatedUserMarker {
   /// Se a posição mudou, retorna true.
   bool updateTargetPosition(double lat, double lng) {
     final newPosition = LatLng(lat, lng);
-    
+
     if (_targetPosition != newPosition) {
       _currentRenderedPosition = _targetPosition;
       _targetPosition = newPosition;
@@ -49,15 +49,17 @@ class AnimatedUserMarker {
   /// Retorna a posição interpolada.
   LatLng updateAnimationProgress(double progress) {
     _animationProgress = progress.clamp(0.0, 1.0);
-    
+
     // Interpolação linear entre a posição anterior e a alvo
-    final lat = _currentRenderedPosition.latitude +
+    final lat =
+        _currentRenderedPosition.latitude +
         (_targetPosition.latitude - _currentRenderedPosition.latitude) *
             _animationProgress;
-    final lng = _currentRenderedPosition.longitude +
+    final lng =
+        _currentRenderedPosition.longitude +
         (_targetPosition.longitude - _currentRenderedPosition.longitude) *
             _animationProgress;
-    
+
     return LatLng(lat, lng);
   }
 

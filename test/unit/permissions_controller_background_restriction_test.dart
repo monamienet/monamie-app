@@ -26,76 +26,90 @@ void main() {
       final checker = FakeBackgroundRestrictionChecker(result: true);
 
       // 2. Act
-      final controller =
-          PermissionsController(backgroundRestrictionChecker: checker);
+      final controller = PermissionsController(
+        backgroundRestrictionChecker: checker,
+      );
 
       // 3. Assert
       expect(controller.isBackgroundRestricted.value, isFalse);
     });
 
-    test('Happy Path: Deve retornar true e atualizar o estado quando o checker confirma a restrição',
-        () async {
-      // 1. Arrange
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-      final controller =
-          PermissionsController(backgroundRestrictionChecker: checker);
+    test(
+      'Happy Path: Deve retornar true e atualizar o estado quando o checker confirma a restrição',
+      () async {
+        // 1. Arrange
+        final checker = FakeBackgroundRestrictionChecker(result: true);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+        );
 
-      // 2. Act
-      final resultado = await controller.refreshBackgroundRestriction();
+        // 2. Act
+        final resultado = await controller.refreshBackgroundRestriction();
 
-      // 3. Assert
-      expect(resultado, isTrue);
-      expect(controller.isBackgroundRestricted.value, isTrue);
-      expect(checker.calls, 1);
-    });
+        // 3. Assert
+        expect(resultado, isTrue);
+        expect(controller.isBackgroundRestricted.value, isTrue);
+        expect(checker.calls, 1);
+      },
+    );
 
-    test('Happy Path: Deve retornar false e manter o estado quando o checker não detecta restrição',
-        () async {
-      // 1. Arrange
-      final checker = FakeBackgroundRestrictionChecker(result: false);
-      final controller =
-          PermissionsController(backgroundRestrictionChecker: checker);
+    test(
+      'Happy Path: Deve retornar false e manter o estado quando o checker não detecta restrição',
+      () async {
+        // 1. Arrange
+        final checker = FakeBackgroundRestrictionChecker(result: false);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+        );
 
-      // 2. Act
-      final resultado = await controller.refreshBackgroundRestriction();
+        // 2. Act
+        final resultado = await controller.refreshBackgroundRestriction();
 
-      // 3. Assert
-      expect(resultado, isFalse);
-      expect(controller.isBackgroundRestricted.value, isFalse);
-    });
+        // 3. Assert
+        expect(resultado, isFalse);
+        expect(controller.isBackgroundRestricted.value, isFalse);
+      },
+    );
 
-    test('Edge Case: Deve limpar a restrição previamente registrada quando o usuário a remove nas configurações',
-        () async {
-      // 1. Arrange
-      final checker = FakeBackgroundRestrictionChecker(result: false);
-      final controller =
-          PermissionsController(backgroundRestrictionChecker: checker);
-      controller.isBackgroundRestricted.value = true;
+    test(
+      'Edge Case: Deve limpar a restrição previamente registrada quando o usuário a remove nas configurações',
+      () async {
+        // 1. Arrange
+        final checker = FakeBackgroundRestrictionChecker(result: false);
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+        );
+        controller.isBackgroundRestricted.value = true;
 
-      // 2. Act
-      final resultado = await controller.refreshBackgroundRestriction();
+        // 2. Act
+        final resultado = await controller.refreshBackgroundRestriction();
 
-      // 3. Assert
-      expect(resultado, isFalse);
-      expect(controller.isBackgroundRestricted.value, isFalse);
-    });
+        // 3. Assert
+        expect(resultado, isFalse);
+        expect(controller.isBackgroundRestricted.value, isFalse);
+      },
+    );
 
-    test('Sad Path: Deve propagar a exceção do checker e preservar o estado anterior',
-        () async {
-      // 1. Arrange
-      final checker =
-          FakeBackgroundRestrictionChecker(error: StateError('falha nativa'));
-      final controller =
-          PermissionsController(backgroundRestrictionChecker: checker);
-      controller.isBackgroundRestricted.value = true;
+    test(
+      'Sad Path: Deve propagar a exceção do checker e preservar o estado anterior',
+      () async {
+        // 1. Arrange
+        final checker = FakeBackgroundRestrictionChecker(
+          error: StateError('falha nativa'),
+        );
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: checker,
+        );
+        controller.isBackgroundRestricted.value = true;
 
-      // 2. Act
-      final future = controller.refreshBackgroundRestriction();
+        // 2. Act
+        final future = controller.refreshBackgroundRestriction();
 
-      // 3. Assert
-      await expectLater(future, throwsA(isA<StateError>()));
-      expect(controller.isBackgroundRestricted.value, isTrue);
-    });
+        // 3. Assert
+        await expectLater(future, throwsA(isA<StateError>()));
+        expect(controller.isBackgroundRestricted.value, isTrue);
+      },
+    );
   });
 
   group('PermissionsController - arePermissionsGranted', () {
@@ -113,102 +127,132 @@ void main() {
       return controller;
     }
 
-    test('Happy Path: Deve retornar true com localização sempre, notificação concedida e sem restrição',
-        () {
-      // 1. Arrange
-      final controller =
-          buildController(always: true, notification: true, restricted: false);
+    test(
+      'Happy Path: Deve retornar true com localização sempre, notificação concedida e sem restrição',
+      () {
+        // 1. Arrange
+        final controller = buildController(
+          always: true,
+          notification: true,
+          restricted: false,
+        );
 
-      // 2. Act
-      final concedidas = controller.arePermissionsGranted();
+        // 2. Act
+        final concedidas = controller.arePermissionsGranted();
 
-      // 3. Assert
-      expect(concedidas, isTrue);
-    });
+        // 3. Assert
+        expect(concedidas, isTrue);
+      },
+    );
 
-    test('Edge Case: Deve retornar false no estado inicial do controller (nada concedido)',
-        () {
-      // 1. Arrange
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: FakeBackgroundRestrictionChecker(),
-      );
+    test(
+      'Edge Case: Deve retornar false no estado inicial do controller (nada concedido)',
+      () {
+        // 1. Arrange
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: FakeBackgroundRestrictionChecker(),
+        );
 
-      // 2. Act
-      final concedidas = controller.arePermissionsGranted();
+        // 2. Act
+        final concedidas = controller.arePermissionsGranted();
 
-      // 3. Assert
-      expect(concedidas, isFalse);
-    });
+        // 3. Assert
+        expect(concedidas, isFalse);
+      },
+    );
 
-    test('Edge Case: Deve ignorar a permissão "durante o uso" quando todas as obrigatórias estão concedidas',
-        () {
-      // 1. Arrange
-      final controller =
-          buildController(always: true, notification: true, restricted: false);
-      controller.hasWhenInUseLocationPermission.value = false;
+    test(
+      'Edge Case: Deve ignorar a permissão "durante o uso" quando todas as obrigatórias estão concedidas',
+      () {
+        // 1. Arrange
+        final controller = buildController(
+          always: true,
+          notification: true,
+          restricted: false,
+        );
+        controller.hasWhenInUseLocationPermission.value = false;
 
-      // 2. Act
-      final concedidas = controller.arePermissionsGranted();
+        // 2. Act
+        final concedidas = controller.arePermissionsGranted();
 
-      // 3. Assert
-      expect(concedidas, isTrue);
-    });
+        // 3. Assert
+        expect(concedidas, isTrue);
+      },
+    );
 
-    test('Sad Path: Deve retornar false quando o app está restrito em segundo plano mesmo com permissões concedidas',
-        () {
-      // 1. Arrange
-      final controller =
-          buildController(always: true, notification: true, restricted: true);
+    test(
+      'Sad Path: Deve retornar false quando o app está restrito em segundo plano mesmo com permissões concedidas',
+      () {
+        // 1. Arrange
+        final controller = buildController(
+          always: true,
+          notification: true,
+          restricted: true,
+        );
 
-      // 2. Act
-      final concedidas = controller.arePermissionsGranted();
+        // 2. Act
+        final concedidas = controller.arePermissionsGranted();
 
-      // 3. Assert
-      expect(concedidas, isFalse);
-    });
+        // 3. Assert
+        expect(concedidas, isFalse);
+      },
+    );
 
-    test('Sad Path: Deve retornar false quando falta a permissão de localização "sempre"',
-        () {
-      // 1. Arrange
-      final controller =
-          buildController(always: false, notification: true, restricted: false);
+    test(
+      'Sad Path: Deve retornar false quando falta a permissão de localização "sempre"',
+      () {
+        // 1. Arrange
+        final controller = buildController(
+          always: false,
+          notification: true,
+          restricted: false,
+        );
 
-      // 2. Act
-      final concedidas = controller.arePermissionsGranted();
+        // 2. Act
+        final concedidas = controller.arePermissionsGranted();
 
-      // 3. Assert
-      expect(concedidas, isFalse);
-    });
+        // 3. Assert
+        expect(concedidas, isFalse);
+      },
+    );
 
-    test('Sad Path: Deve retornar false quando falta a permissão de notificação',
-        () {
-      // 1. Arrange
-      final controller =
-          buildController(always: true, notification: false, restricted: false);
+    test(
+      'Sad Path: Deve retornar false quando falta a permissão de notificação',
+      () {
+        // 1. Arrange
+        final controller = buildController(
+          always: true,
+          notification: false,
+          restricted: false,
+        );
 
-      // 2. Act
-      final concedidas = controller.arePermissionsGranted();
+        // 2. Act
+        final concedidas = controller.arePermissionsGranted();
 
-      // 3. Assert
-      expect(concedidas, isFalse);
-    });
+        // 3. Assert
+        expect(concedidas, isFalse);
+      },
+    );
 
-    test('Sad Path: Deve retornar false quando o refresh detecta restrição após permissões concedidas',
-        () async {
-      // 1. Arrange
-      final controller = PermissionsController(
-        backgroundRestrictionChecker:
-            FakeBackgroundRestrictionChecker(result: true),
-      );
-      controller.hasAlwaysLocationPermission.value = true;
-      controller.hasNotificationPermission.value = true;
-      await controller.refreshBackgroundRestriction();
+    test(
+      'Sad Path: Deve retornar false quando o refresh detecta restrição após permissões concedidas',
+      () async {
+        // 1. Arrange
+        final controller = PermissionsController(
+          backgroundRestrictionChecker: FakeBackgroundRestrictionChecker(
+            result: true,
+          ),
+        );
+        controller.hasAlwaysLocationPermission.value = true;
+        controller.hasNotificationPermission.value = true;
+        await controller.refreshBackgroundRestriction();
 
-      // 2. Act
-      final concedidas = controller.arePermissionsGranted();
+        // 2. Act
+        final concedidas = controller.arePermissionsGranted();
 
-      // 3. Assert
-      expect(concedidas, isFalse);
-    });
+        // 3. Assert
+        expect(concedidas, isFalse);
+      },
+    );
   });
 }

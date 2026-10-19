@@ -13,10 +13,7 @@ class TrackingToggleButton extends StatelessWidget {
   /// Permite injeção explícita de [TrackingToggleController], útil em testes de widget.
   final TrackingToggleController? controller;
 
-  const TrackingToggleButton({
-    super.key,
-    this.controller,
-  });
+  const TrackingToggleButton({super.key, this.controller});
 
   TrackingToggleController get _trackingCtrl =>
       controller ?? Get.find<TrackingController>();
@@ -67,9 +64,7 @@ class TrackingToggleButton extends StatelessWidget {
               : Icon(
                   isEnabled ? Icons.location_on : Icons.location_off,
                   key: ValueKey(
-                    isEnabled
-                        ? 'tracking_toggle_on'
-                        : 'tracking_toggle_off',
+                    isEnabled ? 'tracking_toggle_on' : 'tracking_toggle_off',
                   ),
                   color: Colors.white,
                 ),

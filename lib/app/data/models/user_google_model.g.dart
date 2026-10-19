@@ -39,9 +39,9 @@ class UserGoogleModelAdapter extends TypeAdapter<UserGoogleModel> {
       ..writeByte(3)
       ..write(obj.urlImage)
       ..writeByte(4)
-        ..write(obj.createdAt)
-        ..writeByte(5)
-        ..write(obj.avatarBase64);
+      ..write(obj.createdAt)
+      ..writeByte(5)
+      ..write(obj.avatarBase64);
   }
 
   @override

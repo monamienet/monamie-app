@@ -1,8 +1,4 @@
-enum GoogleGroupRole {
-  owner,
-  manager,
-  member
-}
+enum GoogleGroupRole { owner, manager, member }
 
 class GoogleGroupMember {
   String name;
@@ -12,6 +8,6 @@ class GoogleGroupMember {
   GoogleGroupMember({
     required this.name,
     required this.email,
-    required this.role
+    required this.role,
   });
 }

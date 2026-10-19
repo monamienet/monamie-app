@@ -85,135 +85,144 @@ void main() {
   });
 
   group('LoginController - Restauração de Sessão no Cold Start', () {
-    test('Edge Case: Deve iniciar isRestoringSession como true logo após a construção',
-        () {
-      // 1. Arrange
-      const hasBond = true;
+    test(
+      'Edge Case: Deve iniciar isRestoringSession como true logo após a construção',
+      () {
+        // 1. Arrange
+        const hasBond = true;
 
-      // 2. Act
-      final controller = _FakeLoginController(hasBond: hasBond);
+        // 2. Act
+        final controller = _FakeLoginController(hasBond: hasBond);
 
-      // 3. Assert
-      expect(controller.isRestoringSession.value, isTrue);
-    });
-
-    testWidgets(
-        'Happy Path: Deve navegar para Routes.MONAMIE quando houver sessão Google ativa',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final controller = _FakeLoginController(hasBond: true);
-
-      // 2. Act
-      Get.put<LoginController>(controller);
-      await tester.pumpAndSettle();
-
-      // 3. Assert
-      expect(Get.currentRoute, Routes.MONAMIE);
-      expect(find.text(_kMonamiePlaceholder), findsOneWidget);
-    });
+        // 3. Assert
+        expect(controller.isRestoringSession.value, isTrue);
+      },
+    );
 
     testWidgets(
-        'Happy Path: Deve finalizar isRestoringSession como false após restaurar a sessão',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final controller = _FakeLoginController(hasBond: true);
+      'Happy Path: Deve navegar para Routes.MONAMIE quando houver sessão Google ativa',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final controller = _FakeLoginController(hasBond: true);
 
-      // 2. Act
-      Get.put<LoginController>(controller);
-      await tester.pumpAndSettle();
-
-      // 3. Assert
-      expect(controller.isRestoringSession.value, isFalse);
-    });
-
-    testWidgets(
-        'Happy Path: Deve consultar hasActiveGoogleBond exatamente uma vez no onReady',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final controller = _FakeLoginController(hasBond: true);
-
-      // 2. Act
-      Get.put<LoginController>(controller);
-      await tester.pumpAndSettle();
-
-      // 3. Assert
-      expect(controller.hasActiveGoogleBondCalls, 1);
-    });
-
-    testWidgets(
-        'Edge Case: Deve manter isRestoringSession true e permanecer no login enquanto a verificação estiver pendente',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final pending = Completer<bool>();
-      final controller = _FakeLoginController(pending: pending);
-
-      // 2. Act
-      Get.put<LoginController>(controller);
-      await tester.pump();
-
-      // 3. Assert
-      expect(controller.isRestoringSession.value, isTrue);
-      expect(Get.currentRoute, _kLoginRoute);
-    });
-
-    testWidgets(
-        'Sad Path: Deve permanecer na rota de login quando não houver sessão ativa',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final controller = _FakeLoginController(hasBond: false);
-
-      // 2. Act
-      Get.put<LoginController>(controller);
-      await tester.pumpAndSettle();
-
-      // 3. Assert
-      expect(Get.currentRoute, _kLoginRoute);
-      expect(find.text(_kLoginPlaceholder), findsOneWidget);
-      expect(find.text(_kMonamiePlaceholder), findsNothing);
-    });
-
-    testWidgets(
-        'Sad Path: Deve finalizar isRestoringSession como false quando não houver sessão ativa',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final controller = _FakeLoginController(hasBond: false);
-
-      // 2. Act
-      Get.put<LoginController>(controller);
-      await tester.pumpAndSettle();
-
-      // 3. Assert
-      expect(controller.isRestoringSession.value, isFalse);
-    });
-
-    testWidgets(
-        'Sad Path: Deve permanecer no login e finalizar isRestoringSession como false quando hasActiveGoogleBond lançar exceção',
-        (WidgetTester tester) async {
-      // 1. Arrange
-      await tester.pumpWidget(_buildTestApp());
-      final failure = StateError('falha simulada ao verificar sessão');
-      final controller = _FakeLoginController(error: failure);
-      final uncaughtErrors = <Object>[];
-
-      // 2. Act
-      // O onReady usa apenas try/finally (sem catch) e é disparado pelo GetX
-      // via post-frame callback sem await. A exceção escapa como erro
-      // assíncrono não tratado; a zona guardada a captura para inspeção.
-      await runZonedGuarded(() async {
+        // 2. Act
         Get.put<LoginController>(controller);
         await tester.pumpAndSettle();
-      }, (error, _) => uncaughtErrors.add(error));
 
-      // 3. Assert
-      expect(uncaughtErrors, [same(failure)]);
-      expect(controller.isRestoringSession.value, isFalse);
-      expect(Get.currentRoute, _kLoginRoute);
-    });
+        // 3. Assert
+        expect(Get.currentRoute, Routes.MONAMIE);
+        expect(find.text(_kMonamiePlaceholder), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Happy Path: Deve finalizar isRestoringSession como false após restaurar a sessão',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final controller = _FakeLoginController(hasBond: true);
+
+        // 2. Act
+        Get.put<LoginController>(controller);
+        await tester.pumpAndSettle();
+
+        // 3. Assert
+        expect(controller.isRestoringSession.value, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Happy Path: Deve consultar hasActiveGoogleBond exatamente uma vez no onReady',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final controller = _FakeLoginController(hasBond: true);
+
+        // 2. Act
+        Get.put<LoginController>(controller);
+        await tester.pumpAndSettle();
+
+        // 3. Assert
+        expect(controller.hasActiveGoogleBondCalls, 1);
+      },
+    );
+
+    testWidgets(
+      'Edge Case: Deve manter isRestoringSession true e permanecer no login enquanto a verificação estiver pendente',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final pending = Completer<bool>();
+        final controller = _FakeLoginController(pending: pending);
+
+        // 2. Act
+        Get.put<LoginController>(controller);
+        await tester.pump();
+
+        // 3. Assert
+        expect(controller.isRestoringSession.value, isTrue);
+        expect(Get.currentRoute, _kLoginRoute);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve permanecer na rota de login quando não houver sessão ativa',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final controller = _FakeLoginController(hasBond: false);
+
+        // 2. Act
+        Get.put<LoginController>(controller);
+        await tester.pumpAndSettle();
+
+        // 3. Assert
+        expect(Get.currentRoute, _kLoginRoute);
+        expect(find.text(_kLoginPlaceholder), findsOneWidget);
+        expect(find.text(_kMonamiePlaceholder), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve finalizar isRestoringSession como false quando não houver sessão ativa',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final controller = _FakeLoginController(hasBond: false);
+
+        // 2. Act
+        Get.put<LoginController>(controller);
+        await tester.pumpAndSettle();
+
+        // 3. Assert
+        expect(controller.isRestoringSession.value, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve permanecer no login e finalizar isRestoringSession como false quando hasActiveGoogleBond lançar exceção',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final failure = StateError('falha simulada ao verificar sessão');
+        final controller = _FakeLoginController(error: failure);
+        final uncaughtErrors = <Object>[];
+
+        // 2. Act
+        // O onReady usa apenas try/finally (sem catch) e é disparado pelo GetX
+        // via post-frame callback sem await. A exceção escapa como erro
+        // assíncrono não tratado; a zona guardada a captura para inspeção.
+        await runZonedGuarded(() async {
+          Get.put<LoginController>(controller);
+          await tester.pumpAndSettle();
+        }, (error, _) => uncaughtErrors.add(error));
+
+        // 3. Assert
+        expect(uncaughtErrors, [same(failure)]);
+        expect(controller.isRestoringSession.value, isFalse);
+        expect(Get.currentRoute, _kLoginRoute);
+      },
+    );
   });
 }

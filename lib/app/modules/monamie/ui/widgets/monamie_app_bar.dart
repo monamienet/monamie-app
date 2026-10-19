@@ -11,7 +11,8 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
   const MonAmieAppBar({super.key});
 
-  GoogleGroupsController get googleGroupsController => Get.find<GoogleGroupsController>();
+  GoogleGroupsController get googleGroupsController =>
+      Get.find<GoogleGroupsController>();
   UserController get userController => Get.find<UserController>();
   AuthGoogleController get authController => Get.find<AuthGoogleController>();
   TrackingController get trackingController => Get.find<TrackingController>();
@@ -42,48 +43,61 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
       flexibleSpace: Container(
         decoration: BoxDecoration(gradient: AppColors.appBarBottomGradient()),
       ),
-      title: Obx(() => Text(
-        'Grupo observado: ${googleGroupsController.observedGroup}', 
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)
-      )),
+      title: Obx(
+        () => Text(
+          'Grupo observado: ${googleGroupsController.observedGroup}',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
       centerTitle: true,
       elevation: 8,
       foregroundColor: Colors.white,
       actions: [
-        Obx(() => PopupMenuButton(
-          // Desabilitado durante o logout e enquanto o rastreamento liga ou
-          // desliga: sair no meio do início do rastreamento poderia ligar o
-          // serviço depois do signOut.
-          enabled: !authController.isLoggingOut.value &&
-              !trackingController.isTrackingLoading.value,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: _buildProfileAvatar(),
-          ),
-          onSelected: (value) {
-            if (value == 'sair') {
-              authController.logout();
-            }
-          },
-          itemBuilder: (BuildContext context) => [
-            const PopupMenuItem<String>(
-              value: 'sair',
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.logout, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Sair', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-                ],
+        Obx(
+          () => PopupMenuButton(
+            // Desabilitado durante o logout e enquanto o rastreamento liga ou
+            // desliga: sair no meio do início do rastreamento poderia ligar o
+            // serviço depois do signOut.
+            enabled:
+                !authController.isLoggingOut.value &&
+                !trackingController.isTrackingLoading.value,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: _buildProfileAvatar(),
+            ),
+            onSelected: (value) {
+              if (value == 'sair') {
+                authController.logout();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'sair',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text(
+                      'Sair',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            )
-          ],
-        ))
+            ],
+          ),
+        ),
       ],
     );
   }
-  
+
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
-

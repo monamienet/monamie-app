@@ -19,9 +19,7 @@ Position? _lastRecordedPosition;
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Verificar se o auth state está disponível no isolate do background.
   // No Android, o Firebase Auth persiste credenciais via SharedPreferences
@@ -58,9 +56,7 @@ void onStart(ServiceInstance service) async {
     if (user != null) {
       hadUser = true;
     } else if (hadUser) {
-      debugPrint(
-        '[ForegroundService] Usuário deslogado — encerrando serviço.',
-      );
+      debugPrint('[ForegroundService] Usuário deslogado — encerrando serviço.');
       _stopTracking(service);
     }
   });
@@ -139,7 +135,9 @@ Future<void> updateLocation(
   }
 
   _heartbeatTimer?.cancel();
-  _heartbeatTimer = Timer.periodic(Duration(minutes: heartbeatInterval), (timer) async {
+  _heartbeatTimer = Timer.periodic(Duration(minutes: heartbeatInterval), (
+    timer,
+  ) async {
     if (await FirebaseProvider().doesDocumentExist(email)) {
       try {
         await FirebaseProvider().updateHeartbeat(email);
@@ -167,80 +165,86 @@ Future<void> updateLocation(
         _lastRecordedPosition = initialPosition;
         _consecutivePermissionErrors = 0;
       } catch (e) {
-        debugPrint('[ForegroundService] Erro ao sincronizar posição inicial no Firestore: $e');
+        debugPrint(
+          '[ForegroundService] Erro ao sincronizar posição inicial no Firestore: $e',
+        );
       }
     }
     service.invoke('updateLocationLocally', {'position': initialPosition});
   } catch (e) {
-    debugPrint('[ForegroundService] Erro ao obter posição inicial no serviço: $e');
+    debugPrint(
+      '[ForegroundService] Erro ao obter posição inicial no serviço: $e',
+    );
   }
 
   await _positionSubscription?.cancel();
-  _positionSubscription = Geolocator.getPositionStream(
-    locationSettings: locationSettings,
-  ).listen((Position position) async {
-    // print("\n\n${position.accuracy}\n\n");
-    // TODO: Filtro de precisão: Se o erro for maior que 20 metros, ignorar
-    // e.g.: if (position.accuracy > 20) return;
+  _positionSubscription =
+      Geolocator.getPositionStream(locationSettings: locationSettings).listen((
+        Position position,
+      ) async {
+        // print("\n\n${position.accuracy}\n\n");
+        // TODO: Filtro de precisão: Se o erro for maior que 20 metros, ignorar
+        // e.g.: if (position.accuracy > 20) return;
 
-    // Se muitos erros de permissão consecutivos, parar de tentar
-    if (_consecutivePermissionErrors >= _maxConsecutivePermissionErrors) {
-      debugPrint(
-        '[ForegroundService] Muitos erros de permissão consecutivos '
-        '($_consecutivePermissionErrors). Parando tentativas de escrita.',
-      );
-      return;
-    }
-
-    // Evita duplicatas se a posição for essencialmente idêntica à última registrada
-    // (por exemplo, primeiro evento do stream emitindo o mesmo fix da posição inicial).
-    if (_lastRecordedPosition != null) {
-      final distanceMoved = Geolocator.distanceBetween(
-        _lastRecordedPosition!.latitude,
-        _lastRecordedPosition!.longitude,
-        position.latitude,
-        position.longitude,
-      );
-      if (distanceMoved < distance) {
-        service.invoke('updateLocationLocally', {'position': position});
-        return;
-      }
-    }
-
-    // Atualiza firebase 
-    if (await FirebaseProvider().doesDocumentExist(email)) {
-      try {
-        await FirebaseProvider().updateLocationAndTimestamp(
-          email: email,
-          nome: name,
-          lat: position.latitude,
-          lng: position.longitude,
-          timestamp: DateTime.now(),
-          grupoAtivo: grupoAtivo,
-        );
-        _lastRecordedPosition = position;
-        // Reset do contador em caso de sucesso
-        _consecutivePermissionErrors = 0;
-      } catch (e) {
-        if (e.toString().contains('permission-denied')) {
-          _consecutivePermissionErrors++;
+        // Se muitos erros de permissão consecutivos, parar de tentar
+        if (_consecutivePermissionErrors >= _maxConsecutivePermissionErrors) {
           debugPrint(
-            '[ForegroundService] PERMISSION_DENIED ao atualizar localização '
-            '(tentativa $_consecutivePermissionErrors/$_maxConsecutivePermissionErrors). '
-            'Claims group_roles podem estar ausentes no token.',
+            '[ForegroundService] Muitos erros de permissão consecutivos '
+            '($_consecutivePermissionErrors). Parando tentativas de escrita.',
           );
-          // Tentar refresh do token para recuperar claims
-          try {
-            await FirebaseAuth.instance.currentUser?.getIdToken(true);
-          } catch (_) {}
-        } else {
-          debugPrint('[ForegroundService] Erro ao atualizar localização: $e');
+          return;
         }
-      }
-    }
 
-    // Envia para o app principal
-    service.invoke('updateLocationLocally', {'position': position});
-  });
+        // Evita duplicatas se a posição for essencialmente idêntica à última registrada
+        // (por exemplo, primeiro evento do stream emitindo o mesmo fix da posição inicial).
+        if (_lastRecordedPosition != null) {
+          final distanceMoved = Geolocator.distanceBetween(
+            _lastRecordedPosition!.latitude,
+            _lastRecordedPosition!.longitude,
+            position.latitude,
+            position.longitude,
+          );
+          if (distanceMoved < distance) {
+            service.invoke('updateLocationLocally', {'position': position});
+            return;
+          }
+        }
+
+        // Atualiza firebase
+        if (await FirebaseProvider().doesDocumentExist(email)) {
+          try {
+            await FirebaseProvider().updateLocationAndTimestamp(
+              email: email,
+              nome: name,
+              lat: position.latitude,
+              lng: position.longitude,
+              timestamp: DateTime.now(),
+              grupoAtivo: grupoAtivo,
+            );
+            _lastRecordedPosition = position;
+            // Reset do contador em caso de sucesso
+            _consecutivePermissionErrors = 0;
+          } catch (e) {
+            if (e.toString().contains('permission-denied')) {
+              _consecutivePermissionErrors++;
+              debugPrint(
+                '[ForegroundService] PERMISSION_DENIED ao atualizar localização '
+                '(tentativa $_consecutivePermissionErrors/$_maxConsecutivePermissionErrors). '
+                'Claims group_roles podem estar ausentes no token.',
+              );
+              // Tentar refresh do token para recuperar claims
+              try {
+                await FirebaseAuth.instance.currentUser?.getIdToken(true);
+              } catch (_) {}
+            } else {
+              debugPrint(
+                '[ForegroundService] Erro ao atualizar localização: $e',
+              );
+            }
+          }
+        }
+
+        // Envia para o app principal
+        service.invoke('updateLocationLocally', {'position': position});
+      });
 }
-

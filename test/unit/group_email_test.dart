@@ -28,31 +28,37 @@ void main() {
       expect(result, 'aquariustur01@monamienet.org');
     });
 
-    test('Happy Path: mixed-case input maps to the same key as its lowercase form', () {
-      // 1. Arrange
-      final canonicalKey = normalizeGroupEmail('ti-suporte@monamienet.org');
-      const mixedCaseEmail = 'TI-Suporte@MonAmieNet.ORG';
+    test(
+      'Happy Path: mixed-case input maps to the same key as its lowercase form',
+      () {
+        // 1. Arrange
+        final canonicalKey = normalizeGroupEmail('ti-suporte@monamienet.org');
+        const mixedCaseEmail = 'TI-Suporte@MonAmieNet.ORG';
 
-      // 2. Act
-      final result = normalizeGroupEmail(mixedCaseEmail);
+        // 2. Act
+        final result = normalizeGroupEmail(mixedCaseEmail);
 
-      // 3. Assert
-      expect(result, canonicalKey);
-    });
+        // 3. Assert
+        expect(result, canonicalKey);
+      },
+    );
 
-    test('Happy Path: normalized value matches a lowercase group_roles claim key', () {
-      // 1. Arrange
-      const groupRoles = <String, String>{
-        'aquariustur01@monamienet.org': 'member',
-      };
-      const grupoAtivo = 'AquariusTur01@monamienet.org';
+    test(
+      'Happy Path: normalized value matches a lowercase group_roles claim key',
+      () {
+        // 1. Arrange
+        const groupRoles = <String, String>{
+          'aquariustur01@monamienet.org': 'member',
+        };
+        const grupoAtivo = 'AquariusTur01@monamienet.org';
 
-      // 2. Act
-      final key = normalizeGroupEmail(grupoAtivo);
+        // 2. Act
+        final key = normalizeGroupEmail(grupoAtivo);
 
-      // 3. Assert
-      expect(groupRoles.containsKey(key), isTrue);
-    });
+        // 3. Assert
+        expect(groupRoles.containsKey(key), isTrue);
+      },
+    );
 
     // -------------------------------------------------------------
     // EDGE CASES
@@ -68,16 +74,19 @@ void main() {
       expect(result, 'aquariustur01@monamienet.org');
     });
 
-    test('Edge Case: trims tabs and newlines and lowercases at the same time', () {
-      // 1. Arrange
-      const email = '\t\n AquariusTur01@MonAmieNet.org \r\n';
+    test(
+      'Edge Case: trims tabs and newlines and lowercases at the same time',
+      () {
+        // 1. Arrange
+        const email = '\t\n AquariusTur01@MonAmieNet.org \r\n';
 
-      // 2. Act
-      final result = normalizeGroupEmail(email);
+        // 2. Act
+        final result = normalizeGroupEmail(email);
 
-      // 3. Assert
-      expect(result, 'aquariustur01@monamienet.org');
-    });
+        // 3. Assert
+        expect(result, 'aquariustur01@monamienet.org');
+      },
+    );
 
     test('Edge Case: returns an empty string for an empty input', () {
       // 1. Arrange
@@ -101,62 +110,79 @@ void main() {
       expect(result, isEmpty);
     });
 
-    test('Edge Case: preserves inner whitespace (only peripheral whitespace is trimmed)', () {
-      // 1. Arrange
-      const email = ' Group Name@MonAmieNet.org ';
+    test(
+      'Edge Case: preserves inner whitespace (only peripheral whitespace is trimmed)',
+      () {
+        // 1. Arrange
+        const email = ' Group Name@MonAmieNet.org ';
 
-      // 2. Act
-      final result = normalizeGroupEmail(email);
+        // 2. Act
+        final result = normalizeGroupEmail(email);
 
-      // 3. Assert
-      expect(result, 'group name@monamienet.org');
-    });
+        // 3. Assert
+        expect(result, 'group name@monamienet.org');
+      },
+    );
 
-    test('Edge Case: is idempotent when applied to an already normalized value', () {
-      // 1. Arrange
-      final alreadyNormalized = normalizeGroupEmail('  AquariusTur01@MonAmieNet.org ');
+    test(
+      'Edge Case: is idempotent when applied to an already normalized value',
+      () {
+        // 1. Arrange
+        final alreadyNormalized = normalizeGroupEmail(
+          '  AquariusTur01@MonAmieNet.org ',
+        );
 
-      // 2. Act
-      final result = normalizeGroupEmail(alreadyNormalized);
+        // 2. Act
+        final result = normalizeGroupEmail(alreadyNormalized);
 
-      // 3. Assert
-      expect(result, alreadyNormalized);
-    });
+        // 3. Assert
+        expect(result, alreadyNormalized);
+      },
+    );
 
     // -------------------------------------------------------------
     // SAD PATH
     // -------------------------------------------------------------
-    test('Sad Path: throws TypeError when a null value bypasses static typing', () {
-      // 1. Arrange
-      const dynamic email = null;
+    test(
+      'Sad Path: throws TypeError when a null value bypasses static typing',
+      () {
+        // 1. Arrange
+        const dynamic email = null;
 
-      // 2. Act
-      String action() => normalizeGroupEmail(email);
+        // 2. Act
+        String action() => normalizeGroupEmail(email);
 
-      // 3. Assert
-      expect(action, throwsA(isA<TypeError>()));
-    });
+        // 3. Assert
+        expect(action, throwsA(isA<TypeError>()));
+      },
+    );
 
-    test('Sad Path: throws TypeError when a non-String value bypasses static typing', () {
-      // 1. Arrange
-      const dynamic email = 12345;
+    test(
+      'Sad Path: throws TypeError when a non-String value bypasses static typing',
+      () {
+        // 1. Arrange
+        const dynamic email = 12345;
 
-      // 2. Act
-      String action() => normalizeGroupEmail(email);
+        // 2. Act
+        String action() => normalizeGroupEmail(email);
 
-      // 3. Assert
-      expect(action, throwsA(isA<TypeError>()));
-    });
+        // 3. Assert
+        expect(action, throwsA(isA<TypeError>()));
+      },
+    );
 
-    test('Sad Path: does not validate format and only normalizes a malformed email', () {
-      // 1. Arrange
-      const email = ' Not-An-Email ';
+    test(
+      'Sad Path: does not validate format and only normalizes a malformed email',
+      () {
+        // 1. Arrange
+        const email = ' Not-An-Email ';
 
-      // 2. Act
-      final result = normalizeGroupEmail(email);
+        // 2. Act
+        final result = normalizeGroupEmail(email);
 
-      // 3. Assert
-      expect(result, 'not-an-email');
-    });
+        // 3. Assert
+        expect(result, 'not-an-email');
+      },
+    );
   });
 }
