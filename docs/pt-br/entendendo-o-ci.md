@@ -81,6 +81,7 @@ push alterar pelo menos um destes caminhos, que são as entradas do build Androi
 | `lib/**` | o código Dart |
 | `android/**` | Gradle, manifest, ícones, configuração do Firebase |
 | `assets/**` | imagens declaradas no `pubspec.yaml` |
+| `partners/**` | identidade de cada parceiro (nome, cores), que vira um product flavor no Gradle |
 | `pubspec.yaml`, `pubspec.lock` | dependências e lista de assets |
 | `.github/workflows/deploy-play-internal.yml` | o próprio pipeline: se ele muda, precisa rodar para provar que ainda funciona |
 
@@ -201,7 +202,7 @@ a `main` mais nova já contém as mudanças da do meio.
 | 5 | `Restore release signing` | Recria a keystore e o `android/key.properties`, que não estão no git (seção 4). Antes disso, confere que nenhum secret está vazio. |
 | 6 | `flutter pub get` | Baixa as dependências do `pubspec.yaml`. |
 | 7 | `flutter test test/unit` | Roda os testes unitários. Se algum falhar, o deploy para aqui. Os testes de integração ficam de fora porque dependem dos emuladores do Firebase. |
-| 8 | `flutter build appbundle` | Gera o `.aab` de release, assinado com a keystore do passo 5 e com um versionCode novo (seção 5). |
+| 8 | `flutter build appbundle` | Gera o `.aab` de release do parceiro escolhido em `--flavor aquariustur`, assinado com a keystore do passo 5 e com um versionCode novo (seção 5). |
 | 9 | `google-github-actions/auth` | Troca o token OIDC do GitHub por credenciais temporárias da service account, sem chave (seção 6). |
 | 10 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal` com as credenciais do passo 9. `status: completed` lança o release direto para os testadores. |
 
@@ -233,7 +234,7 @@ proteções:
    roda antes de **qualquer** build release, no CI ou numa máquina local. Ela falha se faltar o
    `key.properties`, alguma propriedade dele ou o arquivo da keystore.
 
-Builds debug (`flutter run`) não são afetados e funcionam sem keystore.
+Builds debug (`flutter run --flavor aquariustur`) não são afetados e funcionam sem keystore.
 
 ### E o `google_config.dart`?
 

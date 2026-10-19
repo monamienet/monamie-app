@@ -109,7 +109,7 @@ SA_EMAIL=$SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
 Para outro app (cliente):
 - troque os valores do grupo *App*;
 - no workflow [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml),
-  atualize o `packageName` e o `service_account`.
+  atualize o `--flavor`, o `releaseFiles`, o `packageName` e o `service_account`.
 
 ---
 
@@ -193,7 +193,7 @@ storeFile=<CAMINHO>/upload.jks
 
 > **Fail-fast:** sem esse arquivo, ou com alguma propriedade vazia, todo build release falha com a mensagem
 > `Release signing: ...`. Não há fallback para a chave debug, cujo bundle o Play rejeitaria. Builds debug
-> (`flutter run`) não precisam da keystore.
+> (`flutter run --flavor aquariustur`) não precisam da keystore.
 
 ## C. Uma vez por app (cliente)
 
@@ -244,10 +244,12 @@ O Play só aceita envios pela API depois que o app recebe o primeiro bundle pelo
 2. Gere o bundle:
 
     ```bash
-    flutter build appbundle --release
+    flutter build appbundle --release --flavor aquariustur
     ```
 
-    O resultado fica em `build/app/outputs/bundle/release/app-release.aab`.
+    O resultado fica em `build/app/outputs/bundle/aquariusturRelease/app-aquariustur-release.aab`.
+    O `--flavor` é obrigatório: cada pasta `partners/<id>/` vira um flavor, e sem ele o build falha
+    listando os ids válidos.
 
 ### C7. Enviar e lançar o primeiro bundle
 

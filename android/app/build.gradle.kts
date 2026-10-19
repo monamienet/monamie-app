@@ -15,6 +15,55 @@ if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
 }
 
+// Each partners/<id>/partner.json becomes one product flavor. The id is
+// permanent: it becomes the Play application id (org.monamienet.<id>).
+data class Partner(val id: String, val name: String)
+
+// AGP rejects flavor names starting with "test" and these reserved names.
+val reservedPartnerIds = setOf("lint", "main", "debug", "release", "profile")
+val partnerIdPattern = Regex("^[a-z][a-z0-9]*$")
+
+val partnersDir = rootProject.file("../partners")
+val partners: List<Partner> = partnersDir.listFiles()
+    .orEmpty()
+    .filter { it.resolve("partner.json").isFile }
+    .sortedBy { it.name }
+    .map { dir ->
+        val id = dir.name
+        val partnerFile = dir.resolve("partner.json")
+        if (!partnerIdPattern.matches(id) || id.startsWith("test") || id in reservedPartnerIds) {
+            throw GradleException(
+                "Invalid partner id '$id' (${partnerFile.path}): it must match $partnerIdPattern, " +
+                    "not start with 'test' and not be one of ${reservedPartnerIds.joinToString()}."
+            )
+        }
+        val json = try {
+            groovy.json.JsonSlurper().parseText(partnerFile.readText()) as? Map<*, *>
+        } catch (e: groovy.json.JsonException) {
+            // The rest of the message dumps the parser's buffer.
+            val reason = e.message.orEmpty().lineSequence().first()
+            throw GradleException("${partnerFile.path} is not valid JSON: $reason")
+        } ?: throw GradleException("${partnerFile.path} must contain a JSON object.")
+        val name = (json["name"] as? String)?.takeIf { it.isNotBlank() }
+            ?: throw GradleException("${partnerFile.path}: \"name\" must be a non-empty string.")
+        Partner(id, name)
+    }
+
+if (partners.isEmpty()) {
+    throw GradleException("No partner found: expected ${partnersDir.path}/<id>/partner.json.")
+}
+
+// Without --flavor, Flutter requests e.g. assembleRelease, which builds every
+// partner and then fails with a generic "couldn't find the .apk" error (or
+// installs a stale APK). Fail before that with the list of valid flavors.
+val flavorlessTask = Regex("^(:app:)?(assemble|bundle|install)(Debug|Profile|Release)$")
+gradle.startParameter.taskNames.firstOrNull { flavorlessTask.matches(it) }?.let { task ->
+    throw GradleException(
+        "'$task' does not select a partner. Pass --flavor <id> to flutter run/build. " +
+            "Partners: ${partners.joinToString { it.id }}."
+    )
+}
+
 android {
     namespace = "org.monamienet.aquariustur"
     compileSdk = flutter.compileSdkVersion
@@ -26,14 +75,25 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "org.monamienet.aquariustur"
+        // The application id is set per partner flavor (productFlavors below).
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+    }
+
+    flavorDimensions += "partner"
+    productFlavors {
+        partners.forEach { partner ->
+            create(partner.id) {
+                dimension = "partner"
+                applicationId = "org.monamienet.${partner.id}"
+                // Set by key: Flutter keeps applicationName in the same map.
+                manifestPlaceholders["appLabel"] = "MonAmie ${partner.name}"
+            }
+        }
     }
 
     signingConfigs {
@@ -80,8 +140,11 @@ val validateReleaseSigning by tasks.registering {
     }
 }
 
+// With flavors, every release variant has its own pre<Flavor>ReleaseBuild task.
+val preReleaseBuildTask = Regex("^pre[A-Z]\\w*ReleaseBuild$")
+
 tasks.configureEach {
-    if (name == "preReleaseBuild") {
+    if (preReleaseBuildTask.matches(name)) {
         dependsOn(validateReleaseSigning)
     }
 }

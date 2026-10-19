@@ -109,7 +109,7 @@ SA_EMAIL=$SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
 For another app (client):
 - change the values of the *App* group;
 - in the workflow [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml),
-  update `packageName` and `service_account`.
+  update `--flavor`, `releaseFiles`, `packageName` and `service_account`.
 
 ---
 
@@ -193,7 +193,7 @@ storeFile=<PATH>/upload.jks
 
 > **Fail-fast:** without this file, or with an empty property, every release build fails with the message
 > `Release signing: ...`. There is no fallback to the debug key, whose bundle Play would reject. Debug
-> builds (`flutter run`) do not need the keystore.
+> builds (`flutter run --flavor aquariustur`) do not need the keystore.
 
 ## C. Once per app (client)
 
@@ -244,10 +244,12 @@ Console, so **the first version is manual**.
 2. Build the bundle:
 
     ```bash
-    flutter build appbundle --release
+    flutter build appbundle --release --flavor aquariustur
     ```
 
-    The output is `build/app/outputs/bundle/release/app-release.aab`.
+    The output is `build/app/outputs/bundle/aquariusturRelease/app-aquariustur-release.aab`.
+    `--flavor` is required: each `partners/<id>/` folder becomes a flavor, and without it the build
+    fails listing the valid ids.
 
 ### C7. Upload and release the first bundle
 
