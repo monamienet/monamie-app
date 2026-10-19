@@ -65,7 +65,7 @@ gradle.startParameter.taskNames.firstOrNull { flavorlessTask.matches(it) }?.let 
 }
 
 android {
-    namespace = "org.monamienet.aquariustur"
+    namespace = "org.monamienet.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

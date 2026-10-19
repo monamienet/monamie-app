@@ -1,4 +1,4 @@
-package org.monamienet.aquariustur
+package org.monamienet.app
 
 import android.app.ActivityManager
 import android.content.ActivityNotFoundException
