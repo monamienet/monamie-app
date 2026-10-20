@@ -19,13 +19,18 @@ flutter build web --release
 ```
 
 - **Why the first command:** Flutter has no `--flavor` for web. Instead, the tool recreates the
-  gitignored folder `web/partner/` with the files of `partners/<id>/` (today only `partner.json`).
-  `flutter build web` copies everything under `web/` into the output, and `flutter run -d chrome` serves
-  it, so the web app reads its partner from `partner/` over HTTP. Run it again whenever you switch
-  partners or change `partners/<id>/`; each run deletes the folder first, so no file from another partner
-  is left behind.
-- An unknown or invalid id fails with a message listing the existing partners, and keeps the previous
-  `web/partner/` as it was.
+  gitignored folder `web/partner/` with the partner's files: `partner.json`, the favicon and PWA icons
+  from `partners/<id>/web/`, and a `manifest.json` generated from `partner.json` (name
+  `MonAmie <name>`, `theme_color` = `colors.primary`). `flutter build web` copies everything under
+  `web/` into the output, and `flutter run -d chrome` serves it, so the web app reads its partner from
+  `partner/` over HTTP. `web/index.html` is the same for every partner and links to these files. Run the
+  command again whenever you switch partners or change `partners/<id>/`; each run deletes the folder
+  first, so no file from another partner is left behind.
+- An unknown or invalid id, a `partner.json` without `name` or `colors.primary`, or a missing file in
+  `partners/<id>/web/` (`favicon.png`, `icons/Icon-192.png`, `icons/Icon-512.png`,
+  `icons/Icon-maskable-192.png`, `icons/Icon-maskable-512.png`) fails with a message and keeps the
+  previous `web/partner/` as it was.
+- Without this step, the build still succeeds, but the page has no favicon, icons or manifest.
 - The output is in `build/web/`. It is a static build: rebuild after changing code.
 
 ## 2. Serve on `localhost:5000`

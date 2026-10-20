@@ -19,13 +19,18 @@ flutter build web --release
 ```
 
 - **Por que o primeiro comando:** o Flutter não tem `--flavor` para web. No lugar disso, a ferramenta
-  recria a pasta `web/partner/` (ignorada pelo git) com os arquivos de `partners/<id>/` (hoje, só o
-  `partner.json`). O `flutter build web` copia tudo o que está em `web/` para o resultado, e o
-  `flutter run -d chrome` serve essa pasta. Assim, o app web lê o parceiro em `partner/` via HTTP. Rode
-  de novo sempre que trocar de parceiro ou mudar `partners/<id>/`. Cada execução apaga a pasta antes, então
-  nenhum arquivo de outro parceiro fica para trás.
-- Um id desconhecido ou inválido falha com uma mensagem que lista os parceiros existentes, e mantém a
+  recria a pasta `web/partner/` (ignorada pelo git) com os arquivos do parceiro: o `partner.json`, o
+  favicon e os ícones PWA de `partners/<id>/web/` e um `manifest.json` gerado a partir do `partner.json`
+  (nome `MonAmie <nome>`, `theme_color` = `colors.primary`). O `flutter build web` copia tudo o que está
+  em `web/` para o resultado, e o `flutter run -d chrome` serve essa pasta. Assim, o app web lê o parceiro
+  em `partner/` via HTTP. O `web/index.html` é o mesmo para todos os parceiros e aponta para esses
+  arquivos. Rode o comando de novo sempre que trocar de parceiro ou mudar `partners/<id>/`. Cada execução
+  apaga a pasta antes, então nenhum arquivo de outro parceiro fica para trás.
+- Um id desconhecido ou inválido, um `partner.json` sem `name` ou `colors.primary`, ou a falta de um
+  arquivo em `partners/<id>/web/` (`favicon.png`, `icons/Icon-192.png`, `icons/Icon-512.png`,
+  `icons/Icon-maskable-192.png`, `icons/Icon-maskable-512.png`) falha com uma mensagem e mantém a
   `web/partner/` anterior como estava.
+- Sem esse passo, o build ainda funciona, mas a página fica sem favicon, ícones e manifest.
 - O resultado fica em `build/web/`. É um build estático: depois de mudar o código, gere de novo.
 
 ## 2. Servir em `localhost:5000`
