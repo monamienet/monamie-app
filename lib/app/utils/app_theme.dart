@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'color_pallete.dart';
 
-/// Centralized Material 3 Theme Configuration for MonAmie AquariusTur.
+/// Centralized Material 3 Theme Configuration for the app.
 class AppTheme {
   AppTheme._();
 
