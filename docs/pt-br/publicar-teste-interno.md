@@ -251,8 +251,9 @@ O Play só aceita envios pela API depois que o app recebe o primeiro bundle pelo
     O `--flavor` é obrigatório: cada pasta `partners/<id>/` vira um flavor, e sem ele o build falha
     listando os ids válidos.
 
-    Cada pasta de parceiro precisa ter o `partner.json` (nome e cores; `colors.secondary` é o fundo da
-    splash, no formato `#RRGGBB`) e, em `android/res/`, o ícone do app `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`
+    Cada pasta de parceiro precisa ter o `partner.json` (nome e cores, no formato `#RRGGBB`; `colors.primary`
+    é a cor da marca, da qual o app deriva os tons mais escuros e mais claros, e `colors.secondary` é o
+    fundo da splash) e, em `android/res/`, o ícone do app `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`
     e a imagem da splash `drawable/launch_image.png`. Se faltar algum arquivo, o build falha e diz qual.
     O `pubspec.yaml` também precisa de uma entrada de asset por parceiro, `- path: partners/<id>/` com
     `flavors: [<id>]`, para que cada app leve só o próprio `partner.json`; o `flutter test test/unit` falha

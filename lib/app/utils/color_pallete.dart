@@ -1,35 +1,34 @@
 import 'package:flutter/material.dart';
 
-/// App color palette, still fixed to the AquariusTur brand.
-/// Brand primary color is `#0ABAB5` with harmonized oceanic teal shades.
+import '../config/partner/partner.dart';
+import '../config/partner/partner_palette.dart';
+
+/// App colors, derived from the partner of this build ([PartnerPalette]).
+///
+/// The `*Blue` names come from the first brand; they now mean shades of the
+/// partner's primary color, whatever its hue.
 class AppColors {
-  // Brand Base Constants
-  static const Color brandPrimary = Color(0xFF0ABAB5); // AquariusTur Cyan/Teal
-  static const Color brandDark = Color(0xFF073B40); // Oceanic Dark Teal
-  static const Color brandLight = Color(0xFFCCF1F0); // Soft Aqua Accent
-  static const Color brandAltDark = Color(0xFF052E32); // Deep Abyss Teal
-  static const Color brandAltMedium = Color(0xFF088F8B); // Vibrant Medium Teal
+  static PartnerPalette get _palette =>
+      PartnerPalette.fromConfig(Partner.current);
 
   // Semantic Getters
-  static Color get primary => brandPrimary;
-  static Color get primaryDark => brandDark;
-  static Color get primaryLight => brandLight;
-  static Color get secondary => brandAltMedium;
+  static Color get primary => _palette.primary;
+  static Color get primaryDark => _palette.dark;
+  static Color get primaryLight => _palette.light;
+  static Color get secondary => _palette.accent;
 
-  // Backwards-compatible methods mapped to AquariusTur palette
-  static Color darkBlue({int alpha = 255}) => Color.fromARGB(alpha, 7, 59, 64);
+  static Color darkBlue({int alpha = 255}) => _palette.dark.withAlpha(alpha);
 
-  static Color lightBlue({int alpha = 255}) =>
-      Color.fromARGB(alpha, 204, 241, 240);
+  static Color lightBlue({int alpha = 255}) => _palette.light.withAlpha(alpha);
 
   static Color mediumBlue({int alpha = 255}) =>
-      Color.fromARGB(alpha, 10, 186, 181);
+      _palette.primary.withAlpha(alpha);
 
   static Color alternativeDarkBlue({int alpha = 255}) =>
-      Color.fromARGB(alpha, 5, 46, 50);
+      _palette.accentDark.withAlpha(alpha);
 
   static Color alternativeMediumBlue({int alpha = 255}) =>
-      Color.fromARGB(alpha, 8, 143, 139);
+      _palette.accent.withAlpha(alpha);
 
   static LinearGradient darkBlueToBlackGradient({
     Alignment begin = Alignment.topLeft,
