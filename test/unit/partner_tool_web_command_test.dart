@@ -78,6 +78,27 @@ void main() {
       );
     });
 
+    test('Happy Path: writes the given id to web/partner/id.txt', () async {
+      // 1. Arrange
+      writePartner(
+        repoRoot,
+        'acme',
+        '{"name": "Acme", "colors": {"primary": "#112233"}}',
+      );
+      final runner = buildRunner(repoRoot);
+
+      // 2. Act
+      await runner.run(['web', 'acme']);
+
+      // 3. Assert
+      expect(
+        File(
+          p.join(repoRoot.path, webPartnerDirPath, webPartnerIdFileName),
+        ).readAsStringSync(),
+        'acme\n',
+      );
+    });
+
     test('Sad Path: throws UsageException when no id is given', () {
       // 1. Arrange
       final runner = buildRunner(repoRoot);

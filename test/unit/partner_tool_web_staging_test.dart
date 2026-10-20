@@ -21,6 +21,7 @@ const specBrandFiles = <String>[
 /// Every file a successful run leaves in `web/partner/`, sorted.
 final expectedStagedFiles = <String>[
   ...specBrandFiles,
+  'id.txt',
   'manifest.json',
   'partner.json',
 ]..sort();
@@ -83,6 +84,10 @@ Directory stageDir(Directory repoRoot) =>
 /// The staged `web/partner/partner.json` inside [repoRoot].
 File stagedConfig(Directory repoRoot) =>
     File(p.join(stageDir(repoRoot).path, partnerConfigFileName));
+
+/// The staged `web/partner/id.txt` inside [repoRoot].
+File stagedIdFile(Directory repoRoot) =>
+    File(p.join(stageDir(repoRoot).path, 'id.txt'));
 
 /// The staged `web/partner/manifest.json` inside [repoRoot], decoded.
 Map<String, dynamic> stagedManifest(Directory repoRoot) =>
@@ -183,6 +188,168 @@ void main() {
     });
   });
 
+  group('webPartnerIdFileName - Unit Test Suite', () {
+    test('Happy Path: names the staged id file id.txt', () {
+      // 1. Arrange
+      const expected = 'id.txt';
+
+      // 2. Act
+      const name = webPartnerIdFileName;
+
+      // 3. Assert
+      expect(name, expected);
+    });
+  });
+
+  group('stageWebPartner id.txt - Unit Test Suite', () {
+    test('Happy Path: writes the partner id followed by a newline to '
+        'web/partner/id.txt', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+
+      // 2. Act
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(stagedIdFile(repoRoot).readAsBytesSync(), utf8.encode('acme\n'));
+    });
+
+    test('Happy Path: returns id.txt among the staged paths', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+
+      // 2. Act
+      final staged = stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(staged, contains('id.txt'));
+    });
+
+    test('Happy Path: staging a second partner rewrites id.txt with the '
+        'second id', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+      writePartner(repoRoot, 'beta', betaJson);
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 2. Act
+      stageWebPartner(repoRoot: repoRoot, id: 'beta');
+
+      // 3. Assert
+      expect(stagedIdFile(repoRoot).readAsStringSync(), 'beta\n');
+    });
+
+    test('Happy Path: the real aquariustur partner stages id.txt with '
+        '"aquariustur"', () {
+      // 1. Arrange
+      copyRealPartner(repoRoot, 'aquariustur');
+
+      // 2. Act
+      stageWebPartner(repoRoot: repoRoot, id: 'aquariustur');
+
+      // 3. Assert
+      expect(stagedIdFile(repoRoot).readAsStringSync(), 'aquariustur\n');
+    });
+
+    test('Edge Case: id.txt holds the folder name, not the partner name '
+        'from partner.json', () {
+      // 1. Arrange
+      writePartner(
+        repoRoot,
+        'acme',
+        '{"name": "Other Brand", "colors": {"primary": "#112233"}}',
+      );
+
+      // 2. Act
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(stagedIdFile(repoRoot).readAsStringSync(), 'acme\n');
+    });
+
+    test('Edge Case: adding id.txt leaves partner.json byte for byte as the '
+        'source', () {
+      // 1. Arrange
+      final sourceBytes = utf8.encode(
+        '{"name": "Acme", "colors": {"primary": "#112233"}}\n',
+      );
+      writePartnerBytes(repoRoot, 'acme', sourceBytes);
+
+      // 2. Act
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(stagedConfig(repoRoot).readAsBytesSync(), sourceBytes);
+    });
+
+    test('Sad Path: an invalid partner.json keeps the previous id.txt', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+      writePartner(repoRoot, 'broken', '{"name": ""}');
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 2. Act
+      try {
+        stageWebPartner(repoRoot: repoRoot, id: 'broken');
+      } on PartnerToolException {
+        // Expected: the assertion checks the id file left behind.
+      }
+
+      // 3. Assert
+      expect(stagedIdFile(repoRoot).readAsStringSync(), 'acme\n');
+    });
+
+    test('Sad Path: a missing brand file keeps the previous id.txt', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+      writeConfigOnly(repoRoot, 'beta', betaJson);
+      writeBrandFiles(repoRoot, 'beta', skip: {'favicon.png'});
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 2. Act
+      try {
+        stageWebPartner(repoRoot: repoRoot, id: 'beta');
+      } on PartnerToolException {
+        // Expected: the assertion checks the id file left behind.
+      }
+
+      // 3. Assert
+      expect(stagedIdFile(repoRoot).readAsStringSync(), 'acme\n');
+    });
+
+    test('Sad Path: a reserved id keeps the previous id.txt', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+      writePartner(repoRoot, 'release', betaJson);
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 2. Act
+      try {
+        stageWebPartner(repoRoot: repoRoot, id: 'release');
+      } on PartnerToolException {
+        // Expected: the assertion checks the id file left behind.
+      }
+
+      // 3. Assert
+      expect(stagedIdFile(repoRoot).readAsStringSync(), 'acme\n');
+    });
+
+    test('Sad Path: a failed first run does not write id.txt', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', '{"name": "Acme"}');
+
+      // 2. Act
+      try {
+        stageWebPartner(repoRoot: repoRoot, id: 'acme');
+      } on PartnerToolException {
+        // Expected: the assertion checks the id file left behind.
+      }
+
+      // 3. Assert
+      expect(stagedIdFile(repoRoot).existsSync(), isFalse);
+    });
+  });
+
   group('requiredWebBrandFiles - Unit Test Suite', () {
     test('Happy Path: holds the favicon and the four PWA icons', () {
       // 1. Arrange
@@ -227,6 +394,7 @@ void main() {
       expect(
         stagedSnapshot(repoRoot)
           ..remove('partner.json')
+          ..remove('id.txt')
           ..remove('manifest.json'),
         expected,
       );
