@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:monamie_app/app/utils/app_theme.dart';
 
+import 'support/partner_layout.dart';
+
 void main() {
   group('AquariusTur Color Palette Tests', () {
     test('Primary brand color deve ser #0ABAB5', () {
@@ -108,10 +110,11 @@ void main() {
     test(
       'Native splash launch_image e app icons devem existir e ser válidos',
       () {
+        // 1. Arrange
+        // Android brand resources now live in partners/<id>/android/res/.
         final nativeFiles = [
-          'android/app/src/main/res/drawable/launch_image.png',
-          'android/app/src/main/res/mipmap-hdpi/ic_launcher.png',
-          'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
+          for (final resource in requiredAndroidBrandResources)
+            'partners/aquariustur/android/res/$resource',
           'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png',
           'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png',
           'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
@@ -119,19 +122,18 @@ void main() {
           'web/icons/Icon-192.png',
         ];
 
-        for (final path in nativeFiles) {
+        // 2. Act
+        final invalidFiles = nativeFiles.where((path) {
           final file = File(path);
-          expect(
-            file.existsSync(),
-            isTrue,
-            reason: 'Arquivo nativo deve existir: $path',
-          );
-          expect(
-            file.lengthSync(),
-            greaterThan(100),
-            reason: 'Arquivo deve conter bytes válidos: $path',
-          );
-        }
+          return !file.existsSync() || file.lengthSync() <= 100;
+        }).toList();
+
+        // 3. Assert
+        expect(
+          invalidFiles,
+          isEmpty,
+          reason: 'Arquivos nativos devem existir e conter bytes válidos',
+        );
       },
     );
   });

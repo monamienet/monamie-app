@@ -79,9 +79,9 @@ the push changes at least one of these paths, which are the inputs of the Androi
 | Path | Why it goes into the `.aab` |
 | :--- | :--- |
 | `lib/**` | the Dart code |
-| `android/**` | Gradle, manifest, icons, Firebase configuration |
+| `android/**` | Gradle, manifest, Firebase configuration |
 | `assets/**` | images declared in `pubspec.yaml` |
-| `partners/**` | each partner's identity (name, colors), which becomes a Gradle product flavor |
+| `partners/**` | each partner's identity (name, colors, launcher icon, splash image), which becomes a Gradle product flavor |
 | `pubspec.yaml`, `pubspec.lock` | dependencies and the asset list |
 | `.github/workflows/deploy-play-internal.yml` | the pipeline itself: if it changes, it must run to prove it still works |
 

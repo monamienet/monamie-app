@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- Splash shown while the app starts. The background is the partner's
+     colors.secondary (partners/<id>/partner.json, set by Gradle as
+     @color/splash_background); the image is
+     partners/<id>/android/res/drawable/launch_image.png. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+    <item android:drawable="@color/splash_background" />
 
     <item>
         <bitmap

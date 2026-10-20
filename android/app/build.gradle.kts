@@ -17,11 +17,18 @@ if (keystorePropertiesFile.exists()) {
 
 // Each partners/<id>/partner.json becomes one product flavor. The id is
 // permanent: it becomes the Play application id (org.monamienet.<id>).
-data class Partner(val id: String, val name: String)
+data class Partner(val id: String, val name: String, val splashBackground: String, val resDir: File)
 
 // AGP rejects flavor names starting with "test" and these reserved names.
 val reservedPartnerIds = setOf("lint", "main", "debug", "release", "profile")
 val partnerIdPattern = Regex("^[a-z][a-z0-9]*$")
+val hexColorPattern = Regex("^#[0-9A-Fa-f]{6}$")
+
+// Brand resources each partner must provide under partners/<id>/android/res.
+// src/main/res has none of them, so a missing file can never fall back to
+// another partner's brand.
+val requiredPartnerResources = listOf("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi")
+    .map { "mipmap-$it/ic_launcher.png" } + "drawable/launch_image.png"
 
 val partnersDir = rootProject.file("../partners")
 val partners: List<Partner> = partnersDir.listFiles()
@@ -46,7 +53,17 @@ val partners: List<Partner> = partnersDir.listFiles()
         } ?: throw GradleException("${partnerFile.path} must contain a JSON object.")
         val name = (json["name"] as? String)?.takeIf { it.isNotBlank() }
             ?: throw GradleException("${partnerFile.path}: \"name\" must be a non-empty string.")
-        Partner(id, name)
+        val secondary = ((json["colors"] as? Map<*, *>)?.get("secondary") as? String)
+            ?.takeIf { hexColorPattern.matches(it) }
+            ?: throw GradleException("${partnerFile.path}: \"colors.secondary\" must be a color like \"#RRGGBB\".")
+        val resDir = dir.resolve("android/res")
+        val missing = requiredPartnerResources.filterNot { resDir.resolve(it).isFile }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Partner '$id' is missing brand resources in ${resDir.path}: ${missing.joinToString()}."
+            )
+        }
+        Partner(id, name, secondary, resDir)
     }
 
 if (partners.isEmpty()) {
@@ -84,6 +101,11 @@ android {
         versionName = flutter.versionName
     }
 
+    buildFeatures {
+        // Off by default since AGP 9; needed for the per-partner resValue below.
+        resValues = true
+    }
+
     flavorDimensions += "partner"
     productFlavors {
         partners.forEach { partner ->
@@ -92,7 +114,16 @@ android {
                 applicationId = "org.monamienet.${partner.id}"
                 // Set by key: Flutter keeps applicationName in the same map.
                 manifestPlaceholders["appLabel"] = "MonAmie ${partner.name}"
+                // Used by drawable[-v21]/launch_background.xml.
+                resValue("color", "splash_background", partner.splashBackground)
             }
+        }
+    }
+
+    // Each flavor only sees its own partner's icons and splash image.
+    sourceSets {
+        partners.forEach { partner ->
+            getByName(partner.id).res.srcDir(partner.resDir)
         }
     }
 
