@@ -17,12 +17,16 @@ const specBrandFiles = <String>[
   'icons/Icon-maskable-512.png',
 ];
 
-/// Creates `partners/<id>/partner.json` under [repoRoot] with [json] and
-/// every brand file in `partners/<id>/web/`.
+/// Creates `partners/<id>/partner.json` under [repoRoot] with [json], the
+/// login logo `partners/<id>/logo-com-texto.svg` and every brand file in
+/// `partners/<id>/web/`.
 void writePartner(Directory repoRoot, String id, String json) {
   File(p.join(repoRoot.path, 'partners', id, partnerConfigFileName))
     ..parent.createSync(recursive: true)
     ..writeAsStringSync(json);
+  File(
+    p.join(repoRoot.path, 'partners', id, 'logo-com-texto.svg'),
+  ).writeAsStringSync('<svg xmlns="http://www.w3.org/2000/svg"/>');
   for (final path in specBrandFiles) {
     File(p.join(repoRoot.path, 'partners', id, 'web', path))
       ..parent.createSync(recursive: true)

@@ -20,19 +20,20 @@ flutter build web --release
 
 - **Why the first command:** Flutter has no `--flavor` for web. Instead, the tool recreates the
   gitignored folder `web/partner/` with the partner's files: `partner.json`, `id.txt` (the id, which
-  `partner.json` doesn't contain), the favicon and PWA icons
+  `partner.json` doesn't contain), the login logo (`logo-com-texto.svg`), the favicon and PWA icons
   from `partners/<id>/web/`, and a `manifest.json` generated from `partner.json` (name
   `MonAmie <name>`, `theme_color` = `colors.primary`). `flutter build web` copies everything under
   `web/` into the output, and `flutter run -d chrome` serves it, so the web app reads its partner from
   `partner/` over HTTP. `web/index.html` is the same for every partner and links to these files. Run the
   command again whenever you switch partners or change `partners/<id>/`; each run deletes the folder
   first, so no file from another partner is left behind.
-- An unknown or invalid id, a `partner.json` without `name` or `colors.primary`, or a missing file in
-  `partners/<id>/web/` (`favicon.png`, `icons/Icon-192.png`, `icons/Icon-512.png`,
+- An unknown or invalid id, a `partner.json` without `name` or `colors.primary`, a missing
+  `partners/<id>/logo-com-texto.svg`, or a missing file in `partners/<id>/web/` (`favicon.png`, `icons/Icon-192.png`, `icons/Icon-512.png`,
   `icons/Icon-maskable-192.png`, `icons/Icon-maskable-512.png`) fails with a message and keeps the
   previous `web/partner/` as it was.
-- The app reads `partner/id.txt` and `partner/partner.json` at startup (name in the title bar, and later
-  colors and other settings). Without this step the build still succeeds, but the page shows the error
+- The app reads `partner/id.txt` and `partner/partner.json` at startup (name in the title bar and
+  colors), and `partner/logo-com-texto.svg` on the login screen. If the logo fails to load, the screen
+  shows the name `MonAmie <name>` in its place. Without this step the build still succeeds, but the page shows the error
   `Could not fetch …/partner/id.txt (HTTP 404)` instead of the app, and has no favicon, icons or
   manifest.
 - The output is in `build/web/`. It is a static build: rebuild after changing code.
