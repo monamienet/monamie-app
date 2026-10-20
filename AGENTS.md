@@ -67,6 +67,13 @@ Follow `docs/en-us/run-web-locally.md`. Serve `build/web` on `http://localhost:5
 - **Pull request after human approval**: When the task is finished, wait for explicit human approval before opening a pull request to merge the branch into `main`. Do not open the PR, or merge it, without that approval.
 - **GitHub interactions via MCP**: Interact with GitHub (pull requests, issues, reviews, projects, comments, etc.) preferably through the GitHub MCP server tools. Fall back to the `gh` CLI only when the GitHub MCP server is unavailable in the session or does not support the required operation.
 
+## Tracking Findings
+
+- **One issue per finding**: Whenever you find something that needs fixing (a bug, a regression, a misconfiguration, a security or data risk, an outdated doc), create a GitHub issue for it, unless the current task already fixes it. This includes findings outside the task's scope and problems in third-party code that affect this app; out-of-scope findings are not fixed in the current branch.
+- **Before creating**: search the open issues to avoid duplicates; if one exists, add what you found as a comment instead.
+- **Content**: write it in English. Say what is wrong, how it was observed or reproduced, its impact, and a "Done when" checklist; link related issues and PRs.
+- **Tracking**: add the issue to the organization project "MonAmie App" (#2) with Status `Todo`, and list the issues you created in the PR description and in your report to the human.
+
 ## Language Conventions
 
 - Commit messages must be written in English (subject and body), regardless of the language used in the conversation.
