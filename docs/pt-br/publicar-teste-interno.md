@@ -254,6 +254,9 @@ O Play só aceita envios pela API depois que o app recebe o primeiro bundle pelo
     Cada pasta de parceiro precisa ter o `partner.json` (nome e cores; `colors.secondary` é o fundo da
     splash, no formato `#RRGGBB`) e, em `android/res/`, o ícone do app `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`
     e a imagem da splash `drawable/launch_image.png`. Se faltar algum arquivo, o build falha e diz qual.
+    O `pubspec.yaml` também precisa de uma entrada de asset por parceiro, `- path: partners/<id>/` com
+    `flavors: [<id>]`, para que cada app leve só o próprio `partner.json`; o `flutter test test/unit` falha
+    se ela faltar ou estiver escrita errado.
 
 ### C7. Enviar e lançar o primeiro bundle
 
