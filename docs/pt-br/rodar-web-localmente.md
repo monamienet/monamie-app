@@ -4,7 +4,7 @@ Este documento mostra como rodar o build web do app na sua máquina, entrar com 
 e verificar automaticamente que a página de login aparece. Cada passo diz **por que** ele existe,
 para que o processo possa virar script ou rodar em CI sem surpresas.
 
-> **Resumo:** `flutter build web --release`, sirva `build/web` em **`http://localhost:5000`** (outra porta
+> **Resumo:** `dart run tool/partner.dart web <id>` e `flutter build web --release`, sirva `build/web` em **`http://localhost:5000`** (outra porta
 > falha no login do Google com `origin_mismatch`) e abra no perfil do Chrome que tem a conta desejada.
 > Para uma verificação sem pessoa, use um Chrome headless com DevTools e espere o Flutter desenhar antes
 > de tirar o screenshot.
@@ -14,13 +14,19 @@ para que o processo possa virar script ou rodar em CI sem surpresas.
 ## 1. Gerar o build
 
 ```bash
+dart run tool/partner.dart web aquariustur
 flutter build web --release
 ```
 
-O resultado fica em `build/web/`. É um build estático: depois de mudar o código, gere de novo.
-
-> Quando o comando `dart run tool/partner.dart web <id>` existir (#32), rode-o antes do build para
-> escolher o parceiro.
+- **Por que o primeiro comando:** o Flutter não tem `--flavor` para web. No lugar disso, a ferramenta
+  recria a pasta `web/partner/` (ignorada pelo git) com os arquivos de `partners/<id>/` (hoje, só o
+  `partner.json`). O `flutter build web` copia tudo o que está em `web/` para o resultado, e o
+  `flutter run -d chrome` serve essa pasta. Assim, o app web lê o parceiro em `partner/` via HTTP. Rode
+  de novo sempre que trocar de parceiro ou mudar `partners/<id>/`. Cada execução apaga a pasta antes, então
+  nenhum arquivo de outro parceiro fica para trás.
+- Um id desconhecido ou inválido falha com uma mensagem que lista os parceiros existentes, e mantém a
+  `web/partner/` anterior como estava.
+- O resultado fica em `build/web/`. É um build estático: depois de mudar o código, gere de novo.
 
 ## 2. Servir em `localhost:5000`
 
