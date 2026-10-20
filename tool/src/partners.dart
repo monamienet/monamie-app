@@ -10,6 +10,15 @@ const partnerConfigFileName = 'partner.json';
 const reservedPartnerIds = {'lint', 'main', 'debug', 'release', 'profile'};
 
 final _partnerIdPattern = RegExp(r'^[a-z][a-z0-9]*$');
+final _hexColorPattern = RegExp(r'^#[0-9A-Fa-f]{6}$');
+
+/// The name users see for partner [name]: `MonAmie <name>`.
+/// Kept in sync with `appLabel` in `android/app/build.gradle.kts`.
+String partnerDisplayName(String name) => 'MonAmie $name';
+
+/// Whether [value] is a color in the `#RRGGBB` format (either case).
+bool isHexColor(Object? value) =>
+    value is String && _hexColorPattern.hasMatch(value);
 
 /// A failure the partner tool reports to the user as a plain message.
 class PartnerToolException implements Exception {
