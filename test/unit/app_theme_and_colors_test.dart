@@ -18,6 +18,23 @@ const aquariusTurPartner = PartnerConfig(
   secondaryColor: Color(0xFFFFFFFF),
 );
 
+/// A partner whose `colors.secondary` is dark, so [AppColors.background]
+/// can be told apart from the white default.
+const darkBackgroundPartner = PartnerConfig(
+  id: 'nightly',
+  name: 'Nightly',
+  primaryColor: Color(0xFF112233),
+  secondaryColor: Color(0xFF101820),
+);
+
+/// A partner with the background of [testPartner] but another primary.
+const sameBackgroundOtherPrimaryPartner = PartnerConfig(
+  id: 'other',
+  name: 'Other',
+  primaryColor: Color(0xFFAA0000),
+  secondaryColor: Color(0xFFFFFFFF),
+);
+
 /// The palette [AppColors] is expected to delegate to.
 PartnerPalette currentPalette() => PartnerPalette.fromConfig(Partner.current);
 
@@ -66,6 +83,29 @@ void main() {
 
       // 3. Assert
       expect(color, palette.accent);
+    });
+
+    test('Happy Path: background is the palette background', () {
+      // 1. Arrange
+      final palette = currentPalette();
+
+      // 2. Act
+      final color = AppColors.background;
+
+      // 3. Assert
+      expect(color, palette.background);
+    });
+
+    test('Happy Path: background is the colors.secondary of the current '
+        'partner', () {
+      // 1. Arrange
+      final expected = Partner.current.secondaryColor;
+
+      // 2. Act
+      final color = AppColors.background;
+
+      // 3. Assert
+      expect(color, expected);
     });
 
     test('Happy Path: mediumBlue() is the palette primary', () {
@@ -260,6 +300,41 @@ void main() {
 
       // 3. Assert
       expect(aquariusTurDark, isNot(acmeDark));
+    });
+
+    test('Happy Path: background follows the colors.secondary of the '
+        'partner set with Partner.init', () {
+      // 1. Arrange
+      Partner.init(darkBackgroundPartner);
+
+      // 2. Act
+      final color = AppColors.background;
+
+      // 3. Assert
+      expect(color, const Color(0xFF101820));
+    });
+
+    test('Edge Case: background is not derived from colors.primary', () {
+      // 1. Arrange
+      Partner.init(sameBackgroundOtherPrimaryPartner);
+
+      // 2. Act
+      final color = AppColors.background;
+
+      // 3. Assert
+      expect(color, testPartner.secondaryColor);
+    });
+
+    test('Sad Path: reading background before Partner.init throws '
+        'StateError', () {
+      // 1. Arrange
+      // setUp left Partner without a partner.
+
+      // 2. Act
+      Color action() => AppColors.background;
+
+      // 3. Assert
+      expect(action, throwsStateError);
     });
 
     test('Sad Path: reading a color before Partner.init throws '
@@ -484,34 +559,17 @@ void main() {
   });
 
   group('AquariusTur Asset Integrity Tests', () {
-    test(
-      'Assets da pasta assets/aquariustur/ devem existir e não estar vazios',
-      () {
-        final requiredAssets = [
-          'assets/aquariustur/AquariusTurLogo.svg',
-          'assets/aquariustur/AquariusTurLogo.png',
-          'assets/aquariustur/AquariusTurLogo320x132.svg',
-          'assets/aquariustur/AquariusTurLogo320x132.png',
-          'assets/aquariustur/AquariusTurSóLogo.svg',
-          'assets/aquariustur/AquariusTurSóLogo.png',
-          'assets/aquariustur/AquariusTurSóLogo64x64.png',
-        ];
+    test('Happy Path: partners/aquariustur/logo-com-texto.svg exists and is '
+        'not empty', () {
+      // 1. Arrange
+      final logo = File('partners/aquariustur/logo-com-texto.svg');
 
-        for (final path in requiredAssets) {
-          final file = File(path);
-          expect(
-            file.existsSync(),
-            isTrue,
-            reason: 'Arquivo deve existir: $path',
-          );
-          expect(
-            file.lengthSync(),
-            greaterThan(0),
-            reason: 'Arquivo não pode estar vazio: $path',
-          );
-        }
-      },
-    );
+      // 2. Act
+      final length = logo.existsSync() ? logo.lengthSync() : 0;
+
+      // 3. Assert
+      expect(length, greaterThan(0), reason: 'Missing or empty: ${logo.path}');
+    });
 
     test(
       'Native splash launch_image e app icons devem existir e ser válidos',

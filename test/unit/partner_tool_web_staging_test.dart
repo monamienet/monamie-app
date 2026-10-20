@@ -18,10 +18,16 @@ const specBrandFiles = <String>[
   'icons/Icon-maskable-512.png',
 ];
 
+/// File name of the login logo every partner provides next to its
+/// `partner.json`, staged as is. Written out here so the tests do not trust
+/// the implementation's own constant.
+const specLogoFileName = 'logo-com-texto.svg';
+
 /// Every file a successful run leaves in `web/partner/`, sorted.
 final expectedStagedFiles = <String>[
   ...specBrandFiles,
   'id.txt',
+  specLogoFileName,
   'manifest.json',
   'partner.json',
 ]..sort();
@@ -49,6 +55,23 @@ void writeConfigOnly(Directory repoRoot, String id, String json) {
   writeConfigBytes(repoRoot, id, utf8.encode(json));
 }
 
+/// Distinct SVG bytes for the login logo of partner [id].
+List<int> logoBytes(String id) => utf8.encode(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">'
+  '<title>$id</title></svg>',
+);
+
+/// The source `partners/<id>/logo-com-texto.svg` inside [repoRoot].
+File sourceLogo(Directory repoRoot, String id) =>
+    File(p.join(repoRoot.path, 'partners', id, specLogoFileName));
+
+/// Creates `partners/<id>/logo-com-texto.svg` under [repoRoot].
+void writeLogo(Directory repoRoot, String id) {
+  sourceLogo(repoRoot, id)
+    ..parent.createSync(recursive: true)
+    ..writeAsBytesSync(logoBytes(id));
+}
+
 /// Creates every brand file of [specBrandFiles] in `partners/<id>/web/`,
 /// except the ones listed in [skip].
 void writeBrandFiles(
@@ -64,15 +87,16 @@ void writeBrandFiles(
   }
 }
 
-/// Creates a complete partner [id]: `partner.json` with [bytes] plus every
-/// brand file.
+/// Creates a complete partner [id]: `partner.json` with [bytes], the login
+/// logo and every brand file.
 void writePartnerBytes(Directory repoRoot, String id, List<int> bytes) {
   writeConfigBytes(repoRoot, id, bytes);
+  writeLogo(repoRoot, id);
   writeBrandFiles(repoRoot, id);
 }
 
-/// Creates a complete partner [id]: `partner.json` with [json] plus every
-/// brand file.
+/// Creates a complete partner [id]: `partner.json` with [json], the login
+/// logo and every brand file.
 void writePartner(Directory repoRoot, String id, String json) {
   writePartnerBytes(repoRoot, id, utf8.encode(json));
 }
@@ -88,6 +112,10 @@ File stagedConfig(Directory repoRoot) =>
 /// The staged `web/partner/id.txt` inside [repoRoot].
 File stagedIdFile(Directory repoRoot) =>
     File(p.join(stageDir(repoRoot).path, 'id.txt'));
+
+/// The staged `web/partner/logo-com-texto.svg` inside [repoRoot].
+File stagedLogo(Directory repoRoot) =>
+    File(p.join(stageDir(repoRoot).path, specLogoFileName));
 
 /// The staged `web/partner/manifest.json` inside [repoRoot], decoded.
 Map<String, dynamic> stagedManifest(Directory repoRoot) =>
@@ -303,6 +331,7 @@ void main() {
       // 1. Arrange
       writePartner(repoRoot, 'acme', acmeJson);
       writeConfigOnly(repoRoot, 'beta', betaJson);
+      writeLogo(repoRoot, 'beta');
       writeBrandFiles(repoRoot, 'beta', skip: {'favicon.png'});
       stageWebPartner(repoRoot: repoRoot, id: 'acme');
 
@@ -395,6 +424,7 @@ void main() {
         stagedSnapshot(repoRoot)
           ..remove('partner.json')
           ..remove('id.txt')
+          ..remove(specLogoFileName)
           ..remove('manifest.json'),
         expected,
       );
@@ -889,6 +919,7 @@ void main() {
       test('Sad Path: a missing web/$missing throws PartnerToolException', () {
         // 1. Arrange
         writeConfigOnly(repoRoot, 'acme', acmeJson);
+        writeLogo(repoRoot, 'acme');
         writeBrandFiles(repoRoot, 'acme', skip: {missing});
 
         // 2. Act
@@ -903,6 +934,7 @@ void main() {
         // 1. Arrange
         writePartner(repoRoot, 'good', acmeJson);
         writeConfigOnly(repoRoot, 'bad', betaJson);
+        writeLogo(repoRoot, 'bad');
         writeBrandFiles(repoRoot, 'bad', skip: {missing});
         stageWebPartner(repoRoot: repoRoot, id: 'good');
         final before = stagedSnapshot(repoRoot);
@@ -923,6 +955,7 @@ void main() {
         'PartnerToolException', () {
       // 1. Arrange
       writeConfigOnly(repoRoot, 'acme', acmeJson);
+      writeLogo(repoRoot, 'acme');
 
       // 2. Act
       void action() => stageWebPartner(repoRoot: repoRoot, id: 'acme');
@@ -936,6 +969,7 @@ void main() {
       // 1. Arrange
       writePartner(repoRoot, 'good', acmeJson);
       writeConfigOnly(repoRoot, 'bad', betaJson);
+      writeLogo(repoRoot, 'bad');
       stageWebPartner(repoRoot: repoRoot, id: 'good');
       final before = stagedSnapshot(repoRoot);
 
@@ -954,7 +988,203 @@ void main() {
         'web/partner/', () {
       // 1. Arrange
       writeConfigOnly(repoRoot, 'acme', acmeJson);
+      writeLogo(repoRoot, 'acme');
       writeBrandFiles(repoRoot, 'acme', skip: {'favicon.png'});
+
+      // 2. Act
+      try {
+        stageWebPartner(repoRoot: repoRoot, id: 'acme');
+      } on PartnerToolException {
+        // Expected: the assertion checks the folder left behind.
+      }
+
+      // 3. Assert
+      expect(stageDir(repoRoot).existsSync(), isFalse);
+    });
+  });
+
+  group('stageWebPartner login logo - Unit Test Suite', () {
+    test('Happy Path: partnerLogoFileName is logo-com-texto.svg', () {
+      // 1. Arrange
+      const expected = specLogoFileName;
+
+      // 2. Act
+      const name = partnerLogoFileName;
+
+      // 3. Assert
+      expect(name, expected);
+    });
+
+    test('Happy Path: copies partners/<id>/logo-com-texto.svg into '
+        'web/partner/ byte for byte', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+
+      // 2. Act
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(stagedLogo(repoRoot).readAsBytesSync(), logoBytes('acme'));
+    });
+
+    test('Happy Path: returns logo-com-texto.svg among the staged paths', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+
+      // 2. Act
+      final staged = stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(staged, contains(specLogoFileName));
+    });
+
+    test('Happy Path: staging a second partner replaces the logo of the '
+        'first', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+      writePartner(repoRoot, 'beta', betaJson);
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 2. Act
+      stageWebPartner(repoRoot: repoRoot, id: 'beta');
+
+      // 3. Assert
+      expect(stagedLogo(repoRoot).readAsBytesSync(), logoBytes('beta'));
+    });
+
+    test('Happy Path: the real aquariustur partner stages its logo byte for '
+        'byte', () {
+      // 1. Arrange
+      copyRealPartner(repoRoot, 'aquariustur');
+      final expected = File(
+        p.join('partners', 'aquariustur', specLogoFileName),
+      ).readAsBytesSync();
+
+      // 2. Act
+      stageWebPartner(repoRoot: repoRoot, id: 'aquariustur');
+
+      // 3. Assert
+      expect(stagedLogo(repoRoot).readAsBytesSync(), expected);
+    });
+
+    test('Edge Case: leaves the source logo unchanged', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+
+      // 2. Act
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(sourceLogo(repoRoot, 'acme').readAsBytesSync(), logoBytes('acme'));
+    });
+
+    test('Edge Case: a logo inside partners/<id>/web/ does not stand in for '
+        'the one next to partner.json', () {
+      // 1. Arrange
+      writeConfigOnly(repoRoot, 'acme', acmeJson);
+      writeBrandFiles(repoRoot, 'acme');
+      File(p.join(repoRoot.path, 'partners', 'acme', 'web', specLogoFileName))
+        ..parent.createSync(recursive: true)
+        ..writeAsBytesSync(logoBytes('acme'));
+
+      // 2. Act
+      void action() => stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(action, throwsA(isA<PartnerToolException>()));
+    });
+
+    test('Sad Path: a missing logo throws PartnerToolException', () {
+      // 1. Arrange
+      writeConfigOnly(repoRoot, 'acme', acmeJson);
+      writeBrandFiles(repoRoot, 'acme');
+
+      // 2. Act
+      void action() => stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(action, throwsA(isA<PartnerToolException>()));
+    });
+
+    test('Sad Path: the error for a missing logo names the logo file', () {
+      // 1. Arrange
+      writeConfigOnly(repoRoot, 'acme', acmeJson);
+      writeBrandFiles(repoRoot, 'acme');
+
+      // 2. Act
+      void action() => stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(
+        action,
+        throwsA(
+          isA<PartnerToolException>().having(
+            (error) => error.message,
+            'message',
+            contains(specLogoFileName),
+          ),
+        ),
+      );
+    });
+
+    test('Sad Path: a folder named logo-com-texto.svg is not accepted as the '
+        'logo', () {
+      // 1. Arrange
+      writeConfigOnly(repoRoot, 'acme', acmeJson);
+      writeBrandFiles(repoRoot, 'acme');
+      Directory(
+        p.join(repoRoot.path, 'partners', 'acme', specLogoFileName),
+      ).createSync(recursive: true);
+
+      // 2. Act
+      void action() => stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 3. Assert
+      expect(action, throwsA(isA<PartnerToolException>()));
+    });
+
+    test('Sad Path: a missing logo keeps the previous staging intact', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'good', acmeJson);
+      writeConfigOnly(repoRoot, 'bad', betaJson);
+      writeBrandFiles(repoRoot, 'bad');
+      stageWebPartner(repoRoot: repoRoot, id: 'good');
+      final before = stagedSnapshot(repoRoot);
+
+      // 2. Act
+      try {
+        stageWebPartner(repoRoot: repoRoot, id: 'bad');
+      } on PartnerToolException {
+        // Expected: the assertion checks the folder left behind.
+      }
+
+      // 3. Assert
+      expect(stagedSnapshot(repoRoot), before);
+    });
+
+    test('Sad Path: a missing logo keeps the previous id.txt', () {
+      // 1. Arrange
+      writePartner(repoRoot, 'acme', acmeJson);
+      writeConfigOnly(repoRoot, 'beta', betaJson);
+      writeBrandFiles(repoRoot, 'beta');
+      stageWebPartner(repoRoot: repoRoot, id: 'acme');
+
+      // 2. Act
+      try {
+        stageWebPartner(repoRoot: repoRoot, id: 'beta');
+      } on PartnerToolException {
+        // Expected: the assertion checks the id file left behind.
+      }
+
+      // 3. Assert
+      expect(stagedIdFile(repoRoot).readAsStringSync(), 'acme\n');
+    });
+
+    test('Sad Path: a missing logo on the first run does not create '
+        'web/partner/', () {
+      // 1. Arrange
+      writeConfigOnly(repoRoot, 'acme', acmeJson);
+      writeBrandFiles(repoRoot, 'acme');
 
       // 2. Act
       try {
@@ -1095,6 +1325,7 @@ void main() {
         'web/partner', () {
       // 1. Arrange
       writeConfigOnly(repoRoot, 'acme', acmeJson);
+      writeLogo(repoRoot, 'acme');
       writeBrandFiles(repoRoot, 'acme', skip: {'icons/Icon-512.png'});
       final file = File(p.join(repoRoot.path, webPartnerDirPath))
         ..parent.createSync(recursive: true)

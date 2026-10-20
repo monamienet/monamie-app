@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:monamie_app/app/config/partner/partner_logo.dart' as app;
 
+import '../../tool/src/partners.dart' as tool;
 import 'support/partner_layout.dart';
 
 const partnersRootPath = 'partners';
@@ -13,6 +15,28 @@ const launchBackgroundV21Path =
     'android/app/src/main/res/drawable-v21/launch_background.xml';
 const webRootPath = 'web';
 const webIndexPath = 'web/index.html';
+const pubspecPath = 'pubspec.yaml';
+const libRootPath = 'lib';
+
+/// The folder of the login logo before it moved to `partners/<id>/`.
+const legacyLogoFolder = 'assets/aquariustur';
+
+/// Every Dart file below [root], sorted by path.
+List<File> listDartFiles(Directory root) =>
+    root
+        .listSync(recursive: true, followLinks: false)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('.dart'))
+        .toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
+
+/// Writes a minimal valid login logo into [partnerDirectory].
+void writePartnerLogo(Directory partnerDirectory) {
+  writeText(
+    joinPath(partnerDirectory.path, requiredPartnerLogoFileName),
+    '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>',
+  );
+}
 
 /// Minimal partner-neutral `web/index.html`, mirroring the shared file.
 const validWebIndexHtml = '''
@@ -1359,6 +1383,131 @@ void main() {
     });
   });
 
+  group('partnerLogoProblems - Unit Test Suite', () {
+    test('Happy Path: reports nothing for a non-empty SVG logo', () {
+      // 1. Arrange
+      writePartnerLogo(tempRoot);
+
+      // 2. Act
+      final problems = partnerLogoProblems(tempRoot);
+
+      // 3. Assert
+      expect(problems, isEmpty);
+    });
+
+    test('Edge Case: accepts an SVG with an XML declaration and Inkscape '
+        'attributes', () {
+      // 1. Arrange
+      writeText(
+        joinPath(tempRoot.path, requiredPartnerLogoFileName),
+        '<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n'
+        '<svg\n   id="svg1"\n   inkscape:version="1.4"\n   width="200">'
+        '</svg>\n',
+      );
+
+      // 2. Act
+      final problems = partnerLogoProblems(tempRoot);
+
+      // 3. Assert
+      expect(problems, isEmpty);
+    });
+
+    test('Edge Case: ignores a logo placed only under web/', () {
+      // 1. Arrange
+      writePartnerJson(tempRoot, '{"name": "X"}');
+      writePartnerLogo(Directory(joinPath(tempRoot.path, 'web')));
+
+      // 2. Act
+      final problems = partnerLogoProblems(tempRoot);
+
+      // 3. Assert
+      expect(problems, ['$requiredPartnerLogoFileName is missing']);
+    });
+
+    test('Sad Path: reports a missing logo', () {
+      // 1. Arrange
+      writePartnerJson(tempRoot, '{"name": "X"}');
+
+      // 2. Act
+      final problems = partnerLogoProblems(tempRoot);
+
+      // 3. Assert
+      expect(problems, ['$requiredPartnerLogoFileName is missing']);
+    });
+
+    test('Sad Path: reports an empty logo', () {
+      // 1. Arrange
+      writeBytes(joinPath(tempRoot.path, requiredPartnerLogoFileName), []);
+
+      // 2. Act
+      final problems = partnerLogoProblems(tempRoot);
+
+      // 3. Assert
+      expect(problems, ['$requiredPartnerLogoFileName is empty']);
+    });
+
+    test('Sad Path: reports a PNG saved with the .svg name', () {
+      // 1. Arrange
+      writePng(joinPath(tempRoot.path, requiredPartnerLogoFileName));
+
+      // 2. Act
+      final problems = partnerLogoProblems(tempRoot);
+
+      // 3. Assert
+      expect(problems, ['$requiredPartnerLogoFileName is not an SVG']);
+    });
+  });
+
+  group('filesMentioning - Unit Test Suite', () {
+    test('Happy Path: returns the files that contain the text', () {
+      // 1. Arrange
+      final hit = joinPath(tempRoot.path, 'a.dart');
+      final miss = joinPath(tempRoot.path, 'b.dart');
+      writeText(hit, "SvgPicture.asset('assets/aquariustur/Logo.svg')");
+      writeText(miss, "SvgPicture.asset('partners/x/logo.svg')");
+
+      // 2. Act
+      final files = filesMentioning([File(hit), File(miss)], legacyLogoFolder);
+
+      // 3. Assert
+      expect(files, [hit]);
+    });
+
+    test('Edge Case: returns nothing for no files', () {
+      // 1. Arrange
+      final files = <File>[];
+
+      // 2. Act
+      final mentioning = filesMentioning(files, legacyLogoFolder);
+
+      // 3. Assert
+      expect(mentioning, isEmpty);
+    });
+
+    test('Edge Case: matches the text case-sensitively', () {
+      // 1. Arrange
+      final path = joinPath(tempRoot.path, 'a.dart');
+      writeText(path, "'Assets/AquariusTur/Logo.svg'");
+
+      // 2. Act
+      final files = filesMentioning([File(path)], legacyLogoFolder);
+
+      // 3. Assert
+      expect(files, isEmpty);
+    });
+
+    test('Sad Path: skips a file that does not exist', () {
+      // 1. Arrange
+      final missing = File(joinPath(tempRoot.path, 'nope.dart'));
+
+      // 2. Act
+      final files = filesMentioning([missing], legacyLogoFolder);
+
+      // 3. Assert
+      expect(files, isEmpty);
+    });
+  });
+
   group('Repository partner layout - Contract Test Suite', () {
     test('Happy Path: the repository declares at least one partner', () {
       // 1. Arrange
@@ -1542,6 +1691,77 @@ void main() {
 
       // 3. Assert
       expect(problems, isEmpty);
+    });
+
+    test('Happy Path: every partner provides a non-empty SVG login logo '
+        'next to its partner.json (rule 10)', () {
+      // 1. Arrange
+      final partners = listPartnerDirectories(Directory(partnersRootPath));
+
+      // 2. Act
+      final problemsByPartner = {
+        for (final partner in partners)
+          partner.path: partnerLogoProblems(partner),
+      }..removeWhere((_, problems) => problems.isEmpty);
+
+      // 3. Assert
+      expect(problemsByPartner, isEmpty);
+    });
+
+    test('Happy Path: the app and the partner tool agree on the logo file '
+        'name', () {
+      // 1. Arrange
+      const toolName = tool.partnerLogoFileName;
+
+      // 2. Act
+      const appName = app.partnerLogoFileName;
+
+      // 3. Assert
+      expect(appName, toolName);
+    });
+
+    test('Happy Path: the logo file name is the onboarding upload name', () {
+      // 1. Arrange
+      const expected = requiredPartnerLogoFileName;
+
+      // 2. Act
+      const appName = app.partnerLogoFileName;
+
+      // 3. Assert
+      expect(appName, expected);
+    });
+
+    test('Happy Path: pubspec.yaml no longer bundles assets/aquariustur', () {
+      // 1. Arrange
+      final pubspec = File(pubspecPath);
+
+      // 2. Act
+      final files = filesMentioning([pubspec], legacyLogoFolder);
+
+      // 3. Assert
+      expect(files, isEmpty);
+    });
+
+    test('Happy Path: no file under lib/ refers to assets/aquariustur', () {
+      // 1. Arrange
+      final dartFiles = listDartFiles(Directory(libRootPath));
+
+      // 2. Act
+      final files = filesMentioning(dartFiles, legacyLogoFolder);
+
+      // 3. Assert
+      expect(files, isEmpty);
+    });
+
+    test('Happy Path: the assets/aquariustur folder is gone', () {
+      // 1. Arrange
+      final legacy = Directory(legacyLogoFolder);
+
+      // 2. Act
+      final exists = legacy.existsSync();
+
+      // 3. Assert
+      expect(exists, isFalse);
     });
   });
 }

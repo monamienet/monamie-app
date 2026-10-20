@@ -15,7 +15,8 @@ import 'dart:io';
 /// * `partners/<id>/web/` provides every web brand file as a real PNG;
 /// * the files of `web/` outside the staged `web/partner/` hold no partner
 ///   name, primary color or brand image, and `web/index.html` links to the
-///   staged `partner/` files.
+///   staged `partner/` files;
+/// * `partners/<id>/logo-com-texto.svg` is a non-empty SVG (the login logo).
 
 /// Name of the file that turns a folder under `partners/` into a partner.
 const partnerConfigFileName = 'partner.json';
@@ -419,4 +420,43 @@ List<String> webIndexProblems(String html) {
     }
   }
   return problems;
+}
+
+/// Login logo every partner must provide next to its `partner.json`: the
+/// file name of the onboarding form upload. Written out here so the contract
+/// does not trust the app's own constant.
+const requiredPartnerLogoFileName = 'logo-com-texto.svg';
+
+/// Returns the problems of the login logo of [partnerDirectory]; an empty
+/// list means `logo-com-texto.svg` exists, is not empty and holds an
+/// `<svg` element.
+List<String> partnerLogoProblems(Directory partnerDirectory) {
+  final logo = File(
+    joinPath(partnerDirectory.path, requiredPartnerLogoFileName),
+  );
+  if (!logo.existsSync()) {
+    return ['$requiredPartnerLogoFileName is missing'];
+  }
+  final bytes = logo.readAsBytesSync();
+  if (bytes.isEmpty) {
+    return ['$requiredPartnerLogoFileName is empty'];
+  }
+  if (!utf8.decode(bytes, allowMalformed: true).contains('<svg')) {
+    return ['$requiredPartnerLogoFileName is not an SVG'];
+  }
+  return const [];
+}
+
+/// Returns the paths of [files] whose text contains [needle], in the order
+/// given. Files that do not exist are skipped.
+List<String> filesMentioning(Iterable<File> files, String needle) {
+  return files
+      .where((file) => file.existsSync())
+      .where(
+        (file) => utf8
+            .decode(file.readAsBytesSync(), allowMalformed: true)
+            .contains(needle),
+      )
+      .map((file) => file.path)
+      .toList();
 }
