@@ -180,6 +180,23 @@ tasks.configureEach {
     }
 }
 
+// Flutter < 3.47 stages libapp.so (the compiled Dart code) in
+// intermediates/flutter/<variant>/jniLibs. For flavored variants, AGP 9 merges
+// that folder but leaves it out of the merge task's tracked inputs, so after a
+// Dart-only change the merge is UP-TO-DATE and the APK keeps the previous
+// libapp.so. Tracking the folder here makes the merge rerun. Fixed upstream in
+// Flutter 3.47 (flutter/flutter#188119); remove this block after upgrading.
+val mergeJniLibFoldersTask = Regex("^merge(\\w+)JniLibFolders$")
+
+tasks.configureEach {
+    val variant = mergeJniLibFoldersTask.matchEntire(name)?.groupValues?.get(1)
+        ?.replaceFirstChar { it.lowercase() }
+        ?: return@configureEach
+    inputs.files(layout.buildDirectory.dir("intermediates/flutter/$variant/jniLibs"))
+        .withPropertyName("flutterJniLibs")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
