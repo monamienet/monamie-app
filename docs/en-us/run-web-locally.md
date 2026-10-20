@@ -4,7 +4,7 @@ This document explains how to run the app's web build on your machine, sign in w
 account, and check automatically that the login page renders. Each step says **why** it exists, so the
 process can be scripted or run in CI without surprises.
 
-> **Summary:** run `flutter build web --release`, serve `build/web` on **`http://localhost:5000`** (any
+> **Summary:** run `dart run tool/partner.dart web <id>` and `flutter build web --release`, serve `build/web` on **`http://localhost:5000`** (any
 > other port fails Google sign-in with `origin_mismatch`), and open it in the Chrome profile that has the
 > account you want. For an unattended check, use headless Chrome through DevTools and wait for Flutter to
 > paint before taking the screenshot.
@@ -14,12 +14,19 @@ process can be scripted or run in CI without surprises.
 ## 1. Build
 
 ```bash
+dart run tool/partner.dart web aquariustur
 flutter build web --release
 ```
 
-The output is in `build/web/`. It is a static build: rebuild after changing code.
-
-> Once `dart run tool/partner.dart web <id>` exists (#32), run it before the build to pick the partner.
+- **Why the first command:** Flutter has no `--flavor` for web. Instead, the tool recreates the
+  gitignored folder `web/partner/` with the files of `partners/<id>/` (today only `partner.json`).
+  `flutter build web` copies everything under `web/` into the output, and `flutter run -d chrome` serves
+  it, so the web app reads its partner from `partner/` over HTTP. Run it again whenever you switch
+  partners or change `partners/<id>/`; each run deletes the folder first, so no file from another partner
+  is left behind.
+- An unknown or invalid id fails with a message listing the existing partners, and keeps the previous
+  `web/partner/` as it was.
+- The output is in `build/web/`. It is a static build: rebuild after changing code.
 
 ## 2. Serve on `localhost:5000`
 
