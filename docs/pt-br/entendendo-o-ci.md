@@ -81,7 +81,7 @@ push alterar pelo menos um destes caminhos, que são as entradas do build Androi
 | `lib/**` | o código Dart |
 | `android/**` | Gradle, manifest, configuração do Firebase |
 | `assets/**` | imagens declaradas no `pubspec.yaml` |
-| `partners/**` | identidade de cada parceiro (nome, cores, ícone do app, imagem da splash), que vira um product flavor no Gradle |
+| `partners/**` | identidade de cada parceiro (nome, cores, ícone do app, imagem da splash), que vira um product flavor no Gradle. `partners/<id>/web/` só entra no build web, então uma mudança só nela também publica, sem alterar o `.aab` |
 | `pubspec.yaml`, `pubspec.lock` | dependências e lista de assets |
 | `.github/workflows/deploy-play-internal.yml` | o próprio pipeline: se ele muda, precisa rodar para provar que ainda funciona |
 

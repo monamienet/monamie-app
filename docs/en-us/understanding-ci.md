@@ -81,7 +81,7 @@ the push changes at least one of these paths, which are the inputs of the Androi
 | `lib/**` | the Dart code |
 | `android/**` | Gradle, manifest, Firebase configuration |
 | `assets/**` | images declared in `pubspec.yaml` |
-| `partners/**` | each partner's identity (name, colors, launcher icon, splash image), which becomes a Gradle product flavor |
+| `partners/**` | each partner's identity (name, colors, launcher icon, splash image), which becomes a Gradle product flavor. `partners/<id>/web/` only feeds the web build, so a change limited to it also deploys, without changing the `.aab` |
 | `pubspec.yaml`, `pubspec.lock` | dependencies and the asset list |
 | `.github/workflows/deploy-play-internal.yml` | the pipeline itself: if it changes, it must run to prove it still works |
 

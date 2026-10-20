@@ -118,8 +118,8 @@ void main() {
           'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png',
           'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png',
           'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
-          'web/favicon.png',
-          'web/icons/Icon-192.png',
+          'partners/aquariustur/web/favicon.png',
+          'partners/aquariustur/web/icons/Icon-192.png',
         ];
 
         // 2. Act

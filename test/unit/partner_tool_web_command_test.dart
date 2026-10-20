@@ -8,11 +8,26 @@ import '../../tool/src/partners.dart';
 import '../../tool/src/web_command.dart';
 import '../../tool/src/web_staging.dart';
 
-/// Creates `partners/<id>/partner.json` under [repoRoot] with [json].
+/// Brand files the spec requires under `partners/<id>/web/`.
+const specBrandFiles = <String>[
+  'favicon.png',
+  'icons/Icon-192.png',
+  'icons/Icon-512.png',
+  'icons/Icon-maskable-192.png',
+  'icons/Icon-maskable-512.png',
+];
+
+/// Creates `partners/<id>/partner.json` under [repoRoot] with [json] and
+/// every brand file in `partners/<id>/web/`.
 void writePartner(Directory repoRoot, String id, String json) {
   File(p.join(repoRoot.path, 'partners', id, partnerConfigFileName))
     ..parent.createSync(recursive: true)
     ..writeAsStringSync(json);
+  for (final path in specBrandFiles) {
+    File(p.join(repoRoot.path, 'partners', id, 'web', path))
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+  }
 }
 
 /// A runner exposing only the `web` command bound to [repoRoot].
@@ -47,7 +62,7 @@ void main() {
 
     test('Happy Path: stages the partner given as the only argument', () async {
       // 1. Arrange
-      const json = '{"name": "MonAmie Acme"}';
+      const json = '{"name": "Acme", "colors": {"primary": "#112233"}}';
       writePartner(repoRoot, 'acme', json);
       final runner = buildRunner(repoRoot);
 

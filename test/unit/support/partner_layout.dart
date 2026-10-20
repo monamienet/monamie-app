@@ -9,7 +9,13 @@ import 'dart:io';
 /// * `android/app/src/main/res/` holds no brand image, so a partner without
 ///   icons can never fall back to another partner's icons;
 /// * the shared `launch_background.xml` files reference the partner-provided
-///   resources instead of hardcoded values.
+///   resources instead of hardcoded values;
+/// * `partners/<id>/partner.json` declares a non-blank `name` and a
+///   `colors.primary` as `#RRGGBB` (used by the web manifest);
+/// * `partners/<id>/web/` provides every web brand file as a real PNG;
+/// * the files of `web/` outside the staged `web/partner/` hold no partner
+///   name, primary color or brand image, and `web/index.html` links to the
+///   staged `partner/` files.
 
 /// Name of the file that turns a folder under `partners/` into a partner.
 const partnerConfigFileName = 'partner.json';
@@ -31,6 +37,33 @@ const forbiddenSharedBrandFileNames = <String>{
   'launch_image.png',
 };
 
+/// Web brand files every partner must provide, relative to
+/// `partners/<id>/web/` (and to the staged `web/partner/`).
+const requiredWebBrandFiles = <String>[
+  'favicon.png',
+  'icons/Icon-192.png',
+  'icons/Icon-512.png',
+  'icons/Icon-maskable-192.png',
+  'icons/Icon-maskable-512.png',
+];
+
+/// Folder of `web/` where the partner is staged; it is gitignored, so it is
+/// left out of the partner-neutral checks.
+const webStagingFolderName = 'partner';
+
+/// Marker of the only `web/` line allowed to stay partner-specific for now.
+const googleSignInClientIdMarker = 'google-signin-client_id';
+
+/// The `<link>` elements `web/index.html` must have, as `rel` to `href`.
+const requiredWebIndexLinks = <String, String>{
+  'manifest': 'partner/manifest.json',
+  'icon': 'partner/favicon.png',
+  'apple-touch-icon': 'partner/icons/Icon-192.png',
+};
+
+/// The partner-neutral title of the web app.
+const neutralWebAppTitle = 'MonAmie';
+
 /// The 8-byte signature that starts every PNG file.
 const pngSignature = <int>[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
@@ -45,6 +78,11 @@ final _backgroundDrawablePattern = RegExp(
 final _bitmapSourcePattern = RegExp(
   r'<bitmap\b[^>]*\bandroid:src\s*=\s*"([^"]*)"',
 );
+final _htmlCommentPattern = RegExp(r'<!--[\s\S]*?-->');
+final _htmlTitlePattern = RegExp(r'<title\b[^>]*>([\s\S]*?)</title>');
+final _htmlLinkPattern = RegExp(r'<link\b[^>]*>');
+final _htmlMetaPattern = RegExp(r'<meta\b[^>]*>');
+final _htmlAttributePattern = RegExp(r'([\w:-]+)\s*=\s*"([^"]*)"');
 
 /// Joins path segments with `/`, which `dart:io` accepts on every platform.
 String joinPath(String base, String relative) {
@@ -178,6 +216,207 @@ List<String> launchBackgroundProblems(String xmlSource) {
       .toList();
   if (!images.contains(_launchImageReference)) {
     problems.add('image must be $_launchImageReference');
+  }
+  return problems;
+}
+
+/// Returns the entries of [requiredWebBrandFiles] that are missing from
+/// `web/` of [partnerDirectory] or are not real PNG files, in declaration
+/// order.
+List<String> missingWebBrandFiles(Directory partnerDirectory) {
+  final webRoot = joinPath(partnerDirectory.path, 'web');
+  return requiredWebBrandFiles
+      .where((path) => !isPngFile(File(joinPath(webRoot, path))))
+      .toList();
+}
+
+/// Reads the `partner.json` of [partnerDirectory] as a JSON object, or
+/// returns the problem that prevents it as a [String].
+Object _readPartnerConfig(Directory partnerDirectory) {
+  final configFile = File(
+    joinPath(partnerDirectory.path, partnerConfigFileName),
+  );
+  if (!configFile.existsSync()) {
+    return '$partnerConfigFileName is missing';
+  }
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(configFile.readAsStringSync());
+  } on FormatException catch (error) {
+    return '$partnerConfigFileName is not valid JSON: ${error.message}';
+  }
+  if (decoded is! Map<String, dynamic>) {
+    return '$partnerConfigFileName must be a JSON object';
+  }
+  return decoded;
+}
+
+/// Returns the problems of the identity fields of the `partner.json` found
+/// in [partnerDirectory]: `name` must be a non-blank string and
+/// `colors.primary` must match `#RRGGBB`. An empty list means both are valid.
+List<String> partnerIdentityProblems(Directory partnerDirectory) {
+  final config = _readPartnerConfig(partnerDirectory);
+  if (config is String) return [config];
+  config as Map<String, dynamic>;
+
+  final problems = <String>[];
+  final name = config['name'];
+  if (name is! String || name.trim().isEmpty) {
+    problems.add('name must be a non-blank string, got: $name');
+  }
+  final colors = config['colors'];
+  final primary = colors is Map<String, dynamic> ? colors['primary'] : null;
+  if (!isValidHexColor(primary)) {
+    problems.add('colors.primary must match #RRGGBB, got: $primary');
+  }
+  return problems;
+}
+
+/// Returns the strings that identify the partner in [partnerDirectory]: its
+/// `name` and the six hex digits of its `colors.primary` (without `#`, so
+/// `0xFF...` spellings are caught too). Invalid or missing fields are left
+/// out, so an unreadable `partner.json` yields an empty list.
+List<String> partnerBrandTerms(Directory partnerDirectory) {
+  final config = _readPartnerConfig(partnerDirectory);
+  if (config is! Map<String, dynamic>) return const [];
+
+  final terms = <String>[];
+  final name = config['name'];
+  if (name is String && name.trim().isNotEmpty) terms.add(name.trim());
+  final colors = config['colors'];
+  final primary = colors is Map<String, dynamic> ? colors['primary'] : null;
+  if (isValidHexColor(primary)) terms.add((primary as String).substring(1));
+  return terms;
+}
+
+/// Returns `line <n>: <term>` for every line of [source] that contains one
+/// of [terms], ignoring case. Lines holding [googleSignInClientIdMarker] are
+/// skipped, and blank terms never match.
+List<String> brandMentions(String source, Iterable<String> terms) {
+  final needles = terms
+      .map((term) => term.trim().toLowerCase())
+      .where((term) => term.isNotEmpty)
+      .toSet();
+  final mentions = <String>[];
+  final lines = source.split('\n');
+  for (var index = 0; index < lines.length; index++) {
+    final line = lines[index].toLowerCase();
+    if (line.contains(googleSignInClientIdMarker)) continue;
+    for (final needle in needles) {
+      if (line.contains(needle)) mentions.add('line ${index + 1}: $needle');
+    }
+  }
+  return mentions;
+}
+
+/// Returns the paths, relative to [webRoot] and joined with `/`, of every
+/// file below it except those in the staged [webStagingFolderName] folder,
+/// sorted. Links are not followed.
+List<String> listSharedWebFiles(Directory webRoot) {
+  final rootPrefix = webRoot.absolute.path.replaceAll(r'\', '/');
+  return webRoot
+      .listSync(recursive: true, followLinks: false)
+      .whereType<File>()
+      .map(
+        (file) => file.absolute.path
+            .replaceAll(r'\', '/')
+            .substring(rootPrefix.length + 1),
+      )
+      .where(
+        (path) =>
+            path != webStagingFolderName &&
+            !path.startsWith('$webStagingFolderName/'),
+      )
+      .toList()
+    ..sort();
+}
+
+/// Returns the shared files of [webRoot] (see [listSharedWebFiles]) whose
+/// bytes are identical to one of the web brand files of [partnerDirectory].
+List<String> findBrandFileCopies(
+  Directory webRoot,
+  Directory partnerDirectory,
+) {
+  final brandContents = requiredWebBrandFiles
+      .map((path) => File(joinPath(partnerDirectory.path, 'web/$path')))
+      .where((file) => file.existsSync())
+      .map((file) => file.readAsBytesSync())
+      .toList();
+  bool sameBytes(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  return listSharedWebFiles(webRoot).where((path) {
+    final bytes = File(joinPath(webRoot.path, path)).readAsBytesSync();
+    return brandContents.any((brand) => sameBytes(brand, bytes));
+  }).toList();
+}
+
+Map<String, String> _htmlAttributes(String tag) => {
+  for (final match in _htmlAttributePattern.allMatches(tag))
+    match.group(1)!.toLowerCase(): match.group(2)!,
+};
+
+/// Returns the problems of a `web/index.html` source; an empty list means it
+/// is partner-neutral: its `<title>` and `apple-mobile-web-app-title` are
+/// [neutralWebAppTitle], it has every link of [requiredWebIndexLinks], and no
+/// manifest or icon link points outside `partner/`. HTML comments are
+/// ignored.
+List<String> webIndexProblems(String html) {
+  final source = html.replaceAll(_htmlCommentPattern, '');
+  final problems = <String>[];
+
+  final titles = _htmlTitlePattern
+      .allMatches(source)
+      .map((match) => match.group(1)!.trim())
+      .toList();
+  if (titles.isEmpty) {
+    problems.add('<title> is missing');
+  }
+  for (final title in titles) {
+    if (title != neutralWebAppTitle) {
+      problems.add('<title> must be $neutralWebAppTitle, got: $title');
+    }
+  }
+
+  final appleTitles = _htmlMetaPattern
+      .allMatches(source)
+      .map((match) => _htmlAttributes(match.group(0)!))
+      .where((attrs) => attrs['name'] == 'apple-mobile-web-app-title')
+      .map((attrs) => attrs['content'])
+      .toList();
+  if (appleTitles.isEmpty) {
+    problems.add('apple-mobile-web-app-title is missing');
+  }
+  for (final title in appleTitles) {
+    if (title != neutralWebAppTitle) {
+      problems.add(
+        'apple-mobile-web-app-title must be $neutralWebAppTitle, got: $title',
+      );
+    }
+  }
+
+  final links = _htmlLinkPattern
+      .allMatches(source)
+      .map((match) => _htmlAttributes(match.group(0)!))
+      .toList();
+  for (final MapEntry(key: rel, value: href) in requiredWebIndexLinks.entries) {
+    final present = links.any(
+      (attrs) => attrs['rel'] == rel && attrs['href'] == href,
+    );
+    if (!present) problems.add('missing <link rel="$rel" href="$href">');
+  }
+  for (final attrs in links) {
+    final rel = attrs['rel'];
+    final href = attrs['href'] ?? '';
+    if (requiredWebIndexLinks.containsKey(rel) &&
+        !href.startsWith('$webStagingFolderName/')) {
+      problems.add('<link rel="$rel"> must point into partner/, got: $href');
+    }
   }
   return problems;
 }
