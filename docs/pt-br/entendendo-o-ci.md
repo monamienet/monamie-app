@@ -79,9 +79,9 @@ push alterar pelo menos um destes caminhos, que são as entradas do build Androi
 | Caminho | Por que entra no `.aab` |
 | :--- | :--- |
 | `lib/**` | o código Dart |
-| `android/**` | Gradle, manifest, ícones, configuração do Firebase |
+| `android/**` | Gradle, manifest, configuração do Firebase |
 | `assets/**` | imagens declaradas no `pubspec.yaml` |
-| `partners/**` | identidade de cada parceiro (nome, cores), que vira um product flavor no Gradle |
+| `partners/**` | identidade de cada parceiro (nome, cores, ícone do app, imagem da splash), que vira um product flavor no Gradle |
 | `pubspec.yaml`, `pubspec.lock` | dependências e lista de assets |
 | `.github/workflows/deploy-play-internal.yml` | o próprio pipeline: se ele muda, precisa rodar para provar que ainda funciona |
 

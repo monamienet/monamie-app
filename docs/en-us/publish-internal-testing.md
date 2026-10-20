@@ -251,6 +251,10 @@ Console, so **the first version is manual**.
     `--flavor` is required: each `partners/<id>/` folder becomes a flavor, and without it the build
     fails listing the valid ids.
 
+    Each partner folder must contain `partner.json` (name and colors; `colors.secondary` is the splash
+    background, `#RRGGBB`) and, in `android/res/`, the launcher icon `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`
+    and the splash image `drawable/launch_image.png`. If a file is missing, the build fails and names it.
+
 ### C7. Upload and release the first bundle
 
 In the Play Console, open **internal testing**, create a release, upload the `.aab`, fill in the release
