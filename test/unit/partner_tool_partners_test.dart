@@ -571,6 +571,255 @@ void main() {
     });
   });
 
+  group('partnerDisplayName - Unit Test Suite', () {
+    test('Happy Path: prefixes the partner name with "MonAmie "', () {
+      // 1. Arrange
+      const name = 'AquariusTur';
+
+      // 2. Act
+      final displayName = partnerDisplayName(name);
+
+      // 3. Assert
+      expect(displayName, 'MonAmie AquariusTur');
+    });
+
+    test('Edge Case: keeps spaces inside the partner name', () {
+      // 1. Arrange
+      const name = 'Rio Tur';
+
+      // 2. Act
+      final displayName = partnerDisplayName(name);
+
+      // 3. Assert
+      expect(displayName, 'MonAmie Rio Tur');
+    });
+
+    test('Edge Case: keeps accents and non-ASCII letters', () {
+      // 1. Arrange
+      const name = 'Acmé Ção';
+
+      // 2. Act
+      final displayName = partnerDisplayName(name);
+
+      // 3. Assert
+      expect(displayName, 'MonAmie Acmé Ção');
+    });
+
+    test('Edge Case: keeps the letter case of the partner name', () {
+      // 1. Arrange
+      const name = 'aQuArIuStUr';
+
+      // 2. Act
+      final displayName = partnerDisplayName(name);
+
+      // 3. Assert
+      expect(displayName, 'MonAmie aQuArIuStUr');
+    });
+
+    test(
+      'Sad Path: does not deduplicate a name that already starts with "MonAmie"',
+      () {
+        // 1. Arrange
+        const name = 'MonAmie Acme';
+
+        // 2. Act
+        final displayName = partnerDisplayName(name);
+
+        // 3. Assert
+        expect(displayName, 'MonAmie MonAmie Acme');
+      },
+    );
+  });
+
+  group('isHexColor - Unit Test Suite', () {
+    test('Happy Path: accepts an uppercase #RRGGBB color', () {
+      // 1. Arrange
+      const value = '#0ABAB5';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isTrue);
+    });
+
+    test('Happy Path: accepts black #000000', () {
+      // 1. Arrange
+      const value = '#000000';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isTrue);
+    });
+
+    test('Edge Case: accepts a lowercase #rrggbb color', () {
+      // 1. Arrange
+      const value = '#0abab5';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isTrue);
+    });
+
+    test('Edge Case: accepts a mixed-case color', () {
+      // 1. Arrange
+      const value = '#0aBaB5';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isTrue);
+    });
+
+    test('Edge Case: rejects a color with surrounding whitespace', () {
+      // 1. Arrange
+      const value = ' #0ABAB5 ';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Edge Case: rejects a color followed by a newline', () {
+      // 1. Arrange
+      const value = '#0ABAB5\n';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Edge Case: rejects an empty string', () {
+      // 1. Arrange
+      const value = '';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Edge Case: rejects a lone "#"', () {
+      // 1. Arrange
+      const value = '#';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Sad Path: rejects the short #RGB form', () {
+      // 1. Arrange
+      const value = '#FFF';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Sad Path: rejects the #AARRGGBB form', () {
+      // 1. Arrange
+      const value = '#FF0ABAB5';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Sad Path: rejects a color without the leading "#"', () {
+      // 1. Arrange
+      const value = '0ABAB5';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Sad Path: rejects the 0x prefix', () {
+      // 1. Arrange
+      const value = '0x0ABAB5';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Sad Path: rejects non-hex digits', () {
+      // 1. Arrange
+      const value = '#GGHHII';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Sad Path: rejects a color name', () {
+      // 1. Arrange
+      const value = 'teal';
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Sad Path: rejects an integer value', () {
+      // 1. Arrange
+      const value = 0x0ABAB5;
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Sad Path: rejects null', () {
+      // 1. Arrange
+      const Object? value = null;
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+
+    test('Sad Path: rejects a list holding a valid color', () {
+      // 1. Arrange
+      const value = ['#0ABAB5'];
+
+      // 2. Act
+      final isValid = isHexColor(value);
+
+      // 3. Assert
+      expect(isValid, isFalse);
+    });
+  });
+
   group('PartnerToolException - Unit Test Suite', () {
     test('Happy Path: exposes the message it was created with', () {
       // 1. Arrange
