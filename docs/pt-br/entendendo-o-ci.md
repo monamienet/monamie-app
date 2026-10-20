@@ -10,7 +10,7 @@ Ele publica o app na faixa de **teste interno** do Google Play a cada merge na `
 > temporário de uma service account dedicada (Workload Identity Federation).
 
 O passo a passo operacional (configuração, verificação e solução de problemas) está em
-[publicar-teste-interno.md](publicar-teste-interno.md). A configuração do CI corresponde aos passos A2 a A4 e C9 a C12.
+[publicar-teste-interno.md](publicar-teste-interno.md). A configuração do CI corresponde aos passos A2 a A6, C4 e C9 a C12.
 
 ---
 
@@ -52,9 +52,12 @@ PR aberta ──► PR aprovada ──► "Merge" no GitHub
    │ 3. instala Flutter       4. ajusta a memória do Gradle            │
    │ 5. recria a keystore e o key.properties                           │
    │ 6. baixa dependências    7. roda os testes unitários              │
-   │ 8. flutter build appbundle (assinado, versionCode novo)           │
-   │ 9. autentica no Google (WIF, sem chave)                           │
-   │ 10. envia ao Play (faixa internal)                                │
+   │ 8. instala o Firebase CLI                                         │
+   │ 9. autentica no Google: conta que só lê a config do Firebase      │
+   │ 10. flutter build appbundle (busca o google-services.json,        │
+   │     assina, versionCode novo)                                     │
+   │ 11. autentica no Google: conta que publica (WIF, sem chave)       │
+   │ 12. envia ao Play (faixa internal)                                │
    └────────────────────────────────┬─────────────────────────────────┘
                                     ▼
          Testadores internos recebem a atualização pela Play Store
@@ -79,9 +82,10 @@ push alterar pelo menos um destes caminhos, que são as entradas do build Androi
 | Caminho | Por que entra no `.aab` |
 | :--- | :--- |
 | `lib/**` | o código Dart |
-| `android/**` | Gradle, manifest, configuração do Firebase |
+| `android/**` | Gradle, manifest |
 | `assets/**` | imagens declaradas no `pubspec.yaml` |
 | `partners/**` | identidade de cada parceiro (nome, cores, ícone do app, imagem da splash), que vira um product flavor no Gradle. `partners/<id>/web/` só entra no build web, então uma mudança só nela também publica, sem alterar o `.aab` |
+| `tool/**` | a ferramenta dos parceiros: o build roda `tool/partner.dart firebase <id>` para buscar o `google-services.json` (seção 6) |
 | `pubspec.yaml`, `pubspec.lock` | dependências e lista de assets |
 | `.github/workflows/deploy-play-internal.yml` | o próprio pipeline: se ele muda, precisa rodar para provar que ainda funciona |
 
@@ -202,9 +206,11 @@ a `main` mais nova já contém as mudanças da do meio.
 | 5 | `Restore release signing` | Recria a keystore e o `android/key.properties`, que não estão no git (seção 4). Antes disso, confere que nenhum secret está vazio. |
 | 6 | `flutter pub get` | Baixa as dependências do `pubspec.yaml`. |
 | 7 | `flutter test test/unit` | Roda os testes unitários. Se algum falhar, o deploy para aqui. Os testes de integração ficam de fora porque dependem dos emuladores do Firebase. |
-| 8 | `flutter build appbundle` | Gera o `.aab` de release do parceiro escolhido em `--flavor aquariustur`, assinado com a keystore do passo 5 e com um versionCode novo (seção 5). |
-| 9 | `google-github-actions/auth` | Troca o token OIDC do GitHub por credenciais temporárias da service account, sem chave (seção 6). |
-| 10 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal` com as credenciais do passo 9. `status: completed` lança o release direto para os testadores. |
+| 8 | `Install Firebase CLI` | Instala o `firebase-tools` numa versão fixa. O build usa o CLI para buscar a config do Firebase do parceiro. |
+| 9 | `google-github-actions/auth` (`auth-config`) | Troca o token OIDC do GitHub por credenciais temporárias de uma service account que **só lê** a config dos apps do Firebase (seção 6). |
+| 10 | `flutter build appbundle` | Gera o `.aab` de release do parceiro escolhido em `--flavor aquariustur`, assinado com a keystore do passo 5 e com um versionCode novo (seção 5). Antes de compilar, o Gradle busca o `google-services.json` do parceiro com as credenciais do passo 9. |
+| 11 | `google-github-actions/auth` (`auth`) | Troca o token OIDC do GitHub por credenciais temporárias da service account que publica, sem chave (seção 6). |
+| 12 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal` com as credenciais do passo 11. `status: completed` lança o release direto para os testadores. |
 
 ## 4. Como a keystore chega ao runner (por que base64)
 
@@ -328,6 +334,28 @@ permissão dela é a do Play Console, de lançar em faixas de teste. Isso segue 
   `wlif-` segue a convenção de nomes do mesmo guia para contas usadas por Workload Identity Federation.
 - [Best practices for using Workload Identity Federation](https://docs.cloud.google.com/iam/docs/best-practices-for-using-workload-identity-federation):
   usar condição de atributo com provedores multi-tenant como o GitHub, e atributos que não podem ser reutilizados.
+
+### Duas service accounts: uma lê a config, a outra publica
+
+O build também precisa falar com o Google. O `google-services.json` do parceiro não é versionado: ele
+contém chaves de API, e uma cópia no repositório ficaria desatualizada em relação à fonte da verdade, o
+projeto do Firebase do parceiro (`monamienet-<id>`). Por isso o Gradle busca o arquivo nesse projeto a
+cada build. O workflow se autentica **duas vezes**, com o mesmo provider e o mesmo subject:
+
+| Passo | Service account | O que pode fazer | Quando |
+| :--- | :--- | :--- | :--- |
+| 9 (`auth-config`) | `wlif-monamie-app-config` | listar os apps do Firebase e ler a config deles (papel customizado `firebaseAppConfigReader`: `firebase.clients.list` e `firebase.clients.get`), só nos projetos de parceiro em que o papel foi vinculado | antes do build |
+| 11 (`auth`) | `wlif-monamie-app-play` | lançar em faixas de teste do Play | depois do build |
+
+A ordem importa. O build roda código de terceiros (plugins do Gradle, pacotes do pub), e cada passo tem
+acesso às credenciais já criadas no runner. Como a conta que publica só é autenticada depois do build,
+esse código nunca tem em mãos a credencial do Play. Com a outra, o máximo que ele consegue é ler configs
+que já vão dentro de qualquer APK publicado. O papel predefinido `roles/firebase.viewer` não é usado porque
+também lê dados do produto, como o histórico de localização das equipes no Firestore.
+
+O Firebase CLI aceita as credenciais do WIF: sem `firebase login`, ele usa as *Application Default
+Credentials* do Google, que o passo de autenticação configura na variável `GOOGLE_APPLICATION_CREDENTIALS`.
+O passo 11 sobrescreve essa variável, mas só depois do build.
 
 ### Por que esta action de upload
 

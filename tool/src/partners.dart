@@ -20,6 +20,13 @@ final _hexColorPattern = RegExp(r'^#[0-9A-Fa-f]{6}$');
 /// Kept in sync with `appLabel` in `android/app/build.gradle.kts`.
 String partnerDisplayName(String name) => 'MonAmie $name';
 
+/// The Firebase project of partner [id]: `monamienet-<id>`.
+String firebaseProjectId(String id) => 'monamienet-$id';
+
+/// The Android application id of partner [id]: `org.monamienet.<id>`.
+/// Kept in sync with `applicationId` in `android/app/build.gradle.kts`.
+String androidApplicationId(String id) => 'org.monamienet.$id';
+
 /// Whether [value] is a color in the `#RRGGBB` format (either case).
 bool isHexColor(Object? value) =>
     value is String && _hexColorPattern.hasMatch(value);

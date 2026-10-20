@@ -56,3 +56,7 @@ store/
 
 # Partner staged for web builds by `dart run tool/partner.dart web <id>`.
 web/partner/
+
+# Android Firebase config, fetched from monamienet-<id> at build time by
+# `dart run tool/partner.dart firebase <id>`. It holds API keys.
+android/app/src/*/google-services.json

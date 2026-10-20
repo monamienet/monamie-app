@@ -11,8 +11,8 @@ Os passos são identificados por grupo, de acordo com a frequência com que são
 
 | Grupo | Frequência | Passos |
 | :--- | :--- | :--- |
-| **A** | Uma única vez para a empresa | A1 keystore · A2 a A4 base do CI no Google Cloud |
-| **B** | Uma vez por máquina ou clone | B1 `key.properties` |
+| **A** | Uma única vez para a empresa | A1 keystore · A2 a A6 base do CI no Google Cloud |
+| **B** | Uma vez por máquina ou clone | B1 `key.properties` · B2 login no Firebase CLI |
 | **C** | Uma vez por app (cliente) | C1 a C4 Firebase · C5 a C7 primeiro envio, manual · C8 SHAs do Play · C9 a C12 CI do app |
 | **D** | A cada nova versão | D1 merge da PR · D2 publicação automática ⚙️ |
 
@@ -29,6 +29,7 @@ flowchart LR
     nW((" "))
     nF1((" "))
     nF2((" "))
+    nCS((" "))
     nB((" "))
     nU((" "))
     nP((" "))
@@ -42,11 +43,15 @@ flowchart LR
     nS -->|A2| nCI
     nS -->|A3| nW
     nW -->|A4| nCI
+    nS -->|A5| nCS
+    nW -->|A6| nCS
     nK -->|B1| nB
+    nS -->|B2| nB
     nK -->|C1| nF1
     nS -->|C2| nF1
     nF1 -->|C3| nF2
-    nF2 -->|C4| nB
+    nF2 -.-> nB
+    nCS -->|C4| nCI
     nS -->|C5| nU
     nB -->|C6| nU
     nU -->|C7| nP
@@ -61,16 +66,16 @@ flowchart LR
     nM -->|D2 ⚙️| nE
 
     %% uma vez para a empresa (roxo)
-    linkStyle 0,1,2,3 stroke:#7b2d8e,stroke-width:3px
+    linkStyle 0,1,2,3,4,5 stroke:#7b2d8e,stroke-width:3px
     %% uma vez por máquina (laranja)
-    linkStyle 4 stroke:#e69f00,stroke-width:3px
+    linkStyle 6,7 stroke:#e69f00,stroke-width:3px
     %% uma vez por app (azul)
-    linkStyle 5,6,7,8,9,10,11,12,13,16,17,18 stroke:#0072b2,stroke-width:3px
+    linkStyle 8,9,10,12,13,14,15,16,17,20,21,22 stroke:#0072b2,stroke-width:3px
     %% só dependência, sem trabalho (cinza)
-    linkStyle 14,15 stroke:#999999,stroke-width:1px
+    linkStyle 11,18,19 stroke:#999999,stroke-width:1px
     %% a cada versão: manual (verde) e automático (verde tracejado)
-    linkStyle 19 stroke:#009e73,stroke-width:3px
-    linkStyle 20 stroke:#009e73,stroke-width:3px,stroke-dasharray:6 4
+    linkStyle 23 stroke:#009e73,stroke-width:3px
+    linkStyle 24 stroke:#009e73,stroke-width:3px,stroke-dasharray:6 4
 ```
 
 **Como ler:**
@@ -79,7 +84,8 @@ flowchart LR
 - Um nó só é atingido quando **todas** as arestas que chegam nele terminaram.
 - Arestas que saem do mesmo nó podem ser feitas **em paralelo**.
 - Uma aresta **pontilhada fina, sem rótulo**, é só uma dependência, sem trabalho. Por exemplo, convidar a
-  service account (C11) exige que ela já exista (C9) e que o app já esteja no Play (C7).
+  service account (C11) exige que ela já exista (C9) e que o app já esteja no Play (C7), e o primeiro
+  build só deve buscar a configuração do Firebase depois que os SHAs forem registrados (C3).
 - Cores:
   - 🟣 uma vez para a empresa;
   - 🟠 uma vez por máquina;
@@ -97,6 +103,9 @@ GCP_PROJECT_NUMBER=787253151660   # gcloud projects describe $GCP_PROJECT --form
 POOL=github-actions               # workload identity pool (A3)
 PROVIDER=github                   # provider do GitHub (A4)
 GITHUB_ORG_ID=336690459           # gh api orgs/monamienet --jq .id
+CONFIG_ROLE=firebaseAppConfigReader   # papel customizado que lê a config dos apps do Firebase (A5)
+CONFIG_SA_NAME=wlif-monamie-app-config  # service account que busca essa config no CI (A6)
+CONFIG_SA_EMAIL=$CONFIG_SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
 
 # App
 REPO=monamienet/monamie-app
@@ -108,6 +117,7 @@ SA_EMAIL=$SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
 
 Para outro app (cliente):
 - troque os valores do grupo *App*;
+- libere para o CI a leitura da config do Firebase do novo app (C4; com papel por projeto, também A5);
 - no workflow [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml),
   atualize o `--flavor`, o `releaseFiles`, o `packageName` e o `service_account`.
 
@@ -176,6 +186,80 @@ gcloud iam workload-identity-pools providers describe $PROVIDER --workload-ident
 
 O resultado esperado é a API listada, `state: ACTIVE` e a condição com o ID da organização.
 
+### A5. Criar o papel `firebaseAppConfigReader`
+
+Todo build busca o `google-services.json` do parceiro no próprio projeto do Firebase dele (C4). O CI faz
+isso com um papel que tem exatamente as duas permissões que o Firebase CLI usa para isso: listar os apps
+(`firebase.clients.list`) e ler a configuração de um app (`firebase.clients.get`). O papel predefinido
+`roles/firebase.viewer` **não** é usado: ele também lê dados do produto, como os documentos do Firestore
+com o histórico de localização das equipes.
+
+O papel é definido onde os projetos dos parceiros ficam. Descubra com:
+
+```bash
+gcloud projects describe $FIREBASE_PROJECT --format='value(parent.type,parent.id)'
+```
+
+Se o resultado for `organization <ID>`, crie o papel uma única vez, na organização. Isso exige
+`roles/iam.organizationRoleAdmin`, que o Administrador da organização **não** inclui. Se você não tiver
+esse papel e puder editar o IAM da organização, conceda-o a si mesmo só para este passo e revogue-o logo
+depois (último comando):
+
+```bash
+ORG_ID=<ID>
+ME=$(gcloud config get-value account)
+gcloud organizations add-iam-policy-binding $ORG_ID --member=user:$ME \
+  --role=roles/iam.organizationRoleAdmin --condition=None --format=none
+gcloud iam roles create $CONFIG_ROLE \
+  --organization=$ORG_ID \
+  --title="Firebase app config reader" \
+  --description="Lists Firebase apps and reads their config at build time. Not roles/firebase.viewer, which also reads product data. Docs: docs/pt-br/publicar-teste-interno.md" \
+  --permissions=firebase.clients.list,firebase.clients.get \
+  --stage=GA
+gcloud iam roles describe $CONFIG_ROLE --organization=$ORG_ID --format='value(includedPermissions)'
+gcloud organizations remove-iam-policy-binding $ORG_ID --member=user:$ME \
+  --role=roles/iam.organizationRoleAdmin --condition=None --format=none
+CONFIG_ROLE_PATH=organizations/$ORG_ID/roles/$CONFIG_ROLE
+```
+
+O `describe` deve listar exatamente `firebase.clients.get` e `firebase.clients.list`. Rode-o antes de
+revogar a concessão: depois dela, você não consegue mais ler o papel.
+
+Caso contrário, crie-o em cada projeto de parceiro: o mesmo comando com `--project=$FIREBASE_PROJECT` no
+lugar de `--organization`, e `CONFIG_ROLE_PATH=projects/$FIREBASE_PROJECT/roles/$CONFIG_ROLE`.
+
+Definir o papel na organização não concede nada: a permissão só existe onde o papel é vinculado (C4), e o
+vínculo é feito por projeto, nunca na organização ou em uma pasta.
+
+Se depois uma chamada do CI falhar com 403, adicione **só** a permissão citada no erro
+(`gcloud iam roles update ... --add-permissions=<permissão>`) e registre o motivo na descrição do papel.
+
+### A6. Criar a service account da config do Firebase
+
+É a identidade que o CI usa para buscar a config do Firebase **antes** do build. Ela é separada da
+service account que publica (C9): o build roda código de terceiros (plugins do Gradle, pacotes do pub),
+então só tem em mãos uma credencial que lê configs, e o vazamento de uma credencial não permite fazer o
+trabalho da outra.
+
+```bash
+# Chamadas de uma service account contam na API do projeto dono da conta.
+gcloud services enable firebase.googleapis.com --project=$GCP_PROJECT
+
+gcloud iam service-accounts create $CONFIG_SA_NAME \
+  --project=$GCP_PROJECT \
+  --display-name="monamie-app Firebase config reader" \
+  --description="Reads the partners' Firebase app configs at build time for $REPO from GitHub Actions via WIF. Docs: docs/pt-br/publicar-teste-interno.md"
+
+# Mesmo subject de C10: só jobs no environment play-internal deste repositório.
+gcloud iam service-accounts add-iam-policy-binding $CONFIG_SA_EMAIL \
+  --project=$GCP_PROJECT \
+  --role=roles/iam.workloadIdentityUser \
+  --member="principal://iam.googleapis.com/projects/$GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL/subject/$SUBJECT_PREFIX:environment:play-internal"
+```
+
+**Conferir:** `gcloud iam service-accounts get-iam-policy $CONFIG_SA_EMAIL --project=$GCP_PROJECT` deve listar
+só o binding `roles/iam.workloadIdentityUser` com esse `principal://...`.
+
 ## B. Uma vez por máquina ou clone
 
 ### B1. Criar o `android/key.properties`
@@ -194,6 +278,22 @@ storeFile=<CAMINHO>/upload.jks
 > **Fail-fast:** sem esse arquivo, ou com alguma propriedade vazia, todo build release falha com a mensagem
 > `Release signing: ...`. Não há fallback para a chave debug, cujo bundle o Play rejeitaria. Builds debug
 > (`flutter run --flavor aquariustur`) não precisam da keystore.
+
+### B2. Entrar no Firebase CLI
+
+Todo build precisa do `google-services.json` do parceiro, que não é versionado: ele contém chaves de API, e
+a fonte da verdade é o projeto do Firebase do parceiro. Quando o arquivo não existe, o Gradle o busca com
+`dart run tool/partner.dart firebase <id>`, que chama o Firebase CLI com a **sua própria** conta:
+
+```bash
+firebase --version || npm install -g firebase-tools
+firebase login            # ou firebase login --reauth quando as credenciais expirarem
+```
+
+O arquivo fica em `android/app/src/<id>/google-services.json` (ignorado pelo git) e é reaproveitado nos
+builds seguintes, mesmo offline. Para buscá-lo de novo, por exemplo depois de registrar novos SHAs (C3,
+C8), faça o build com `PARTNER_REFRESH_FIREBASE=1` ou rode `dart run tool/partner.dart firebase <id>`. O
+comando confere o projeto, o pacote e o cliente OAuth web antes de gravar, e só mostra o ID do app.
 
 ## C. Uma vez por app (cliente)
 
@@ -222,12 +322,23 @@ firebase apps:android:sha:create $APP_ID <SHA1> --project $FIREBASE_PROJECT
 firebase apps:android:sha:create $APP_ID <SHA256> --project $FIREBASE_PROJECT
 ```
 
-### C4. Atualizar o `google-services.json`
+### C4. Permitir que o CI leia a config do Firebase
 
-Depois de atualizar, faça o commit do arquivo, porque ele é versionado.
+Nada é commitado: cada build busca o `google-services.json` em `$FIREBASE_PROJECT` (B2). Para o CI fazer o
+mesmo, vincule o papel de A5 à service account da config (A6) **só neste projeto**:
 
 ```bash
-firebase apps:sdkconfig ANDROID $APP_ID --project $FIREBASE_PROJECT --out android/app/google-services.json
+gcloud projects add-iam-policy-binding $FIREBASE_PROJECT \
+  --member=serviceAccount:$CONFIG_SA_EMAIL \
+  --role=$CONFIG_ROLE_PATH \
+  --condition=None
+```
+
+**Conferir:** o comando abaixo deve mostrar só o papel `firebaseAppConfigReader`:
+
+```bash
+gcloud projects get-iam-policy $FIREBASE_PROJECT --flatten=bindings \
+  --filter="bindings.members:serviceAccount:$CONFIG_SA_EMAIL" --format='value(bindings.role)'
 ```
 
 ### C5. Criar a lista de testadores
@@ -274,6 +385,8 @@ com o Google Play → Assinatura de apps* e registre:
 firebase apps:android:sha:create $APP_ID <SHA1_DO_PLAY> --project $FIREBASE_PROJECT
 firebase apps:android:sha:create $APP_ID <SHA256_DO_PLAY> --project $FIREBASE_PROJECT
 ```
+
+O CI busca a config atualizada em toda execução. Na sua máquina, busque-a de novo como descrito em B2.
 
 ### C9. Criar a service account do deploy
 
@@ -386,4 +499,7 @@ versão enviada, que aparece no Play Console.
 | `The caller does not have permission` | A service account ainda não tem permissão no Play Console, ou a permissão ainda não propagou (C11). |
 | `Version code ... has already been used` | O versionCode já foi usado. Normalmente o arquivo do workflow foi renomeado. Aumente o `+ 100` no workflow. |
 | `Only releases with status draft may be created on draft app` | O app ainda está em rascunho no Play. Conclua o primeiro lançamento (C7). |
-| O app instala, mas o login com Google falha | Faltam SHAs no Firebase: da chave de upload (C3) ou da assinatura do Google Play (C8). |
+| O app instala, mas o login com Google falha | Faltam SHAs no Firebase: da chave de upload (C3) ou da assinatura do Google Play (C8). Localmente, busque a config de novo (B2). |
+| `'firebase apps:list' failed: ...` (tarefa `fetchFirebaseConfig<Id>`) | Localmente, entre de novo no Firebase CLI (B2). No CI, a service account da config não consegue ler o projeto: confira A6 e C4. |
+| `No Android app with package 'org.monamienet.<id>' ...` | O projeto do Firebase do parceiro não tem um app Android com esse pacote. Registre o app ou confira o id do parceiro. |
+| `Could not run 'firebase'` | O Firebase CLI não está instalado (B2). |
