@@ -20,19 +20,20 @@ flutter build web --release
 
 - **Por que o primeiro comando:** o Flutter não tem `--flavor` para web. No lugar disso, a ferramenta
   recria a pasta `web/partner/` (ignorada pelo git) com os arquivos do parceiro: o `partner.json`, o
-  `id.txt` (o id, que o `partner.json` não contém), o
+  `id.txt` (o id, que o `partner.json` não contém), o logo da tela de login (`logo-com-texto.svg`), o
   favicon e os ícones PWA de `partners/<id>/web/` e um `manifest.json` gerado a partir do `partner.json`
   (nome `MonAmie <nome>`, `theme_color` = `colors.primary`). O `flutter build web` copia tudo o que está
   em `web/` para o resultado, e o `flutter run -d chrome` serve essa pasta. Assim, o app web lê o parceiro
   em `partner/` via HTTP. O `web/index.html` é o mesmo para todos os parceiros e aponta para esses
   arquivos. Rode o comando de novo sempre que trocar de parceiro ou mudar `partners/<id>/`. Cada execução
   apaga a pasta antes, então nenhum arquivo de outro parceiro fica para trás.
-- Um id desconhecido ou inválido, um `partner.json` sem `name` ou `colors.primary`, ou a falta de um
-  arquivo em `partners/<id>/web/` (`favicon.png`, `icons/Icon-192.png`, `icons/Icon-512.png`,
+- Um id desconhecido ou inválido, um `partner.json` sem `name` ou `colors.primary`, a falta de
+  `partners/<id>/logo-com-texto.svg` ou a falta de um arquivo em `partners/<id>/web/` (`favicon.png`, `icons/Icon-192.png`, `icons/Icon-512.png`,
   `icons/Icon-maskable-192.png`, `icons/Icon-maskable-512.png`) falha com uma mensagem e mantém a
   `web/partner/` anterior como estava.
-- O app lê `partner/id.txt` e `partner/partner.json` ao iniciar (nome na barra de título e, depois,
-  cores e outras configurações). Sem esse passo, o build ainda funciona, mas a página mostra o erro
+- O app lê `partner/id.txt` e `partner/partner.json` ao iniciar (nome na barra de título e cores) e
+  `partner/logo-com-texto.svg` na tela de login. Se o logo não carregar, a tela mostra o nome
+  `MonAmie <nome>` no lugar dele. Sem esse passo, o build ainda funciona, mas a página mostra o erro
   `Could not fetch …/partner/id.txt (HTTP 404)` no lugar do app, e fica sem favicon, ícones e manifest.
 - O resultado fica em `build/web/`. É um build estático: depois de mudar o código, gere de novo.
 
