@@ -53,3 +53,6 @@ firepit-log.txt
 node_modules/
 
 store/
+
+# Partner staged for web builds by `dart run tool/partner.dart web <id>`.
+web/partner/
