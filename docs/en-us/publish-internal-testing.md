@@ -251,8 +251,9 @@ Console, so **the first version is manual**.
     `--flavor` is required: each `partners/<id>/` folder becomes a flavor, and without it the build
     fails listing the valid ids.
 
-    Each partner folder must contain `partner.json` (name and colors; `colors.secondary` is the splash
-    background, `#RRGGBB`) and, in `android/res/`, the launcher icon `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`
+    Each partner folder must contain `partner.json` (name and colors, `#RRGGBB`; `colors.primary` is the
+    brand color, from which the app derives its darker and lighter shades, and `colors.secondary` is the
+    splash background) and, in `android/res/`, the launcher icon `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`
     and the splash image `drawable/launch_image.png`. If a file is missing, the build fails and names it.
     `pubspec.yaml` also needs one asset entry per partner, `- path: partners/<id>/` with
     `flavors: [<id>]`, so each app bundles only its own `partner.json`; `flutter test test/unit` fails if
