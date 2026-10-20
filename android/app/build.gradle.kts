@@ -180,6 +180,39 @@ tasks.configureEach {
     }
 }
 
+// The Firebase config (google-services.json) is never versioned: it holds API
+// keys and its source of truth is the partner's own Firebase project. Before
+// the google-services plugin reads it from src/<id>/ (it only checks for the
+// file when its process<Variant>GoogleServices task runs), fetch it with
+// `dart run tool/partner.dart firebase <id>`. Only the flavor being built is
+// fetched, and only when the file is missing or PARTNER_REFRESH_FIREBASE=1.
+val flutterSdkPath = Properties().run {
+    rootProject.file("local.properties").inputStream().use { load(it) }
+    getProperty("flutter.sdk") ?: throw GradleException("flutter.sdk not set in local.properties")
+}
+val refreshFirebaseConfig = providers.environmentVariable("PARTNER_REFRESH_FIREBASE").orNull == "1"
+
+val fetchFirebaseConfigTasks = partners.associate { partner ->
+    val configFile = file("src/${partner.id}/google-services.json")
+    val taskName = "fetchFirebaseConfig${partner.id.replaceFirstChar { it.uppercase() }}"
+    partner.id to tasks.register<Exec>(taskName) {
+        description = "Fetches ${configFile.path} from Firebase project monamienet-${partner.id}."
+        workingDir = rootProject.file("..")
+        commandLine("$flutterSdkPath/bin/dart", "run", "tool/partner.dart", "firebase", partner.id)
+        onlyIf { refreshFirebaseConfig || !configFile.isFile }
+    }
+}
+
+// Partner ids are lowercase letters and digits, so the capitalized id ends
+// where the build type starts.
+val processGoogleServicesTask = Regex("^process([A-Z][a-z0-9]*)(Debug|Profile|Release)GoogleServices$")
+
+tasks.configureEach {
+    val id = processGoogleServicesTask.matchEntire(name)?.groupValues?.get(1)?.lowercase()
+        ?: return@configureEach
+    fetchFirebaseConfigTasks[id]?.let { dependsOn(it) }
+}
+
 // Flutter < 3.47 stages libapp.so (the compiled Dart code) in
 // intermediates/flutter/<variant>/jniLibs. For flavored variants, AGP 9 merges
 // that folder but leaves it out of the merge task's tracked inputs, so after a
