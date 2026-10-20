@@ -17,6 +17,9 @@ class AppColors {
   static Color get primaryLight => _palette.light;
   static Color get secondary => _palette.accent;
 
+  /// `colors.secondary` of `partner.json`: the brand background.
+  static Color get background => _palette.background;
+
   static Color darkBlue({int alpha = 255}) => _palette.dark.withAlpha(alpha);
 
   static Color lightBlue({int alpha = 255}) => _palette.light.withAlpha(alpha);

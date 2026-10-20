@@ -5,6 +5,10 @@ import 'package:path/path.dart' as p;
 /// Name of the file that turns a folder under `partners/` into a partner.
 const partnerConfigFileName = 'partner.json';
 
+/// Logo every partner provides next to its `partner.json`, shown on the login
+/// screen. Kept in sync with `lib/app/config/partner/partner_logo.dart`.
+const partnerLogoFileName = 'logo-com-texto.svg';
+
 /// AGP rejects flavor names starting with `test` and these reserved names.
 /// Kept in sync with `android/app/build.gradle.kts`.
 const reservedPartnerIds = {'lint', 'main', 'debug', 'release', 'profile'};

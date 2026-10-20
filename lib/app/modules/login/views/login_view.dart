@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
+import 'package:monamie_app/app/config/partner/partner_logo.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/login/controllers/login_controller.dart';
 import 'package:get/get.dart';
@@ -35,12 +35,7 @@ class LoginView extends GetView<LoginController> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              'assets/aquariustur/AquariusTurLogo.svg',
-              width: 220,
-              height: 220,
-              fit: BoxFit.contain,
-            ),
+            const PartnerLogo(width: 220, height: 220),
             const SizedBox(height: 48),
             _loginButton(),
           ],
@@ -77,7 +72,7 @@ class LoginView extends GetView<LoginController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: _appBar(),
       body: _body(),
     );

@@ -27,8 +27,8 @@ final requiredWebBrandFiles = <String>[
 
 /// Recreates `web/partner/` in [repoRoot] for partner [id] and returns the
 /// staged paths relative to that folder: `partner.json` as is, `id.txt`
-/// with [id], the brand files of `partners/<id>/web/` and the generated
-/// `manifest.json`.
+/// with [id], the login logo, the brand files of `partners/<id>/web/` and the
+/// generated `manifest.json`.
 ///
 /// Everything is validated before the folder is deleted, so a failed run
 /// keeps the previous staging. Throws a [PartnerToolException] on failure.
@@ -44,7 +44,15 @@ List<String> stageWebPartner({
     themeColor: _primaryColor(config, configFile.path),
   );
 
-  final brandDir = p.join(p.dirname(configFile.path), 'web');
+  final partnerDir = p.dirname(configFile.path);
+  final logoFile = File(p.join(partnerDir, partnerLogoFileName));
+  if (!logoFile.existsSync()) {
+    throw PartnerToolException(
+      "Partner '$id' is missing its login logo: ${logoFile.path}.",
+    );
+  }
+
+  final brandDir = p.join(partnerDir, 'web');
   final missing = requiredWebBrandFiles
       .where((path) => !File(p.join(brandDir, path)).existsSync())
       .toList();
@@ -63,6 +71,7 @@ List<String> stageWebPartner({
     p.join(stageDir.path, partnerConfigFileName),
   ).writeAsBytesSync(configBytes);
   File(p.join(stageDir.path, webPartnerIdFileName)).writeAsStringSync('$id\n');
+  logoFile.copySync(p.join(stageDir.path, partnerLogoFileName));
   for (final path in requiredWebBrandFiles) {
     final target = File(p.join(stageDir.path, path));
     target.parent.createSync(recursive: true);
@@ -75,6 +84,7 @@ List<String> stageWebPartner({
   return [
     partnerConfigFileName,
     webPartnerIdFileName,
+    partnerLogoFileName,
     webManifestFileName,
     ...requiredWebBrandFiles,
   ];
