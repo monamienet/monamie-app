@@ -820,6 +820,78 @@ void main() {
     });
   });
 
+  group('firebaseProjectId - Unit Test Suite', () {
+    test('Happy Path: prefixes the id with "monamienet-"', () {
+      // 1. Arrange
+      const id = 'acme';
+
+      // 2. Act
+      final projectId = firebaseProjectId(id);
+
+      // 3. Assert
+      expect(projectId, 'monamienet-acme');
+    });
+
+    test('Edge Case: keeps digits and a single-letter id as they are', () {
+      // 1. Arrange
+      const id = 'a2';
+
+      // 2. Act
+      final projectId = firebaseProjectId(id);
+
+      // 3. Assert
+      expect(projectId, 'monamienet-a2');
+    });
+
+    test('Sad Path: two different ids never share a Firebase project', () {
+      // 1. Arrange
+      const id = 'acme';
+      final otherProjectId = firebaseProjectId('acmex');
+
+      // 2. Act
+      final projectId = firebaseProjectId(id);
+
+      // 3. Assert
+      expect(projectId, isNot(otherProjectId));
+    });
+  });
+
+  group('androidApplicationId - Unit Test Suite', () {
+    test('Happy Path: prefixes the id with "org.monamienet."', () {
+      // 1. Arrange
+      const id = 'acme';
+
+      // 2. Act
+      final applicationId = androidApplicationId(id);
+
+      // 3. Assert
+      expect(applicationId, 'org.monamienet.acme');
+    });
+
+    test('Edge Case: keeps digits and a single-letter id as they are', () {
+      // 1. Arrange
+      const id = 'a2';
+
+      // 2. Act
+      final applicationId = androidApplicationId(id);
+
+      // 3. Assert
+      expect(applicationId, 'org.monamienet.a2');
+    });
+
+    test('Sad Path: two different ids never share an application id', () {
+      // 1. Arrange
+      const id = 'acme';
+      final otherApplicationId = androidApplicationId('acmex');
+
+      // 2. Act
+      final applicationId = androidApplicationId(id);
+
+      // 3. Assert
+      expect(applicationId, isNot(otherApplicationId));
+    });
+  });
+
   group('PartnerToolException - Unit Test Suite', () {
     test('Happy Path: exposes the message it was created with', () {
       // 1. Arrange

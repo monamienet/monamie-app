@@ -54,6 +54,37 @@ List<String> findFilesReferencing(Map<String, String> files, String needle) {
     ..sort();
 }
 
+/// Returns the contents of the files listed in [lsFilesZOutput] (the
+/// NUL-separated output of `git ls-files -z`), keyed by path. [readFile]
+/// returns null for a tracked path missing from the working tree, which is
+/// skipped. Gitignored files (e.g. the fetched `google-services.json`, which
+/// legitimately holds the partner's application id) are never listed by git,
+/// so they are never scanned.
+Map<String, String> trackedFileContents(
+  String lsFilesZOutput,
+  String? Function(String path) readFile,
+) => {
+  for (final path in lsFilesZOutput.split('\x00'))
+    if (path.isNotEmpty) path: ?readFile(path),
+};
+
+/// Runs `git ls-files -z -- [pathspec]` in the repository and returns its
+/// stdout, failing the test when git fails.
+String gitLsFilesZ(String pathspec) {
+  final result = Process.runSync('git', ['ls-files', '-z', '--', pathspec]);
+  if (result.exitCode != 0) {
+    fail('git ls-files failed: ${result.stderr}');
+  }
+  return result.stdout as String;
+}
+
+/// Reads [path] as (lenient) UTF-8, or returns null when it does not exist.
+String? readWorkingTreeFile(String path) {
+  final file = File(path);
+  if (!file.existsSync()) return null;
+  return utf8.decode(file.readAsBytesSync(), allowMalformed: true);
+}
+
 void main() {
   group('Android partner-neutral namespace - Contract Test Suite', () {
     // -------------------------------------------------------------
@@ -97,21 +128,31 @@ void main() {
       expect(folderPackage, allOf(neutralNamespace, declaredPackage));
     });
 
-    test('Happy Path: no file under android/app/src references the legacy '
-        'partner namespace', () {
+    test('Happy Path: no git-tracked file under android/app/src references '
+        'the legacy partner namespace', () {
       // 1. Arrange
-      final files = <String, String>{
-        for (final file in Directory(
-          androidSrcDir,
-        ).listSync(recursive: true).whereType<File>())
-          file.path: utf8.decode(file.readAsBytesSync(), allowMalformed: true),
-      };
+      final files = trackedFileContents(
+        gitLsFilesZ(androidSrcDir),
+        readWorkingTreeFile,
+      );
 
       // 2. Act
       final offenders = findFilesReferencing(files, legacyNamespace);
 
       // 3. Assert
       expect(offenders, isEmpty);
+    });
+
+    test('Happy Path: trackedFileContents reads every NUL-separated path', () {
+      // 1. Arrange
+      const lsFilesZOutput = 'a/One.kt\x00b/two words.xml\x00';
+      final disk = {'a/One.kt': 'one', 'b/two words.xml': 'two'};
+
+      // 2. Act
+      final files = trackedFileContents(lsFilesZOutput, (path) => disk[path]);
+
+      // 3. Assert
+      expect(files, {'a/One.kt': 'one', 'b/two words.xml': 'two'});
     });
 
     // -------------------------------------------------------------
@@ -161,6 +202,49 @@ class MainActivity
 
       // 3. Assert
       expect(package, 'org.monamienet.app');
+    });
+
+    test(
+      'Edge Case: a gitignored file holding the legacy id is not scanned',
+      () {
+        // 1. Arrange
+        const lsFilesZOutput = 'android/app/src/main/AndroidManifest.xml\x00';
+        final disk = {
+          'android/app/src/main/AndroidManifest.xml': '<manifest/>',
+          'android/app/src/aquariustur/google-services.json':
+              '{"package_name": "$legacyNamespace"}',
+        };
+
+        // 2. Act
+        final files = trackedFileContents(lsFilesZOutput, (path) => disk[path]);
+
+        // 3. Assert
+        expect(files.keys, ['android/app/src/main/AndroidManifest.xml']);
+      },
+    );
+
+    test('Edge Case: a tracked path missing from the working tree is '
+        'skipped', () {
+      // 1. Arrange
+      const lsFilesZOutput = 'deleted/Old.kt\x00kept/New.kt\x00';
+      final disk = {'kept/New.kt': 'package org.monamienet.app'};
+
+      // 2. Act
+      final files = trackedFileContents(lsFilesZOutput, (path) => disk[path]);
+
+      // 3. Assert
+      expect(files.keys, ['kept/New.kt']);
+    });
+
+    test('Edge Case: empty git output yields no files to scan', () {
+      // 1. Arrange
+      const lsFilesZOutput = '';
+
+      // 2. Act
+      final files = trackedFileContents(lsFilesZOutput, (path) => 'unused');
+
+      // 3. Assert
+      expect(files, isEmpty);
     });
 
     test('Edge Case: scanning an empty file set reports no references', () {
