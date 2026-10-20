@@ -254,6 +254,9 @@ Console, so **the first version is manual**.
     Each partner folder must contain `partner.json` (name and colors; `colors.secondary` is the splash
     background, `#RRGGBB`) and, in `android/res/`, the launcher icon `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`
     and the splash image `drawable/launch_image.png`. If a file is missing, the build fails and names it.
+    `pubspec.yaml` also needs one asset entry per partner, `- path: partners/<id>/` with
+    `flavors: [<id>]`, so each app bundles only its own `partner.json`; `flutter test test/unit` fails if
+    it is missing or misspelled.
 
 ### C7. Upload and release the first bundle
 

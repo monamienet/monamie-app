@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// MonAmie AquariusTur Color Palette.
+/// App color palette, still fixed to the AquariusTur brand.
 /// Brand primary color is `#0ABAB5` with harmonized oceanic teal shades.
 class AppColors {
   // Brand Base Constants

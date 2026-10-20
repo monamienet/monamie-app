@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/login/controllers/login_controller.dart';
 import 'package:get/get.dart';
@@ -12,9 +13,12 @@ class LoginView extends GetView<LoginController> {
 
   AppBar _appBar() {
     return AppBar(
-      title: const Text(
-        'MonAmie AquariusTur',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      title: Text(
+        Partner.current.displayName,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       centerTitle: true,
       backgroundColor: AppColors.darkBlue(),

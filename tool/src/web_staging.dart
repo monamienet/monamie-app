@@ -13,6 +13,10 @@ import 'web_manifest.dart';
 /// its partner from `partner/` over HTTP. The folder is gitignored.
 const webPartnerDirPath = 'web/partner';
 
+/// Staged file with the partner id: `partner.json` is copied as is and has
+/// no id, and web has no `--flavor` to carry it.
+const webPartnerIdFileName = 'id.txt';
+
 /// Brand files every partner must provide under `partners/<id>/web/`. They are
 /// staged with the same relative paths, where `web/index.html` and the
 /// generated manifest link to them.
@@ -22,8 +26,9 @@ final requiredWebBrandFiles = <String>[
 ];
 
 /// Recreates `web/partner/` in [repoRoot] for partner [id] and returns the
-/// staged paths relative to that folder: `partner.json` as is, the brand
-/// files of `partners/<id>/web/` and the generated `manifest.json`.
+/// staged paths relative to that folder: `partner.json` as is, `id.txt`
+/// with [id], the brand files of `partners/<id>/web/` and the generated
+/// `manifest.json`.
 ///
 /// Everything is validated before the folder is deleted, so a failed run
 /// keeps the previous staging. Throws a [PartnerToolException] on failure.
@@ -57,6 +62,7 @@ List<String> stageWebPartner({
   File(
     p.join(stageDir.path, partnerConfigFileName),
   ).writeAsBytesSync(configBytes);
+  File(p.join(stageDir.path, webPartnerIdFileName)).writeAsStringSync('$id\n');
   for (final path in requiredWebBrandFiles) {
     final target = File(p.join(stageDir.path, path));
     target.parent.createSync(recursive: true);
@@ -66,7 +72,12 @@ List<String> stageWebPartner({
     p.join(stageDir.path, webManifestFileName),
   ).writeAsStringSync(encodeWebManifest(manifest));
 
-  return [partnerConfigFileName, webManifestFileName, ...requiredWebBrandFiles];
+  return [
+    partnerConfigFileName,
+    webPartnerIdFileName,
+    webManifestFileName,
+    ...requiredWebBrandFiles,
+  ];
 }
 
 /// Deletes whatever is at [path] (folder, file or link) without following
