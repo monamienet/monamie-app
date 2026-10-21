@@ -7,6 +7,7 @@ import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:monamie_app/app/data/partner/partner_binding.dart';
 import 'package:monamie_app/app/data/partner/partner_binding_store.dart';
+import 'package:monamie_app/app/data/partner/partner_local_data.dart';
 import 'package:monamie_app/app/data/partner/partner_session.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
@@ -99,6 +100,12 @@ class _MemoryBindingStore implements PartnerBindingStore {
 
   @override
   Future<void> clear() async => binding = null;
+}
+
+/// Dados locais do parceiro sem Hive.
+class _FakePartnerLocalData implements PartnerLocalData {
+  @override
+  Future<void> clear() async {}
 }
 
 /// Fake do UserGoogleRepository. Usa `implements` para não instanciar os
@@ -197,6 +204,7 @@ class _Harness {
     // (que acessa o Google Sign-In) nunca é executado.
     controller = AuthGoogleController(
       partnerSession: PartnerSession(store: _MemoryBindingStore()),
+      partnerLocalData: _FakePartnerLocalData(),
       refreshTheme: () {},
       authGoogleService: authService,
       userRepository: userRepository,
@@ -391,6 +399,7 @@ void main() {
       // 2. Act
       final controller = AuthGoogleController(
         partnerSession: PartnerSession(store: _MemoryBindingStore()),
+        partnerLocalData: _FakePartnerLocalData(),
         refreshTheme: () {},
         authGoogleService: _FakeAuthGoogleService(log),
         userRepository: _FakeUserGoogleRepository(log),

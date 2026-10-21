@@ -5,8 +5,12 @@ import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
 import 'package:monamie_app/app/data/partner/central_partner_directory.dart';
 import 'package:monamie_app/app/data/partner/partner_binding.dart';
 import 'package:monamie_app/app/data/partner/partner_branding_loader.dart';
+import 'package:monamie_app/app/data/partner/hive_partner_local_data.dart';
 import 'package:monamie_app/app/data/partner/partner_directory.dart';
+import 'package:monamie_app/app/data/partner/partner_local_data.dart';
+import 'package:monamie_app/app/data/partner/partner_membership.dart';
 import 'package:monamie_app/app/data/partner/partner_session.dart';
+import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/data/repository/user_data_repository.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
@@ -32,8 +36,10 @@ class AuthGoogleController extends GetxController {
     PartnerDirectory? partnerDirectory,
     PartnerBrandingLoader? brandingLoader,
     PartnerSession? partnerSession,
+    PartnerLocalData? partnerLocalData,
     void Function()? refreshTheme,
-  }) : _injectedAuthGoogle = authGoogleService,
+  }) : _partnerLocalData = partnerLocalData ?? const HivePartnerLocalData(),
+       _injectedAuthGoogle = authGoogleService,
        _injectedUserRepository = userRepository,
        _injectedTrackingStopper = trackingStopper,
        _injectedPartnerDirectory = partnerDirectory,
@@ -48,6 +54,7 @@ class AuthGoogleController extends GetxController {
   final PartnerDirectory? _injectedPartnerDirectory;
   final PartnerBrandingLoader _brandingLoader;
   final PartnerSession? _injectedPartnerSession;
+  final PartnerLocalData _partnerLocalData;
 
   /// Rebuilds the theme from the bound partner (or MonAmie when none).
   final void Function() _refreshTheme;
@@ -165,7 +172,13 @@ class AuthGoogleController extends GetxController {
 
       // Sincronizar Custom Claims ANTES de navegar.
       // A criação do doc em `usuarios` exige claims de observável.
-      await _syncClaims();
+      final roles = await _syncClaims();
+      if (claimsShowNoAccess(roles)) {
+        // A group is named after the partner but is not under its root.
+        throw StateError(
+          'sua conta não tem papel em nenhum grupo de ${binding.partner.name}',
+        );
+      }
 
       _pendingIdToken = null;
       partnerChoices.clear();
@@ -244,11 +257,23 @@ class AuthGoogleController extends GetxController {
   /// Chama a Cloud Function `syncClaims` para sincronizar os
   /// Custom Claims do Firebase Auth com os papéis do usuário nos
   /// grupos do MonAmie. Após a chamada, força refresh do token.
-  Future<void> _syncClaims() async {
-    await MonAmieClaimsService.syncClaims();
+  Future<Map<String, dynamic>?> _syncClaims() =>
+      MonAmieClaimsService.syncClaims();
+
+  Future<void> logout() => _signOut();
+
+  /// Forgets the partner after the user was removed from all its groups:
+  /// the same steps as [logout], then a message saying why.
+  Future<void> forgetRemovedPartner() async {
+    final name = Partner.current?.name;
+    await _signOut(
+      reason: name == null
+          ? 'Você não faz mais parte desta organização.'
+          : 'Você não faz mais parte da $name.',
+    );
   }
 
-  Future<void> logout() async {
+  Future<void> _signOut({String? reason}) async {
     if (isLoggingOut.value) return;
 
     isLoggingOut.value = true;
@@ -271,8 +296,18 @@ class AuthGoogleController extends GetxController {
       await _authGoogle.logoutGoogle();
       await _userRepository.deleteUserGoogleModel();
       await _partnerSession.forget();
+      await _partnerLocalData.clear();
       _refreshTheme();
       Get.offAllNamed(Routes.LOGIN);
+      if (reason != null) {
+        Get.snackbar(
+          "Acesso encerrado",
+          reason,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange.shade100,
+          duration: const Duration(seconds: 6),
+        );
+      }
     } catch (e) {
       debugPrint("Erro ao sair: $e");
       Get.snackbar(

@@ -69,5 +69,8 @@ Future<FirebaseApp> partnerFirebaseApp(PartnerBinding binding) async {
   for (final app in Firebase.apps) {
     if (app.name == binding.appName) return app;
   }
-  return Firebase.initializeApp(name: binding.appName, options: binding.options);
+  return Firebase.initializeApp(
+    name: binding.appName,
+    options: binding.options,
+  );
 }

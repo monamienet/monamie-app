@@ -42,7 +42,9 @@ class PartnerBrandingLoader {
       ).doc(brandingDocumentPath).get().timeout(_brandingTimeout);
       return PartnerConfig.fromBranding(binding.partner.id, snapshot.data());
     } catch (error) {
-      debugPrint('Could not read the branding of ${binding.partner.id}: $error');
+      debugPrint(
+        'Could not read the branding of ${binding.partner.id}: $error',
+      );
       return binding.partner;
     }
   }

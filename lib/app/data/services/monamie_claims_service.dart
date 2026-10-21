@@ -33,7 +33,9 @@ class MonAmieClaimsService {
       }
 
       // 2. Chamar a Cloud Function
-      final callable = CurrentPartnerFirebase.instance.functions.httpsCallable('syncClaims');
+      final callable = CurrentPartnerFirebase.instance.functions.httpsCallable(
+        'syncClaims',
+      );
       final result = await callable.call({'idToken': rawToken});
 
       // 3. Forçar refresh para incorporar os claims recém-escritos

@@ -125,7 +125,9 @@ Future<CentralWebConfig> _loadWebConfig(http.Client client) async {
     );
   }
   try {
-    return CentralWebConfig.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+    return CentralWebConfig.fromJson(
+      jsonDecode(utf8.decode(response.bodyBytes)),
+    );
   } on FormatException {
     throw CentralFirebaseException('$uri is not valid JSON. $_webFix');
   }

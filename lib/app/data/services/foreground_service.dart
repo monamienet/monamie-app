@@ -61,14 +61,18 @@ void onStart(ServiceInstance service) async {
   // comportamento anterior.
   var hadUser = currentUser != null;
   await _authSubscription?.cancel();
-  _authSubscription = CurrentPartnerFirebase.instance.auth.authStateChanges().listen((user) {
-    if (user != null) {
-      hadUser = true;
-    } else if (hadUser) {
-      debugPrint('[ForegroundService] Usuário deslogado — encerrando serviço.');
-      _stopTracking(service);
-    }
-  });
+  _authSubscription = CurrentPartnerFirebase.instance.auth
+      .authStateChanges()
+      .listen((user) {
+        if (user != null) {
+          hadUser = true;
+        } else if (hadUser) {
+          debugPrint(
+            '[ForegroundService] Usuário deslogado — encerrando serviço.',
+          );
+          _stopTracking(service);
+        }
+      });
 
   service.on('stopService').listen((event) {
     _stopTracking(service);
@@ -243,7 +247,8 @@ Future<void> updateLocation(
               );
               // Tentar refresh do token para recuperar claims
               try {
-                await CurrentPartnerFirebase.instance.auth.currentUser?.getIdToken(true);
+                await CurrentPartnerFirebase.instance.auth.currentUser
+                    ?.getIdToken(true);
               } catch (_) {}
             } else {
               debugPrint(

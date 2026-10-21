@@ -20,10 +20,7 @@ class AppPages {
       page: () => const LoginView(),
       binding: LoginBinding(),
     ),
-    GetPage(
-      name: _Paths.PARTNER_PICKER,
-      page: () => const PartnerPickerView(),
-    ),
+    GetPage(name: _Paths.PARTNER_PICKER, page: () => const PartnerPickerView()),
     GetPage(name: _Paths.NOT_LINKED, page: () => const NotLinkedView()),
     GetPage(
       name: _Paths.MONAMIE,
