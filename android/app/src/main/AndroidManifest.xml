@@ -10,7 +10,7 @@
 
     <application
         android:label="${appLabel}"
-        android:name="${applicationName}"
+        android:name=".MonAmieApplication"
         android:icon="@mipmap/ic_launcher">
         <service
             android:name="id.flutter.flutter_background_service.BackgroundService"

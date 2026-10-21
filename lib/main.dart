@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
-import 'package:monamie_app/app/data/firebase/firebase_app_partner_firebase.dart';
+import 'package:monamie_app/app/data/partner/partner_binding.dart';
+import 'package:monamie_app/app/data/partner/partner_session.dart';
 import 'package:monamie_app/app/config/partner/monamie_brand.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
@@ -35,7 +35,12 @@ Future<void> main() async {
   Hive.registerAdapter(UserGoogleModelAdapter());
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  CurrentPartnerFirebase.set(FirebaseAppPartnerFirebase(Firebase.app()));
+  // Until the cutover the partner still comes from the flavor, and its
+  // Firebase project is the [DEFAULT] one; binding it as a named app
+  // exercises the runtime path on real devices.
+  await PartnerSession().bind(
+    PartnerBinding(partner: Partner.current!, options: Firebase.app().options),
+  );
 
   runApp(
     GetMaterialApp(

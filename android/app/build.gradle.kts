@@ -239,3 +239,11 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // MonAmieApplication.kt creates the partner FirebaseApp natively. Same
+    // BoM as firebase_core 4.15.0 (its android/gradle.properties); Gradle
+    // picks the higher one if the plugin moves ahead.
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation("com.google.firebase:firebase-common")
+}
