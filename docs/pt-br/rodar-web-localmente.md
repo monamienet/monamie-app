@@ -39,7 +39,7 @@ python3 -m http.server 5000 --bind 127.0.0.1 -d build/web
 
 - **Por que a porta 5000:** o login do Google na web usa o cliente OAuth web do projeto Firebase
   central (`googleClientId` em `web/central/firebase.json`). Esse cliente só aceita as origens cadastradas
-  em **Origens JavaScript autorizadas**. `http://localhost:5000` é aceita. Com outra porta (por exemplo,
+  em **Origens JavaScript autorizadas**. `http://localhost:5000` é aceita: o Firebase a cadastra (junto com `http://localhost`) ao criar o cliente. Com outra porta (por exemplo,
   8787), a janela do Google mostra `Erro 400: origin_mismatch`.
 - **Para conferir ou adicionar origens:** Google Cloud Console do projeto `monamienet-app` → *APIs e
   serviços* → *Credenciais* → cliente OAuth "Web client (auto created by Google Service)" → *Origens

@@ -39,7 +39,7 @@ python3 -m http.server 5000 --bind 127.0.0.1 -d build/web
 
 - **Why port 5000:** web Google sign-in uses the OAuth web client of the central Firebase project
   (`googleClientId` in `web/central/firebase.json`). That client only accepts the origins listed under
-  **Authorized JavaScript origins**. `http://localhost:5000` is accepted. On any other port (for example
+  **Authorized JavaScript origins**. `http://localhost:5000` is accepted: Firebase adds it (with `http://localhost`) when it creates the client. On any other port (for example
   8787), the Google window shows `Error 400: origin_mismatch`.
 - **To check or add origins:** Google Cloud Console for project `monamienet-app` → *APIs & Services* →
   *Credentials* → OAuth client "Web client (auto created by Google Service)" → *Authorized JavaScript

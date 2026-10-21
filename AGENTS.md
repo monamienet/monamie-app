@@ -4,7 +4,7 @@
 
 This application is maintained by the company MonAmieNet and provides clients (partners) services for tracking, coordination and comunication of teams.
 
-## Business Archictecture
+## Business Architecture
 
 MonAmie publishes a **single app** on its Google Developer Account: `org.monamienet.app`, named "MonAmie" (launcher, Play listing and native splash are the same for everyone). Each partner (client) keeps:
 - its own Firebase project `monamienet-<id>`, associated to the partner's billing account, where all its data lives;
@@ -22,7 +22,7 @@ Where each value lives:
 
 Rules that come from the plugins' source code: never `delete()` a partner `FirebaseApp` (cloud_firestore caches instances per app name forever); the partner app is created natively in `MonAmieApplication.kt` so the UI and the tracking service engines never race to create it; the binding lives in `SharedPreferences`, not Hive, because two isolates read it.
 
-Onboarding a partner needs no app release: see `docs/en-us/white-label.md`.
+Onboarding a partner needs no app release: see `docs/en-us/white-label.md`. CI only ships the app: Cloud Functions and rules are deployed by hand, `central/` once to `monamienet-app` and `functions/` + `firestore.rules` to every partner project.
 
 ### Partners, Groups and Users
 
