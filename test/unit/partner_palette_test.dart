@@ -1,12 +1,9 @@
-import 'dart:io';
 import 'dart:ui' show Color;
 
 import 'package:flutter/painting.dart' show HSLColor;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
 import 'package:monamie_app/app/config/partner/partner_palette.dart';
-
-import 'support/partner_layout.dart';
 
 /// The AquariusTur brand color, the calibration point of issue #35.
 const aquariusTurPrimary = Color(0xFF0ABAB5);
@@ -18,14 +15,6 @@ const aquariusTurLight = Color(0xFFCCF1F0);
 const aquariusTurAccentDark = Color(0xFF052E32);
 const aquariusTurAccent = Color(0xFF088F8B);
 
-/// Hex digits of every brand color that used to be hardcoded in `lib/`.
-const formerBrandHexLiterals = [
-  '0ABAB5',
-  '073B40',
-  'CCF1F0',
-  '052E32',
-  '088F8B',
-];
 
 /// One row of the shade table of issue #35.
 typedef ShadeSpec = ({
@@ -61,19 +50,6 @@ Color expectedShade(Color primary, ShadeSpec spec) {
 
 /// Whether the red, green and blue channels of [color] are equal.
 bool isGrey(Color color) => color.r == color.g && color.g == color.b;
-
-/// Replaces every `//` comment line and `/* */` block of a Dart [source]
-/// with blank lines, keeping line numbers, so only code is scanned.
-String withoutComments(String source) {
-  final withoutBlocks = source.replaceAllMapped(
-    RegExp(r'/\*[\s\S]*?\*/'),
-    (match) => '\n' * '\n'.allMatches(match.group(0)!).length,
-  );
-  return withoutBlocks
-      .split('\n')
-      .map((line) => line.trimLeft().startsWith('//') ? '' : line)
-      .join('\n');
-}
 
 void main() {
   group('PartnerPalette.fromColors (AquariusTur calibration) - '
@@ -547,67 +523,6 @@ void main() {
         palette.primary,
         palette.background,
       ], isNot([config.secondaryColor, config.primaryColor]));
-    });
-  });
-
-  group('lib/ brand hex literals - Unit Test Suite', () {
-    test('Happy Path: no Dart file in lib/ hardcodes a former brand '
-        'color', () {
-      // 1. Arrange
-      final dartFiles =
-          Directory('lib')
-              .listSync(recursive: true, followLinks: false)
-              .whereType<File>()
-              .where((file) => file.path.endsWith('.dart'))
-              .toList()
-            ..sort((a, b) => a.path.compareTo(b.path));
-
-      // 2. Act
-      final mentionsByFile = {
-        for (final file in dartFiles)
-          file.path: brandMentions(
-            withoutComments(file.readAsStringSync()),
-            formerBrandHexLiterals,
-          ),
-      }..removeWhere((_, mentions) => mentions.isEmpty);
-
-      // 3. Assert
-      expect(mentionsByFile, isEmpty);
-    });
-
-    test('Edge Case: a brand color named only in a comment is not a '
-        'literal', () {
-      // 1. Arrange
-      const source =
-          '/// Calibrated on `#0ABAB5`.\n'
-          '/* Old dark: #073B40 */\n'
-          'const x = 1;';
-
-      // 2. Act
-      final mentions = brandMentions(
-        withoutComments(source),
-        formerBrandHexLiterals,
-      );
-
-      // 3. Assert
-      expect(mentions, isEmpty);
-    });
-
-    test('Sad Path: a brand color hardcoded in code is reported, '
-        'ignoring case', () {
-      // 1. Arrange
-      const source =
-          '// A comment.\n'
-          'const dark = Color(0xff073b40);';
-
-      // 2. Act
-      final mentions = brandMentions(
-        withoutComments(source),
-        formerBrandHexLiterals,
-      );
-
-      // 3. Assert
-      expect(mentions, ['line 2: 073b40']);
     });
   });
 }

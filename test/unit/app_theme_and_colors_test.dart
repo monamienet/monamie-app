@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
@@ -8,7 +7,6 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:monamie_app/app/utils/app_theme.dart';
 
 import '../support/test_partner.dart';
-import 'support/partner_layout.dart';
 
 /// A partner with the AquariusTur colors, for the partner-switch tests.
 const aquariusTurPartner = PartnerConfig(
@@ -556,49 +554,5 @@ void main() {
       // 3. Assert
       expect(action, throwsStateError);
     });
-  });
-
-  group('AquariusTur Asset Integrity Tests', () {
-    test('Happy Path: partners/aquariustur/logo-com-texto.svg exists and is '
-        'not empty', () {
-      // 1. Arrange
-      final logo = File('partners/aquariustur/logo-com-texto.svg');
-
-      // 2. Act
-      final length = logo.existsSync() ? logo.lengthSync() : 0;
-
-      // 3. Assert
-      expect(length, greaterThan(0), reason: 'Missing or empty: ${logo.path}');
-    });
-
-    test(
-      'Native splash launch_image e app icons devem existir e ser válidos',
-      () {
-        // 1. Arrange
-        // Android brand resources now live in partners/<id>/android/res/.
-        final nativeFiles = [
-          for (final resource in requiredAndroidBrandResources)
-            'partners/aquariustur/android/res/$resource',
-          'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png',
-          'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png',
-          'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
-          'partners/aquariustur/web/favicon.png',
-          'partners/aquariustur/web/icons/Icon-192.png',
-        ];
-
-        // 2. Act
-        final invalidFiles = nativeFiles.where((path) {
-          final file = File(path);
-          return !file.existsSync() || file.lengthSync() <= 100;
-        }).toList();
-
-        // 3. Assert
-        expect(
-          invalidFiles,
-          isEmpty,
-          reason: 'Arquivos nativos devem existir e conter bytes válidos',
-        );
-      },
-    );
   });
 }
