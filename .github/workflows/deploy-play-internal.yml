@@ -53,7 +53,7 @@ jobs:
           channel: stable
           cache: true
 
-      # android/gradle.properties asks for -Xmx8G, more than the runner has.
+      # Give CI more heap than the 2g that android/gradle.properties keeps for dev laptops.
       # ~/.gradle/gradle.properties takes precedence over the project file.
       - name: Limit Gradle memory
         run: |
