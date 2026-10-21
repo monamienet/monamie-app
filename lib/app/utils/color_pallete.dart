@@ -20,6 +20,18 @@ class AppColors {
   /// `colors.secondary` of `partner.json`: the brand background.
   static Color get background => _palette.background;
 
+  /// Readable text color on [primary] / [mediumBlue].
+  static Color get onPrimary => _palette.onPrimary;
+
+  /// Readable text color on [primaryDark] / [darkBlue].
+  static Color get onPrimaryDark => _palette.onDark;
+
+  /// Readable text color on [secondary] / [alternativeMediumBlue].
+  static Color get onSecondary => _palette.onAccent;
+
+  /// Readable text color on [alternativeDarkBlue].
+  static Color get onAlternativeDark => _palette.onAccentDark;
+
   static Color darkBlue({int alpha = 255}) => _palette.dark.withAlpha(alpha);
 
   static Color lightBlue({int alpha = 255}) => _palette.light.withAlpha(alpha);

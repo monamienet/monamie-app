@@ -48,6 +48,18 @@ const _accent = _ShadeRule(
   lightness: 0.296,
 );
 
+const _black = Color(0xFF000000);
+const _white = Color(0xFFFFFFFF);
+
+/// Black or white, whichever has the higher WCAG contrast ratio against
+/// [background], so text stays readable on any partner color.
+Color readableOn(Color background) {
+  final luminance = background.computeLuminance();
+  final contrastWithWhite = 1.05 / (luminance + 0.05);
+  final contrastWithBlack = (luminance + 0.05) / 0.05;
+  return contrastWithBlack > contrastWithWhite ? _black : _white;
+}
+
 /// The partner's colors: the two it chose in `partner.json` plus the shades
 /// derived from its primary color.
 class PartnerPalette {
@@ -100,4 +112,16 @@ class PartnerPalette {
 
   /// `colors.secondary`: the brand background (the login background).
   final Color background;
+
+  /// Text and icon color on [primary].
+  Color get onPrimary => readableOn(primary);
+
+  /// Text and icon color on [dark].
+  Color get onDark => readableOn(dark);
+
+  /// Text and icon color on [accent].
+  Color get onAccent => readableOn(accent);
+
+  /// Text and icon color on [accentDark].
+  Color get onAccentDark => readableOn(accentDark);
 }
