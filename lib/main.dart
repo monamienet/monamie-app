@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 import 'package:monamie_app/app/data/firebase/firebase_app_partner_firebase.dart';
+import 'package:monamie_app/app/config/partner/monamie_brand.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
 import 'package:monamie_app/app/config/partner/partner_error_app.dart';
@@ -22,7 +23,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    Partner.init(await _loadPartner());
+    Partner.bind(await _loadPartner());
   } on PartnerLoadException catch (error) {
     // A build without its partner cannot run; say why on screen and in the log.
     debugPrint(error.toString());
@@ -39,7 +40,7 @@ Future<void> main() async {
   runApp(
     GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: Partner.current.displayName,
+      title: Partner.current?.displayName ?? MonAmieBrand.name,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light,

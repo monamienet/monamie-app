@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/app/config/partner/monamie_brand.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/config/partner/partner_logo.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
@@ -14,9 +15,9 @@ class LoginView extends GetView<LoginController> {
   AppBar _appBar() {
     return AppBar(
       title: Text(
-        Partner.current.displayName,
-        style: const TextStyle(
-          color: Colors.white,
+        Partner.current?.displayName ?? MonAmieBrand.name,
+        style: TextStyle(
+          color: AppColors.onPrimaryDark,
           fontWeight: FontWeight.bold,
         ),
       ),

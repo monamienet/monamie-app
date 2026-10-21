@@ -1,5 +1,6 @@
 import 'package:flutter/painting.dart';
 
+import 'monamie_brand.dart';
 import 'partner_config.dart';
 
 /// How a shade is derived from the brand color in HSL.
@@ -89,10 +90,14 @@ class PartnerPalette {
   }
 
   /// The palette of [config]: `colors.primary` and `colors.secondary`.
-  factory PartnerPalette.fromConfig(PartnerConfig config) =>
+  ///
+  /// Each missing color falls back on its own: the primary to the MonAmie
+  /// blue, the background to white. No partner ([config] `null`) gives the
+  /// MonAmie palette.
+  factory PartnerPalette.fromConfig(PartnerConfig? config) =>
       PartnerPalette.fromColors(
-        primary: config.primaryColor,
-        background: config.secondaryColor,
+        primary: config?.primaryColor ?? MonAmieBrand.primary,
+        background: config?.secondaryColor ?? MonAmieBrand.background,
       );
 
   /// `colors.primary`: the brand color.

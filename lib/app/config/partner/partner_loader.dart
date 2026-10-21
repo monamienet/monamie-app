@@ -57,7 +57,14 @@ Future<PartnerConfig> loadPartnerConfig({
   } on FormatException {
     throw PartnerLoadException('$key is not valid UTF-8.');
   }
-  return _parse(flavor, source, key);
+  final logoKey = 'partners/$flavor/logo-com-texto.svg';
+  String? logo;
+  try {
+    logo = await bundle.loadString(logoKey, cache: false);
+  } on FlutterError {
+    logo = null; // Optional: the partner's name is shown instead.
+  }
+  return _parse(flavor, source, key, logoSvg: logo);
 }
 
 /// Loads the partner staged in `web/partner/`: its id from
@@ -76,7 +83,13 @@ Future<PartnerConfig> loadWebPartner({
     throw PartnerLoadException('$webPartnerIdPath: $idProblem. $_webFix');
   }
   final source = await _fetch(client, base.resolve(webPartnerConfigPath));
-  return _parse(id, source, webPartnerConfigPath);
+  String? logo;
+  try {
+    logo = await _fetch(client, base.resolve('partner/logo-com-texto.svg'));
+  } on PartnerLoadException {
+    logo = null; // Optional: the partner's name is shown instead.
+  }
+  return _parse(id, source, webPartnerConfigPath, logoSvg: logo);
 }
 
 const _webFix =
@@ -110,9 +123,18 @@ Future<String> _fetch(http.Client client, Uri uri) async {
   }
 }
 
-PartnerConfig _parse(String id, String source, String path) {
+PartnerConfig _parse(
+  String id,
+  String source,
+  String path, {
+  String? logoSvg,
+}) {
   try {
-    return PartnerConfig.fromJson(id, jsonDecode(source));
+    final json = jsonDecode(source);
+    return PartnerConfig.fromBranding(id, {
+      if (json is Map) ...json,
+      'logoSvg': ?logoSvg,
+    });
   } on FormatException catch (error) {
     throw PartnerLoadException('$path: ${error.message}.');
   }

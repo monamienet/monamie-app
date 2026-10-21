@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../config/partner/partner.dart';
 import '../config/partner/partner_palette.dart';
 
-/// App colors, derived from the partner of this build ([PartnerPalette]).
+/// App colors, derived from the bound partner ([PartnerPalette]), or the
+/// MonAmie colors when no partner is bound.
 ///
 /// The `*Blue` names come from the first brand; they now mean shades of the
 /// partner's primary color, whatever its hue.

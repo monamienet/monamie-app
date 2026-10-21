@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/data/repository/google_groups_repository.dart';
 import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
@@ -39,9 +40,14 @@ class GoogleGroupsController extends GetxController {
         .toList();
   }
 
-  /// Email do grupo raiz que contém os subgrupos do MonAmie.
-  /// Em debug, usa um grupo de teste; em release, o grupo de produção.
-  static String get rootGroupEmail => 'aquariustur00@monamienet.org';
+  /// Root group of the bound partner: `<id>00@monamienet.org`.
+  static String get rootGroupEmail {
+    final partner = Partner.current;
+    if (partner == null) {
+      throw StateError('No partner is bound, so there is no root group.');
+    }
+    return partner.rootGroupEmail;
+  }
 
   /// Lista de grupos que o usuário logado pode observar.
   /// Representa os subgrupos (type == GROUP) de [rootGroupEmail].
