@@ -19,6 +19,14 @@ Each instance of this app:
     - etc
 - has its own separated Firebase Project which is associated to $c$'s billing account
 
+### Partners, Groups and Users
+
+- Each partner (client) has exactly one **root group** in the monamienet.org Google Workspace: `<id>00@monamienet.org` (e.g. `aquariustur00@monamienet.org`).
+- The root group can be the parent of many **subgroups**, named after the partner id with a two-digit suffix from `01` to `99`: `<id>01@monamienet.org`, `<id>02@monamienet.org`, … (e.g. `aquariustur01@monamienet.org`). The suffix is always exactly two digits, so a group's partner id is its local part without the last two characters.
+- Each partner has potentially many **users**: the people who sign in to the app. Their role in each group comes from Google Groups membership; the `syncClaims` Cloud Function turns it into the `group_roles` custom claim that `firestore.rules` checks:
+    - **observables**: `MEMBER` or `MANAGER`; they share their own location;
+    - **observers**: `OWNER`, or `METAUSER` (a member of an ancestor group); they only view the observables' locations.
+
 ### Client Onboarding Data (Google Drive via `rclone`)
 
 Clients submit their instance identity through an onboarding Google Form. The answers and uploaded files live in MonAmieNet's **"Onboarding de parceiros"** shared drive. When asked to retrieve client data, use `rclone` with the `monamie:` remote; do not use the claude.ai Google Drive connector (it cannot be bound to the monamienet.org account).
@@ -52,6 +60,15 @@ Clients submit their instance identity through an onboarding Google Form. The an
 ### Hardware & Sensor Operations UX
 - **User-Facing Transparency**: Never silently swallow hardware or sensor timeouts (e.g., GPS satellite fix) with developer-only `debugPrint`. When a service starts but sensor calibration is pending, provide transparent, non-blocking user feedback (e.g., an informative SnackBar or status banner) clarifying that the service is running while satellites/hardware sync.
 - **Defensive Timeouts**: Guard platform hardware and sensor calls (e.g., `Geolocator.getCurrentPosition()`) with sensible timeouts (e.g., 5 seconds) and `try/catch` blocks to prevent freezing or unhandled crashes during cold starts or weak-signal environments.
+
+
+## Testing
+
+Follow `.agents/rules/AI_UNIT_TESTING_GUIDELINES.md`: test only code that makes decisions, never configuration files read with regex, and keep `flutter test test/unit -j 2` under two minutes on an 8 GB laptop. Remove a feature's tests in the same commit that removes the feature.
+
+## Resource Limits on Dev Machines
+
+Dev laptops have 8 GB of RAM shared with the IDE and a browser. Run heavy commands at low priority and low parallelism: `nice -n 15 flutter test test/unit -j 2`, and Gradle with at most two workers (`org.gradle.workers.max=2` in `~/.gradle/gradle.properties`; `flutter build` gives no flag for it). The project caps the Gradle heap at 2 GB. Avoid running more than one build or test process at a time.
 
 
 ## Running the Web App Locally
