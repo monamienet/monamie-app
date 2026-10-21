@@ -41,18 +41,33 @@ Cada dado opcional que faltar usa o próprio plano B: sem cor principal → azul
 
 ## 4. Configuração única do projeto central (mantenedor)
 
-1. Crie o projeto Firebase **`monamienet-app`** na conta de cobrança da MonAmie (plano Blaze, por causa das Functions). O id `app` é reservado: nenhum parceiro pode usá-lo.
-2. Authentication → ative o provedor **Google**. Preencha a tela de consentimento OAuth como "MonAmie".
-3. Registre o **app Android** `org.monamienet.app` com o SHA-1 da chave de upload, do Play App Signing e da chave de debug de cada desenvolvedor. Registre **um app web** e adicione `http://localhost:5000` e o domínio de hospedagem como origens JavaScript autorizadas do cliente OAuth web.
-4. Ative o Firestore e publique o projeto central:
+Feita para o `monamienet-app` em 21/10/2026; o registro está na issue #65. Fica aqui para reconstruí-lo, se um dia for preciso.
+
+1. Crie o projeto e ligue a cobrança:
    ```sh
-   cd central/functions && npm ci && cd ..
-   firebase deploy --project monamienet-app --only functions,firestore
+   gcloud projects create monamienet-app --organization=<id da organização> --name="MonAmie"
+   gcloud billing projects link monamienet-app --billing-account=<conta>
+   firebase projects:addfirebase monamienet-app
    ```
-5. Conceda à conta de serviço da função (`<número do projeto>-compute@developer.gserviceaccount.com`) o papel customizado **`firebaseAppConfigReader`** (`firebase.clients.list`, `firebase.clients.get`) **só em cada projeto de parceiro** (passo 7 do cadastro). Ela lê as opções do Firebase dos parceiros e nada mais.
-6. CI: vincule `firebaseAppConfigReader` à conta de configuração `wlif-monamie-app-config@ci-cd-management.iam.gserviceaccount.com` em `monamienet-app` e remova o vínculo dela em `monamienet-aquariustur` (o build agora só lê a config central).
-7. Play Console: crie o app `org.monamienet.app`, envie o primeiro bundle manualmente, preencha a Segurança dos dados e a declaração de **localização em segundo plano** (revisada pelo Google), e dê acesso a ele à conta de serviço de publicação. Depois, despublique o `org.monamienet.aquariustur`.
-8. Confira se o gateway de grupos aceita ID tokens do Firebase de `monamienet-app` (veja a issue #72).
+   Uma conta de cobrança aceita poucos projetos; "Cloud billing quota exceeded" quer dizer desligar um projeto dela ou pedir aumento ao Google. O id `app` é reservado: nenhum parceiro pode usá-lo.
+2. Ative as APIs e crie o Firestore em `us-central1`, a região de todas as funções deste app (ele só guarda `partners/{id}`, sem dados pessoais):
+   ```sh
+   gcloud services enable firestore.googleapis.com identitytoolkit.googleapis.com cloudfunctions.googleapis.com \
+     cloudbuild.googleapis.com artifactregistry.googleapis.com run.googleapis.com eventarc.googleapis.com \
+     firebase.googleapis.com --project=monamienet-app
+   gcloud firestore databases create --location=us-central1 --project=monamienet-app
+   ```
+3. Registre o app Android `org.monamienet.app` e um app web (`firebase apps:create`) e cadastre os SHA-1 da chave de debug, da chave de upload e, depois do primeiro envio à Play, da assinatura da Play (`firebase apps:android:sha:create`; veja `publicar-teste-interno.md`, passos C1–C3 e C8).
+4. Console → Authentication → ative o **Google** (nome público "MonAmie"). O Firebase cria o cliente OAuth web e já autoriza `localhost`, `localhost:5000` e o domínio `firebaseapp.com`; adicione só um domínio de hospedagem próprio.
+5. A organização não dá **nenhum papel** às contas de serviço padrão (política `iam.automaticIamGrantsForDefaultServiceAccounts`). Dê à conta da função (`<número do projeto>-compute@developer.gserviceaccount.com`) `roles/cloudbuild.builds.builder`, `roles/datastore.user` e `roles/logging.logWriter` no `monamienet-app`, e o papel customizado `firebaseAppConfigReader` **só em cada projeto de parceiro** (passo 8 do cadastro).
+6. Publique (no primeiro deploy, responda **1** dia à pergunta de limpeza de imagens):
+   ```sh
+   (cd central/functions && npm ci)
+   (cd central && firebase deploy --project monamienet-app --only functions,firestore)
+   ```
+7. CI: vincule `firebaseAppConfigReader` à conta `wlif-monamie-app-config@ci-cd-management.iam.gserviceaccount.com` no `monamienet-app`. Remova o vínculo dela no `monamienet-aquariustur` **só depois** do merge do PR #74: até lá, a `main` ainda gera o app antigo a partir desse projeto.
+8. Play Console: crie o app `org.monamienet.app`, envie o primeiro bundle manualmente (`--build-number=100`), preencha a Segurança dos dados e a declaração de **localização em segundo plano**, e dê acesso a ele à conta de serviço de publicação. Depois, despublique o `org.monamienet.aquariustur`.
+9. Confira se o gateway de grupos aceita ID tokens do Firebase de `monamienet-app` (veja a issue #72).
 
 ## 5. Cadastro de um parceiro (sem nova versão do app)
 
@@ -60,29 +75,30 @@ Os passos 1 a 9 cuidam dos três obrigatórios: projeto, grupo raiz e nome. O pa
 
 **Projeto Firebase do parceiro**
 1. Crie `monamienet-<id>` na conta de cobrança do parceiro.
-2. Ative o Firestore e o provedor de login Google; em **Allowed client IDs**, adicione o client id web central.
-3. Registre o app Android `org.monamienet.app` **sem SHA-1** (o par pacote + SHA-1 só pode ter cliente OAuth num projeto: o central) e um app web. Adicione o domínio de hospedagem aos domínios autorizados.
-4. Restrinja as API keys: a Android ao pacote + SHA-1, a de navegador aos domínios.
-5. Publique as regras e a `syncClaims` (a partir da raiz do repositório):
+2. Ative o Firestore e o provedor de login Google. Em **Allowed client IDs** (só pelo console), adicione o client id web central: projeto central → Authentication → Google → Configuração do SDK da Web.
+3. Registre o app Android `org.monamienet.app` **sem SHA-1** (o par pacote + SHA-1 só pode ter cliente OAuth num projeto: o central) e **exatamente um** app web. O `flutterfire configure` cria um app web por plataforma (ex.: "windows"); remova os extras, senão `check`, `activate` e `resolvePartners` falham.
+4. Dê à conta da função (`<número do projeto do parceiro>-compute@developer.gserviceaccount.com`) `roles/firebaseauth.admin` (a `syncClaims` grava claims), `roles/cloudbuild.builds.builder` e `roles/logging.logWriter`.
+5. Publique as regras e a `syncClaims` a partir da raiz do repositório (no primeiro deploy, responda **1** dia à pergunta de limpeza):
    ```sh
+   (cd functions && npm ci)
    firebase deploy --project monamienet-<id> --only firestore:rules,functions
    ```
 
 **Grupos e acesso**
 
 6. Crie o grupo raiz `<id>00@monamienet.org` e os subgrupos `<id>01`, `<id>02`… com os usuários.
-7. Conceda `firebaseAppConfigReader` à conta de serviço da função central **só neste projeto**.
-8. Se o gateway de grupos mantiver uma lista de projetos aceitos, inclua `monamienet-<id>`.
+7. Se o gateway de grupos mantiver uma lista de projetos aceitos, inclua `monamienet-<id>`.
+8. Conceda `firebaseAppConfigReader` à conta da função central **só neste projeto**.
 
 **Marca e ativação**
 
-9. Publique a marca a partir do formulário de onboarding (baixe o envio com `rclone` numa pasta temporária, veja o `AGENTS.md`):
+9. Baixe o envio do formulário com `rclone` numa pasta temporária (veja o `AGENTS.md`) e publique a marca:
    ```sh
    dart run tool/partner.dart publish <id> --name "<Nome>" \
      --primary '#RRGGBB' --secondary '#RRGGBB' \
      --logo <pasta>/logo-com-texto.svg --icon <pasta>/logo-sem-texto.svg
    ```
-   Só `--name` é obrigatório; use `--dry-run` para conferir antes. Publicar de novo depois atualiza a marca para todos na próxima abertura do app.
+   Só `--name` é obrigatório; use `--dry-run` para conferir antes. Um aviso de `<text>` no logo quer dizer que o celular pode desenhar o texto com outra fonte: peça ao parceiro uma versão com o texto convertido em contornos. Publicar de novo depois atualiza a marca para todos na próxima abertura do app.
 10. Confira e ative (a ativação roda as mesmas conferências e recusa se alguma falhar):
     ```sh
     dart run tool/partner.dart check <id>
@@ -90,9 +106,10 @@ Os passos 1 a 9 cuidam dos três obrigatórios: projeto, grupo raiz e nome. O pa
     ```
     `activate <id> --deactivate` impede novos logins no parceiro.
 
-A ferramenta usa as contas do seu `firebase login` e `gcloud auth login`.
+A ferramenta usa as contas do seu `firebase login` e `gcloud auth login`. Ler o grupo raiz exige a função de administrador do Google Workspace **Leitor de grupos** na sua conta (admin.google.com → Conta → Funções de administrador); ser administrador da organização no Google Cloud não basta, e sem ela o `check` diz que o grupo não existe.
 
-## 6. Build
+## 6. Build e deploy
 
 - **Android:** `flutter build apk` (sem `--flavor`). O build busca o `google-services.json` central quando ele não existe; `REFRESH_FIREBASE_CONFIG=1` força a atualização.
 - **Web:** `dart run tool/partner.dart web` grava `web/central/firebase.json` (opções do Firebase central e o client id do Google); depois, `flutter build web`. Veja `rodar-web-localmente.md`.
+- **Funções:** a CI só publica o app. Depois de um merge que mude `central/`, publique de novo o projeto central (seção 4, passo 6); depois de um que mude `functions/` ou `firestore.rules`, publique de novo **todos** os projetos de parceiro (seção 5, passo 5).
