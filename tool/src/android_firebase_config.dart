@@ -12,26 +12,29 @@ import 'partners.dart';
 const oauthWebClientType = 3;
 
 /// Path, relative to the repository root, of the fetched Firebase config of
-/// partner [id]. The google-services plugin finds it in the flavor's source
-/// set. Gitignored, and kept in sync with `android/app/build.gradle.kts`.
-String androidFirebaseConfigPath(String id) =>
-    p.join('android', 'app', 'src', id, 'google-services.json');
+/// the central project. Gitignored, and kept in sync with
+/// `android/app/build.gradle.kts`.
+final androidFirebaseConfigPath = p.join(
+  'android',
+  'app',
+  'google-services.json',
+);
 
-/// Fetches the `google-services.json` of partner [id] from its own Firebase
-/// project (`monamienet-<id>`) and writes it to [androidFirebaseConfigPath].
-/// Returns the Firebase app id.
+/// Fetches the `google-services.json` of the MonAmie app
+/// ([appPackageName]) from the central project ([centralProjectId]) and
+/// writes it to [androidFirebaseConfigPath]. Returns the Firebase app id.
+///
+/// Partners' projects are not involved: the app binds them at runtime.
 ///
 /// The config is validated before anything is written, so a failed run keeps
 /// the previous file. Throws a [PartnerToolException] on failure; messages
 /// never include the config contents, which hold API keys.
 Future<String> fetchAndroidFirebaseConfig({
   required Directory repoRoot,
-  required String id,
   required FirebaseCli cli,
 }) async {
-  partnerConfigFile(repoRoot, id);
-  final projectId = firebaseProjectId(id);
-  final packageName = androidApplicationId(id);
+  const projectId = centralProjectId;
+  const packageName = appPackageName;
 
   final apps = await cli.listAndroidApps(projectId);
   final matches = apps.where((app) => app.packageName == packageName).toList();
@@ -51,12 +54,42 @@ Future<String> fetchAndroidFirebaseConfig({
   final contents = await cli.androidConfig(projectId: projectId, appId: appId);
   _validateConfig(contents, projectId: projectId, packageName: packageName);
 
-  final target = File(p.join(repoRoot.path, androidFirebaseConfigPath(id)));
+  final target = File(p.join(repoRoot.path, androidFirebaseConfigPath));
   target.parent.createSync(recursive: true);
   // Rename within the same folder, so readers never see a partial file.
   final temp = File('${target.path}.tmp')..writeAsStringSync(contents);
   temp.renameSync(target.path);
   return appId;
+}
+
+/// The OAuth web client id in a `google-services.json`: the client id
+/// Google sign-in uses on the web, and the server client id on Android.
+///
+/// Throws a [PartnerToolException] when there is none.
+String webClientIdFromGoogleServices(String contents) {
+  final config = jsonDecode(contents);
+  final clients = switch (config) {
+    {'client': final List<Object?> value} => value,
+    _ => const <Object?>[],
+  };
+  for (final client in clients) {
+    final oauthClients = switch (client) {
+      {'oauth_client': final List<Object?> value} => value,
+      _ => const <Object?>[],
+    };
+    for (final oauth in oauthClients) {
+      if (oauth case {
+        'client_type': oauthWebClientType,
+        'client_id': final String id,
+      }) {
+        return id;
+      }
+    }
+  }
+  throw PartnerToolException(
+    'The google-services.json has no OAuth web client. Enable Google sign-in '
+    'in the central project (Authentication) and run again.',
+  );
 }
 
 void _validateConfig(

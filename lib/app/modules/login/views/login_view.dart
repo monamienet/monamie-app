@@ -60,7 +60,9 @@ class LoginView extends GetView<LoginController> {
             CircularProgressIndicator(color: AppColors.primary),
             const SizedBox(height: 16),
             Text(
-              "Fazendo login...",
+              authController.enteringPartnerName.value == null
+                  ? "Procurando sua organização..."
+                  : "Entrando em ${authController.enteringPartnerName.value}...",
               style: TextStyle(color: AppColors.darkBlue(), fontSize: 14),
             ),
           ],
@@ -72,10 +74,15 @@ class LoginView extends GetView<LoginController> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: _appBar(),
-      body: _body(),
-    );
+    final authController = Get.find<AuthGoogleController>();
+    // Rebuilds in the partner's brand once it is bound ("Entrando em ...").
+    return Obx(() {
+      authController.enteringPartnerName.value;
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: _appBar(),
+        body: _body(),
+      );
+    });
   }
 }

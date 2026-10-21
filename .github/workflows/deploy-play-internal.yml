@@ -17,7 +17,6 @@ on:
       - 'lib/**'
       - 'android/**'
       - 'assets/**'
-      - 'partners/**'
       - 'tool/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
@@ -85,13 +84,14 @@ jobs:
       # Integration tests are skipped: they need the Firebase emulators.
       - run: flutter test test/unit
 
-      # The build fetches google-services.json with `tool/partner.dart firebase`.
+      # The build fetches the central project's google-services.json with
+      # `tool/partner.dart firebase`. Partners' projects are bound at runtime.
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@15.30.2
 
       # Keyless auth for the build: impersonates a read-only service account
       # that can only list and read Firebase app configs (custom role
-      # firebaseAppConfigReader). It is separate from the publisher account
+      # firebaseAppConfigReader, bound on monamienet-app only). It is separate from the publisher account
       # below, so the build, which runs third-party Gradle and pub code, never
       # holds the Play credential. Setup: docs/pt-br/publicar-teste-interno.md
       # (steps A5, A6, C4)
@@ -102,7 +102,7 @@ jobs:
           service_account: wlif-monamie-app-config@ci-cd-management.iam.gserviceaccount.com
 
       # versionCode = run number + 100, above the last manually uploaded one (3).
-      - run: flutter build appbundle --release --flavor aquariustur --build-number=$((GITHUB_RUN_NUMBER + 100))
+      - run: flutter build appbundle --release --build-number=$((GITHUB_RUN_NUMBER + 100))
 
       # Keyless auth: impersonates the dedicated publisher service account.
       # Setup: docs/pt-br/publicar-teste-interno.md (steps A2-A4, C9-C12)
@@ -115,7 +115,7 @@ jobs:
       - uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
-          packageName: org.monamienet.aquariustur
-          releaseFiles: build/app/outputs/bundle/aquariusturRelease/app-aquariustur-release.aab
+          packageName: org.monamienet.app
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed

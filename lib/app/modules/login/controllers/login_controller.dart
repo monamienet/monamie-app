@@ -39,6 +39,8 @@ class LoginController extends GetxController {
 
   Future<bool> hasActiveGoogleBond() async {
     try {
+      // No bound partner: the user must sign in and pick one first.
+      if (!CurrentPartnerFirebase.isSet) return false;
       final currentUser = CurrentPartnerFirebase.instance.auth.currentUser;
       final storedUser = await userGoogleRepository.getUserGoogleModel();
       final hasStoredUser = storedUser != null && storedUser.email.isNotEmpty;

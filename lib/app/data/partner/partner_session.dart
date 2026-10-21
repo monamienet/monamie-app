@@ -35,11 +35,13 @@ class PartnerSession {
     return binding;
   }
 
-  /// Replaces the bound partner's branding, here and in the stored copy.
-  Future<void> updateBranding(PartnerConfig partner) async {
+  /// Stores a newer branding of the bound partner for the next launch.
+  ///
+  /// The running app keeps its current look, so the theme never changes in
+  /// the middle of use.
+  Future<void> storeBranding(PartnerConfig partner) async {
     final binding = await _store.read();
     if (binding == null || binding.partner.id != partner.id) return;
-    Partner.bind(partner);
     await _store.write(
       PartnerBinding(partner: partner, options: binding.options),
     );

@@ -2,25 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "AquariusTur (debug)",
+      "name": "MonAmie (debug)",
       "request": "launch",
       "type": "dart",
-      "flutterMode": "debug",
-      "args": ["--flavor", "aquariustur"]
+      "flutterMode": "debug"
     },
     {
-      "name": "AquariusTur (profile)",
+      "name": "MonAmie (profile)",
       "request": "launch",
       "type": "dart",
-      "flutterMode": "profile",
-      "args": ["--flavor", "aquariustur"]
+      "flutterMode": "profile"
     },
     {
-      "name": "AquariusTur (release)",
+      "name": "MonAmie (release)",
       "request": "launch",
       "type": "dart",
-      "flutterMode": "release",
-      "args": ["--flavor", "aquariustur"]
+      "flutterMode": "release"
     }
   ]
 }

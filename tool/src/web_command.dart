@@ -2,31 +2,30 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 
-import 'web_staging.dart';
+import 'firebase_cli.dart';
+import 'web_central.dart';
 
-/// `web <id>`: stages partner `<id>` in `web/partner/` for web builds.
+/// `web`: stages the central Firebase web config for web builds.
 class WebCommand extends Command<void> {
-  WebCommand(this._repoRoot);
+  WebCommand(this._repoRoot, this._cli);
 
   final Directory _repoRoot;
+  final FirebaseCli _cli;
 
   @override
   String get name => 'web';
 
   @override
   String get description =>
-      'Stage a partner in $webPartnerDirPath/ for flutter build/run on web.';
+      'Stage the central Firebase web config in $webCentralConfigPath for '
+      'flutter build/run on web.';
 
   @override
-  String get invocation => '${runner!.executableName} $name <id>';
-
-  @override
-  void run() {
-    final rest = argResults!.rest;
-    if (rest.length != 1) usageException('Expected exactly one partner id.');
-    final id = rest.single;
-
-    final staged = stageWebPartner(repoRoot: _repoRoot, id: id);
-    stdout.writeln("Staged '$id' in $webPartnerDirPath/: ${staged.join(', ')}");
+  Future<void> run() async {
+    if (argResults!.rest.isNotEmpty) {
+      usageException('Takes no arguments: partners are bound at runtime.');
+    }
+    await stageCentralWebConfig(repoRoot: _repoRoot, cli: _cli);
+    stdout.writeln('Wrote $webCentralConfigPath.');
   }
 }

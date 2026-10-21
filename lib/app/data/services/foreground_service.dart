@@ -9,7 +9,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 import 'package:monamie_app/app/data/partner/partner_session.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
-import 'package:monamie_app/firebase_options.dart';
 
 Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;
@@ -21,7 +20,9 @@ Position? _lastRecordedPosition;
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // [DEFAULT] is the central project (from google-services.json); the
+  // partner's app was created natively by MonAmieApplication.
+  await Firebase.initializeApp();
   // The UI stored the bound partner; without one there is nowhere to write.
   if (await PartnerSession().restore() == null) {
     debugPrint('[ForegroundService] No partner bound — stopping the service.');

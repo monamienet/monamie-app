@@ -27,10 +27,10 @@ Future<void> main(List<String> args) async {
   final runner =
       CommandRunner<void>(
           'dart run tool/partner.dart',
-          'Manage the white-label partners in partners/<id>/.',
+          'MonAmie partner tooling: central Firebase config and partner onboarding.',
         )
         ..addCommand(FirebaseCommand(repoRoot, cli))
-        ..addCommand(WebCommand(repoRoot))
+        ..addCommand(WebCommand(repoRoot, cli))
         ..addCommand(PublishCommand(firestore, tokens))
         ..addCommand(CheckCommand(cli, groups, firestore))
         ..addCommand(ActivateCommand(cli, groups, firestore, tokens));

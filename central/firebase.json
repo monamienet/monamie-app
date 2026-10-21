@@ -3,10 +3,28 @@
     {
       "source": "functions",
       "codebase": "central",
-      "ignore": ["node_modules", ".git", "test"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "test"
+      ]
     }
   ],
   "firestore": {
     "rules": "firestore.rules"
+  },
+  "hosting": {
+    "public": "../build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }

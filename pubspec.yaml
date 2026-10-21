@@ -85,10 +85,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/monamie/
-    # One entry per partner, bundled only into its own flavor. A directory
-    # entry skips subfolders, so android/ and web/ stay out of the bundle.
-    - path: partners/aquariustur/
-      flavors: [aquariustur]
 
   # To add assets to your application, add an assets section, like this:
   # assets:
