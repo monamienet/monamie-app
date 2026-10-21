@@ -5,10 +5,11 @@ import 'package:monamie_app/app/data/repository/google_groups_repository.dart';
 import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
+import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 class GoogleGroupsController extends GetxController {
   final GoogleGroupsRepository _repository = GoogleGroupsRepository();
-  final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
+  fb.FirebaseAuth get _auth => CurrentPartnerFirebase.instance.auth;
 
   final RxString _loadError = RxString('');
   RxString get loadError => _loadError;

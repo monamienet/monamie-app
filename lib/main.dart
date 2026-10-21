@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
+import 'package:monamie_app/app/data/firebase/firebase_app_partner_firebase.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
 import 'package:monamie_app/app/config/partner/partner_error_app.dart';
@@ -32,6 +34,7 @@ Future<void> main() async {
   Hive.registerAdapter(UserGoogleModelAdapter());
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  CurrentPartnerFirebase.set(FirebaseAppPartnerFirebase(Firebase.app()));
 
   runApp(
     GetMaterialApp(

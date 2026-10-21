@@ -1,6 +1,5 @@
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 /// Serviço centralizado para sincronização e validação dos Custom Claims
 /// do MonAmie (`group_roles`).
@@ -20,7 +19,7 @@ class MonAmieClaimsService {
   /// caso de erro.
   static Future<Map<String, dynamic>?> syncClaims() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = CurrentPartnerFirebase.instance.auth.currentUser;
       if (user == null) {
         debugPrint('[MonAmieClaimsService] Usuário não autenticado.');
         return null;
@@ -34,7 +33,7 @@ class MonAmieClaimsService {
       }
 
       // 2. Chamar a Cloud Function
-      final callable = FirebaseFunctions.instance.httpsCallable('syncClaims');
+      final callable = CurrentPartnerFirebase.instance.functions.httpsCallable('syncClaims');
       final result = await callable.call({'idToken': rawToken});
 
       // 3. Forçar refresh para incorporar os claims recém-escritos
@@ -56,7 +55,7 @@ class MonAmieClaimsService {
   /// Retorna o mapa de roles ou `null` se ausente.
   static Future<Map<String, dynamic>?> readClaims() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
+      final user = CurrentPartnerFirebase.instance.auth.currentUser;
       if (user == null) return null;
 
       final idTokenResult = await user.getIdTokenResult(true);

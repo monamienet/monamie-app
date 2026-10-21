@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
@@ -7,6 +6,7 @@ import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.
 import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 class UserController extends GetxController {
   final _user = Rxn<UserModel>();
@@ -28,7 +28,7 @@ class UserController extends GetxController {
   /// (MEMBER ou MANAGER em pelo menos um grupo MonAmie).
   /// Retorna false se os claims não estiverem definidos.
   Future<bool> _isObservavelFromClaims() async {
-    final user = fb.FirebaseAuth.instance.currentUser;
+    final user = CurrentPartnerFirebase.instance.auth.currentUser;
     if (user == null) return false;
 
     final idTokenResult = await user.getIdTokenResult();
