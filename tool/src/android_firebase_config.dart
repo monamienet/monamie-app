@@ -65,9 +65,16 @@ Future<String> fetchAndroidFirebaseConfig({
 /// The OAuth web client id in a `google-services.json`: the client id
 /// Google sign-in uses on the web, and the server client id on Android.
 ///
-/// Throws a [PartnerToolException] when there is none.
+/// Throws a [PartnerToolException] when there is none or [contents] is not
+/// JSON. The message never echoes [contents], which hold API keys (a
+/// [FormatException] from `jsonDecode` would).
 String webClientIdFromGoogleServices(String contents) {
-  final config = jsonDecode(contents);
+  final Object? config;
+  try {
+    config = jsonDecode(contents);
+  } on FormatException {
+    throw PartnerToolException('The google-services.json is not valid JSON.');
+  }
   final clients = switch (config) {
     {'client': final List<Object?> value} => value,
     _ => const <Object?>[],

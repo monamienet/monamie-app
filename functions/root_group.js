@@ -1,5 +1,9 @@
 const PROJECT_PREFIX = "monamienet-";
 
+// Ids that can never be a partner; `app` is the central MonAmie project.
+// Kept in sync with `_reservedPartnerIds` in partner_config.dart.
+const RESERVED_PARTNER_IDS = new Set(["app"]);
+
 /**
  * Derives a partner's root group from its Firebase project id.
  *
@@ -18,7 +22,7 @@ function rootGroupEmailFor(projectId) {
     );
   }
   const id = projectId.slice(PROJECT_PREFIX.length);
-  if (!/^[a-z][a-z0-9]*$/.test(id)) {
+  if (!/^[a-z][a-z0-9]*$/.test(id) || RESERVED_PARTNER_IDS.has(id)) {
     throw new Error(`Project id "${projectId}" has an invalid partner id.`);
   }
   return `${id}00@monamienet.org`;
