@@ -342,20 +342,21 @@ In the Play Console, create a list of tester emails and associate it with the **
 Play only accepts uploads through the API after the app receives its first bundle through the Play
 Console, so **the first version is manual**.
 
-1. In `pubspec.yaml`, set `version: a.b.c+d`. `a.b.c` is the *versionName*, shown in the store, and `d`
-   is the *versionCode*. Use a `d` **below 101**, because numbers from 101 up are used by CI.
-2. Build the bundle:
+1. Fetch the central Firebase config: `dart run tool/partner.dart firebase`.
+2. Build the bundle with a *versionCode* **below 101**, because numbers from 101 up are used by CI:
 
     ```bash
-    flutter build appbundle --release
+    nice -n 15 flutter build appbundle --release --build-number=100
     ```
 
     The output is `build/app/outputs/bundle/release/app-release.aab`.
 
 ### C7. Upload and release the first bundle
 
-In the Play Console, open **internal testing**, create a release, upload the `.aab`, fill in the release
-notes and click **Save → Release**.
+In the Play Console, open **internal testing** → **Create new release**. When Play asks about app signing,
+accept the **Google-managed key** (the default). Upload the `.aab`, fill in the release notes and click
+**Save → Review → Release**. If Play lists pending items under **App content** (privacy policy, Data
+safety, app access, background location), fill them in before releasing.
 
 ### C8. Register the Google Play signing SHAs in Firebase
 

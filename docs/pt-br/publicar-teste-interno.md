@@ -337,27 +337,35 @@ gcloud projects get-iam-policy $FIREBASE_PROJECT --flatten=bindings \
 
 ### C5. Criar a lista de testadores
 
-No Play Console, crie uma lista de e-mails de testadores e associe-a à faixa de **teste interno**.
+No Play Console, abra **Testar e lançar → Teste interno**. A tela mostra os dois passos deste guia:
+**Selecionar testadores** (este passo) e **Criar uma nova versão** (C7).
+
+![Tela "Teste interno" do Play Console, com os passos "Selecionar testadores" e "Criar uma nova versão"](images/play-console-teste-interno.png)
+
+Em **Selecionar testadores**, crie uma lista de e-mails de testadores e associe-a à faixa de **teste interno**.
 
 ### C6. Gerar o primeiro bundle
 
 O Play só aceita envios pela API depois que o app recebe o primeiro bundle pelo Play Console, então
 **a primeira versão é manual**.
 
-1. Em `pubspec.yaml`, defina `version: a.b.c+d`. `a.b.c` é o *versionName*, que aparece na loja, e `d`
-   é o *versionCode*. Use um `d` **menor que 101**, porque os números a partir de 101 são usados pelo CI.
-2. Gere o bundle:
+1. Busque a config do Firebase central: `dart run tool/partner.dart firebase`.
+2. Gere o bundle com um *versionCode* **menor que 101**, porque os números a partir de 101 são usados
+   pelo CI:
 
     ```bash
-    flutter build appbundle --release
+    nice -n 15 flutter build appbundle --release --build-number=100
     ```
 
     O resultado fica em `build/app/outputs/bundle/release/app-release.aab`.
 
 ### C7. Enviar e lançar o primeiro bundle
 
-No Play Console, abra o **teste interno**, crie uma versão, envie o `.aab`, preencha as notas da versão
-e clique em **Salvar → Lançar**.
+No Play Console, abra o **teste interno** → **Criar uma nova versão**. Quando o Play perguntar sobre a
+assinatura do app, aceite a **chave gerenciada pelo Google** (o padrão). Envie o `.aab`, preencha as notas
+da versão e clique em **Salvar → Revisar → Lançar**. Se o Play listar pendências em **Conteúdo do app**
+(política de privacidade, Segurança dos dados, acesso ao app, localização em segundo plano), preencha-as
+antes de lançar.
 
 ### C8. Registrar no Firebase os SHAs da assinatura do Google Play
 
