@@ -19,7 +19,9 @@ const BACKEND_HOST = defineString("GROUPS_GATEWAY_HOST");
  *
  * Invocada pelo app Flutter após o login e ao atualizar grupos.
  */
-exports.syncClaims = onCall({ invoker: "public" }, async (request) => {
+// The region is explicit so deploys never have to guess it, and must match the
+// app's FirebaseFunctions instance (default region, us-central1).
+exports.syncClaims = onCall({ invoker: "public", region: "us-central1" }, async (request) => {
   console.log(
     `[syncClaims] Invocado. Auth: ${JSON.stringify(request.auth)}`
   );
