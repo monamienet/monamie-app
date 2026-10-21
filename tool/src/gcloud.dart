@@ -44,6 +44,9 @@ class GcloudGroupDirectory implements GroupDirectory {
       'memberships',
       'list',
       '--group-email=$groupEmail',
+      // The Cloud Identity API rejects user credentials without a quota
+      // project, and gcloud reports that 403 as "no such group".
+      '--billing-project=$centralProjectId',
       '--format=json',
     ]);
     final decoded = jsonDecode(stdout.isEmpty ? '[]' : stdout);
