@@ -21,7 +21,15 @@ class FakeFirebaseCli implements FirebaseCli {
     this.config = '',
     this.listError,
     this.configError,
+    this.webApps = const [],
+    this.webSdkConfig = const {},
   });
+
+  /// Returned by [listWebApps].
+  final List<FirebaseWebApp> webApps;
+
+  /// Returned by [webConfig].
+  final Map<String, Object?> webSdkConfig;
 
   /// Returned by [listAndroidApps].
   final List<FirebaseAndroidApp> apps;
@@ -43,6 +51,23 @@ class FakeFirebaseCli implements FirebaseCli {
 
   /// Number of CLI calls of any kind.
   int get callCount => listedProjects.length + configRequests.length;
+
+  @override
+  Future<List<FirebaseWebApp>> listWebApps(String projectId) async {
+    listedProjects.add(projectId);
+    if (listError case final error?) throw error;
+    return webApps;
+  }
+
+  @override
+  Future<Map<String, Object?>> webConfig({
+    required String projectId,
+    required String appId,
+  }) async {
+    configRequests.add((projectId: projectId, appId: appId));
+    if (configError case final error?) throw error;
+    return webSdkConfig;
+  }
 
   @override
   Future<List<FirebaseAndroidApp>> listAndroidApps(String projectId) async {

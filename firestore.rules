@@ -167,6 +167,23 @@ service cloud.firestore {
     }
 
     // ╔══════════════════════════════════════════════════════════════════════╗
+    // ║  DOCUMENTO: config/branding                                         ║
+    // ║                                                                     ║
+    // ║  Marca do parceiro: name (obrigatório), colors.primary,             ║
+    // ║  colors.secondary, logoSvg, iconSvg (opcionais).                    ║
+    // ╚══════════════════════════════════════════════════════════════════════╝
+
+    // Leitura pública: o app mostra a marca no seletor de parceiro e na
+    // transição "Entrando em…", antes do login neste projeto. São dados que
+    // já eram públicos (repositório e ficha da Play). Só a ferramenta do
+    // mantenedor (tool/partner.dart publish), com credenciais
+    // administrativas, grava o documento.
+    match /config/branding {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ╔══════════════════════════════════════════════════════════════════════╗
     // ║  DEFAULT: negar tudo que não foi explicitamente permitido            ║
     // ║                                                                     ║
     // ║  NÃO HÁ match /{document=**}. O Firestore nega por padrão.          ║
