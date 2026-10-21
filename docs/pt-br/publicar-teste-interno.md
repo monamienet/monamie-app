@@ -192,13 +192,9 @@ com o histórico de localização das equipes. A função central `resolvePartne
 vinculado em cada projeto de parceiro, para ler as opções do Firebase dos parceiros em tempo de execução
 (white-label.md).
 
-O papel é definido onde os projetos dos parceiros ficam. Descubra com:
-
-```bash
-gcloud projects describe $FIREBASE_PROJECT --format='value(parent.type,parent.id)'
-```
-
-Se o resultado for `organization <ID>`, crie o papel uma única vez, na organização. Isso exige
+O papel já existe na organização monamienet.org
+(`organizations/666407655233/roles/firebaseAppConfigReader`); os comandos abaixo só servem para recriá-lo.
+Ele é criado uma única vez, na organização, para que todo projeto possa vinculá-lo. Isso exige
 `roles/iam.organizationRoleAdmin`, que o Administrador da organização **não** inclui. Se você não tiver
 esse papel e puder editar o IAM da organização, conceda-o a si mesmo só para este passo e revogue-o logo
 depois (último comando):
@@ -223,9 +219,6 @@ CONFIG_ROLE_PATH=organizations/$ORG_ID/roles/$CONFIG_ROLE
 O `describe` deve listar exatamente `firebase.clients.get` e `firebase.clients.list`. Rode-o antes de
 revogar a concessão: depois dela, você não consegue mais ler o papel.
 
-Caso contrário, crie-o em cada projeto de parceiro: o mesmo comando com `--project=$FIREBASE_PROJECT` no
-lugar de `--organization`, e `CONFIG_ROLE_PATH=projects/$FIREBASE_PROJECT/roles/$CONFIG_ROLE`.
-
 Definir o papel na organização não concede nada: a permissão só existe onde o papel é vinculado (C4), e o
 vínculo é feito por projeto, nunca na organização ou em uma pasta.
 
@@ -246,7 +239,7 @@ gcloud services enable firebase.googleapis.com --project=$GCP_PROJECT
 gcloud iam service-accounts create $CONFIG_SA_NAME \
   --project=$GCP_PROJECT \
   --display-name="monamie-app Firebase config reader" \
-  --description="Reads the partners' Firebase app configs at build time for $REPO from GitHub Actions via WIF. Docs: docs/pt-br/publicar-teste-interno.md"
+  --description="Reads the central project's Firebase app config at build time for $REPO from GitHub Actions via WIF. Docs: docs/pt-br/publicar-teste-interno.md"
 
 # Mesmo subject de C10: só jobs no environment play-internal deste repositório.
 gcloud iam service-accounts add-iam-policy-binding $CONFIG_SA_EMAIL \
@@ -306,6 +299,8 @@ keytool -list -v -keystore <CAMINHO>/upload.jks -alias <ALIAS> | grep -E "SHA1|S
 ```
 
 ### C2. Obter o ID do app Android no Firebase
+
+O app `org.monamienet.app` é registrado na configuração do projeto central (white-label.md, seção 4).
 
 ```bash
 firebase apps:list ANDROID --project $FIREBASE_PROJECT
