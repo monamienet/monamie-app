@@ -1,0 +1,12 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "central",
+      "ignore": ["node_modules", ".git", "test"]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
