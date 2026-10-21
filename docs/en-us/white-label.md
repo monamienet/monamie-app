@@ -54,7 +54,7 @@ Done for `monamienet-app` on 2026-10-21; the log is in issue #65. Kept here to r
    ```sh
    gcloud services enable firestore.googleapis.com identitytoolkit.googleapis.com cloudfunctions.googleapis.com \
      cloudbuild.googleapis.com artifactregistry.googleapis.com run.googleapis.com eventarc.googleapis.com \
-     firebase.googleapis.com --project=monamienet-app
+     firebase.googleapis.com cloudidentity.googleapis.com --project=monamienet-app
    gcloud firestore databases create --location=us-central1 --project=monamienet-app
    ```
 3. Register the Android app `org.monamienet.app` and one web app (`firebase apps:create`), and add the SHA-1s of the debug key, the upload key and, after the first Play upload, Play App Signing (`firebase apps:android:sha:create`; see `publish-internal-testing.md`, steps C1–C3 and C8).
@@ -106,7 +106,7 @@ Steps 1–9 cover the three required things: project, root group and name. Step 
     ```
     `activate <id> --deactivate` stops new sign-ins to a partner.
 
-The tool uses your `firebase login` and `gcloud auth login` accounts. Reading the root group needs the Google Workspace admin role **Groups Reader** on your account (admin.google.com → Account → Admin roles); being an organization admin in Google Cloud does not cover it, and without it `check` says the group does not exist.
+The tool uses your `firebase login` and `gcloud auth login` accounts. Reading the root group needs the Google Workspace admin role **Groups Reader** on your account (admin.google.com → Account → Admin roles); being an organization admin in Google Cloud does not cover it, and without it `check` says the group does not exist. The same misleading message appears when `cloudidentity.googleapis.com` is disabled in `monamienet-app`, the project that pays for the tool's group lookups.
 
 ## 6. Building and deploying
 

@@ -54,7 +54,7 @@ Feita para o `monamienet-app` em 21/10/2026; o registro está na issue #65. Fica
    ```sh
    gcloud services enable firestore.googleapis.com identitytoolkit.googleapis.com cloudfunctions.googleapis.com \
      cloudbuild.googleapis.com artifactregistry.googleapis.com run.googleapis.com eventarc.googleapis.com \
-     firebase.googleapis.com --project=monamienet-app
+     firebase.googleapis.com cloudidentity.googleapis.com --project=monamienet-app
    gcloud firestore databases create --location=us-central1 --project=monamienet-app
    ```
 3. Registre o app Android `org.monamienet.app` e um app web (`firebase apps:create`) e cadastre os SHA-1 da chave de debug, da chave de upload e, depois do primeiro envio à Play, da assinatura da Play (`firebase apps:android:sha:create`; veja `publicar-teste-interno.md`, passos C1–C3 e C8).
@@ -106,7 +106,7 @@ Os passos 1 a 9 cuidam dos três obrigatórios: projeto, grupo raiz e nome. O pa
     ```
     `activate <id> --deactivate` impede novos logins no parceiro.
 
-A ferramenta usa as contas do seu `firebase login` e `gcloud auth login`. Ler o grupo raiz exige a função de administrador do Google Workspace **Leitor de grupos** na sua conta (admin.google.com → Conta → Funções de administrador); ser administrador da organização no Google Cloud não basta, e sem ela o `check` diz que o grupo não existe.
+A ferramenta usa as contas do seu `firebase login` e `gcloud auth login`. Ler o grupo raiz exige a função de administrador do Google Workspace **Leitor de grupos** na sua conta (admin.google.com → Conta → Funções de administrador); ser administrador da organização no Google Cloud não basta, e sem ela o `check` diz que o grupo não existe. A mesma mensagem enganosa aparece quando a `cloudidentity.googleapis.com` está desligada no `monamienet-app`, o projeto que paga as consultas de grupos da ferramenta.
 
 ## 6. Build e deploy
 
