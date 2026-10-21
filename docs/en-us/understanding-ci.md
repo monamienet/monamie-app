@@ -30,7 +30,7 @@ On GitHub, this tool is called **GitHub Actions**. Vocabulary:
 | **Trigger** (`on:`) | The event that starts the workflow. | a push to `main` that changes app files, or a manual click on "Run workflow" |
 | **Runner** | The virtual machine GitHub starts to run the workflow. It starts **empty**: no Flutter, no Java, none of the files that are outside git. It is destroyed when the run ends. | `ubuntu-latest` (Linux) |
 | **Job** | A group of steps that run in sequence on the same runner. | a single job, `deploy` |
-| **Step** | One step of a job. Either a shell command (`run:`) or an **action** (`uses:`). | 10 steps |
+| **Step** | One step of a job. Either a shell command (`run:`) or an **action** (`uses:`). | 12 steps |
 | **Action** | A ready-made, reusable step published by someone, like a "function" you call. | `actions/checkout` downloads the code; `subosito/flutter-action` installs Flutter; `r0adkll/upload-google-play` uploads to Play |
 | **Secret** | A sensitive value stored encrypted on GitHub. The workflow reads it with `${{ secrets.NAME }}`, and GitHub masks it in logs (shown as `***`). | the keystore and its passwords. The Play credential is **not** a secret: authentication is keyless (section 6) |
 | **Environment** | A named "vault" (Settings → Environments) that groups secrets and can have rules, such as requiring manual approval before running. | `play-internal` |
@@ -84,7 +84,7 @@ the push changes at least one of these paths, which are the inputs of the Androi
 | `lib/**` | the Dart code |
 | `android/**` | Gradle, manifest |
 | `assets/**` | images declared in `pubspec.yaml` |
-| `tool/**` | the partner tool: the build runs `tool/partner.dart firebase <id>` to fetch `google-services.json` (section 6) |
+| `tool/**` | the partner tool: the build runs `tool/partner.dart firebase` to fetch `google-services.json` (section 6) |
 | `pubspec.yaml`, `pubspec.lock` | dependencies and the asset list |
 | `.github/workflows/deploy-play-internal.yml` | the pipeline itself: if it changes, it must run to prove it still works |
 
@@ -142,8 +142,8 @@ The words on the left are **fixed**, defined by GitHub Actions. The values on th
 | `runs-on` | The runner's operating system. | `ubuntu-latest` |
 | `environment` | Which Environment (secret vault) the job uses. Without it, `secrets.X` is empty. | `play-internal` |
 | `permissions` | What the job's automatic token may do. Anything not listed is forbidden. | `contents: read` (read the code) and `id-token: write` (request the OIDC token from section 6) |
-| `steps` | The **list** of steps, run top to bottom. Each `-` is one step. | 10 steps |
-| `name` (inside a step) | Optional step label in the logs. | e.g. `Limit Gradle memory` |
+| `steps` | The **list** of steps, run top to bottom. Each `-` is one step. | 12 steps |
+| `name` (inside a step) | Optional step label in the logs. | e.g. `Raise Gradle memory` |
 | `id` (inside a step) | A nickname for the step. Later steps read its outputs with `${{ steps.<id>.outputs.<name> }}`. | `auth`: the upload reads `steps.auth.outputs.credentials_file_path` |
 | `uses` | The step **calls a ready-made action**, as `owner/repository@version`. | e.g. `actions/setup-java@v6` |
 | `with` | The **parameters** passed to the action in `uses` (section 3.3). | e.g. `java-version: '17'` |
@@ -199,7 +199,7 @@ middle one is dropped and only the newest runs after the first. Nothing is lost,
 | 1 | `actions/checkout` | The runner starts empty; this downloads the code of the commit that triggered the workflow. |
 | 2 | `actions/setup-java` | Android's Gradle needs Java. The project compiles for JVM 17 ([build.gradle.kts](../../android/app/build.gradle.kts)). |
 | 3 | `subosito/flutter-action` | Installs the **same** Flutter version used in development, so CI does not produce a different app. `cache: true` reuses the SDK and makes later runs faster. |
-| 4 | `Limit Gradle memory` | [android/gradle.properties](../../android/gradle.properties) asks for 8 GB of RAM (`-Xmx8G`), more than the runner has. `~/.gradle/gradle.properties` takes precedence over the project file, so the limit is lowered on CI only. |
+| 4 | `Raise Gradle memory` | [android/gradle.properties](../../android/gradle.properties) caps the Gradle heap at 2 GB (`-Xmx2g`) for 8 GB dev laptops. The runner has more RAM, so CI raises it to 4 GB; `~/.gradle/gradle.properties` takes precedence over the project file, so the change applies to CI only. |
 | 5 | `Restore release signing` | Restores the keystore and `android/key.properties`, which are not in git (section 4). First it checks that no secret is empty. |
 | 6 | `flutter pub get` | Fetches the dependencies in `pubspec.yaml`. |
 | 7 | `flutter test test/unit` | Runs the unit tests. If any fails, the deploy stops here. Integration tests are skipped because they need the Firebase emulators. |

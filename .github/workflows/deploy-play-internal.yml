@@ -54,7 +54,7 @@ jobs:
 
       # Give CI more heap than the 2g that android/gradle.properties keeps for dev laptops.
       # ~/.gradle/gradle.properties takes precedence over the project file.
-      - name: Limit Gradle memory
+      - name: Raise Gradle memory
         run: |
           mkdir -p ~/.gradle
           echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> ~/.gradle/gradle.properties
@@ -101,7 +101,8 @@ jobs:
           workload_identity_provider: projects/787253151660/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: wlif-monamie-app-config@ci-cd-management.iam.gserviceaccount.com
 
-      # versionCode = run number + 100, above the last manually uploaded one (3).
+      # versionCode = run number + 100: CI uses 101 and up; manual uploads (such as
+      # the first one of a new app) use 100 or less.
       - run: flutter build appbundle --release --build-number=$((GITHUB_RUN_NUMBER + 100))
 
       # Keyless auth: impersonates the dedicated publisher service account.
