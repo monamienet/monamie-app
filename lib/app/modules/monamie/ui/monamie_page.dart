@@ -280,7 +280,7 @@ class MonamiePage extends StatelessWidget {
   Widget _tile() {
     return TileLayer(
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      userAgentPackageName: 'org.monamienet.aquariustur',
+      userAgentPackageName: 'org.monamienet.app',
     );
   }
 
