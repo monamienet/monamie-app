@@ -4,7 +4,7 @@ This document explains how to run the app's web build on your machine, sign in w
 account, and check automatically that the login page renders. Each step says **why** it exists, so the
 process can be scripted or run in CI without surprises.
 
-> **Summary:** run `dart run tool/partner.dart web <id>` and `flutter build web --release`, serve `build/web` on **`http://localhost:5000`** (any
+> **Summary:** run `dart run tool/partner.dart web` and `flutter build web --release`, serve `build/web` on **`http://localhost:5000`** (any
 > other port fails Google sign-in with `origin_mismatch`), and open it in the Chrome profile that has the
 > account you want. For an unattended check, use headless Chrome through DevTools and wait for Flutter to
 > paint before taking the screenshot.
@@ -14,28 +14,21 @@ process can be scripted or run in CI without surprises.
 ## 1. Build
 
 ```bash
-dart run tool/partner.dart web aquariustur
+dart run tool/partner.dart web
 flutter build web --release
 ```
 
-- **Why the first command:** Flutter has no `--flavor` for web. Instead, the tool recreates the
-  gitignored folder `web/partner/` with the partner's files: `partner.json`, `id.txt` (the id, which
-  `partner.json` doesn't contain), the login logo (`logo-com-texto.svg`), the favicon and PWA icons
-  from `partners/<id>/web/`, and a `manifest.json` generated from `partner.json` (name
-  `MonAmie <name>`, `theme_color` = `colors.primary`). `flutter build web` copies everything under
-  `web/` into the output, and `flutter run -d chrome` serves it, so the web app reads its partner from
-  `partner/` over HTTP. `web/index.html` is the same for every partner and links to these files. Run the
-  command again whenever you switch partners or change `partners/<id>/`; each run deletes the folder
-  first, so no file from another partner is left behind.
-- An unknown or invalid id, a `partner.json` without `name` or `colors.primary`, a missing
-  `partners/<id>/logo-com-texto.svg`, or a missing file in `partners/<id>/web/` (`favicon.png`, `icons/Icon-192.png`, `icons/Icon-512.png`,
-  `icons/Icon-maskable-192.png`, `icons/Icon-maskable-512.png`) fails with a message and keeps the
-  previous `web/partner/` as it was.
-- The app reads `partner/id.txt` and `partner/partner.json` at startup (name in the title bar and
-  colors), and `partner/logo-com-texto.svg` on the login screen. If the logo fails to load, the screen
-  shows the name `MonAmie <name>` in its place. Without this step the build still succeeds, but the page shows the error
-  `Could not fetch …/partner/id.txt (HTTP 404)` instead of the app, and has no favicon, icons or
-  manifest.
+- **Why the first command:** the web app signs in through the central Firebase project
+  (`monamienet-app`), whose config is never versioned (it holds API keys). The tool reads it with your
+  `firebase login` and writes the gitignored `web/central/firebase.json`: the web Firebase options and
+  the OAuth web client id for Google sign-in. `flutter build web` copies everything under `web/` into
+  the output, and `flutter run -d chrome` serves it, so the app reads `central/firebase.json` over HTTP
+  at startup. Run it again only if the central project's web app changes.
+- There is no partner to stage: one web app serves every partner. The user's partner, with its colors
+  and logo, is bound after sign-in (see `white-label.md`). `web/index.html`, `manifest.json`, the
+  favicon and the icons are fixed MonAmie files.
+- Without this step the build still succeeds, but the page shows `Could not fetch
+  …/central/firebase.json (HTTP 404)` instead of the app.
 - The output is in `build/web/`. It is a static build: rebuild after changing code.
 
 ## 2. Serve on `localhost:5000`
@@ -44,11 +37,11 @@ flutter build web --release
 python3 -m http.server 5000 --bind 127.0.0.1 -d build/web
 ```
 
-- **Why port 5000:** web Google sign-in uses the OAuth web client of the partner's Firebase project
-  (`google-signin-client_id` in `web/index.html`). That client only accepts the origins listed under
+- **Why port 5000:** web Google sign-in uses the OAuth web client of the central Firebase project
+  (`googleClientId` in `web/central/firebase.json`). That client only accepts the origins listed under
   **Authorized JavaScript origins**. `http://localhost:5000` is accepted. On any other port (for example
   8787), the Google window shows `Error 400: origin_mismatch`.
-- **To check or add origins:** Google Cloud Console for project `monamienet-<id>` → *APIs & Services* →
+- **To check or add origins:** Google Cloud Console for project `monamienet-app` → *APIs & Services* →
   *Credentials* → OAuth client "Web client (auto created by Google Service)" → *Authorized JavaScript
   origins*.
 - **Routing:** the app uses hash routes (`/#/login`, `/#/monamie`), so a plain static server works
@@ -126,7 +119,7 @@ kill $CHROME $SERVER
 rm -rf "$PROFILE"
 ```
 
-`web.png` should show the "MonAmie <name>" bar, the partner logo and the **Fazer Login com o Google**
+`web.png` should show the "MonAmie" bar, the MonAmie logo (no partner is bound before sign-in) and the **Fazer Login com o Google**
 button.
 
 ## 5. Known problems

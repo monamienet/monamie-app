@@ -2,22 +2,27 @@
 
 ## Project Overview
 
-This white-label application is maintained by the company MonAmieNet and provides clients services for tracking, coordination and comunication of teams.
+This application is maintained by the company MonAmieNet and provides clients (partners) services for tracking, coordination and comunication of teams.
 
 ## Business Archictecture
 
-MonAmie has a single Google Developer Account, where every instance of this app is published.
+MonAmie publishes a **single app** on its Google Developer Account: `org.monamienet.app`, named "MonAmie" (launcher, Play listing and native splash are the same for everyone). Each partner (client) keeps:
+- its own Firebase project `monamienet-<id>`, associated to the partner's billing account, where all its data lives;
+- its own branding (name, colors, logo, icon) in that project's Firestore, `config/branding`, publicly readable.
 
-Each instance of this app:
-- belongs to one client $c$
-- has its own and unique identity, which includes:
-    - name (must be "MonAmie <instance_name>")
-    - Application ID (Android) `android/app/build.gradle[.kts]`
-    - Bundle Identifier (iOS) `ios/Runner.xcodeproj/project.pbxproj`
-    - icons
-    - theme
-    - etc
-- has its own separated Firebase Project which is associated to $c$'s billing account
+The app binds the partner **at runtime**, after Google sign-in, never at build time:
+1. Google sign-in goes through the central MonAmie project `monamienet-app` (the `[DEFAULT]` Firebase app). Only one OAuth client may exist per package + SHA-1, so it lives there, and every partner project allows the central web client under "Allowed client IDs".
+2. The central `resolvePartners` function (`central/functions/`) reads the user's groups and derives their partners from the group names (see below), keeping only those active in the central registry `partners/{id}`.
+3. The app binds the chosen partner (`PartnerSession`): its Firebase project (a named app `partner-<id>`), its root group and its branding, all together, and remembers the binding on the device (`SharedPreferences`) until sign-out or removal from the partner's groups.
+
+Where each value lives:
+- **Partner's choice** (name required; colors, logo, icon optional with fallbacks): `config/branding` in the partner project, written by `dart run tool/partner.dart publish <id>`.
+- **Derived by rule**, never stored: project `monamienet-<id>`, root group `<id>00@monamienet.org`, partner id from a group name, display name `MonAmie <name>`.
+- **Owned by another system**, fetched, never versioned: the central `google-services.json` (build time, `tool/partner.dart firebase`) and each partner's Firebase options (runtime, `resolvePartners`).
+
+Rules that come from the plugins' source code: never `delete()` a partner `FirebaseApp` (cloud_firestore caches instances per app name forever); the partner app is created natively in `MonAmieApplication.kt` so the UI and the tracking service engines never race to create it; the binding lives in `SharedPreferences`, not Hive, because two isolates read it.
+
+Onboarding a partner needs no app release: see `docs/en-us/white-label.md`.
 
 ### Partners, Groups and Users
 

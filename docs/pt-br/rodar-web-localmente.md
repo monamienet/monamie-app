@@ -4,7 +4,7 @@ Este documento mostra como rodar o build web do app na sua máquina, entrar com 
 e verificar automaticamente que a página de login aparece. Cada passo diz **por que** ele existe,
 para que o processo possa virar script ou rodar em CI sem surpresas.
 
-> **Resumo:** `dart run tool/partner.dart web <id>` e `flutter build web --release`, sirva `build/web` em **`http://localhost:5000`** (outra porta
+> **Resumo:** `dart run tool/partner.dart web` e `flutter build web --release`, sirva `build/web` em **`http://localhost:5000`** (outra porta
 > falha no login do Google com `origin_mismatch`) e abra no perfil do Chrome que tem a conta desejada.
 > Para uma verificação sem pessoa, use um Chrome headless com DevTools e espere o Flutter desenhar antes
 > de tirar o screenshot.
@@ -14,27 +14,21 @@ para que o processo possa virar script ou rodar em CI sem surpresas.
 ## 1. Gerar o build
 
 ```bash
-dart run tool/partner.dart web aquariustur
+dart run tool/partner.dart web
 flutter build web --release
 ```
 
-- **Por que o primeiro comando:** o Flutter não tem `--flavor` para web. No lugar disso, a ferramenta
-  recria a pasta `web/partner/` (ignorada pelo git) com os arquivos do parceiro: o `partner.json`, o
-  `id.txt` (o id, que o `partner.json` não contém), o logo da tela de login (`logo-com-texto.svg`), o
-  favicon e os ícones PWA de `partners/<id>/web/` e um `manifest.json` gerado a partir do `partner.json`
-  (nome `MonAmie <nome>`, `theme_color` = `colors.primary`). O `flutter build web` copia tudo o que está
-  em `web/` para o resultado, e o `flutter run -d chrome` serve essa pasta. Assim, o app web lê o parceiro
-  em `partner/` via HTTP. O `web/index.html` é o mesmo para todos os parceiros e aponta para esses
-  arquivos. Rode o comando de novo sempre que trocar de parceiro ou mudar `partners/<id>/`. Cada execução
-  apaga a pasta antes, então nenhum arquivo de outro parceiro fica para trás.
-- Um id desconhecido ou inválido, um `partner.json` sem `name` ou `colors.primary`, a falta de
-  `partners/<id>/logo-com-texto.svg` ou a falta de um arquivo em `partners/<id>/web/` (`favicon.png`, `icons/Icon-192.png`, `icons/Icon-512.png`,
-  `icons/Icon-maskable-192.png`, `icons/Icon-maskable-512.png`) falha com uma mensagem e mantém a
-  `web/partner/` anterior como estava.
-- O app lê `partner/id.txt` e `partner/partner.json` ao iniciar (nome na barra de título e cores) e
-  `partner/logo-com-texto.svg` na tela de login. Se o logo não carregar, a tela mostra o nome
-  `MonAmie <nome>` no lugar dele. Sem esse passo, o build ainda funciona, mas a página mostra o erro
-  `Could not fetch …/partner/id.txt (HTTP 404)` no lugar do app, e fica sem favicon, ícones e manifest.
+- **Por que o primeiro comando:** o app web faz login pelo projeto Firebase central (`monamienet-app`),
+  cuja config nunca é versionada (ela tem API keys). A ferramenta lê essa config com o seu
+  `firebase login` e grava `web/central/firebase.json` (ignorado pelo git): as opções do Firebase web e
+  o client id OAuth web do login Google. O `flutter build web` copia tudo o que está em `web/` para o
+  resultado, e o `flutter run -d chrome` serve essa pasta. Assim, o app lê `central/firebase.json` via
+  HTTP ao iniciar. Rode de novo só se o app web do projeto central mudar.
+- Não há parceiro para preparar: um único app web atende todos os parceiros. O parceiro do usuário, com
+  cores e logo, é ligado depois do login (veja `white-label.md`). O `web/index.html`, o `manifest.json`,
+  o favicon e os ícones são arquivos fixos da MonAmie.
+- Sem esse passo, o build ainda funciona, mas a página mostra `Could not fetch
+  …/central/firebase.json (HTTP 404)` no lugar do app.
 - O resultado fica em `build/web/`. É um build estático: depois de mudar o código, gere de novo.
 
 ## 2. Servir em `localhost:5000`
@@ -43,11 +37,11 @@ flutter build web --release
 python3 -m http.server 5000 --bind 127.0.0.1 -d build/web
 ```
 
-- **Por que a porta 5000:** o login do Google na web usa o cliente OAuth web do projeto Firebase do
-  parceiro (`google-signin-client_id` em `web/index.html`). Esse cliente só aceita as origens cadastradas
+- **Por que a porta 5000:** o login do Google na web usa o cliente OAuth web do projeto Firebase
+  central (`googleClientId` em `web/central/firebase.json`). Esse cliente só aceita as origens cadastradas
   em **Origens JavaScript autorizadas**. `http://localhost:5000` é aceita. Com outra porta (por exemplo,
   8787), a janela do Google mostra `Erro 400: origin_mismatch`.
-- **Para conferir ou adicionar origens:** Google Cloud Console do projeto `monamienet-<id>` → *APIs e
+- **Para conferir ou adicionar origens:** Google Cloud Console do projeto `monamienet-app` → *APIs e
   serviços* → *Credenciais* → cliente OAuth "Web client (auto created by Google Service)" → *Origens
   JavaScript autorizadas*.
 - **Rotas:** o app usa rotas com `#` (`/#/login`, `/#/monamie`). Por isso um servidor estático simples
@@ -124,7 +118,7 @@ kill $CHROME $SERVER
 rm -rf "$PROFILE"
 ```
 
-O `web.png` deve mostrar a barra "MonAmie <nome>", o logo do parceiro e o botão
+O `web.png` deve mostrar a barra "MonAmie", o logo da MonAmie (antes do login nenhum parceiro está ligado) e o botão
 **Fazer Login com o Google**.
 
 ## 5. Problemas conhecidos
