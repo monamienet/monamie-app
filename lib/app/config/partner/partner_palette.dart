@@ -1,5 +1,6 @@
 import 'package:flutter/painting.dart';
 
+import 'monamie_brand.dart';
 import 'partner_config.dart';
 
 /// How a shade is derived from the brand color in HSL.
@@ -48,6 +49,18 @@ const _accent = _ShadeRule(
   lightness: 0.296,
 );
 
+const _black = Color(0xFF000000);
+const _white = Color(0xFFFFFFFF);
+
+/// Black or white, whichever has the higher WCAG contrast ratio against
+/// [background], so text stays readable on any partner color.
+Color readableOn(Color background) {
+  final luminance = background.computeLuminance();
+  final contrastWithWhite = 1.05 / (luminance + 0.05);
+  final contrastWithBlack = (luminance + 0.05) / 0.05;
+  return contrastWithBlack > contrastWithWhite ? _black : _white;
+}
+
 /// The partner's colors: the two it chose in `partner.json` plus the shades
 /// derived from its primary color.
 class PartnerPalette {
@@ -77,10 +90,14 @@ class PartnerPalette {
   }
 
   /// The palette of [config]: `colors.primary` and `colors.secondary`.
-  factory PartnerPalette.fromConfig(PartnerConfig config) =>
+  ///
+  /// Each missing color falls back on its own: the primary to the MonAmie
+  /// blue, the background to white. No partner ([config] `null`) gives the
+  /// MonAmie palette.
+  factory PartnerPalette.fromConfig(PartnerConfig? config) =>
       PartnerPalette.fromColors(
-        primary: config.primaryColor,
-        background: config.secondaryColor,
+        primary: config?.primaryColor ?? MonAmieBrand.primary,
+        background: config?.secondaryColor ?? MonAmieBrand.background,
       );
 
   /// `colors.primary`: the brand color.
@@ -100,4 +117,16 @@ class PartnerPalette {
 
   /// `colors.secondary`: the brand background (the login background).
   final Color background;
+
+  /// Text and icon color on [primary].
+  Color get onPrimary => readableOn(primary);
+
+  /// Text and icon color on [dark].
+  Color get onDark => readableOn(dark);
+
+  /// Text and icon color on [accent].
+  Color get onAccent => readableOn(accent);
+
+  /// Text and icon color on [accentDark].
+  Color get onAccentDark => readableOn(accentDark);
 }

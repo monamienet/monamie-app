@@ -21,6 +21,17 @@ class FirebaseAndroidApp {
   String toString() => '$appId ($packageName)';
 }
 
+/// A web app registered in a Firebase project.
+class FirebaseWebApp {
+  const FirebaseWebApp({required this.appId, required this.displayName});
+
+  final String appId;
+  final String displayName;
+
+  @override
+  String toString() => '$appId ($displayName)';
+}
+
 /// The Firebase CLI calls the partner tool needs.
 ///
 /// Implementations throw a `PartnerToolException` on failure, and their
@@ -32,6 +43,16 @@ abstract interface class FirebaseCli {
   /// Returns the `google-services.json` contents of Android app [appId] in
   /// Firebase project [projectId].
   Future<String> androidConfig({
+    required String projectId,
+    required String appId,
+  });
+
+  /// Lists the web apps of Firebase project [projectId].
+  Future<List<FirebaseWebApp>> listWebApps(String projectId);
+
+  /// Returns the web SDK config (`apiKey`, `appId`, `authDomain`, ...) of web
+  /// app [appId] in Firebase project [projectId].
+  Future<Map<String, Object?>> webConfig({
     required String projectId,
     required String appId,
   });

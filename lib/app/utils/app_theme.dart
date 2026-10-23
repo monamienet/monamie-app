@@ -8,11 +8,11 @@ class AppTheme {
   static ThemeData get lightTheme {
     final colorScheme = ColorScheme.light(
       primary: AppColors.primary,
-      onPrimary: Colors.white,
+      onPrimary: AppColors.onPrimary,
       primaryContainer: AppColors.primaryLight,
       onPrimaryContainer: AppColors.primaryDark,
       secondary: AppColors.secondary,
-      onSecondary: Colors.white,
+      onSecondary: AppColors.onSecondary,
       surface: Colors.white,
       onSurface: AppColors.darkBlue(),
     );
@@ -24,11 +24,11 @@ class AppTheme {
       scaffoldBackgroundColor: Colors.white,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.darkBlue(),
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.onPrimaryDark,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: const TextStyle(
-          color: Colors.white,
+        titleTextStyle: TextStyle(
+          color: AppColors.onPrimaryDark,
           fontSize: 18,
           fontWeight: FontWeight.bold,
         ),
@@ -40,7 +40,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.onPrimary,
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(
@@ -60,11 +60,11 @@ class AppTheme {
   static ThemeData get darkTheme {
     final colorScheme = ColorScheme.dark(
       primary: AppColors.primary,
-      onPrimary: Colors.white,
+      onPrimary: AppColors.onPrimary,
       primaryContainer: AppColors.alternativeDarkBlue(),
       onPrimaryContainer: AppColors.primaryLight,
       secondary: AppColors.secondary,
-      onSecondary: Colors.white,
+      onSecondary: AppColors.onSecondary,
       surface: AppColors.darkBlue(),
       onSurface: Colors.white,
     );
@@ -76,11 +76,11 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.alternativeDarkBlue(),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.alternativeDarkBlue(),
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.onAlternativeDark,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: const TextStyle(
-          color: Colors.white,
+        titleTextStyle: TextStyle(
+          color: AppColors.onAlternativeDark,
           fontSize: 18,
           fontWeight: FontWeight.bold,
         ),
@@ -92,7 +92,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.onPrimary,
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           shape: RoundedRectangleBorder(

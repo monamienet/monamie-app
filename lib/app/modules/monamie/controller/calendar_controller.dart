@@ -46,10 +46,10 @@ class CalendarController extends GetxController {
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
               primary: AppColors.darkBlue(),
-              onPrimary: Colors.white,
+              onPrimary: AppColors.onPrimaryDark,
               onSurface: AppColors.darkBlue(),
               secondary: AppColors.mediumBlue(),
-              onSecondary: Colors.white,
+              onSecondary: AppColors.onPrimary,
               surface: Colors.white,
             ),
             textButtonTheme: TextButtonThemeData(
@@ -60,10 +60,10 @@ class CalendarController extends GetxController {
             datePickerTheme: DatePickerThemeData(
               backgroundColor: Colors.white,
               headerBackgroundColor: AppColors.darkBlue(),
-              headerForegroundColor: Colors.white,
+              headerForegroundColor: AppColors.onPrimaryDark,
               dayForegroundColor: WidgetStateColor.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
-                  return Colors.white;
+                  return AppColors.onPrimary;
                 }
                 if (states.contains(WidgetState.disabled)) {
                   return Colors.grey;
@@ -78,7 +78,7 @@ class CalendarController extends GetxController {
               }),
               todayForegroundColor: WidgetStateColor.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
-                  return Colors.white;
+                  return AppColors.onPrimary;
                 }
                 return AppColors.mediumBlue();
               }),
@@ -91,7 +91,7 @@ class CalendarController extends GetxController {
               todayBorder: BorderSide(color: AppColors.mediumBlue(), width: 1),
               yearForegroundColor: WidgetStateColor.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
-                  return Colors.white;
+                  return AppColors.onPrimary;
                 }
                 return AppColors.darkBlue();
               }),

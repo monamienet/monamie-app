@@ -6,8 +6,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
+import 'package:monamie_app/app/data/partner/partner_session.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
-import 'package:monamie_app/firebase_options.dart';
 
 Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;
@@ -19,14 +20,22 @@ Position? _lastRecordedPosition;
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // [DEFAULT] is the central project (from google-services.json); the
+  // partner's app was created natively by MonAmieApplication.
+  await Firebase.initializeApp();
+  // The UI stored the bound partner; without one there is nowhere to write.
+  if (await PartnerSession().restore() == null) {
+    debugPrint('[ForegroundService] No partner bound — stopping the service.');
+    service.stopSelf();
+    return;
+  }
 
   // Verificar se o auth state está disponível no isolate do background.
   // No Android, o Firebase Auth persiste credenciais via SharedPreferences
   // no nível nativo, que são compartilhadas entre Flutter engines no
   // mesmo processo. Forçamos um refresh do token para garantir que os
   // custom claims (group_roles) estejam presentes.
-  final currentUser = FirebaseAuth.instance.currentUser;
+  final currentUser = CurrentPartnerFirebase.instance.auth.currentUser;
   if (currentUser != null) {
     try {
       await currentUser.getIdToken(true);
@@ -52,14 +61,18 @@ void onStart(ServiceInstance service) async {
   // comportamento anterior.
   var hadUser = currentUser != null;
   await _authSubscription?.cancel();
-  _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
-    if (user != null) {
-      hadUser = true;
-    } else if (hadUser) {
-      debugPrint('[ForegroundService] Usuário deslogado — encerrando serviço.');
-      _stopTracking(service);
-    }
-  });
+  _authSubscription = CurrentPartnerFirebase.instance.auth
+      .authStateChanges()
+      .listen((user) {
+        if (user != null) {
+          hadUser = true;
+        } else if (hadUser) {
+          debugPrint(
+            '[ForegroundService] Usuário deslogado — encerrando serviço.',
+          );
+          _stopTracking(service);
+        }
+      });
 
   service.on('stopService').listen((event) {
     _stopTracking(service);
@@ -234,7 +247,8 @@ Future<void> updateLocation(
               );
               // Tentar refresh do token para recuperar claims
               try {
-                await FirebaseAuth.instance.currentUser?.getIdToken(true);
+                await CurrentPartnerFirebase.instance.auth.currentUser
+                    ?.getIdToken(true);
               } catch (_) {}
             } else {
               debugPrint(

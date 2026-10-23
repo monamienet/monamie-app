@@ -5,6 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
+import 'package:monamie_app/app/data/partner/partner_binding.dart';
+import 'package:monamie_app/app/data/partner/partner_binding_store.dart';
+import 'package:monamie_app/app/data/partner/partner_local_data.dart';
+import 'package:monamie_app/app/data/partner/partner_session.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
@@ -66,23 +70,42 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   }
 
   @override
-  Stream<UserGoogleModel?> get onWebSignIn =>
-      const Stream<UserGoogleModel?>.empty();
+  Stream<String?> get onWebSignIn => const Stream<String?>.empty();
 
   @override
   Future<void> ensureInitialized() async {}
 
   @override
-  Future<UserGoogleModel?> signInGoogle() async => null;
+  Future<String?> signInGoogle() async => null;
 
   @override
-  Future<UserGoogleModel?> trySignInGoogle() async => null;
+  Future<UserGoogleModel?> signInToPartner(String idToken) async => null;
 
   @override
   Future<String?> getFirebaseIdToken() async => null;
 
   @override
   void dispose() {}
+}
+
+/// Armazenamento em memória do vínculo com o parceiro (sem SharedPreferences).
+class _MemoryBindingStore implements PartnerBindingStore {
+  PartnerBinding? binding;
+
+  @override
+  Future<PartnerBinding?> read() async => binding;
+
+  @override
+  Future<void> write(PartnerBinding value) async => binding = value;
+
+  @override
+  Future<void> clear() async => binding = null;
+}
+
+/// Dados locais do parceiro sem Hive.
+class _FakePartnerLocalData implements PartnerLocalData {
+  @override
+  Future<void> clear() async {}
 }
 
 /// Fake do UserGoogleRepository. Usa `implements` para não instanciar os
@@ -180,6 +203,9 @@ class _Harness {
     // O controller é construído sem `Get.put`, de modo que o `onInit` real
     // (que acessa o Google Sign-In) nunca é executado.
     controller = AuthGoogleController(
+      partnerSession: PartnerSession(store: _MemoryBindingStore()),
+      partnerLocalData: _FakePartnerLocalData(),
+      refreshTheme: () {},
       authGoogleService: authService,
       userRepository: userRepository,
       trackingStopper: stopper,
@@ -372,6 +398,9 @@ void main() {
 
       // 2. Act
       final controller = AuthGoogleController(
+        partnerSession: PartnerSession(store: _MemoryBindingStore()),
+        partnerLocalData: _FakePartnerLocalData(),
+        refreshTheme: () {},
         authGoogleService: _FakeAuthGoogleService(log),
         userRepository: _FakeUserGoogleRepository(log),
         trackingStopper: _FakeTrackingStopper(log),

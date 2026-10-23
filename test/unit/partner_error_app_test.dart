@@ -179,7 +179,7 @@ void main() {
 
       tearDown(() {
         Partner.debugReset();
-        Partner.init(testPartner);
+        Partner.bind(testPartner);
       });
 
       testWidgets('Sad Path: renders when no partner could be loaded', (

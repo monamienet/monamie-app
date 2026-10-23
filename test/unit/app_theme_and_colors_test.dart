@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
@@ -8,7 +7,6 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:monamie_app/app/utils/app_theme.dart';
 
 import '../support/test_partner.dart';
-import 'support/partner_layout.dart';
 
 /// A partner with the AquariusTur colors, for the partner-switch tests.
 const aquariusTurPartner = PartnerConfig(
@@ -43,7 +41,7 @@ void main() {
     test('Happy Path: primary is the colors.primary of the current '
         'partner', () {
       // 1. Arrange
-      final expected = Partner.current.primaryColor;
+      final expected = Partner.current!.primaryColor;
 
       // 2. Act
       final color = AppColors.primary;
@@ -99,7 +97,7 @@ void main() {
     test('Happy Path: background is the colors.secondary of the current '
         'partner', () {
       // 1. Arrange
-      final expected = Partner.current.secondaryColor;
+      final expected = Partner.current!.secondaryColor;
 
       // 2. Act
       final color = AppColors.background;
@@ -263,12 +261,12 @@ void main() {
 
     tearDown(() {
       Partner.debugReset();
-      Partner.init(testPartner);
+      Partner.bind(testPartner);
     });
 
     test('Happy Path: primary follows the partner set with Partner.init', () {
       // 1. Arrange
-      Partner.init(aquariusTurPartner);
+      Partner.bind(aquariusTurPartner);
 
       // 2. Act
       final color = AppColors.primary;
@@ -279,7 +277,7 @@ void main() {
 
     test('Happy Path: primaryDark of AquariusTur is #073B40', () {
       // 1. Arrange
-      Partner.init(aquariusTurPartner);
+      Partner.bind(aquariusTurPartner);
 
       // 2. Act
       final color = AppColors.primaryDark;
@@ -290,10 +288,10 @@ void main() {
 
     test('Edge Case: the colors differ when the partner changes', () {
       // 1. Arrange
-      Partner.init(testPartner);
+      Partner.bind(testPartner);
       final acmeDark = AppColors.darkBlue();
       Partner.debugReset();
-      Partner.init(aquariusTurPartner);
+      Partner.bind(aquariusTurPartner);
 
       // 2. Act
       final aquariusTurDark = AppColors.darkBlue();
@@ -305,7 +303,7 @@ void main() {
     test('Happy Path: background follows the colors.secondary of the '
         'partner set with Partner.init', () {
       // 1. Arrange
-      Partner.init(darkBackgroundPartner);
+      Partner.bind(darkBackgroundPartner);
 
       // 2. Act
       final color = AppColors.background;
@@ -316,7 +314,7 @@ void main() {
 
     test('Edge Case: background is not derived from colors.primary', () {
       // 1. Arrange
-      Partner.init(sameBackgroundOtherPrimaryPartner);
+      Partner.bind(sameBackgroundOtherPrimaryPartner);
 
       // 2. Act
       final color = AppColors.background;
@@ -325,41 +323,8 @@ void main() {
       expect(color, testPartner.secondaryColor);
     });
 
-    test('Sad Path: reading background before Partner.init throws '
-        'StateError', () {
-      // 1. Arrange
-      // setUp left Partner without a partner.
 
-      // 2. Act
-      Color action() => AppColors.background;
 
-      // 3. Assert
-      expect(action, throwsStateError);
-    });
-
-    test('Sad Path: reading a color before Partner.init throws '
-        'StateError', () {
-      // 1. Arrange
-      // setUp left Partner without a partner.
-
-      // 2. Act
-      Color action() => AppColors.primary;
-
-      // 3. Assert
-      expect(action, throwsStateError);
-    });
-
-    test('Sad Path: building a gradient before Partner.init throws '
-        'StateError', () {
-      // 1. Arrange
-      // setUp left Partner without a partner.
-
-      // 2. Act
-      LinearGradient action() => AppColors.appBarTopGradient();
-
-      // 3. Assert
-      expect(action, throwsStateError);
-    });
   });
 
   group('AppTheme.lightTheme - Unit Test Suite', () {
@@ -508,13 +473,13 @@ void main() {
 
     tearDown(() {
       Partner.debugReset();
-      Partner.init(testPartner);
+      Partner.bind(testPartner);
     });
 
     test('Happy Path: lightTheme follows the partner set with '
         'Partner.init', () {
       // 1. Arrange
-      Partner.init(aquariusTurPartner);
+      Partner.bind(aquariusTurPartner);
 
       // 2. Act
       final theme = AppTheme.lightTheme;
@@ -526,7 +491,7 @@ void main() {
     test('Happy Path: darkTheme follows the partner set with '
         'Partner.init', () {
       // 1. Arrange
-      Partner.init(aquariusTurPartner);
+      Partner.bind(aquariusTurPartner);
 
       // 2. Act
       final theme = AppTheme.darkTheme;
@@ -535,70 +500,6 @@ void main() {
       expect(theme.scaffoldBackgroundColor, const Color(0xFF052E32));
     });
 
-    test('Sad Path: lightTheme before Partner.init throws StateError', () {
-      // 1. Arrange
-      // setUp left Partner without a partner.
 
-      // 2. Act
-      ThemeData action() => AppTheme.lightTheme;
-
-      // 3. Assert
-      expect(action, throwsStateError);
-    });
-
-    test('Sad Path: darkTheme before Partner.init throws StateError', () {
-      // 1. Arrange
-      // setUp left Partner without a partner.
-
-      // 2. Act
-      ThemeData action() => AppTheme.darkTheme;
-
-      // 3. Assert
-      expect(action, throwsStateError);
-    });
-  });
-
-  group('AquariusTur Asset Integrity Tests', () {
-    test('Happy Path: partners/aquariustur/logo-com-texto.svg exists and is '
-        'not empty', () {
-      // 1. Arrange
-      final logo = File('partners/aquariustur/logo-com-texto.svg');
-
-      // 2. Act
-      final length = logo.existsSync() ? logo.lengthSync() : 0;
-
-      // 3. Assert
-      expect(length, greaterThan(0), reason: 'Missing or empty: ${logo.path}');
-    });
-
-    test(
-      'Native splash launch_image e app icons devem existir e ser válidos',
-      () {
-        // 1. Arrange
-        // Android brand resources now live in partners/<id>/android/res/.
-        final nativeFiles = [
-          for (final resource in requiredAndroidBrandResources)
-            'partners/aquariustur/android/res/$resource',
-          'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png',
-          'ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png',
-          'ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
-          'partners/aquariustur/web/favicon.png',
-          'partners/aquariustur/web/icons/Icon-192.png',
-        ];
-
-        // 2. Act
-        final invalidFiles = nativeFiles.where((path) {
-          final file = File(path);
-          return !file.existsSync() || file.lengthSync() <= 100;
-        }).toList();
-
-        // 3. Assert
-        expect(
-          invalidFiles,
-          isEmpty,
-          reason: 'Arquivos nativos devem existir e conter bytes válidos',
-        );
-      },
-    );
   });
 }

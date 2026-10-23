@@ -29,7 +29,7 @@ No GitHub, essa ferramenta se chama **GitHub Actions**. O vocabulário:
 | **Trigger** (`on:`) | O evento que dispara o workflow. | um push na `main` que altera arquivos do app, ou o clique manual em "Run workflow" |
 | **Runner** | A máquina virtual que o GitHub liga para executar o workflow. Ela começa **vazia**: não tem Flutter, Java, nem os arquivos que estão fora do git. Depois de terminar, ela é destruída. | `ubuntu-latest` (Linux) |
 | **Job** | Um grupo de passos que rodam em sequência no mesmo runner. | um único job, `deploy` |
-| **Step** | Um passo do job. Pode ser um comando de shell (`run:`) ou uma **action** (`uses:`). | 10 passos |
+| **Step** | Um passo do job. Pode ser um comando de shell (`run:`) ou uma **action** (`uses:`). | 12 passos |
 | **Action** | Um passo pronto e reutilizável, publicado por alguém, como uma "função" que você chama. | `actions/checkout` baixa o código; `subosito/flutter-action` instala o Flutter; `r0adkll/upload-google-play` envia ao Play |
 | **Secret** | Um valor sensível guardado criptografado no GitHub. O workflow lê com `${{ secrets.NOME }}`, e o GitHub mascara o valor nos logs (aparece `***`). | a keystore e as senhas dela. A credencial do Play **não** é um secret: a autenticação é sem chave (seção 6) |
 | **Environment** | Um "cofre" com nome (Settings → Environments) que agrupa secrets e pode ter regras, como exigir aprovação manual antes de rodar. | `play-internal` |
@@ -84,8 +84,7 @@ push alterar pelo menos um destes caminhos, que são as entradas do build Androi
 | `lib/**` | o código Dart |
 | `android/**` | Gradle, manifest |
 | `assets/**` | imagens declaradas no `pubspec.yaml` |
-| `partners/**` | identidade de cada parceiro (nome, cores, ícone do app, imagem da splash), que vira um product flavor no Gradle. `partners/<id>/web/` só entra no build web, então uma mudança só nela também publica, sem alterar o `.aab` |
-| `tool/**` | a ferramenta dos parceiros: o build roda `tool/partner.dart firebase <id>` para buscar o `google-services.json` (seção 6) |
+| `tool/**` | a ferramenta dos parceiros: o build roda `tool/partner.dart firebase` para buscar o `google-services.json` (seção 6) |
 | `pubspec.yaml`, `pubspec.lock` | dependências e lista de assets |
 | `.github/workflows/deploy-play-internal.yml` | o próprio pipeline: se ele muda, precisa rodar para provar que ainda funciona |
 
@@ -144,8 +143,8 @@ As palavras à esquerda são **fixas**, definidas pelo GitHub Actions. Os valore
 | `runs-on` | O sistema operacional do runner. | `ubuntu-latest` |
 | `environment` | Qual Environment (cofre de secrets) o job usa. Sem isso, `secrets.X` vem vazio. | `play-internal` |
 | `permissions` | O que o token automático do job pode fazer. Tudo o que não for listado fica proibido. | `contents: read` (ler o código) e `id-token: write` (pedir o token OIDC da seção 6) |
-| `steps` | A **lista** de passos, executados de cima para baixo. Cada `-` é um passo. | 10 passos |
-| `name` (dentro de um step) | Rótulo opcional do passo nos logs. | ex.: `Limit Gradle memory` |
+| `steps` | A **lista** de passos, executados de cima para baixo. Cada `-` é um passo. | 12 passos |
+| `name` (dentro de um step) | Rótulo opcional do passo nos logs. | ex.: `Raise Gradle memory` |
 | `id` (dentro de um step) | Um apelido para o passo. Passos seguintes leem as saídas dele com `${{ steps.<id>.outputs.<nome> }}`. | `auth`: o upload lê `steps.auth.outputs.credentials_file_path` |
 | `uses` | O passo **chama uma action pronta**, no formato `dono/repositório@versão`. | ex.: `actions/setup-java@v6` |
 | `with` | Os **parâmetros** passados à action do `uses` (seção 3.3). | ex.: `java-version: '17'` |
@@ -202,13 +201,13 @@ a `main` mais nova já contém as mudanças da do meio.
 | 1 | `actions/checkout` | O runner começa vazio; este passo baixa o código do commit que disparou o workflow. |
 | 2 | `actions/setup-java` | O Gradle do Android precisa de Java. O projeto compila para JVM 17 ([build.gradle.kts](../../android/app/build.gradle.kts)). |
 | 3 | `subosito/flutter-action` | Instala a **mesma** versão do Flutter usada no desenvolvimento, para o CI não gerar um app diferente. Com `cache: true`, o SDK é reaproveitado e as próximas execuções ficam mais rápidas. |
-| 4 | `Limit Gradle memory` | O [android/gradle.properties](../../android/gradle.properties) pede 8 GB de RAM (`-Xmx8G`), mais do que o runner tem. O arquivo `~/.gradle/gradle.properties` tem prioridade sobre o do projeto, então o limite é reduzido só no CI. |
+| 4 | `Raise Gradle memory` | O [android/gradle.properties](../../android/gradle.properties) limita o heap do Gradle a 2 GB (`-Xmx2g`), pensando nos notebooks de 8 GB. O runner tem mais RAM, então o CI aumenta para 4 GB; o `~/.gradle/gradle.properties` tem prioridade sobre o arquivo do projeto, então a mudança vale só no CI. |
 | 5 | `Restore release signing` | Recria a keystore e o `android/key.properties`, que não estão no git (seção 4). Antes disso, confere que nenhum secret está vazio. |
 | 6 | `flutter pub get` | Baixa as dependências do `pubspec.yaml`. |
 | 7 | `flutter test test/unit` | Roda os testes unitários. Se algum falhar, o deploy para aqui. Os testes de integração ficam de fora porque dependem dos emuladores do Firebase. |
-| 8 | `Install Firebase CLI` | Instala o `firebase-tools` numa versão fixa. O build usa o CLI para buscar a config do Firebase do parceiro. |
+| 8 | `Install Firebase CLI` | Instala o `firebase-tools` numa versão fixa. O build usa o CLI para buscar a config do Firebase do projeto central. |
 | 9 | `google-github-actions/auth` (`auth-config`) | Troca o token OIDC do GitHub por credenciais temporárias de uma service account que **só lê** a config dos apps do Firebase (seção 6). |
-| 10 | `flutter build appbundle` | Gera o `.aab` de release do parceiro escolhido em `--flavor aquariustur`, assinado com a keystore do passo 5 e com um versionCode novo (seção 5). Antes de compilar, o Gradle busca o `google-services.json` do parceiro com as credenciais do passo 9. |
+| 10 | `flutter build appbundle` | Gera o `.aab` de release do app único `org.monamienet.app`, assinado com a keystore do passo 5 e com um versionCode novo (seção 5). Antes de compilar, o Gradle busca o `google-services.json` do projeto central com as credenciais do passo 9. Os parceiros são ligados em tempo de execução, então nenhum parceiro é escolhido aqui. |
 | 11 | `google-github-actions/auth` (`auth`) | Troca o token OIDC do GitHub por credenciais temporárias da service account que publica, sem chave (seção 6). |
 | 12 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal` com as credenciais do passo 11. `status: completed` lança o release direto para os testadores. |
 
@@ -240,13 +239,13 @@ proteções:
    roda antes de **qualquer** build release, no CI ou numa máquina local. Ela falha se faltar o
    `key.properties`, alguma propriedade dele ou o arquivo da keystore.
 
-Builds debug (`flutter run --flavor aquariustur`) não são afetados e funcionam sem keystore.
+Builds debug (`flutter run`) não são afetados e funcionam sem keystore.
 
 ### E o `google_config.dart`?
 
 O [lib/app/config/google_config.dart](../../lib/app/config/google_config.dart) é versionado
-normalmente porque seus valores **não são segredos**: um ID de cliente OAuth (público por design) e o
-endereço do gateway de grupos. Tudo o que é compilado no app pode ser extraído do binário por qualquer
+normalmente porque seus valores **não são segredos**: o endereço e os caminhos do gateway de grupos. Os
+IDs de cliente OAuth não estão mais no código: vêm da config do projeto central, buscada no build. Tudo o que é compilado no app pode ser extraído do binário por qualquer
 pessoa. A proteção do gateway é o token Google (`Bearer`) que o app envia em cada requisição.
 
 ## 5. Como o versionCode é definido
@@ -337,14 +336,14 @@ permissão dela é a do Play Console, de lançar em faixas de teste. Isso segue 
 
 ### Duas service accounts: uma lê a config, a outra publica
 
-O build também precisa falar com o Google. O `google-services.json` do parceiro não é versionado: ele
-contém chaves de API, e uma cópia no repositório ficaria desatualizada em relação à fonte da verdade, o
-projeto do Firebase do parceiro (`monamienet-<id>`). Por isso o Gradle busca o arquivo nesse projeto a
-cada build. O workflow se autentica **duas vezes**, com o mesmo provider e o mesmo subject:
+O build também precisa falar com o Google. O `google-services.json` do app não é versionado: ele contém
+chaves de API, e uma cópia no repositório ficaria desatualizada em relação à fonte da verdade, o projeto
+do Firebase central (`monamienet-app`). Por isso o Gradle busca o arquivo nesse projeto quando ele não
+existe. O workflow se autentica **duas vezes**, com o mesmo provider e o mesmo subject:
 
 | Passo | Service account | O que pode fazer | Quando |
 | :--- | :--- | :--- | :--- |
-| 9 (`auth-config`) | `wlif-monamie-app-config` | listar os apps do Firebase e ler a config deles (papel customizado `firebaseAppConfigReader`: `firebase.clients.list` e `firebase.clients.get`), só nos projetos de parceiro em que o papel foi vinculado | antes do build |
+| 9 (`auth-config`) | `wlif-monamie-app-config` | listar os apps do Firebase e ler a config deles (papel customizado `firebaseAppConfigReader`: `firebase.clients.list` e `firebase.clients.get`), só em `monamienet-app`, onde o papel foi vinculado | antes do build |
 | 11 (`auth`) | `wlif-monamie-app-play` | lançar em faixas de teste do Play | depois do build |
 
 A ordem importa. O build roda código de terceiros (plugins do Gradle, pacotes do pub), e cada passo tem

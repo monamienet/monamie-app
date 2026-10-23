@@ -1,14 +1,26 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/config/partner/partner.dart';
+import 'package:monamie_app/app/data/partner/partner_membership.dart';
+import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/data/repository/google_groups_repository.dart';
 import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
+import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 class GoogleGroupsController extends GetxController {
+  GoogleGroupsController({Future<void> Function()? onAccessLost})
+    : _onAccessLost =
+          onAccessLost ??
+          (() => Get.find<AuthGoogleController>().forgetRemovedPartner());
+
+  /// Called when the user no longer belongs to the bound partner.
+  final Future<void> Function() _onAccessLost;
+
   final GoogleGroupsRepository _repository = GoogleGroupsRepository();
-  final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
+  fb.FirebaseAuth get _auth => CurrentPartnerFirebase.instance.auth;
 
   final RxString _loadError = RxString('');
   RxString get loadError => _loadError;
@@ -38,9 +50,14 @@ class GoogleGroupsController extends GetxController {
         .toList();
   }
 
-  /// Email do grupo raiz que contém os subgrupos do MonAmie.
-  /// Em debug, usa um grupo de teste; em release, o grupo de produção.
-  static String get rootGroupEmail => 'aquariustur00@monamienet.org';
+  /// Root group of the bound partner: `<id>00@monamienet.org`.
+  static String get rootGroupEmail {
+    final partner = Partner.current;
+    if (partner == null) {
+      throw StateError('No partner is bound, so there is no root group.');
+    }
+    return partner.rootGroupEmail;
+  }
 
   /// Lista de grupos que o usuário logado pode observar.
   /// Representa os subgrupos (type == GROUP) de [rootGroupEmail].
@@ -134,6 +151,13 @@ class GoogleGroupsController extends GetxController {
         userEmail,
         forceRefresh: forceRefresh,
       );
+
+      // Removed from every group of the partner: forget it.
+      final partner = Partner.current;
+      if (partner != null && !belongsToPartner(partner.id, userGroups)) {
+        await _onAccessLost();
+        return;
+      }
 
       // 2. Interseção: subgrupos do raiz dos quais o usuário participa.
       _observableGoogleGroups.assignAll(
@@ -230,7 +254,11 @@ class GoogleGroupsController extends GetxController {
 
     // Re-sincronizar claims (o usuário pode ter sido
     // adicionado/removido de um grupo desde o último login).
-    await _syncClaims();
+    if (claimsShowNoAccess(await _syncClaims())) {
+      isLoading.value = false;
+      await _onAccessLost();
+      return;
+    }
 
     await _loadGroups(forceRefresh: true);
 
@@ -252,7 +280,6 @@ class GoogleGroupsController extends GetxController {
 
   /// Chama a Cloud Function `syncClaims` para re-sincronizar
   /// os Custom Claims do usuário com seus papéis atuais nos grupos.
-  Future<void> _syncClaims() async {
-    await MonAmieClaimsService.syncClaims();
-  }
+  Future<Map<String, dynamic>?> _syncClaims() =>
+      MonAmieClaimsService.syncClaims();
 }

@@ -1,17 +1,13 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_config.dart';
-import 'package:monamie_app/app/config/partner/partner_error_app.dart';
-import 'package:monamie_app/app/config/partner/partner_loader.dart';
-import 'package:monamie_app/app/data/models/user_google_model.dart';
-import 'package:monamie_app/firebase_options.dart';
-
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:monamie_app/app/config/partner/monamie_brand.dart';
+import 'package:monamie_app/app/config/partner/partner.dart';
+import 'package:monamie_app/app/config/partner/partner_error_app.dart';
+import 'package:monamie_app/app/data/firebase/central_firebase.dart';
+import 'package:monamie_app/app/data/models/user_google_model.dart';
+import 'package:monamie_app/app/data/partner/partner_branding_loader.dart';
+import 'package:monamie_app/app/data/partner/partner_session.dart';
 
 import 'app/routes/app_pages.dart';
 import 'app/utils/app_theme.dart';
@@ -19,24 +15,35 @@ import 'app/utils/app_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await Hive.initFlutter();
+  Hive.registerAdapter(UserGoogleModelAdapter());
+
   try {
-    Partner.init(await _loadPartner());
-  } on PartnerLoadException catch (error) {
-    // A build without its partner cannot run; say why on screen and in the log.
+    await CentralFirebase.initialize();
+  } on CentralFirebaseException catch (error) {
+    // A web build without its staged config cannot sign in; say why.
     debugPrint(error.toString());
     runApp(PartnerErrorApp(message: error.message));
     return;
   }
 
-  await Hive.initFlutter();
-  Hive.registerAdapter(UserGoogleModelAdapter());
-
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // The partner remembered from the last sign-in, if any: the app opens in
+  // its brand without asking the central project again.
+  final session = PartnerSession();
+  final binding = await session.restore();
+  if (binding != null) {
+    // Picks up branding changes for the next launch, without changing the
+    // look of this one.
+    const PartnerBrandingLoader()
+        .readBranding(binding)
+        .then(session.storeBranding)
+        .ignore();
+  }
 
   runApp(
     GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: Partner.current.displayName,
+      title: Partner.current?.displayName ?? MonAmieBrand.name,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light,
@@ -44,19 +51,4 @@ Future<void> main() async {
       getPages: AppPages.routes,
     ),
   );
-}
-
-/// Web has no `--flavor`: it reads the partner staged by
-/// `dart run tool/partner.dart web <id>`. Other platforms read their
-/// flavor-only asset.
-Future<PartnerConfig> _loadPartner() async {
-  if (!kIsWeb) {
-    return loadPartnerConfig(bundle: rootBundle, flavor: appFlavor);
-  }
-  final client = http.Client();
-  try {
-    return await loadWebPartner(client: client, base: Uri.base);
-  } finally {
-    client.close();
-  }
 }

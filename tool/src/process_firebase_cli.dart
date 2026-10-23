@@ -50,6 +50,49 @@ class ProcessFirebaseCli implements FirebaseCli {
     return parseSdkConfigOutput(stdout, projectId: projectId);
   }
 
+  @override
+  Future<List<FirebaseWebApp>> listWebApps(String projectId) async {
+    final stdout = await _run([
+      'apps:list',
+      'WEB',
+      '--project',
+      projectId,
+    ], projectId: projectId);
+    final result = _envelopeResult(stdout, 'apps:list', projectId);
+    if (result is! List) throw _unexpectedOutput('apps:list');
+    return [
+      for (final app in result)
+        if (app case {'appId': final String appId})
+          FirebaseWebApp(
+            appId: appId,
+            displayName: app['displayName'] is String
+                ? app['displayName'] as String
+                : '',
+          )
+        else
+          throw _unexpectedOutput('apps:list'),
+    ];
+  }
+
+  @override
+  Future<Map<String, Object?>> webConfig({
+    required String projectId,
+    required String appId,
+  }) async {
+    final stdout = await _run([
+      'apps:sdkconfig',
+      'WEB',
+      appId,
+      '--project',
+      projectId,
+    ], projectId: projectId);
+    final result = _envelopeResult(stdout, 'apps:sdkconfig', projectId);
+    if (result case {'sdkConfig': final Map<String, Object?> config}) {
+      return config;
+    }
+    throw _unexpectedOutput('apps:sdkconfig');
+  }
+
   Future<String> _run(List<String> args, {required String projectId}) async {
     final ProcessResult result;
     try {

@@ -1,17 +1,17 @@
-# MonAmie AquariusTur
+# MonAmie
 
-A new Flutter project.
+Team tracking, coordination and communication. One app (`org.monamienet.app`) serves every partner organization: each partner keeps its own Firebase project, data and billing, and the app binds the user's partner (project, root group and branding) after Google sign-in.
 
-## Getting Started
+- How partners, groups and users fit together, and how to onboard a partner without releasing the app: [docs/en-us/white-label.md](docs/en-us/white-label.md) ([pt-BR](docs/pt-br/white-label.md))
+- Release to Play internal testing and the CI pipeline: [docs/en-us/publish-internal-testing.md](docs/en-us/publish-internal-testing.md), [docs/en-us/understanding-ci.md](docs/en-us/understanding-ci.md)
+- Run the web app locally: [docs/en-us/run-web-locally.md](docs/en-us/run-web-locally.md)
+- Rules for contributors and coding agents: [AGENTS.md](AGENTS.md)
 
-This project is a starting point for a Flutter application.
+## Quick start
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```sh
+firebase login                       # reads the central project's config
+flutter run                          # Android: fetches google-services.json on first build
+dart run tool/partner.dart web       # web: stages web/central/firebase.json first
+nice -n 15 flutter test test/unit -j 2
+```

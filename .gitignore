@@ -54,9 +54,13 @@ node_modules/
 
 store/
 
-# Partner staged for web builds by `dart run tool/partner.dart web <id>`.
+# Central Firebase web config, staged by `dart run tool/partner.dart web`.
+web/central/
+# Left over from the per-partner web staging.
 web/partner/
 
-# Android Firebase config, fetched from monamienet-<id> at build time by
-# `dart run tool/partner.dart firebase <id>`. It holds API keys.
+# Android Firebase config of the central project (monamienet-app), fetched at
+# build time by `dart run tool/partner.dart firebase`. It holds API keys. The
+# src/*/ entry covers copies left by the old per-partner flavors.
+android/app/google-services.json
 android/app/src/*/google-services.json

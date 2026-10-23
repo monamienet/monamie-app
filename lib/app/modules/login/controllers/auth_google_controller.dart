@@ -2,6 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
+import 'package:monamie_app/app/data/partner/central_partner_directory.dart';
+import 'package:monamie_app/app/data/partner/partner_binding.dart';
+import 'package:monamie_app/app/data/partner/partner_branding_loader.dart';
+import 'package:monamie_app/app/data/partner/hive_partner_local_data.dart';
+import 'package:monamie_app/app/data/partner/partner_directory.dart';
+import 'package:monamie_app/app/data/partner/partner_local_data.dart';
+import 'package:monamie_app/app/data/partner/partner_membership.dart';
+import 'package:monamie_app/app/data/partner/partner_session.dart';
+import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/data/repository/user_data_repository.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
@@ -10,19 +19,50 @@ import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/utils/app_theme.dart';
 
+/// Signs the user in and binds their partner.
+///
+/// After Google sign-in (central project), the user's partners come from
+/// their groups: none shows the "not linked" screen, one is entered
+/// directly, several open the partner picker. Entering a partner binds its
+/// Firebase project, root group and branding together, then signs in to the
+/// partner project and syncs the claims there.
 class AuthGoogleController extends GetxController {
   AuthGoogleController({
     AuthGoogleService? authGoogleService,
     UserGoogleRepository? userRepository,
     BackgroundTrackingStopper? trackingStopper,
-  }) : _injectedAuthGoogle = authGoogleService,
+    PartnerDirectory? partnerDirectory,
+    PartnerBrandingLoader? brandingLoader,
+    PartnerSession? partnerSession,
+    PartnerLocalData? partnerLocalData,
+    void Function()? refreshTheme,
+  }) : _partnerLocalData = partnerLocalData ?? const HivePartnerLocalData(),
+       _injectedAuthGoogle = authGoogleService,
        _injectedUserRepository = userRepository,
-       _injectedTrackingStopper = trackingStopper;
+       _injectedTrackingStopper = trackingStopper,
+       _injectedPartnerDirectory = partnerDirectory,
+       _brandingLoader = brandingLoader ?? const PartnerBrandingLoader(),
+       _injectedPartnerSession = partnerSession,
+       _refreshTheme =
+           refreshTheme ?? (() => Get.changeTheme(AppTheme.lightTheme));
 
   final AuthGoogleService? _injectedAuthGoogle;
   final UserGoogleRepository? _injectedUserRepository;
   final BackgroundTrackingStopper? _injectedTrackingStopper;
+  final PartnerDirectory? _injectedPartnerDirectory;
+  final PartnerBrandingLoader _brandingLoader;
+  final PartnerSession? _injectedPartnerSession;
+  final PartnerLocalData _partnerLocalData;
+
+  /// Rebuilds the theme from the bound partner (or MonAmie when none).
+  final void Function() _refreshTheme;
+
+  late final PartnerDirectory _partnerDirectory =
+      _injectedPartnerDirectory ?? CentralPartnerDirectory();
+  late final PartnerSession _partnerSession =
+      _injectedPartnerSession ?? PartnerSession();
 
   late final AuthGoogleService _authGoogle =
       _injectedAuthGoogle ?? AuthGoogleService();
@@ -42,10 +82,19 @@ class AuthGoogleController extends GetxController {
   // indica se o logout (parada do rastreamento + saída) está em andamento
   final RxBool isLoggingOut = false.obs;
 
+  /// Name of the partner being entered, for the "Entrando em ..." message.
+  final RxnString enteringPartnerName = RxnString();
+
+  /// Partners offered by the picker when the user belongs to several.
+  final RxList<PartnerBinding> partnerChoices = <PartnerBinding>[].obs;
+
+  /// Google ID token kept while the user picks a partner.
+  String? _pendingIdToken;
+
   @override
   void onInit() {
     super.onInit();
-    _webSignInSub = _authGoogle.onWebSignIn.listen(_handleLoginResult);
+    _webSignInSub = _authGoogle.onWebSignIn.listen(_onWebGoogleSignIn);
 
     _authGoogle
         .ensureInitialized()
@@ -57,37 +106,101 @@ class AuthGoogleController extends GetxController {
         });
   }
 
-  Future<void> _handleLoginResult(dynamic user) async {
-    if (user != null) {
-      try {
-        String? token = await _authGoogle.getFirebaseIdToken();
-        await _userRepository.saveUserGoogleModel(user);
-        //await Get.find<UserController>().loadCurrentUser();
-        await _getGdiGroupsGoogle(token ?? '', user.email);
+  Future<void> _onWebGoogleSignIn(String? idToken) async {
+    if (idToken == null) {
+      _showLoginError(
+        "Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.",
+      );
+      return;
+    }
+    if (isLoading.value) return;
+    isLoading.value = true;
+    try {
+      await _continueWithPartners(idToken);
+    } catch (e) {
+      _showLoginError("Ocorreu um erro ao carregar seus dados: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
-        // Sincronizar Custom Claims ANTES de navegar.
-        // A criação do doc em `usuarios` exige claims de observável.
-        await _syncClaims();
+  /// Finds the user's partners and enters the only one, or offers a choice.
+  Future<void> _continueWithPartners(String idToken) async {
+    final candidates = await _partnerDirectory.partnersOfSignedInUser();
+    if (candidates.isEmpty) {
+      await _authGoogle.logoutGoogle();
+      Get.offAllNamed(Routes.NOT_LINKED);
+      return;
+    }
+    final bindings = await Future.wait(candidates.map(_brandingLoader.load));
+    if (bindings.length == 1) {
+      await _enterPartner(bindings.single, idToken);
+      return;
+    }
+    _pendingIdToken = idToken;
+    partnerChoices.assignAll(bindings);
+    Get.toNamed(Routes.PARTNER_PICKER);
+  }
 
-        Get.offNamed(Routes.MONAMIE);
-      } catch (e) {
-        Get.snackbar(
-          "Erro ao finalizar login",
-          "Ocorreu um erro ao carregar seus dados: $e",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.shade100,
-          duration: const Duration(seconds: 5),
+  /// Enters the partner the user picked in the partner picker.
+  Future<void> choosePartner(PartnerBinding binding) async {
+    final idToken = _pendingIdToken;
+    if (idToken == null || isLoading.value) return;
+    isLoading.value = true;
+    try {
+      await _enterPartner(binding, idToken);
+    } catch (e) {
+      _showLoginError("Não foi possível entrar em ${binding.partner.name}: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> _enterPartner(PartnerBinding binding, String idToken) async {
+    try {
+      await _partnerSession.bind(binding);
+      _refreshTheme();
+      // Set after binding, so the screen rebuilds in the partner's brand.
+      enteringPartnerName.value = binding.partner.name;
+      final user = await _authGoogle.signInToPartner(idToken);
+      if (user == null) {
+        throw StateError('No user after signing in to ${binding.partner.id}.');
+      }
+      await _userRepository.saveUserGoogleModel(user);
+      final token = await _authGoogle.getFirebaseIdToken();
+      await _getGdiGroupsGoogle(token ?? '', user.email);
+
+      // Sincronizar Custom Claims ANTES de navegar.
+      // A criação do doc em `usuarios` exige claims de observável.
+      final roles = await _syncClaims();
+      if (claimsShowNoAccess(roles)) {
+        // A group is named after the partner but is not under its root.
+        throw StateError(
+          'sua conta não tem papel em nenhum grupo de ${binding.partner.name}',
         );
       }
-    } else {
-      Get.snackbar(
-        "Erro de Login",
-        "Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade100,
-        duration: const Duration(seconds: 5),
-      );
+
+      _pendingIdToken = null;
+      partnerChoices.clear();
+      Get.offAllNamed(Routes.MONAMIE);
+    } catch (_) {
+      // Never stay bound to a partner the user could not enter.
+      await _partnerSession.forget();
+      _refreshTheme();
+      rethrow;
+    } finally {
+      enteringPartnerName.value = null;
     }
+  }
+
+  void _showLoginError(String message) {
+    Get.snackbar(
+      "Erro de Login",
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red.shade100,
+      duration: const Duration(seconds: 5),
+    );
   }
 
   Future<void> _getGdiGroupsGoogle(String token, String email) async {
@@ -127,46 +240,15 @@ class AuthGoogleController extends GetxController {
   //}
 
   void loginGoogle() async {
+    if (isLoading.value) return;
     isLoading.value = true;
     try {
-      final user = await _authGoogle.signInGoogle();
-      if (user != null) {
-        await _handleLoginResult(user);
-      }
-      // Na web o login retorna null propositalmente (o resultado chega via stream),
-      // portanto não exibimos erro quando user é null.
+      final idToken = await _authGoogle.signInGoogle();
+      // Na web o login retorna null propositalmente (o resultado chega via
+      // stream), portanto não exibimos erro quando idToken é null.
+      if (idToken != null) await _continueWithPartners(idToken);
     } catch (e) {
-      Get.snackbar(
-        "Erro de Login",
-        "Ocorreu um erro inesperado: $e",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade100,
-        duration: const Duration(seconds: 5),
-      );
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> tryLogin() async {
-    isLoading.value = true;
-    try {
-      var hasLogged = await _authGoogle.trySignInGoogle();
-      if (hasLogged != null) {
-        //await Get.find<UserController>().loadCurrentUser();
-        String? token = await _authGoogle.getFirebaseIdToken();
-        await _getGdiGroupsGoogle(token ?? '', hasLogged.email);
-
-        // Sincronizar Custom Claims ANTES de navegar.
-        await _syncClaims();
-
-        Get.offNamed(Routes.MONAMIE);
-      } else {
-        Get.offNamed(Routes.LOGIN);
-      }
-    } catch (e) {
-      debugPrint("Erro ao tentar login automático: $e");
-      Get.offNamed(Routes.LOGIN);
+      _showLoginError("Ocorreu um erro inesperado: $e");
     } finally {
       isLoading.value = false;
     }
@@ -175,11 +257,23 @@ class AuthGoogleController extends GetxController {
   /// Chama a Cloud Function `syncClaims` para sincronizar os
   /// Custom Claims do Firebase Auth com os papéis do usuário nos
   /// grupos do MonAmie. Após a chamada, força refresh do token.
-  Future<void> _syncClaims() async {
-    await MonAmieClaimsService.syncClaims();
+  Future<Map<String, dynamic>?> _syncClaims() =>
+      MonAmieClaimsService.syncClaims();
+
+  Future<void> logout() => _signOut();
+
+  /// Forgets the partner after the user was removed from all its groups:
+  /// the same steps as [logout], then a message saying why.
+  Future<void> forgetRemovedPartner() async {
+    final name = Partner.current?.name;
+    await _signOut(
+      reason: name == null
+          ? 'Você não faz mais parte desta organização.'
+          : 'Você não faz mais parte da $name.',
+    );
   }
 
-  Future<void> logout() async {
+  Future<void> _signOut({String? reason}) async {
     if (isLoggingOut.value) return;
 
     isLoggingOut.value = true;
@@ -201,7 +295,19 @@ class AuthGoogleController extends GetxController {
 
       await _authGoogle.logoutGoogle();
       await _userRepository.deleteUserGoogleModel();
+      await _partnerSession.forget();
+      await _partnerLocalData.clear();
+      _refreshTheme();
       Get.offAllNamed(Routes.LOGIN);
+      if (reason != null) {
+        Get.snackbar(
+          "Acesso encerrado",
+          reason,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange.shade100,
+          duration: const Duration(seconds: 6),
+        );
+      }
     } catch (e) {
       debugPrint("Erro ao sair: $e");
       Get.snackbar(

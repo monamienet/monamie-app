@@ -1,1 +1,12 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"monamienet-aquariustur","appId":"1:67044253283:android:ce06af448c8ba5ea0f2256","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"monamienet-aquariustur","configurations":{"android":"1:67044253283:android:ce06af448c8ba5ea0f2256","ios":"1:67044253283:ios:a972499fe1ed1c580f2256","macos":"1:67044253283:ios:63d78e65e310a8000f2256","web":"1:67044253283:web:9d45aa46668894610f2256","windows":"1:67044253283:web:bed4a92b2b48bacf0f2256"}}}}},"hosting":{"public":"build/web","ignore":["firebase.json","**/.*","**/node_modules/**"],"rewrites":[{"source":"**","destination":"/index.html"}]},"functions":[{"source":"functions","codebase":"default","ignore":["node_modules",".git"]}],"firestore":{"rules":"firestore.rules"}}
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": ["node_modules", ".git", "test"]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}

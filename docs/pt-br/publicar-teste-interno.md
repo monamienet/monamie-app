@@ -13,7 +13,7 @@ Os passos são identificados por grupo, de acordo com a frequência com que são
 | :--- | :--- | :--- |
 | **A** | Uma única vez para a empresa | A1 keystore · A2 a A6 base do CI no Google Cloud |
 | **B** | Uma vez por máquina ou clone | B1 `key.properties` · B2 login no Firebase CLI |
-| **C** | Uma vez por app (cliente) | C1 a C4 Firebase · C5 a C7 primeiro envio, manual · C8 SHAs do Play · C9 a C12 CI do app |
+| **C** | Uma vez para o app (`org.monamienet.app`) | C1 a C4 Firebase · C5 a C7 primeiro envio, manual · C8 SHAs do Play · C9 a C12 CI do app |
 | **D** | A cada nova versão | D1 merge da PR · D2 publicação automática ⚙️ |
 
 | A cada nova versão | Antes do CI | Com o CI |
@@ -69,7 +69,7 @@ flowchart LR
     linkStyle 0,1,2,3,4,5 stroke:#7b2d8e,stroke-width:3px
     %% uma vez por máquina (laranja)
     linkStyle 6,7 stroke:#e69f00,stroke-width:3px
-    %% uma vez por app (azul)
+    %% uma vez para o app (azul)
     linkStyle 8,9,10,12,13,14,15,16,17,20,21,22 stroke:#0072b2,stroke-width:3px
     %% só dependência, sem trabalho (cinza)
     linkStyle 11,18,19 stroke:#999999,stroke-width:1px
@@ -89,7 +89,7 @@ flowchart LR
 - Cores:
   - 🟣 uma vez para a empresa;
   - 🟠 uma vez por máquina;
-  - 🔵 uma vez por app;
+  - 🔵 uma vez para o app;
   - 🟢 a cada versão. A aresta **tracejada** (D2) é executada automaticamente pelo CI. D1 e D2 se repetem a cada versão.
 
 ## Valores usados
@@ -110,16 +110,13 @@ CONFIG_SA_EMAIL=$CONFIG_SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
 # App
 REPO=monamienet/monamie-app
 SUBJECT_PREFIX=$(gh api repos/$REPO/actions/oidc/customization/sub --jq .sub_claim_prefix)  # início do subject do token (C10)
-FIREBASE_PROJECT=monamienet-aquariustur
+FIREBASE_PROJECT=monamienet-app        # projeto central: login e registro de parceiros
 SA_NAME=wlif-monamie-app-play     # service account do deploy (C9)
 SA_EMAIL=$SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
 ```
 
-Para outro app (cliente):
-- troque os valores do grupo *App*;
-- libere para o CI a leitura da config do Firebase do novo app (C4; com papel por projeto, também A5);
-- no workflow [`.github/workflows/deploy-play-internal.yml`](../../.github/workflows/deploy-play-internal.yml),
-  atualize o `--flavor`, o `releaseFiles`, o `packageName` e o `service_account`.
+Há um único app para todos os parceiros. Cadastrar um parceiro não muda nada aqui e não exige nova
+versão: veja [white-label.md](white-label.md).
 
 ---
 
@@ -188,19 +185,16 @@ O resultado esperado é a API listada, `state: ACTIVE` e a condição com o ID d
 
 ### A5. Criar o papel `firebaseAppConfigReader`
 
-Todo build busca o `google-services.json` do parceiro no próprio projeto do Firebase dele (C4). O CI faz
-isso com um papel que tem exatamente as duas permissões que o Firebase CLI usa para isso: listar os apps
+Todo build busca o `google-services.json` do projeto central (C4). O CI faz isso com um papel que tem exatamente as duas permissões que o Firebase CLI usa para isso: listar os apps
 (`firebase.clients.list`) e ler a configuração de um app (`firebase.clients.get`). O papel predefinido
 `roles/firebase.viewer` **não** é usado: ele também lê dados do produto, como os documentos do Firestore
-com o histórico de localização das equipes.
+com o histórico de localização das equipes. A função central `resolvePartners` usa o mesmo papel,
+vinculado em cada projeto de parceiro, para ler as opções do Firebase dos parceiros em tempo de execução
+(white-label.md).
 
-O papel é definido onde os projetos dos parceiros ficam. Descubra com:
-
-```bash
-gcloud projects describe $FIREBASE_PROJECT --format='value(parent.type,parent.id)'
-```
-
-Se o resultado for `organization <ID>`, crie o papel uma única vez, na organização. Isso exige
+O papel já existe na organização monamienet.org
+(`organizations/666407655233/roles/firebaseAppConfigReader`); os comandos abaixo só servem para recriá-lo.
+Ele é criado uma única vez, na organização, para que todo projeto possa vinculá-lo. Isso exige
 `roles/iam.organizationRoleAdmin`, que o Administrador da organização **não** inclui. Se você não tiver
 esse papel e puder editar o IAM da organização, conceda-o a si mesmo só para este passo e revogue-o logo
 depois (último comando):
@@ -225,9 +219,6 @@ CONFIG_ROLE_PATH=organizations/$ORG_ID/roles/$CONFIG_ROLE
 O `describe` deve listar exatamente `firebase.clients.get` e `firebase.clients.list`. Rode-o antes de
 revogar a concessão: depois dela, você não consegue mais ler o papel.
 
-Caso contrário, crie-o em cada projeto de parceiro: o mesmo comando com `--project=$FIREBASE_PROJECT` no
-lugar de `--organization`, e `CONFIG_ROLE_PATH=projects/$FIREBASE_PROJECT/roles/$CONFIG_ROLE`.
-
 Definir o papel na organização não concede nada: a permissão só existe onde o papel é vinculado (C4), e o
 vínculo é feito por projeto, nunca na organização ou em uma pasta.
 
@@ -248,7 +239,7 @@ gcloud services enable firebase.googleapis.com --project=$GCP_PROJECT
 gcloud iam service-accounts create $CONFIG_SA_NAME \
   --project=$GCP_PROJECT \
   --display-name="monamie-app Firebase config reader" \
-  --description="Reads the partners' Firebase app configs at build time for $REPO from GitHub Actions via WIF. Docs: docs/pt-br/publicar-teste-interno.md"
+  --description="Reads the central project's Firebase app config at build time for $REPO from GitHub Actions via WIF. Docs: docs/pt-br/publicar-teste-interno.md"
 
 # Mesmo subject de C10: só jobs no environment play-internal deste repositório.
 gcloud iam service-accounts add-iam-policy-binding $CONFIG_SA_EMAIL \
@@ -277,25 +268,26 @@ storeFile=<CAMINHO>/upload.jks
 
 > **Fail-fast:** sem esse arquivo, ou com alguma propriedade vazia, todo build release falha com a mensagem
 > `Release signing: ...`. Não há fallback para a chave debug, cujo bundle o Play rejeitaria. Builds debug
-> (`flutter run --flavor aquariustur`) não precisam da keystore.
+> (`flutter run`) não precisam da keystore.
 
 ### B2. Entrar no Firebase CLI
 
-Todo build precisa do `google-services.json` do parceiro, que não é versionado: ele contém chaves de API, e
-a fonte da verdade é o projeto do Firebase do parceiro. Quando o arquivo não existe, o Gradle o busca com
-`dart run tool/partner.dart firebase <id>`, que chama o Firebase CLI com a **sua própria** conta:
+Todo build precisa do `google-services.json` do projeto central (`monamienet-app`, usado no login), que
+não é versionado: ele contém chaves de API. Os projetos dos parceiros não entram aqui: o app os liga em
+tempo de execução. Quando o arquivo não existe, o Gradle o busca com
+`dart run tool/partner.dart firebase`, que chama o Firebase CLI com a **sua própria** conta:
 
 ```bash
 firebase --version || npm install -g firebase-tools
 firebase login            # ou firebase login --reauth quando as credenciais expirarem
 ```
 
-O arquivo fica em `android/app/src/<id>/google-services.json` (ignorado pelo git) e é reaproveitado nos
-builds seguintes, mesmo offline. Para buscá-lo de novo, por exemplo depois de registrar novos SHAs (C3,
-C8), faça o build com `PARTNER_REFRESH_FIREBASE=1` ou rode `dart run tool/partner.dart firebase <id>`. O
+O arquivo fica em `android/app/google-services.json` (ignorado pelo git) e é reaproveitado nos builds
+seguintes, mesmo offline. Para buscá-lo de novo, por exemplo depois de registrar novos SHAs (C3, C8),
+faça o build com `REFRESH_FIREBASE_CONFIG=1` ou rode `dart run tool/partner.dart firebase`. O
 comando confere o projeto, o pacote e o cliente OAuth web antes de gravar, e só mostra o ID do app.
 
-## C. Uma vez por app (cliente)
+## C. Uma vez para o app
 
 São três frentes que podem andar em paralelo: Firebase (C1 a C4), primeiro envio (C5 a C8) e CI do app
 (C9 a C12). O diagrama mostra o que depende do quê.
@@ -307,6 +299,8 @@ keytool -list -v -keystore <CAMINHO>/upload.jks -alias <ALIAS> | grep -E "SHA1|S
 ```
 
 ### C2. Obter o ID do app Android no Firebase
+
+O app `org.monamienet.app` é registrado na configuração do projeto central (white-label.md, seção 4).
 
 ```bash
 firebase apps:list ANDROID --project $FIREBASE_PROJECT
@@ -343,37 +337,35 @@ gcloud projects get-iam-policy $FIREBASE_PROJECT --flatten=bindings \
 
 ### C5. Criar a lista de testadores
 
-No Play Console, crie uma lista de e-mails de testadores e associe-a à faixa de **teste interno**.
+No Play Console, abra **Testar e lançar → Teste interno**. A tela mostra os dois passos deste guia:
+**Selecionar testadores** (este passo) e **Criar uma nova versão** (C7).
+
+![Tela "Teste interno" do Play Console, com os passos "Selecionar testadores" e "Criar uma nova versão"](images/play-console-teste-interno.png)
+
+Em **Selecionar testadores**, crie uma lista de e-mails de testadores e associe-a à faixa de **teste interno**.
 
 ### C6. Gerar o primeiro bundle
 
 O Play só aceita envios pela API depois que o app recebe o primeiro bundle pelo Play Console, então
 **a primeira versão é manual**.
 
-1. Em `pubspec.yaml`, defina `version: a.b.c+d`. `a.b.c` é o *versionName*, que aparece na loja, e `d`
-   é o *versionCode*. Use um `d` **menor que 101**, porque os números a partir de 101 são usados pelo CI.
-2. Gere o bundle:
+1. Busque a config do Firebase central: `dart run tool/partner.dart firebase`.
+2. Gere o bundle com um *versionCode* **menor que 101**, porque os números a partir de 101 são usados
+   pelo CI:
 
     ```bash
-    flutter build appbundle --release --flavor aquariustur
+    nice -n 15 flutter build appbundle --release --build-number=100
     ```
 
-    O resultado fica em `build/app/outputs/bundle/aquariusturRelease/app-aquariustur-release.aab`.
-    O `--flavor` é obrigatório: cada pasta `partners/<id>/` vira um flavor, e sem ele o build falha
-    listando os ids válidos.
-
-    Cada pasta de parceiro precisa ter o `partner.json` (nome e cores, no formato `#RRGGBB`; `colors.primary`
-    é a cor da marca, da qual o app deriva os tons mais escuros e mais claros, e `colors.secondary` é o
-    fundo da splash) e, em `android/res/`, o ícone do app `mipmap-{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}/ic_launcher.png`
-    e a imagem da splash `drawable/launch_image.png`. Se faltar algum arquivo, o build falha e diz qual.
-    O `pubspec.yaml` também precisa de uma entrada de asset por parceiro, `- path: partners/<id>/` com
-    `flavors: [<id>]`, para que cada app leve só o próprio `partner.json`; o `flutter test test/unit` falha
-    se ela faltar ou estiver escrita errado.
+    O resultado fica em `build/app/outputs/bundle/release/app-release.aab`.
 
 ### C7. Enviar e lançar o primeiro bundle
 
-No Play Console, abra o **teste interno**, crie uma versão, envie o `.aab`, preencha as notas da versão
-e clique em **Salvar → Lançar**.
+No Play Console, abra o **teste interno** → **Criar uma nova versão**. Quando o Play perguntar sobre a
+assinatura do app, aceite a **chave gerenciada pelo Google** (o padrão). Envie o `.aab`, preencha as notas
+da versão e clique em **Salvar → Revisar → Lançar**. Se o Play listar pendências em **Conteúdo do app**
+(política de privacidade, Segurança dos dados, acesso ao app, localização em segundo plano), preencha-as
+antes de lançar.
 
 ### C8. Registrar no Firebase os SHAs da assinatura do Google Play
 
@@ -500,6 +492,6 @@ versão enviada, que aparece no Play Console.
 | `Version code ... has already been used` | O versionCode já foi usado. Normalmente o arquivo do workflow foi renomeado. Aumente o `+ 100` no workflow. |
 | `Only releases with status draft may be created on draft app` | O app ainda está em rascunho no Play. Conclua o primeiro lançamento (C7). |
 | O app instala, mas o login com Google falha | Faltam SHAs no Firebase: da chave de upload (C3) ou da assinatura do Google Play (C8). Localmente, busque a config de novo (B2). |
-| `'firebase apps:list' failed: ...` (tarefa `fetchFirebaseConfig<Id>`) | Localmente, entre de novo no Firebase CLI (B2). No CI, a service account da config não consegue ler o projeto: confira A6 e C4. |
-| `No Android app with package 'org.monamienet.<id>' ...` | O projeto do Firebase do parceiro não tem um app Android com esse pacote. Registre o app ou confira o id do parceiro. |
+| `'firebase apps:list' failed: ...` (tarefa `fetchFirebaseConfig`) | Localmente, entre de novo no Firebase CLI (B2). No CI, a service account da config não consegue ler o projeto: confira A6 e C4. |
+| `No Android app with package 'org.monamienet.app' ...` | O projeto central (`monamienet-app`) não tem um app Android com esse pacote. Registre o app (C2). |
 | `Could not run 'firebase'` | O Firebase CLI não está instalado (B2). |

@@ -1,97 +1,73 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:http/http.dart' as http;
 
+import 'monamie_brand.dart';
 import 'partner.dart';
 import 'partner_config.dart';
+import 'partner_palette.dart';
 
-/// The partner's logo with its name, shown on the login screen. Every
-/// partner provides it at `partners/<id>/logo-com-texto.svg`, the file name
-/// of the onboarding form upload.
-const partnerLogoFileName = 'logo-com-texto.svg';
-
-/// Path of the logo, relative to the web app's base URL, staged by
-/// `dart run tool/partner.dart web <id>`.
-const webPartnerLogoPath = 'partner/$partnerLogoFileName';
-
-/// Asset key of partner [id]'s logo: a flavor-only asset, bundled only into
-/// the `--flavor <id>` build.
-String partnerLogoAssetKey(String id) => 'partners/$id/$partnerLogoFileName';
-
-/// The logo of the partner of this build.
+/// The logo with the name: the bound partner's, or MonAmie's when no
+/// partner is bound.
 ///
-/// Mobile builds read the flavor-only asset; web has no flavor assets, so it
-/// fetches the staged copy at [webPartnerLogoPath]. If the logo can't be
-/// loaded, the partner's display name is shown in its place.
+/// A partner without a usable logo (missing, or an SVG that does not parse)
+/// gets its name written in its own colors instead.
 class PartnerLogo extends StatelessWidget {
   const PartnerLogo({
     super.key,
     required this.width,
     required this.height,
     this.partner,
-    this.web = kIsWeb,
-    this.base,
-    this.httpClient,
+    this.useBoundPartner = true,
   });
 
   final double width;
   final double height;
 
-  /// Defaults to [Partner.current].
+  /// The partner to show. When `null` and [useBoundPartner] is true, the
+  /// bound partner ([Partner.current]) is used.
   final PartnerConfig? partner;
 
-  /// Whether to fetch the staged web copy instead of the bundled asset.
-  final bool web;
-
-  /// Base URL the web copy is resolved against. Defaults to [Uri.base].
-  final Uri? base;
-
-  /// Client for the web fetch. Defaults to a new one per request.
-  final http.Client? httpClient;
+  /// Whether a `null` [partner] means the bound partner (true) or MonAmie.
+  final bool useBoundPartner;
 
   @override
   Widget build(BuildContext context) {
-    final partner = this.partner ?? Partner.current;
-    final label = partner.displayName;
+    final partner = this.partner ?? (useBoundPartner ? Partner.current : null);
+    if (partner == null) {
+      return SvgPicture.asset(
+        MonAmieBrand.logoAsset,
+        width: width,
+        height: height,
+        semanticsLabel: MonAmieBrand.name,
+      );
+    }
 
-    Widget fallback(BuildContext context, Object error, StackTrace _) {
-      debugPrint('Could not load the partner logo: $error');
+    Widget nameAsText(BuildContext context, [Object? error, StackTrace? _]) {
+      if (error != null) debugPrint('Could not load the partner logo: $error');
       return SizedBox(
         width: width,
         height: height,
         child: Center(
           child: Text(
-            label,
+            partner.name,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: PartnerPalette.fromConfig(partner).primary,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       );
     }
 
-    // Keeps the layout steady while the web copy downloads.
-    Widget placeholder(BuildContext context) =>
-        SizedBox(width: width, height: height);
-
-    if (web) {
-      return SvgPicture.network(
-        (base ?? Uri.base).resolve(webPartnerLogoPath).toString(),
-        httpClient: httpClient,
-        width: width,
-        height: height,
-        semanticsLabel: label,
-        placeholderBuilder: placeholder,
-        errorBuilder: fallback,
-      );
-    }
-    return SvgPicture.asset(
-      partnerLogoAssetKey(partner.id),
+    final svg = partner.logoSvg;
+    if (svg == null) return nameAsText(context);
+    return SvgPicture.string(
+      svg,
       width: width,
       height: height,
-      semanticsLabel: label,
-      placeholderBuilder: placeholder,
-      errorBuilder: fallback,
+      semanticsLabel: partner.name,
+      errorBuilder: nameAsText,
     );
   }
 }

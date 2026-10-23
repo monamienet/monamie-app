@@ -111,7 +111,7 @@ sequenceDiagram
     rect rgb(240, 248, 255)
         note over Flutter,CF: Sincronização de Autorização (Custom Claims)
         Flutter->>CF: Chama syncClaims({ idToken })
-        CF->>Gateway: GET /members?email=monamie-aquariustur@monamienet.org (Bearer idToken)
+        CF->>Gateway: GET /members?email=aquariustur00@monamienet.org (Bearer idToken)
         Gateway->>Gateway: Valida idToken via Google JWKS (Keyless)
         Gateway->>DWD: Query Directory API (Asserção JWT assinada pela SA)
         DWD-->>Gateway: Retorna subgrupos e membros raiz
@@ -222,7 +222,7 @@ O Gateway valida o JWT do Firebase de qualquer parceiro contra o JWKS público d
 
 ```mermaid
 graph TD
-    Root["Grupo Raiz\nmonamie-aquariustur@monamienet.org"]
+    Root["Grupo Raiz\naquariustur00@monamienet.org"]
     Sub1["Subgrupo Operacional 1\ngrupo-exemplo@monamienet.org\n(type: GROUP)"]
     Sub2["Subgrupo Operacional 2\nequipe-campo@monamienet.org\n(type: GROUP)"]
     UserA["Usuário João\njvlgoncalves@gmail.com\n(type: USER)"]
@@ -247,22 +247,24 @@ graph TD
 
 No repositório do app (diretório `functions/`):
 
-1. **Parâmetros por Inquilino (`functions/.env.<projectId>`)**:
+1. **Parâmetros (`functions/.env`, o mesmo para todos os parceiros)**:
    ```ini
    GROUPS_GATEWAY_HOST=workspace-groups-gateway-952379262353.southamerica-east1.run.app
-   ROOT_GROUP_EMAIL=monamie-aquariustur@monamienet.org
    ```
+   O grupo raiz não é configurado: a função o deriva do id do projeto em que roda
+   (`monamienet-<id>` → `<id>00@monamienet.org`, em `functions/root_group.js`). Cada parceiro tem um
+   grupo raiz `<id>00` e subgrupos `<id>01` a `<id>99` (convenção registrada no `AGENTS.md`).
 
 2. **Código da Função (`functions/index.js`)**:
    - Configurar como Callable v2 com invocador público explícito:
      ```javascript
      const { onCall, HttpsError } = require("firebase-functions/v2/https");
-     const { defineString } = require("firebase-functions/params");
+     const { defineString, projectID } = require("firebase-functions/params");
+     const { rootGroupEmailFor } = require("./root_group");
      const admin = require("firebase-admin");
      admin.initializeApp();
 
      const BACKEND_HOST = defineString("GROUPS_GATEWAY_HOST");
-     const ROOT_GROUP = defineString("ROOT_GROUP_EMAIL");
 
      exports.syncClaims = onCall({ invoker: "public" }, async (request) => {
        if (!request.auth) throw new HttpsError("unauthenticated", "Autenticação necessária.");
@@ -270,8 +272,9 @@ No repositório do app (diretório `functions/`):
        const email = request.auth.token.email;
        const idToken = request.data.idToken;
 
+       const rootGroup = rootGroupEmailFor(projectID.value());
        const roles = {};
-       await computeRoles(idToken, email, ROOT_GROUP.value(), roles, false);
+       await computeRoles(idToken, email, rootGroup, rootGroup, roles, false);
        await admin.auth().setCustomUserClaims(uid, { group_roles: roles });
        return { group_roles: roles };
      });
@@ -279,8 +282,7 @@ No repositório do app (diretório `functions/`):
 
 3. **Deploy via Firebase CLI**:
    ```bash
-   firebase use monamienet-aquariustur
-   firebase deploy --only functions --project monamienet-aquariustur --force
+   firebase deploy --only functions --project monamienet-<id> --force
    ```
 
 4. **Permissões IAM Críticas no Projeto do Cliente**:

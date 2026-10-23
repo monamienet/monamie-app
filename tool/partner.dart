@@ -3,9 +3,14 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
 
+import 'src/activate_command.dart';
+import 'src/check_command.dart';
 import 'src/firebase_command.dart';
+import 'src/gcloud.dart';
+import 'src/http_firestore_documents.dart';
 import 'src/partners.dart';
 import 'src/process_firebase_cli.dart';
+import 'src/publish_command.dart';
 import 'src/web_command.dart';
 
 /// Partner tooling for the white-label app. Run from anywhere in the repo:
@@ -14,13 +19,21 @@ Future<void> main(List<String> args) async {
   // tool/partner.dart -> repository root, independent of the working directory.
   final repoRoot = Directory(p.dirname(p.dirname(p.fromUri(Platform.script))));
 
+  const cli = ProcessFirebaseCli();
+  const groups = GcloudGroupDirectory();
+  const tokens = GcloudAccessTokenSource();
+  final firestore = HttpFirestoreDocuments();
+
   final runner =
       CommandRunner<void>(
           'dart run tool/partner.dart',
-          'Manage the white-label partners in partners/<id>/.',
+          'MonAmie partner tooling: central Firebase config and partner onboarding.',
         )
-        ..addCommand(FirebaseCommand(repoRoot, const ProcessFirebaseCli()))
-        ..addCommand(WebCommand(repoRoot));
+        ..addCommand(FirebaseCommand(repoRoot, cli))
+        ..addCommand(WebCommand(repoRoot, cli))
+        ..addCommand(PublishCommand(firestore, tokens))
+        ..addCommand(CheckCommand(cli, groups, firestore))
+        ..addCommand(ActivateCommand(cli, groups, firestore, tokens));
 
   try {
     await runner.run(args);

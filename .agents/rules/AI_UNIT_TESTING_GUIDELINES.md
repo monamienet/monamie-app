@@ -1,31 +1,38 @@
 # Diretrizes de Testes Unitários para Agentes de IA
 
-Este documento estabelece o padrão obrigatório para a criação, reformulação e manutenção de testes unitários em toda a base de código. Todos os agentes de inteligência artificial que atuam neste repositório devem seguir rigorosamente os princípios aqui definidos.
+Este documento define **o que** testar, **como** escrever o teste e **quanto** a suíte pode custar. Vale para todos os agentes de IA que atuam neste repositório.
+
+O objetivo é uma suíte pequena, rápida e que quebre só quando o comportamento quebra. Um teste que falha porque alguém mudou um comentário no Gradle não protege nada; ele só custa tempo.
 
 ---
 
-## 1. Princípio da Separação de Contexto (Agente Independente)
+## 1. O que testar
 
-> **Regra Fundamental**: Para cada tarefa ou implementação realizada no projeto, testes unitários **sempre deverão ser gerados**.
->
-> **Obrigatório**: Os testes unitários **devem ser criados por um agente de IA com uma janela de contexto independente** daquele que realizou a tarefa.
+Teste código que **toma decisões**:
 
-### Racional:
-- **Prevenção de Viés de Confirmação**: O agente que escreveu a implementação tende a reproduzir nos testes os mesmos pressupostos, atalhos e eventuais falhas lógicas do código-fonte.
-- **Validação de Especificação e Contrato**: Um agente com contexto limpo examina a interface pública, contratos esperados, restrições e requisitos sem vícios de contexto prévio, garantindo testes robustos e fidedignos.
+- validação e conversão de dados (ex.: `PartnerConfig.fromBranding`, leitura de documentos do Firestore);
+- regras de derivação (ex.: id do parceiro a partir de `<id>NN@monamienet.org`, paleta a partir da cor primária, planos B da marca);
+- controladores e serviços com ramificações (sucesso, erro, reentrância, timeout);
+- regras de segurança (`firestore.rules`, nos testes de integração com emulador);
+- **regressões**: todo bug corrigido ganha um teste que falharia sem a correção.
 
----
+## 2. O que **não** testar
 
-## 2. O Padrão AAA (Arrange, Act, Assert)
+- **Arquivos de configuração lidos por regex** (Gradle, YAML de CI, `pubspec.yaml`, `.gitignore`, manifestos). Quem verifica a configuração é o próprio build e a CI.
+- **Modelos sem lógica**: getters, construtores e `toMap`/`fromMap` campo a campo. Teste só a conversão que tem regra (valor padrão, tipo convertido, campo legado).
+- **Comportamento do framework ou de plugins** (que o `Text` mostra o texto, que o `Hive` grava).
+- **Funções auxiliares do próprio teste.**
+- **Cópias da implementação**: se o teste recalcula o resultado com a mesma fórmula do código, ele não prova nada. Use valores fixos conhecidos.
+- **Textos de interface**, a não ser que o texto seja a regra (ex.: a mensagem de "parceiro não encontrado").
 
-Todo e qualquer teste unitário deve ser estruturado em exatamente **3 seções explícitas**:
+Ao remover uma funcionalidade, remova os testes dela **no mesmo commit**.
 
-1. **Arrange**: Preparação do estado, dados de entrada, mocks, stubs e pré-condições.
-2. **Act**: Execução da unidade, método ou função sendo testada.
-3. **Assert**: Verificação das saídas, estados alterados ou exceções geradas.
+## 3. Como escrever
 
-### Comentários de Seção Obrigatórios
-Antes de cada seção propriamente dita, **deve existir um comentário** indicando de qual seção se trata:
+### 3.1 Padrão AAA (Arrange, Act, Assert)
+
+Todo teste tem as três seções, cada uma com seu comentário:
+
 ```dart
 // 1. Arrange
 ...
@@ -35,86 +42,42 @@ Antes de cada seção propriamente dita, **deve existir um comentário** indican
 ...
 ```
 
----
+### 3.2 Um Act por teste
 
-## 3. Regra do Ato Único (Single Act) e Assert Específico
+- O teste executa **uma** ação e verifica só o efeito dela.
+- Preparações (ex.: serializar um objeto para testar a desserialização) ficam no Arrange.
+- Variações de entrada viram testes separados. Para tabelas de casos, gere um `test()` por linha com um laço **fora** do `test()`; cada teste gerado continua com um único Act.
 
-- **Apenas 1 (um) Act por teste**: É estritamente proibido encadear múltiplos atos no mesmo teste (e.g., executar ação A, fazer assert, executar ação B, fazer assert).
-- **Assert focado no resultado do Act**: O bloco `// 3. Assert` deve validar exclusivamente o resultado direto ou os efeitos colaterais da ação disparada no `// 2. Act`.
-- **Preparações pertencem ao Arrange**: Se um teste precisa de um objeto resultante de outra operação (como um modelo serializado para testar desserialização), essa operação preliminar deve ocorrer no `// 1. Arrange`.
-- **Cenários múltiplos devem ser divididos**: Se você deseja testar variações de entrada (ex: valor nulo vs. mapa vazio), divida em testes separados. Nunca utilize laços (`for`/`while`) disparando múltiplos atos dentro de um mesmo caso de teste.
+### 3.3 Tríade por unidade
 
----
+Cada **unidade com lógica** (não cada função trivial) cobre:
 
-## 4. Cobertura da Tríade de Cenários
+| Cenário | Exemplo |
+| :--- | :--- |
+| **Happy Path** | documento de marca completo vira a marca do parceiro |
+| **Edge Case** | campo opcional ausente cai no plano B |
+| **Sad Path** | cor malformada é tratada como ausente; JSON com tipo errado lança `FormatException` |
 
-O conjunto de testes unitários de cada unidade funcional deve cobrir obrigatoriamente:
+### 3.4 Organização
 
-| Cenário | Descrição | Exemplos |
-| :--- | :--- | :--- |
-| **Happy Path** *(Caminho Feliz)* | Execução sob condições normais com dados de entrada válidos e esperados. | Model inicializado com parâmetros válidos; autenticação autorizada retornando grupos permitidos. |
-| **Edge Case** *(Casos Limite)* | Entradas nos limites de tolerância, coleções vazias, valores zero, strings em branco, normalizações de maiúsculas/espaços ou parâmetros opcionais nulos. | Mapa de claims vazio `{}`; strings com espaços periféricos e letras maiúsculas; ausência de chave opcional mantendo integridade. |
-| **Sad Path** *(Caminho Infeliz / Erro)* | Comportamento diante de falhas esperadas, permissão negada, entradas malformadas, tipos incompatíveis ou dados corrompidos. | Tentativa de ação sem permissão resultando em bloqueio/retorno nulo; passagem de tipos inválidos gerando `TypeError` ou exceção customizada. |
+- Um arquivo de teste por unidade, espelhando `lib/` (`lib/app/x/y.dart` → `test/unit/.../y_test.dart`).
+- Prefira testar funções puras. Use widget tests só quando a decisão está no widget.
+- Dependências externas (Firebase, HTTP, plugins) entram por contrato e são trocadas por *fakes* no teste.
 
----
+## 4. Orçamento
 
-## 5. Exemplo Canônico de Referência
+- `flutter test test/unit -j 2` deve terminar em **menos de 2 minutos** num notebook com 8 GB de RAM.
+- Se a suíte passar disso, corte primeiro os testes da seção 2 antes de adicionar novos.
+- Rode sempre com concorrência baixa (`-j 2`) e prioridade baixa (`nice`) quando a máquina estiver em uso.
 
-Abaixo está o modelo ideal que deve ser seguido por qualquer agente ao redigir testes:
+## 5. Independência
 
-```dart
-import 'package:flutter_test/flutter_test.dart';
+Os testes de **lógica nova ou alterada** são escritos por um agente de IA com **janela de contexto independente** da que implementou a mudança. Um agente com contexto limpo testa o contrato público, sem herdar os pressupostos (e os erros) da implementação.
 
-void main() {
-  group('ExemploController / Model - Suíte de Testes Unitários', () {
-    test('Happy Path: Deve calcular total de itens com sucesso para entrada válida', () {
-      // 1. Arrange
-      final itemPrecos = [10.0, 20.0, 30.0];
-      final calculadora = CalculadoraFinanceira();
+## 6. Checklist
 
-      // 2. Act
-      final total = calculadora.somar(itemPrecos);
-
-      // 3. Assert
-      expect(total, 60.0);
-    });
-
-    test('Edge Case: Deve retornar zero quando a lista de itens estiver vazia', () {
-      // 1. Arrange
-      final itensVazios = <double>[];
-      final calculadora = CalculadoraFinanceira();
-
-      // 2. Act
-      final total = calculadora.somar(itensVazios);
-
-      // 3. Assert
-      expect(total, 0.0);
-    });
-
-    test('Sad Path: Deve lançar ArgumentError quando encontrar preço negativo', () {
-      // 1. Arrange
-      final itensComValorNegativo = [10.0, -5.0, 20.0];
-      final calculadora = CalculadoraFinanceira();
-
-      // 2. Act
-      action() => calculadora.somar(itensComValorNegativo);
-
-      // 3. Assert
-      expect(action, throwsA(isA<ArgumentError>()));
-    });
-  });
-}
-```
-
----
-
-## 6. Checklist de Verificação para o Agente de Testes
-
-Antes de finalizar qualquer tarefa de teste, valide:
-
-- [ ] Os testes foram criados por um agente com contexto independente?
-- [ ] Todos os testes possuem as 3 seções comentadas (`// 1. Arrange`, `// 2. Act`, `// 3. Assert`)?
-- [ ] Cada teste possui exatamente **um** Act?
-- [ ] Os asserts validam única e especificamente o resultado daquele Act?
-- [ ] O conjunto de testes contempla **Happy Path**, **Edge Case** e **Sad Path**?
-- [ ] O comando `flutter test` foi executado e todos os testes passaram com código 0?
+- [ ] Só testa código que toma decisões (seção 1) e nada da seção 2?
+- [ ] Cada teste tem `// 1. Arrange`, `// 2. Act`, `// 3. Assert` e um único Act?
+- [ ] Cada unidade com lógica cobre Happy Path, Edge Case e Sad Path?
+- [ ] Os testes de lógica nova foram escritos por um agente com contexto independente?
+- [ ] `flutter test test/unit -j 2` passou com código 0 dentro do orçamento?

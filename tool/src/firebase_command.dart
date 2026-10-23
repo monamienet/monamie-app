@@ -4,8 +4,9 @@ import 'package:args/command_runner.dart';
 
 import 'android_firebase_config.dart';
 import 'firebase_cli.dart';
+import 'partners.dart';
 
-/// `firebase <id>`: fetches the Android Firebase config of partner `<id>`.
+/// `firebase`: fetches the Android Firebase config of the central project.
 class FirebaseCommand extends Command<void> {
   FirebaseCommand(this._repoRoot, this._cli);
 
@@ -17,24 +18,20 @@ class FirebaseCommand extends Command<void> {
 
   @override
   String get description =>
-      "Fetch a partner's google-services.json from its Firebase project "
-      '(monamienet-<id>).';
-
-  @override
-  String get invocation => '${runner!.executableName} $name <id>';
+      'Fetch the app\'s google-services.json from the central Firebase '
+      'project ($centralProjectId). The Android build runs it when the file '
+      'is missing.';
 
   @override
   Future<void> run() async {
-    final rest = argResults!.rest;
-    if (rest.length != 1) usageException('Expected exactly one partner id.');
-    final id = rest.single;
-
+    if (argResults!.rest.isNotEmpty) {
+      usageException('Takes no arguments: partners are bound at runtime.');
+    }
     final appId = await fetchAndroidFirebaseConfig(
       repoRoot: _repoRoot,
-      id: id,
       cli: _cli,
     );
     // Only the app id: the file holds API keys.
-    stdout.writeln('Wrote ${androidFirebaseConfigPath(id)} (app $appId).');
+    stdout.writeln('Wrote $androidFirebaseConfigPath (app $appId).');
   }
 }

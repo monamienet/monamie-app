@@ -1,19 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:monamie_app/app/utils/group_email.dart';
+import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 class FirebaseProvider {
   CollectionReference get collectionRef =>
-      FirebaseFirestore.instanceFor(app: Firebase.app()).collection('usuarios');
+      CurrentPartnerFirebase.instance.firestore.collection('usuarios');
 
   Future<void> adicionarDados(UserModel userLocation) async {
     // 1. Instanciar o Firestore com o app específico e banco de dados
-    FirebaseFirestore firestore = FirebaseFirestore.instanceFor(
-      app: Firebase.app(),
-    );
+    FirebaseFirestore firestore = CurrentPartnerFirebase.instance.firestore;
 
     // 2. Referenciar a coleção e adicionar dados
     try {
@@ -34,11 +32,7 @@ class FirebaseProvider {
   }
 
   Future<void> setUser(UserModel user) async {
-    FirebaseFirestore firestore = FirebaseFirestore.instanceFor(
-      //app: Firebase.app(firebaseAppName),
-      app: Firebase.app(),
-      //databaseId: firestoreDatabaseId,
-    );
+    FirebaseFirestore firestore = CurrentPartnerFirebase.instance.firestore;
 
     try {
       await firestore.collection('usuarios').doc(user.email).set(user.toMap());

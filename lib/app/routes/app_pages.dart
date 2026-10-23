@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 
 import '../modules/login/bindings/login_binding.dart';
 import '../modules/login/views/login_view.dart';
+import '../modules/login/views/not_linked_view.dart';
+import '../modules/login/views/partner_picker_view.dart';
 
 part 'app_routes.dart';
 
@@ -18,6 +20,8 @@ class AppPages {
       page: () => const LoginView(),
       binding: LoginBinding(),
     ),
+    GetPage(name: _Paths.PARTNER_PICKER, page: () => const PartnerPickerView()),
+    GetPage(name: _Paths.NOT_LINKED, page: () => const NotLinkedView()),
     GetPage(
       name: _Paths.MONAMIE,
       page: () => const MonamiePage(),

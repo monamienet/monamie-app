@@ -1,14 +1,13 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAuth } = require("firebase-admin/auth");
-const { defineString } = require("firebase-functions/params");
+const { defineString, projectID } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const { normalizeGroupEmail } = require("./group_email");
+const { rootGroupEmailFor } = require("./root_group");
 admin.initializeApp();
 
-// Parâmetros por instância (functions/.env.<projectId>): host do
-// workspace-groups-gateway e e-mail do grupo raiz do cliente.
+// Host of the workspace-groups-gateway, shared by every partner (functions/.env).
 const BACKEND_HOST = defineString("GROUPS_GATEWAY_HOST");
-const ROOT_GROUP = defineString("ROOT_GROUP_EMAIL");
 
 /**
  * Callable Cloud Function que sincroniza os Custom Claims do Firebase Auth
@@ -20,7 +19,9 @@ const ROOT_GROUP = defineString("ROOT_GROUP_EMAIL");
  *
  * Invocada pelo app Flutter após o login e ao atualizar grupos.
  */
-exports.syncClaims = onCall({ invoker: "public" }, async (request) => {
+// The region is explicit so deploys never have to guess it, and must match the
+// app's FirebaseFunctions instance (default region, us-central1).
+exports.syncClaims = onCall({ invoker: "public", region: "us-central1" }, async (request) => {
   console.log(
     `[syncClaims] Invocado. Auth: ${JSON.stringify(request.auth)}`
   );
@@ -46,11 +47,13 @@ exports.syncClaims = onCall({ invoker: "public" }, async (request) => {
   }
 
   // 3. Computar roles efetivos via travessia recursiva da árvore de grupos
+  const rootGroup = rootGroupEmailFor(projectID.value());
   const roles = {};
   await computeRoles(
     idToken,
     email,
-    ROOT_GROUP.value(),
+    rootGroup,
+    rootGroup,
     roles,
     /* isAncestorMember= */ false
   );
@@ -78,6 +81,7 @@ exports.syncClaims = onCall({ invoker: "public" }, async (request) => {
  *
  * @param {string}  idToken           - Firebase ID Token para autenticar com o backend
  * @param {string}  userEmail         - Email do usuário cujos roles estão sendo computados
+ * @param {string}  rootGroup         - Email do grupo raiz do parceiro
  * @param {string}  groupEmail        - Email do grupo atual sendo processado
  * @param {Object}  roles             - Mapa acumulador {groupEmail → role} (mutado in-place)
  * @param {boolean} isAncestorMember  - true se o usuário é membro de algum ancestral
@@ -86,6 +90,7 @@ exports.syncClaims = onCall({ invoker: "public" }, async (request) => {
 async function computeRoles(
   idToken,
   userEmail,
+  rootGroup,
   groupEmail,
   roles,
   isAncestorMember
@@ -105,7 +110,7 @@ async function computeRoles(
   //    - O grupo raiz em si NÃO é registrado nos claims (é estrutural)
   //    - Key is normalized: Firestore Rules map lookups are case-sensitive
   const groupKey = normalizeGroupEmail(groupEmail);
-  if (groupKey !== normalizeGroupEmail(ROOT_GROUP.value())) {
+  if (groupKey !== normalizeGroupEmail(rootGroup)) {
     if (directMember) {
       roles[groupKey] = directMember.role; // "MEMBER", "MANAGER", ou "OWNER"
     } else if (isAncestorMember) {
@@ -129,6 +134,7 @@ async function computeRoles(
     await computeRoles(
       idToken,
       userEmail,
+      rootGroup,
       sg.email,
       roles,
       propagateAncestor

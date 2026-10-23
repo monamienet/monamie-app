@@ -2,22 +2,35 @@
 
 ## Project Overview
 
-This white-label application is maintained by the company MonAmieNet and provides clients services for tracking, coordination and comunication of teams.
+This application is maintained by the company MonAmieNet and provides clients (partners) services for tracking, coordination and comunication of teams.
 
-## Business Archictecture
+## Business Architecture
 
-MonAmie has a single Google Developer Account, where every instance of this app is published.
+MonAmie publishes a **single app** on its Google Developer Account: `org.monamienet.app`, named "MonAmie" (launcher, Play listing and native splash are the same for everyone). Each partner (client) keeps:
+- its own Firebase project `monamienet-<id>`, associated to the partner's billing account, where all its data lives;
+- its own branding (name, colors, logo, icon) in that project's Firestore, `config/branding`, publicly readable.
 
-Each instance of this app:
-- belongs to one client $c$
-- has its own and unique identity, which includes:
-    - name (must be "MonAmie <instance_name>")
-    - Application ID (Android) `android/app/build.gradle[.kts]`
-    - Bundle Identifier (iOS) `ios/Runner.xcodeproj/project.pbxproj`
-    - icons
-    - theme
-    - etc
-- has its own separated Firebase Project which is associated to $c$'s billing account
+The app binds the partner **at runtime**, after Google sign-in, never at build time:
+1. Google sign-in goes through the central MonAmie project `monamienet-app` (the `[DEFAULT]` Firebase app). Only one OAuth client may exist per package + SHA-1, so it lives there, and every partner project allows the central web client under "Allowed client IDs".
+2. The central `resolvePartners` function (`central/functions/`) reads the user's groups and derives their partners from the group names (see below), keeping only those active in the central registry `partners/{id}`.
+3. The app binds the chosen partner (`PartnerSession`): its Firebase project (a named app `partner-<id>`), its root group and its branding, all together, and remembers the binding on the device (`SharedPreferences`) until sign-out or removal from the partner's groups.
+
+Where each value lives:
+- **Partner's choice** (name required; colors, logo, icon optional with fallbacks): `config/branding` in the partner project, written by `dart run tool/partner.dart publish <id>`.
+- **Derived by rule**, never stored: project `monamienet-<id>`, root group `<id>00@monamienet.org`, partner id from a group name, display name `MonAmie <name>`.
+- **Owned by another system**, fetched, never versioned: the central `google-services.json` (build time, `tool/partner.dart firebase`) and each partner's Firebase options (runtime, `resolvePartners`).
+
+Rules that come from the plugins' source code: never `delete()` a partner `FirebaseApp` (cloud_firestore caches instances per app name forever); the partner app is created natively in `MonAmieApplication.kt` so the UI and the tracking service engines never race to create it; the binding lives in `SharedPreferences`, not Hive, because two isolates read it.
+
+Onboarding a partner needs no app release: see `docs/en-us/white-label.md`. CI only ships the app: Cloud Functions and rules are deployed by hand, `central/` once to `monamienet-app` and `functions/` + `firestore.rules` to every partner project.
+
+### Partners, Groups and Users
+
+- Each partner (client) has exactly one **root group** in the monamienet.org Google Workspace: `<id>00@monamienet.org` (e.g. `aquariustur00@monamienet.org`).
+- The root group can be the parent of many **subgroups**, named after the partner id with a two-digit suffix from `01` to `99`: `<id>01@monamienet.org`, `<id>02@monamienet.org`, … (e.g. `aquariustur01@monamienet.org`). The suffix is always exactly two digits, so a group's partner id is its local part without the last two characters.
+- Each partner has potentially many **users**: the people who sign in to the app. Their role in each group comes from Google Groups membership; the `syncClaims` Cloud Function turns it into the `group_roles` custom claim that `firestore.rules` checks:
+    - **observables**: `MEMBER` or `MANAGER`; they share their own location;
+    - **observers**: `OWNER`, or `METAUSER` (a member of an ancestor group); they only view the observables' locations.
 
 ### Client Onboarding Data (Google Drive via `rclone`)
 
@@ -52,6 +65,15 @@ Clients submit their instance identity through an onboarding Google Form. The an
 ### Hardware & Sensor Operations UX
 - **User-Facing Transparency**: Never silently swallow hardware or sensor timeouts (e.g., GPS satellite fix) with developer-only `debugPrint`. When a service starts but sensor calibration is pending, provide transparent, non-blocking user feedback (e.g., an informative SnackBar or status banner) clarifying that the service is running while satellites/hardware sync.
 - **Defensive Timeouts**: Guard platform hardware and sensor calls (e.g., `Geolocator.getCurrentPosition()`) with sensible timeouts (e.g., 5 seconds) and `try/catch` blocks to prevent freezing or unhandled crashes during cold starts or weak-signal environments.
+
+
+## Testing
+
+Follow `.agents/rules/AI_UNIT_TESTING_GUIDELINES.md`: test only code that makes decisions, never configuration files read with regex, and keep `flutter test test/unit -j 2` under two minutes on an 8 GB laptop. Remove a feature's tests in the same commit that removes the feature.
+
+## Resource Limits on Dev Machines
+
+Dev laptops have 8 GB of RAM shared with the IDE and a browser. Run heavy commands at low priority and low parallelism: `nice -n 15 flutter test test/unit -j 2`, and Gradle with at most two workers (`org.gradle.workers.max=2` in `~/.gradle/gradle.properties`; `flutter build` gives no flag for it). The project caps the Gradle heap at 2 GB. Avoid running more than one build or test process at a time.
 
 
 ## Running the Web App Locally
