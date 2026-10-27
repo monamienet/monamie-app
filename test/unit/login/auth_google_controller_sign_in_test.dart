@@ -134,7 +134,7 @@ class _FakePartnerDirectory implements PartnerDirectory {
   int calls = 0;
 
   @override
-  Future<List<PartnerCandidate>> partnersOfSignedInUser() async {
+  Future<List<PartnerCandidate>> partnersOfSignedInUser({bool fresh = false}) async {
     calls++;
     final failure = error;
     if (failure != null) throw failure;

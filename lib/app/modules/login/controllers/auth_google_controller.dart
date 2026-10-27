@@ -16,6 +16,9 @@ import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/flutter_background_service_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/capabilities.dart';
+import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
+import 'package:monamie_app/app/modules/invites/invite.dart';
+import 'package:monamie_app/app/modules/invites/invites_backend.dart';
 import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
@@ -38,8 +41,10 @@ class AuthGoogleController extends GetxController {
     PartnerBrandingLoader? brandingLoader,
     PartnerSession? partnerSession,
     PartnerLocalData? partnerLocalData,
+    InvitesBackend? invitesBackend,
     void Function()? refreshTheme,
-  }) : _partnerLocalData = partnerLocalData ?? const HivePartnerLocalData(),
+  }) : _invitesBackend = invitesBackend ?? const FirebaseInvitesBackend(),
+       _partnerLocalData = partnerLocalData ?? const HivePartnerLocalData(),
        _injectedAuthGoogle = authGoogleService,
        _injectedUserRepository = userRepository,
        _injectedTrackingStopper = trackingStopper,
@@ -56,6 +61,22 @@ class AuthGoogleController extends GetxController {
   final PartnerBrandingLoader _brandingLoader;
   final PartnerSession? _injectedPartnerSession;
   final PartnerLocalData _partnerLocalData;
+  final InvitesBackend _invitesBackend;
+
+  /// Invites waiting for the signed-in account, shown on *Sem organização*.
+  final RxList<Invite> pendingInvites = <Invite>[].obs;
+
+  /// The invite being accepted (its button shows the pending state).
+  final RxnString acceptingInvite = RxnString();
+
+  /// Error of the last accept, shown on the invite card.
+  final RxString inviteError = ''.obs;
+
+  static const _acceptRetries = 6;
+  static const _acceptRetryDelay = Duration(seconds: 4);
+
+  /// The invite just accepted: *Boas-vindas* is shown once, after entering.
+  final Rxn<Invite> welcome = Rxn<Invite>();
 
   /// Rebuilds the theme from the bound partner (or MonAmie when none).
   final void Function() _refreshTheme;
@@ -139,11 +160,17 @@ class AuthGoogleController extends GetxController {
   /// With no partner the user lands on *Sem organização* still signed in to
   /// MonAmie, so they can check again (after accepting an invite) or create
   /// their organization without signing in twice.
-  Future<void> _continueWithPartners(String idToken) async {
+  Future<void> _continueWithPartners(
+    String idToken, {
+    bool fresh = false,
+  }) async {
     _pendingIdToken = idToken;
     signedInEmail.value = await _authGoogle.centralEmail();
-    final candidates = await _partnerDirectory.partnersOfSignedInUser();
+    final candidates = await _partnerDirectory.partnersOfSignedInUser(
+      fresh: fresh,
+    );
     if (candidates.isEmpty) {
+      await _loadInvites();
       Get.offAllNamed(Routes.NO_ORGANIZATION);
       return;
     }
@@ -154,6 +181,53 @@ class AuthGoogleController extends GetxController {
     }
     partnerChoices.assignAll(bindings);
     Get.toNamed(Routes.PARTNER_PICKER);
+  }
+
+  Future<void> _loadInvites() async {
+    try {
+      pendingInvites.assignAll(await _invitesBackend.mine());
+    } catch (e) {
+      debugPrint('[Invites] Could not read the invites: $e');
+      pendingInvites.clear();
+    }
+  }
+
+  /// Enters [partnerId] once the central directory lists it. Google's group
+  /// directory takes a few seconds to show a new membership (an accepted
+  /// invite, a newly created root group), so it asks again without the
+  /// server's cache before going on with the sign-in.
+  Future<void> _enterWhenListed(String partnerId) async {
+    final idToken = _pendingIdToken ?? await _authGoogle.signInGoogle();
+    if (idToken == null) return;
+    for (var attempt = 0; attempt < _acceptRetries; attempt++) {
+      final candidates = await _partnerDirectory.partnersOfSignedInUser(
+        fresh: true,
+      );
+      if (candidates.any((c) => c.id == partnerId)) break;
+      await Future<void>.delayed(_acceptRetryDelay);
+    }
+    await _continueWithPartners(idToken, fresh: true);
+  }
+
+  /// "Aceitar e entrar": joins the invite's team, then enters its partner
+  /// (looked up without the server's cache) and shows *Boas-vindas*.
+  Future<void> acceptInvite(Invite invite) async {
+    if (acceptingInvite.value != null || isLoading.value) return;
+    acceptingInvite.value = invite.id;
+    inviteError.value = '';
+    try {
+      await _invitesBackend.accept(invite);
+      welcome.value = invite;
+      await _enterWhenListed(invite.partnerId);
+    } on InvitesException catch (e) {
+      inviteError.value = e.message;
+    } catch (e) {
+      debugPrint('[Invites] Accept failed: $e');
+      inviteError.value =
+          'Não foi possível aceitar agora. Verifique a conexão e tente de novo.';
+    } finally {
+      acceptingInvite.value = null;
+    }
   }
 
   /// "Já me convidaram · verificar de novo": asks again which partners the
@@ -236,7 +310,14 @@ class AuthGoogleController extends GetxController {
 
       _pendingIdToken = null;
       partnerChoices.clear();
-      Get.offAllNamed(Routes.MONAMIE);
+      // Right after accepting an invite to this partner: welcome first.
+      final invite = welcome.value;
+      if (invite != null && invite.partnerId == binding.partner.id) {
+        Get.offAllNamed(Routes.WELCOME);
+      } else {
+        welcome.value = null;
+        Get.offAllNamed(Routes.MONAMIE);
+      }
     } catch (_) {
       // Never stay bound to a partner the user could not enter.
       await _partnerSession.forget();

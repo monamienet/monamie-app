@@ -3,6 +3,12 @@ import 'package:get/get.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/config/partner/partner_palette.dart';
 
+import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
+import 'package:monamie_app/app/modules/invites/invite.dart';
+import 'package:monamie_app/app/modules/invites/invite_controller.dart';
+import 'package:monamie_app/app/modules/invites/invite_view.dart';
+import 'package:monamie_app/app/modules/invites/invites_backend.dart';
+
 import 'team.dart';
 import 'teams_controller.dart';
 
@@ -139,6 +145,13 @@ class TeamsView extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 16),
+            _primaryButton(
+              label: 'Convidar pessoas',
+              busy: false,
+              busyLabel: '',
+              onPressed: () => openInvite(controller),
+            ),
+            const SizedBox(height: 12),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 foregroundColor: _ink,
@@ -347,6 +360,14 @@ class TeamView extends StatelessWidget {
               'Ninguém nesta equipe ainda. Convide quem vai trabalhar nela.',
               style: TextStyle(color: _muted),
             ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: busy
+                ? null
+                : () => openInvite(controller, team: team.number),
+            icon: const Icon(Icons.person_add_alt),
+            label: const Text('Convidar para esta equipe'),
+          ),
           for (final person in team.people)
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -361,6 +382,11 @@ class TeamView extends StatelessWidget {
               enabled: !busy,
               onTap: () => _editPerson(context, team, person),
             ),
+          const SizedBox(height: 24),
+          TeamInvitesSection(
+            partnerId: controller.partnerId,
+            team: team.number,
+          ),
         ],
       ),
     );
@@ -500,5 +526,139 @@ class TeamView extends StatelessWidget {
       ),
     );
     if (confirmed == true && await controller.delete(team.number)) Get.back();
+  }
+}
+
+/// Opens *Convidar pessoas* for the owner's teams (preselecting [team]).
+void openInvite(TeamsController controller, {String? team}) {
+  Get.to(
+    () => InviteView(
+      controller: InviteController(
+        partnerId: controller.partnerId,
+        partnerName: Partner.current?.name ?? controller.partnerId,
+        teams: controller.teams.toList(),
+        team: team,
+        backend: const FirebaseInvitesBackend(),
+      ),
+    ),
+  )?.then((_) => controller.load());
+}
+
+/// *Convidados* of a team: pending invites, expired ones with *Reenviar*,
+/// and *Cancelar*.
+class TeamInvitesSection extends StatefulWidget {
+  const TeamInvitesSection({
+    super.key,
+    required this.partnerId,
+    required this.team,
+    this.backend = const FirebaseInvitesBackend(),
+  });
+
+  final String partnerId;
+  final String team;
+  final InvitesBackend backend;
+
+  @override
+  State<TeamInvitesSection> createState() => _TeamInvitesSectionState();
+}
+
+class _TeamInvitesSectionState extends State<TeamInvitesSection> {
+  List<Invite>? _invites;
+  String? _working;
+  String _error = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final invites = await widget.backend.listForTeam(
+        widget.partnerId,
+        widget.team,
+      );
+      if (mounted) setState(() => _invites = invites);
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    }
+  }
+
+  Future<void> _run(String id, Future<void> Function() action) async {
+    if (_working != null) return;
+    setState(() {
+      _working = id;
+      _error = '';
+    });
+    try {
+      await action();
+      await _load();
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _working = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final invites = _invites;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Convidados${invites == null ? '' : ' · ${invites.length}'}',
+          style: const TextStyle(fontWeight: FontWeight.w800, color: _ink),
+        ),
+        if (_error.isNotEmpty) _errorText(_error),
+        if (invites == null)
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (invites.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'Nenhum convite pendente.',
+              style: TextStyle(color: _muted),
+            ),
+          ),
+        for (final invite in invites ?? const <Invite>[])
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(invite.email),
+            subtitle: Text(
+              invite.expired
+                  ? 'Expirado · ${invite.rolesLabel}'
+                  : '${invite.rolesLabel}'
+                        '${invite.expiresAt == null ? '' : ' · vale até ${dayMonth(invite.expiresAt!)}'}',
+            ),
+            trailing: _working == invite.id
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  )
+                : PopupMenuButton<String>(
+                    enabled: _working == null,
+                    onSelected: (value) => _run(
+                      invite.id,
+                      () => value == 'resend'
+                          ? widget.backend.resend(widget.partnerId, invite.id)
+                          : widget.backend.cancel(widget.partnerId, invite.id),
+                    ),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'resend', child: Text('Reenviar')),
+                      PopupMenuItem(
+                        value: 'cancel',
+                        child: Text('Cancelar convite'),
+                      ),
+                    ],
+                  ),
+          ),
+      ],
+    );
   }
 }

@@ -16,6 +16,7 @@ import 'package:monamie_app/app/modules/admin/firebase_appearance_backend.dart';
 
 import '../modules/login/bindings/login_binding.dart';
 import '../modules/login/views/login_view.dart';
+import '../modules/invites/welcome_view.dart';
 import '../modules/login/views/no_organization_view.dart';
 import '../modules/login/views/partner_picker_view.dart';
 
@@ -33,6 +34,7 @@ class AppPages {
       binding: LoginBinding(),
     ),
     GetPage(name: _Paths.PARTNER_PICKER, page: () => const PartnerPickerView()),
+    GetPage(name: _Paths.WELCOME, page: () => const WelcomeView()),
     GetPage(
       name: _Paths.NO_ORGANIZATION,
       page: () => const NoOrganizationView(),

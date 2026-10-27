@@ -16,14 +16,19 @@ class CentralPartnerDirectory implements PartnerDirectory {
   final String _platform;
 
   @override
-  Future<List<PartnerCandidate>> partnersOfSignedInUser() async {
+  Future<List<PartnerCandidate>> partnersOfSignedInUser({
+    bool fresh = false,
+  }) async {
     final functions = this.functions ?? CentralFirebase.functions;
     final result = await functions
         .httpsCallable(
           'resolvePartners',
           options: HttpsCallableOptions(timeout: const Duration(seconds: 30)),
         )
-        .call<Object?>({'platform': _platform});
+        .call<Object?>({
+          'platform': _platform,
+          'fresh': ?(fresh ? true : null),
+        });
     return parsePartnerCandidates(result.data);
   }
 }

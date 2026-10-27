@@ -12,6 +12,16 @@ const {
 const { TtlCache } = require("./ttl_cache");
 const { GROUPS_SCOPES, GroupsApi } = require("./groups_api");
 const { TeamError } = require("./teams");
+const { InviteError } = require("./invites");
+const { GmailMailer } = require("./mailer");
+const {
+  acceptInvite,
+  cancelInvite,
+  listInvites,
+  myInvites,
+  resendInvite,
+  sendInvites,
+} = require("./invite_service");
 const {
   createTeam,
   deleteTeam,
@@ -80,7 +90,11 @@ exports.resolvePartners = onCall({ invoker: "public" }, async (request) => {
     throw new HttpsError("invalid-argument", "platform must be android or web.");
   }
 
-  const groups = await groupsByEmail.getOrCompute(email.toLowerCase(), () =>
+  // `fresh` skips the cache right after accepting an invite, when the new
+  // membership must show at once.
+  const key = email.toLowerCase();
+  if (request.data?.fresh === true) groupsByEmail.delete(key);
+  const groups = await groupsByEmail.getOrCompute(key, () =>
     fetchUserGroups(bearerToken(request), email)
   );
   const entries = await visiblePartners(partnerIdsFromGroups(groups));
@@ -269,9 +283,9 @@ function teamCall(operation) {
     async (request) => {
       const partnerId = await ownedPartnerId(request);
       try {
-        return await operation(partnerId, request.data ?? {});
+        return await operation(partnerId, request.data ?? {}, request);
       } catch (error) {
-        if (error instanceof TeamError) {
+        if (error instanceof TeamError || error instanceof InviteError) {
           throw new HttpsError(
             error.code === "full" ? "failed-precondition" : "invalid-argument",
             error.message,
@@ -314,4 +328,92 @@ exports.removeMember = teamCall(async (partnerId, data) => {
   await removePerson(groupsApi, partnerId, String(data.team ?? ""), String(data.email ?? ""));
   return { removed: true };
 });
+
+// ── Invites (#99) ──────────────────────────────────────────────────────────
+// The sender mailbox, its send-as alias and the name shown are
+// configuration (functions/.env or params), never hard-coded in the flow.
+const MAIL_SENDER_SUBJECT = defineString("MAIL_SENDER_SUBJECT", {
+  default: "jvlgoncalves@monamienet.org",
+});
+const MAIL_FROM = defineString("MAIL_FROM", { default: "contact@monamienet.org" });
+const MAIL_FROM_NAME = defineString("MAIL_FROM_NAME", { default: "MonAmie" });
+const MAIL_SENDER_SERVICE_ACCOUNT = "mail-sender@monamienet-app.iam.gserviceaccount.com";
+
+const iamAuth = new GoogleAuth({
+  scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+});
+
+function mailer() {
+  return new GmailMailer({
+    request: async (options) => {
+      const client = await iamAuth.getClient();
+      return (await client.request(options)).data;
+    },
+    senderServiceAccount: MAIL_SENDER_SERVICE_ACCOUNT,
+    subject: MAIL_SENDER_SUBJECT.value(),
+    from: MAIL_FROM.value(),
+    fromName: MAIL_FROM_NAME.value(),
+  });
+}
+
+exports.sendInvites = teamCall((partnerId, data, request) =>
+  sendInvites(admin.firestore(), groupsApi, mailer(), {
+    partnerId,
+    partnerName: String(data.partnerName ?? partnerId).slice(0, 60),
+    owner: {
+      email: String(request.auth.token.email).toLowerCase(),
+      name: request.auth.token.name,
+    },
+    team: data.team ? String(data.team) : undefined,
+    firstTeamName: data.firstTeamName,
+    invites: data.invites,
+  })
+);
+
+exports.listInvites = teamCall(async (partnerId, data) => ({
+  invites: await listInvites(admin.firestore(), partnerId, data.team ? String(data.team) : null),
+}));
+
+exports.resendInvite = teamCall((partnerId, data) =>
+  resendInvite(admin.firestore(), mailer(), String(data.inviteId ?? ""), partnerId)
+);
+
+exports.cancelInvite = teamCall(async (partnerId, data) => {
+  await cancelInvite(admin.firestore(), String(data.inviteId ?? ""), partnerId);
+  return { cancelled: true };
+});
+
+/** The signed-in person's pending invites (they may belong to nothing yet). */
+exports.myInvites = onCall({ invoker: "public" }, async (request) => {
+  const email = request.auth?.token?.email;
+  if (!email || request.auth.token.email_verified !== true) {
+    throw new HttpsError("unauthenticated", "Sign in first.");
+  }
+  return { invites: await myInvites(admin.firestore(), email) };
+});
+
+/** Accepts an invite addressed to the signed-in account. */
+exports.acceptInvite = onCall(
+  { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT },
+  async (request) => {
+    const email = request.auth?.token?.email;
+    if (!email || request.auth.token.email_verified !== true) {
+      throw new HttpsError("unauthenticated", "Sign in first.");
+    }
+    try {
+      return await acceptInvite(
+        admin.firestore(),
+        groupsApi,
+        String(request.data?.inviteId ?? ""),
+        email
+      );
+    } catch (error) {
+      if (error instanceof InviteError) {
+        throw new HttpsError("failed-precondition", error.message, { field: error.code });
+      }
+      logger.error(`[acceptInvite] ${error.message}`);
+      throw new HttpsError("unavailable", "Não foi possível aceitar agora.");
+    }
+  }
+);
 

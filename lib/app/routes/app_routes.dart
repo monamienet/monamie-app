@@ -8,6 +8,7 @@ abstract class Routes {
   static const MONAMIE = _Paths.MONAMIE;
   static const PARTNER_PICKER = _Paths.PARTNER_PICKER;
   static const NO_ORGANIZATION = _Paths.NO_ORGANIZATION;
+  static const WELCOME = _Paths.WELCOME;
   static const APPEARANCE = _Paths.APPEARANCE;
   static const TEAMS = _Paths.TEAMS;
   static const TRACKING_SETTINGS = _Paths.TRACKING_SETTINGS;
@@ -19,6 +20,7 @@ abstract class _Paths {
   static const MONAMIE = '/monamie';
   static const PARTNER_PICKER = '/partner';
   static const NO_ORGANIZATION = '/sem-organizacao';
+  static const WELCOME = '/boas-vindas';
   static const APPEARANCE = '/admin/appearance';
   static const TEAMS = '/admin/teams';
   static const TRACKING_SETTINGS = '/admin/tracking';
