@@ -78,6 +78,9 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   }
 
   @override
+  Future<String?> refreshGoogleIdToken() async => null;
+
+  @override
   Future<String?> centralEmail() async => _kCentralEmail;
 
   @override
