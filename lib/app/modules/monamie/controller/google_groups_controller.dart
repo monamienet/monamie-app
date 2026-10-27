@@ -118,6 +118,21 @@ class GoogleGroupsController extends GetxController {
     ];
   }
 
+  /// The team to switch the map to once [teams] are known: the first one when
+  /// nothing is observed yet or the observed [current] is no longer among
+  /// them, `null` when the map should stay as it is.
+  @visibleForTesting
+  static GoogleGroupModel? teamToObserve(
+    List<GoogleGroupModel> teams,
+    GoogleGroupModel? current,
+  ) {
+    if (teams.isEmpty) return null;
+    if (current != null && teams.any((team) => team.email == current.email)) {
+      return null;
+    }
+    return teams.first;
+  }
+
   /// The team keys of [partnerId] among [rootEntities]: the root group's
   /// subgroups named `<id>NN@`.
   @visibleForTesting
@@ -196,6 +211,10 @@ class GoogleGroupsController extends GetxController {
       shareTeams.assignAll(
         teamsFor(caps.shareTeamsIn(partnerId), rootEntities, userGroups),
       );
+
+      // Someone who watches opens straight onto a team, not an empty panel.
+      final next = teamToObserve(_observableGoogleGroups, selectedGroup.value);
+      if (next != null) await updateObservedUsers(next);
     } catch (e, stack) {
       debugPrint('$e\n$stack');
       _loadError.value = '$e';

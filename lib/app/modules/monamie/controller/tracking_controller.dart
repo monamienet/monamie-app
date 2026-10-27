@@ -11,6 +11,7 @@ import 'package:monamie_app/app/modules/monamie/controller/permissions_controlle
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/data/live_users.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
 import 'package:monamie_app/app/modules/monamie/models/animated_user_marker.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
@@ -39,6 +40,10 @@ class TrackingController extends GetxController
     speedAccuracy: 0,
   );
   RxList<UserModel> firebaseUsers = <UserModel>[].obs;
+
+  /// Every document of the observed team, sharing or not: the team list's
+  /// source. [firebaseUsers] is the live part of it.
+  final RxList<UserModel> teamUsers = <UserModel>[].obs;
   final Rxn<UserModel> selectedFirebaseUser = Rxn<UserModel>();
   late final MapController mapController;
   @override
@@ -293,13 +298,15 @@ class TrackingController extends GetxController
   void _subscribeToGroupUsers(String groupEmail) {
     _groupUsersSubscription?.cancel();
     _groupUsersSubscription = FirebaseProvider()
-        .streamUsersByGroup(
-          groupEmail,
-          staleAfter: Get.find<TrackingSettingsController>().staleAfter,
-        )
+        .streamUsersOfGroup(groupEmail)
         .listen(
           (users) {
-            firebaseUsers.value = users;
+            teamUsers.value = users;
+            firebaseUsers.value = liveUsers(
+              users,
+              now: DateTime.now(),
+              staleAfter: Get.find<TrackingSettingsController>().staleAfter,
+            );
           },
           onError: (e) {
             debugPrint(
@@ -322,6 +329,7 @@ class TrackingController extends GetxController
         _groupUsersSubscription?.cancel();
         _groupUsersSubscription = null;
         firebaseUsers.clear();
+        teamUsers.clear();
       }
     });
 

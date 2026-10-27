@@ -2,19 +2,22 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/calendar.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/group_selector.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_users_list.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/logout_progress_overlay.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/monamie_app_bar.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/home_header.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/home_menu.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/home_sheet.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/people_list.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/presence.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_user_panel.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/tracking_toggle_button.dart';
+import 'package:monamie_app/app/modules/monamie/ui/widgets/logout_progress_overlay.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart' hide Path;
@@ -33,19 +36,27 @@ class MonamiePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const MonAmieAppBar(),
-      drawer: GroupSelector(),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          _body(context),
-          Obx(
-            () => authCtrl.isLoggingOut.value
-                ? const LogoutProgressOverlay()
-                : const SizedBox.shrink(),
-          ),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // The header is dark, so the status bar icons are light.
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        drawer: const HomeMenu(),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Column(
+              children: [
+                const HomeHeader(),
+                Expanded(child: _body(context)),
+              ],
+            ),
+            Obx(
+              () => authCtrl.isLoggingOut.value
+                  ? const LogoutProgressOverlay()
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -79,7 +90,12 @@ class MonamiePage extends StatelessWidget {
         return _permissionScreen();
       }
 
-      return mapa(context);
+      return Column(
+        children: [
+          Expanded(child: mapa(context)),
+          const HomeSheet(),
+        ],
+      );
     });
   }
 
@@ -109,57 +125,65 @@ class MonamiePage extends StatelessWidget {
             _tile(),
             _highlightedTrajectories(),
             _firebaseMarkers(),
-            userCtrl.isTrackable() & !kIsWeb ? _toggleButton() : Container(),
             _centralizeButton(),
           ],
         ),
-        // Watchers get the team and its history; a field-only person sees
-        // only their own position, with a note saying who sees them.
-        Obx(
-          () => googleGroupsController.canWatch
-              // Fill the map: the calendar and the list are Positioned in
-              // this Stack, which would otherwise have no size.
-              ? Positioned.fill(
-                  child: Stack(
-                    children: [Calendar(), HighlightedObservedUsersList()],
-                  ),
-                )
-              : _fieldOnlyNote(),
-        ),
+        _nobodySharingNote(),
         HighlightedUserPanel(),
       ],
     );
   }
 
-  Widget _fieldOnlyNote() {
-    final teams = googleGroupsController.shareTeams.map((t) => t.name);
-    if (teams.isEmpty) return const SizedBox.shrink();
-    return Positioned(
-      left: 16,
-      right: 88,
-      bottom: 16,
-      child: Material(
-        color: AppColors.lightBlue(),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, color: AppColors.darkBlue()),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Você compartilha sua localização com ${teams.join(', ')}. '
-                  'Quem acompanha a equipe vê você no mapa; daqui você vê só '
-                  'a sua posição.',
-                  style: TextStyle(color: AppColors.darkBlue(), fontSize: 13),
+  /// Says so when the observed team has people but none is sharing now.
+  Widget _nobodySharingNote() {
+    return Obx(() {
+      if (!googleGroupsController.canWatch) return const SizedBox.shrink();
+      final rows = observedTeamRows();
+      final nobodyLive =
+          rows.isNotEmpty &&
+          rows.every((row) => row.presence.kind != PresenceKind.live);
+      if (!nobodyLive || !Get.find<CalendarController>().isObservingToday) {
+        return const SizedBox.shrink();
+      }
+      return Positioned(
+        left: 24,
+        right: 24,
+        top: 16,
+        child: Material(
+          color: Colors.white,
+          elevation: 4,
+          borderRadius: BorderRadius.circular(18),
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Ninguém compartilhando agora',
+                  style: TextStyle(
+                    color: HomeColors.ink,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: 4),
+                Text(
+                  'Quem está em campo aparece aqui assim que ativar a '
+                  'localização no celular.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: HomeColors.muted,
+                    fontSize: 13,
+                    height: 1.45,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   /// Desenha as trajetórias dos usuários destacados (highlightedObservedUsers).
@@ -424,10 +448,6 @@ class MonamiePage extends StatelessWidget {
             .toList(),
       ),
     );
-  }
-
-  Widget _toggleButton() {
-    return const Positioned(top: 16, right: 16, child: TrackingToggleButton());
   }
 }
 

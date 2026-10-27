@@ -17,6 +17,14 @@ List<(String, String)> namesAndEmails(List<GoogleGroupModel> teams) => [
   for (final team in teams) (team.name, team.email),
 ];
 
+GoogleGroupModel team(String email) => GoogleGroupModel(
+  name: email,
+  email: email,
+  description: '',
+  members: [],
+  subgroups: [],
+);
+
 void main() {
   group('GoogleGroupsController.teamKeysOf - Unit Test Suite', () {
     test('Happy Path: the partner\'s team groups give their keys', () {
@@ -195,5 +203,84 @@ void main() {
         expect(leaf, expected);
       });
     }
+  });
+
+  group('GoogleGroupsController.teamToObserve - Unit Test Suite', () {
+    test('Happy Path: nothing observed yet opens on the first team', () {
+      // 1. Arrange
+      final teams = [
+        team('rotasul01@monamienet.org'),
+        team('rotasul02@monamienet.org'),
+      ];
+
+      // 2. Act
+      final next = GoogleGroupsController.teamToObserve(teams, null);
+
+      // 3. Assert
+      expect(next, same(teams.first));
+    });
+
+    test('Edge Case: an observed team that is still listed stays', () {
+      // 1. Arrange
+      final teams = [
+        team('rotasul01@monamienet.org'),
+        team('rotasul02@monamienet.org'),
+      ];
+
+      // 2. Act
+      final next = GoogleGroupsController.teamToObserve(teams, teams.last);
+
+      // 3. Assert
+      expect(next, isNull);
+    });
+
+    test('Edge Case: the observed team is matched by e-mail, not identity', () {
+      // 1. Arrange
+      final teams = [
+        team('rotasul01@monamienet.org'),
+        team('rotasul02@monamienet.org'),
+      ];
+      final current = team('rotasul02@monamienet.org');
+
+      // 2. Act
+      final next = GoogleGroupsController.teamToObserve(teams, current);
+
+      // 3. Assert
+      expect(next, isNull);
+    });
+
+    test('Edge Case: an observed team that is gone falls to the first', () {
+      // 1. Arrange
+      final teams = [
+        team('rotasul01@monamienet.org'),
+        team('rotasul02@monamienet.org'),
+      ];
+      final current = team('rotasul09@monamienet.org');
+
+      // 2. Act
+      final next = GoogleGroupsController.teamToObserve(teams, current);
+
+      // 3. Assert
+      expect(next, same(teams.first));
+    });
+
+    test('Sad Path: no teams leave the map as it is', () {
+      // 1. Arrange / 2. Act
+      final next = GoogleGroupsController.teamToObserve(const [], null);
+
+      // 3. Assert
+      expect(next, isNull);
+    });
+
+    test('Sad Path: no teams do not switch away from the observed one', () {
+      // 1. Arrange
+      final current = team('rotasul01@monamienet.org');
+
+      // 2. Act
+      final next = GoogleGroupsController.teamToObserve(const [], current);
+
+      // 3. Assert
+      expect(next, isNull);
+    });
   });
 }

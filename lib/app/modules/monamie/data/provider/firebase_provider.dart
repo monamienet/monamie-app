@@ -45,30 +45,20 @@ class FirebaseProvider {
     });
   }
 
-  /// People sharing with [groupEmail] who updated within [staleAfter] (two
-  /// of the owner's intervals, see `TrackingSettings.staleAfter`).
-  Stream<List<UserModel>> streamUsersByGroup(
-    String groupEmail, {
-    Duration staleAfter = const Duration(minutes: 10),
-  }) {
+  /// Every person's live document that points at [groupEmail], sharing or
+  /// not, so the team list can say who turned the location off. The map keeps
+  /// only the live ones (see `liveUsers`).
+  Stream<List<UserModel>> streamUsersOfGroup(String groupEmail) {
     try {
       return collectionRef
           .where('grupo_ativo', isEqualTo: normalizeGroupEmail(groupEmail))
-          .where('isTracked', isEqualTo: true)
           .snapshots()
-          .map((QuerySnapshot query) {
-            List<UserModel> users = [];
-            final limit = DateTime.now().subtract(staleAfter);
-            for (var doc in query.docs) {
-              final user = UserModel.fromMap(
-                doc.data() as Map<String, dynamic>,
-              );
-              if (user.timestamp != null && user.timestamp!.isAfter(limit)) {
-                users.add(user);
-              }
-            }
-            return users;
-          });
+          .map(
+            (QuerySnapshot query) => [
+              for (final doc in query.docs)
+                UserModel.fromMap(doc.data() as Map<String, dynamic>),
+            ],
+          );
     } catch (e) {
       throw Exception("Erro ao buscar usuários do grupo: $e");
     }
