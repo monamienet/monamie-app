@@ -92,6 +92,22 @@ class AuthGoogleService {
     return _signInCentral(account);
   }
 
+  /// A fresh Google ID token for the account that is already signed in,
+  /// without showing the account chooser. `null` when it cannot be had
+  /// silently (on the web, when Google asks the person to choose again, or
+  /// when the attempt fails).
+  Future<String?> refreshGoogleIdToken() async {
+    await _init;
+    if (kIsWeb) return null;
+    try {
+      final account = await _googleSignIn.attemptLightweightAuthentication();
+      return account?.authentication.idToken;
+    } catch (e) {
+      debugPrint('AuthGoogleService: silent sign-in failed: $e');
+      return null;
+    }
+  }
+
   Future<String> _signInCentral(GoogleSignInAccount account) async {
     final idToken = account.authentication.idToken;
     if (idToken == null) {

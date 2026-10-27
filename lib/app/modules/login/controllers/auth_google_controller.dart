@@ -27,6 +27,7 @@ import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
 import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
+import 'package:monamie_app/app/modules/login/id_token_expiry.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
@@ -363,11 +364,82 @@ class AuthGoogleController extends GetxController {
     );
   }
 
-  /// "Trocar de organização": signs out of everything and opens the Google
-  /// account chooser again, which leads to the organization picker.
+  /// "Trocar de organização": leaves the bound organization and opens the
+  /// organization picker, still signed in with the same Google account.
+  ///
+  /// The person's organizations are looked up first, so a failing lookup
+  /// leaves them where they are instead of unbound. Then the tracking stops
+  /// (the service outlives the screen), the organization is forgotten and the
+  /// picker, or *Sem organização* when nothing is left, replaces the stack.
   Future<void> switchOrganization() async {
-    // Only ask for an account once the old session is really gone.
-    if (await _signOut()) loginGoogle();
+    if (isLoggingOut.value || isLoading.value) return;
+    // The token kept since sign-in is used while it is good; only then does
+    // Google need to be asked again (which may show its account chooser).
+    final kept = _pendingIdToken;
+    final idToken = idTokenIsFresh(kept, DateTime.now())
+        ? kept
+        : await _authGoogle.refreshGoogleIdToken();
+    if (idToken == null) {
+      // Nothing was changed: the person stays where they are.
+      Get.snackbar(
+        'Trocar de organização',
+        'Não foi possível renovar o acesso com o Google. Tente de novo.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade100,
+        duration: const Duration(seconds: 5),
+      );
+      return;
+    }
+
+    isLoggingOut.value = true;
+    try {
+      final candidates = await _partnerDirectory.partnersOfSignedInUser();
+      final bindings = await Future.wait(candidates.map(_brandingLoader.load));
+
+      await _stopTracking();
+      await _authGoogle.signOutOfPartner();
+      await _userRepository.deleteUserGoogleModel();
+      await _partnerSession.forget();
+      await _partnerLocalData.clear();
+      _refreshTheme();
+      _pendingIdToken = idToken;
+
+      if (bindings.isEmpty) {
+        await _loadInvites();
+        Get.offAllNamed(Routes.NO_ORGANIZATION);
+        return;
+      }
+      partnerChoices.assignAll(bindings);
+      Get.offAllNamed(Routes.PARTNER_PICKER);
+    } catch (e) {
+      debugPrint('Erro ao trocar de organização: $e');
+      Get.snackbar(
+        'Trocar de organização',
+        'Não foi possível trocar agora. Verifique a conexão e tente de novo.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade100,
+        duration: const Duration(seconds: 5),
+      );
+    } finally {
+      isLoggingOut.value = false;
+    }
+  }
+
+  /// Stops the background tracking and warns when it could not be confirmed.
+  /// It must run while the partner is still signed in: after that the rules
+  /// refuse the write of `isTracked = false`.
+  Future<void> _stopTracking() async {
+    final stopped = await _trackingStopper.stop(email: await _currentEmail());
+    if (!stopped) {
+      Get.snackbar(
+        "Rastreamento",
+        "Não foi possível confirmar o encerramento do rastreamento. "
+            "Ele será encerrado automaticamente em instantes.",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade100,
+        duration: const Duration(seconds: 5),
+      );
+    }
   }
 
   /// Enters the partner the user picked in the partner picker.
@@ -415,7 +487,8 @@ class AuthGoogleController extends GetxController {
       final token = await _authGoogle.getFirebaseIdToken();
       await _getGdiGroupsGoogle(token ?? '', user.email);
 
-      _pendingIdToken = null;
+      // The token stays (in memory, until sign-out) so that switching
+      // organization does not need Google again while it is still good.
       partnerChoices.clear();
       // Right after accepting an invite to this partner: welcome first.
       final invite = welcome.value;
@@ -523,17 +596,7 @@ class AuthGoogleController extends GetxController {
       // O rastreamento precisa parar ANTES do signOut: o serviço sobrevive ao
       // fechamento da tela, e depois do logout as regras do Firestore recusam
       // a escrita de `isTracked = false`.
-      final stopped = await _trackingStopper.stop(email: await _currentEmail());
-      if (!stopped) {
-        Get.snackbar(
-          "Rastreamento",
-          "Não foi possível confirmar o encerramento do rastreamento. "
-              "Ele será encerrado automaticamente em instantes.",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange.shade100,
-          duration: const Duration(seconds: 5),
-        );
-      }
+      await _stopTracking();
 
       await _authGoogle.logoutGoogle();
       await _userRepository.deleteUserGoogleModel();

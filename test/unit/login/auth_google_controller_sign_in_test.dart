@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -65,12 +66,14 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   _FakeAuthGoogleService(
     this.log, {
     this.idToken = _kIdToken,
+    this.refreshedToken = _kIdToken,
     this.signInError,
     this.logoutError,
   });
 
   final List<String> log;
   final String? idToken;
+  final String? refreshedToken;
   final Object? signInError;
   final Object? logoutError;
 
@@ -85,6 +88,12 @@ class _FakeAuthGoogleService implements AuthGoogleService {
     final failure = signInError;
     if (failure != null) throw failure;
     return idToken;
+  }
+
+  @override
+  Future<String?> refreshGoogleIdToken() async {
+    log.add('refreshGoogleIdToken');
+    return refreshedToken;
   }
 
   @override
@@ -127,10 +136,11 @@ class _FakeAuthGoogleService implements AuthGoogleService {
 }
 
 class _FakePartnerDirectory implements PartnerDirectory {
-  _FakePartnerDirectory({this.partners = const [], this.error});
+  _FakePartnerDirectory({this.partners = const [], this.error, this.log});
 
   final List<PartnerCandidate> partners;
   final Object? error;
+  final List<String>? log;
   int calls = 0;
 
   @override
@@ -138,6 +148,7 @@ class _FakePartnerDirectory implements PartnerDirectory {
     bool fresh = false,
   }) async {
     calls++;
+    log?.add('directory');
     final failure = error;
     if (failure != null) throw failure;
     return partners;
@@ -335,18 +346,21 @@ class _Harness {
     Map<String, Object?>? claims,
     Object? syncError,
     String? idToken = _kIdToken,
+    String? refreshedToken = _kIdToken,
     Object? signInError,
     Object? logoutError,
   }) {
     authService = _FakeAuthGoogleService(
       log,
       idToken: idToken,
+      refreshedToken: refreshedToken,
       signInError: signInError,
       logoutError: logoutError,
     );
     directory = _FakePartnerDirectory(
       partners: partners,
       error: directoryError,
+      log: log,
     );
     session = _FakePartnerSession(log, claims: claims, syncError: syncError);
     controller = AuthGoogleController(
@@ -421,6 +435,15 @@ Future<List<String>> _run(
   }
   await tester.pumpAndSettle();
   return titles;
+}
+
+/// A JWT-shaped token whose `exp` is [fromNow] from the real clock (the
+/// controller reads `DateTime.now()`); the signature is not checked.
+String _jwtExpiringIn(Duration fromNow) {
+  String part(Map<String, Object?> json) =>
+      base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
+  final exp = DateTime.now().add(fromNow).millisecondsSinceEpoch ~/ 1000;
+  return '${part({'alg': 'none'})}.${part({'exp': exp})}.sig';
 }
 
 /// Entries of [log] before the partner is forgotten or signed out of.
@@ -918,10 +941,81 @@ void main() {
 
   group('AuthGoogleController.switchOrganization - Suíte de Testes Unitários', () {
     testWidgets(
-      'Happy Path: Deve sair antes de abrir o login do Google de novo',
+      'Happy Path: Deve abrir o seletor de organizações com as organizações da pessoa',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(idToken: null);
+        final harness = _Harness(partners: [_kRotaSul]);
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(Get.currentRoute, Routes.PARTNER_PICKER);
+        expect(harness.controller.partnerChoices.map((b) => b.partner.id), [
+          'rotasul',
+        ]);
+      },
+    );
+
+    testWidgets(
+      'Happy Path: Deve buscar as organizações antes de parar o rastreamento e esquecer o parceiro',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul]);
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(harness.directory.calls, 1);
+        expect(
+          harness.log.where(
+            (e) =>
+                e == 'directory' ||
+                e == 'stop' ||
+                e == 'signOutOfPartner' ||
+                e == 'forget',
+          ),
+          ['directory', 'stop', 'signOutOfPartner', 'forget'],
+        );
+      },
+    );
+
+    testWidgets(
+      'Happy Path: Não deve sair do Google nem abrir o seletor de contas',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul]);
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(harness.authService.logoutCalls, 0);
+        expect(harness.authService.signInCalls, 0);
+      },
+    );
+
+    testWidgets(
+      'Happy Path: Deve atualizar o tema depois de esquecer o parceiro',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul]);
         await _pumpApp(tester);
 
         // 2. Act
@@ -933,34 +1027,91 @@ void main() {
 
         // 3. Assert
         expect(
-          harness.log.where(
-            (e) => e == 'stop' || e == 'logoutGoogle' || e == 'signInGoogle',
-          ),
-          ['stop', 'logoutGoogle', 'signInGoogle'],
+          harness.log.indexOf('refreshTheme'),
+          greaterThan(harness.log.indexOf('forget')),
         );
+        expect(harness.log, contains('refreshTheme'));
       },
     );
 
-    testWidgets('Happy Path: Deve chamar signInGoogle uma vez', (
-      WidgetTester tester,
-    ) async {
-      // 1. Arrange
-      final harness = _Harness(idToken: null);
-      await _pumpApp(tester);
+    testWidgets(
+      'Happy Path: Deve usar o token guardado do login, sem pedir ao Google, enquanto ele for válido',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          partners: [_kRotaSul],
+          claims: _kShareClaims,
+          idToken: _jwtExpiringIn(const Duration(hours: 1)),
+          refreshedToken: null,
+        );
+        await _pumpApp(tester);
+        await _run(tester, harness.controller, harness.controller.loginGoogle);
+        harness.log.clear();
 
-      // 2. Act
-      await _run(
-        tester,
-        harness.controller,
-        harness.controller.switchOrganization,
-      );
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
 
-      // 3. Assert
-      expect(harness.authService.signInCalls, 1);
-    });
+        // 3. Assert
+        expect(harness.log, isNot(contains('refreshGoogleIdToken')));
+        expect(harness.log, contains('signOutOfPartner'));
+        expect(Get.currentRoute, Routes.PARTNER_PICKER);
+      },
+    );
 
     testWidgets(
-      'Edge Case: Deve buscar os parceiros da nova conta quando o login for concluído',
+      'Edge Case: Deve pedir um token novo quando o token guardado não for um JWT válido',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul], claims: _kShareClaims);
+        await _pumpApp(tester);
+        await _run(tester, harness.controller, harness.controller.loginGoogle);
+        harness.log.clear();
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(harness.log, contains('refreshGoogleIdToken'));
+        expect(harness.log, contains('signOutOfPartner'));
+      },
+    );
+
+    testWidgets(
+      'Edge Case: Deve pedir um token novo quando o token guardado estiver vencido',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          partners: [_kRotaSul],
+          claims: _kShareClaims,
+          idToken: _jwtExpiringIn(const Duration(hours: -1)),
+        );
+        await _pumpApp(tester);
+        await _run(tester, harness.controller, harness.controller.loginGoogle);
+        harness.log.clear();
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(harness.log, contains('refreshGoogleIdToken'));
+        expect(harness.log, contains('signOutOfPartner'));
+      },
+    );
+
+    testWidgets(
+      'Edge Case: Deve navegar para Routes.NO_ORGANIZATION quando a pessoa não tiver organização',
       (WidgetTester tester) async {
         // 1. Arrange
         final harness = _Harness();
@@ -974,16 +1125,72 @@ void main() {
         );
 
         // 3. Assert
-        expect(harness.directory.calls, 1);
         expect(Get.currentRoute, Routes.NO_ORGANIZATION);
+        expect(harness.controller.partnerChoices, isEmpty);
+        expect(harness.authService.logoutCalls, 0);
+      },
+    );
+
+    test(
+      'Edge Case: Não deve fazer nada quando chamado com isLoggingOut true (reentrância)',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul]);
+        harness.controller.isLoggingOut.value = true;
+
+        // 2. Act
+        await harness.controller.switchOrganization();
+
+        // 3. Assert
+        expect(harness.log, isEmpty);
+        expect(harness.directory.calls, 0);
+      },
+    );
+
+    test(
+      'Edge Case: Não deve fazer nada quando chamado com isLoading true (reentrância)',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul]);
+        harness.controller.isLoading.value = true;
+
+        // 2. Act
+        await harness.controller.switchOrganization();
+
+        // 3. Assert
+        expect(harness.log, isEmpty);
+        expect(harness.directory.calls, 0);
       },
     );
 
     testWidgets(
-      'Sad Path: Deve exibir erro de login e voltar isLoading a false quando signInGoogle lançar',
+      'Sad Path: Não deve mudar nada quando não houver token válido nem renovação',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(signInError: Exception('conta indisponível'));
+        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(harness.log, ['refreshGoogleIdToken']);
+        expect(harness.directory.calls, 0);
+        expect(harness.authService.logoutCalls, 0);
+        expect(harness.authService.signInCalls, 0);
+        expect(Get.currentRoute, _kHomeRoute);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve exibir snackbar quando não houver token válido nem renovação',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
         await _pumpApp(tester);
 
         // 2. Act
@@ -994,8 +1201,89 @@ void main() {
         );
 
         // 3. Assert
-        expect(titles, [_kLoginErrorTitle]);
-        expect(harness.controller.isLoading.value, isFalse);
+        expect(titles, ['Trocar de organização']);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve manter isLoggingOut false quando não houver token válido nem renovação',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(harness.controller.isLoggingOut.value, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Não deve parar o rastreamento nem esquecer o parceiro quando a busca de organizações lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(directoryError: Exception('sem rede'));
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(
+          harness.log.where(
+            (e) => e == 'stop' || e == 'signOutOfPartner' || e == 'forget',
+          ),
+          isEmpty,
+        );
+        expect(Get.currentRoute, _kHomeRoute);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve exibir snackbar de erro quando a busca de organizações lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(directoryError: Exception('sem rede'));
+        await _pumpApp(tester);
+
+        // 2. Act
+        final titles = await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(titles, ['Trocar de organização']);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve voltar isLoggingOut a false quando a busca de organizações lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(directoryError: Exception('sem rede'));
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(harness.controller.isLoggingOut.value, isFalse);
       },
     );
   });
