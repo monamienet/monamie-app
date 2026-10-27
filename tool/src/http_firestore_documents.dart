@@ -51,6 +51,31 @@ class HttpFirestoreDocuments implements FirestoreDocuments {
     );
     _checkStatus(response, 'write', projectId, path);
   }
+
+  @override
+  Future<void> update({
+    required String projectId,
+    required String path,
+    required Map<String, Object?> data,
+    required List<String> fieldPaths,
+    required String accessToken,
+  }) async {
+    final uri = _uri(projectId, path);
+    final response = await _client.patch(
+      uri.replace(
+        query: [
+          for (final field in fieldPaths)
+            'updateMask.fieldPaths=${Uri.encodeQueryComponent(field)}',
+        ].join('&'),
+      ),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'fields': encodeFirestoreFields(data)}),
+    );
+    _checkStatus(response, 'write', projectId, path);
+  }
 }
 
 String? _bearer(String? token) => token == null ? null : 'Bearer $token';

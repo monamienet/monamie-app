@@ -12,10 +12,13 @@ Map<String, Object?> optionsOf(String id) => {
   'storageBucket': 'monamienet-$id.firebasestorage.app',
 };
 
-Map<String, Object?> entry(String id, [Map<String, Object?>? options]) => {
-  'id': id,
-  'options': options ?? optionsOf(id),
-};
+/// A `resolvePartners` entry of partner [id]; `active` with complete
+/// options unless told otherwise.
+Map<String, Object?> entry(
+  String id, [
+  Map<String, Object?>? options,
+  String status = 'active',
+]) => {'id': id, 'status': status, 'options': options ?? optionsOf(id)};
 
 Map<String, Object?> response(List<Object?> partners) => {'partners': partners};
 
@@ -165,8 +168,8 @@ void main() {
       final data = response([
         'acme',
         null,
-        {'id': 'beta'},
-        {'id': 'gamma', 'options': 'api-key'},
+        {'id': 'beta', 'status': 'active'},
+        {'id': 'gamma', 'status': 'active', 'options': 'api-key'},
         entry('acme'),
       ]);
 
@@ -176,6 +179,76 @@ void main() {
       // 3. Assert
       expect(candidates.map((c) => c.id), ['acme']);
     });
+
+    const otherStatuses = [
+      'reserved',
+      'awaiting_billing',
+      'provisioning',
+      'failed',
+      'migrating',
+      'deleting',
+      'Active',
+    ];
+    for (final status in otherStatuses) {
+      test('Edge Case: a complete "$status" entry is skipped', () {
+        // 1. Arrange
+        final data = response([
+          entry('acme'),
+          entry('beta', optionsOf('beta'), status),
+        ]);
+
+        // 2. Act
+        final candidates = parsePartnerCandidates(data);
+
+        // 3. Assert
+        expect(candidates.map((c) => c.id), ['acme']);
+      });
+    }
+
+    test('Edge Case: an awaiting_billing entry without options is skipped', () {
+      // 1. Arrange
+      final data = response([
+        {'id': 'beta', 'status': 'awaiting_billing'},
+        entry('acme'),
+      ]);
+
+      // 2. Act
+      final candidates = parsePartnerCandidates(data);
+
+      // 3. Assert
+      expect(candidates.map((c) => c.id), ['acme']);
+    });
+
+    test('Sad Path: a complete entry without status is skipped', () {
+      // 1. Arrange
+      final data = response([
+        {'id': 'beta', 'options': optionsOf('beta')},
+        entry('acme'),
+      ]);
+
+      // 2. Act
+      final candidates = parsePartnerCandidates(data);
+
+      // 3. Assert
+      expect(candidates.map((c) => c.id), ['acme']);
+    });
+
+    final malformedStatuses = <Object?>[null, true, 1];
+    for (final status in malformedStatuses) {
+      test('Sad Path: a complete entry with status $status is skipped', () {
+        // 1. Arrange
+        final data = response([
+          {'id': 'beta', 'status': status, 'options': optionsOf('beta')},
+          entry('acme'),
+        ]);
+
+        // 2. Act
+        final candidates = parsePartnerCandidates(data);
+
+        // 3. Assert
+        expect(candidates.map((c) => c.id), ['acme']);
+      });
+    }
 
     test('Sad Path: null data gives no candidates', () {
       // 1. Arrange

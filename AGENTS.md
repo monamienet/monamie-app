@@ -12,7 +12,7 @@ MonAmie publishes a **single app** on its Google Developer Account: `org.monamie
 
 The app binds the partner **at runtime**, after Google sign-in, never at build time:
 1. Google sign-in goes through the central MonAmie project `monamienet-app` (the `[DEFAULT]` Firebase app). Only one OAuth client may exist per package + SHA-1, so it lives there, and every partner project allows the central web client under "Allowed client IDs".
-2. The central `resolvePartners` function (`central/functions/`) reads the user's groups and derives their partners from the group names (see below), keeping only those active in the central registry `partners/{id}`.
+2. The central `resolvePartners` function (`central/functions/`) reads the user's groups and derives their partners from the group names (see below), keeping those whose entry in the central registry `partners/{id}` has a `status` the app shows. The status follows a fixed lifecycle (`reserved` → `awaiting_billing`/`provisioning` → `active`, plus `failed`, `migrating` and `deleting`) written only by the central functions; its timed exits delete the partner's project and registry entry and retire the id forever in `retiredPartnerIds/{id}` (see `docs/en-us/white-label.md`, *Partner status*).
 3. The app binds the chosen partner (`PartnerSession`): its Firebase project (a named app `partner-<id>`), its root group and its branding, all together, and remembers the binding on the device (`SharedPreferences`) until sign-out or removal from the partner's groups.
 
 Where each value lives:

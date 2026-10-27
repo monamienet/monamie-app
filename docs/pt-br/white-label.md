@@ -18,7 +18,7 @@ A conta Google não diz nada sobre o parceiro. A ponte são os **grupos**: cada 
 ## 2. O que acontece no login
 
 1. **Login Google** no projeto central `monamienet-app`. A tela tem a marca MonAmie: ainda não se sabe o parceiro.
-2. **`resolvePartners`** (função central) pede ao gateway os grupos do usuário, transforma os nomes em ids de parceiro, mantém só os marcados como ativos no registro central `partners/{id}` e devolve as opções do Firebase de cada parceiro.
+2. **`resolvePartners`** (função central) pede ao gateway os grupos do usuário, transforma os nomes em ids de parceiro, mantém os que têm, no registro central `partners/{id}`, um status diferente de `reserved` e devolve o status de cada um e, para os que o app pode vincular, as opções do Firebase. O app só entra em parceiros `active` (seção 7).
 3. O app lê o **`config/branding`** (público) de cada parceiro. Sem parceiro, o usuário vê "sua conta não está vinculada a nenhuma organização"; com um, o app entra nele; com vários, um seletor mostra o nome e o ícone de cada um.
 4. **Ligação:** o projeto Firebase do parceiro (um app Firebase nomeado `partner-<id>`), o grupo raiz e a marca são ligados juntos. O app entra no projeto do parceiro com o mesmo ID token do Google (o parceiro aceita o cliente web central) e chama a `syncClaims` do parceiro, que decide o que o usuário pode ver, como antes.
 5. **Lembrança:** a ligação fica salva no aparelho. As próximas aberturas já começam com a marca do parceiro, sem consultar o projeto central.
@@ -32,7 +32,7 @@ O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa 
 | Tipo | Exemplos | Onde |
 |---|---|---|
 | Escolha do parceiro | nome (obrigatório); cores, logo, ícone (opcionais) | `config/branding` em `monamienet-<id>` |
-| Escolha da MonAmie | parceiro ativo | `partners/{id}` em `monamienet-app` |
+| Escolha da MonAmie | status do parceiro (seção 7) | `partners/{id}` em `monamienet-app` |
 | Derivado por regra | `monamienet-<id>`, `<id>00@monamienet.org`, id a partir do nome do grupo | código |
 | Buscado no build | `google-services.json` central | `android/app/google-services.json` (ignorado pelo git) |
 | Buscado em tempo de execução | opções do Firebase do parceiro | `resolvePartners`, depois o aparelho |
@@ -60,7 +60,14 @@ Feita para o `monamienet-app` em 21/10/2026; o registro está na issue #65. Fica
 3. Registre o app Android `org.monamienet.app` e um app web (`firebase apps:create`) e cadastre os SHA-1 da chave de debug, da chave de upload e, depois do primeiro envio à Play, da assinatura da Play (`firebase apps:android:sha:create`; veja `publicar-teste-interno.md`, passos C1–C3 e C8).
 4. Console → Authentication → ative o **Google** (nome público "MonAmie"). O Firebase cria o cliente OAuth web e já autoriza `localhost`, `localhost:5000` e o domínio `firebaseapp.com`; adicione só um domínio de hospedagem próprio.
 5. A organização não dá **nenhum papel** às contas de serviço padrão (política `iam.automaticIamGrantsForDefaultServiceAccounts`). Dê à conta da função (`<número do projeto>-compute@developer.gserviceaccount.com`) `roles/cloudbuild.builds.builder`, `roles/datastore.user` e `roles/logging.logWriter` no `monamienet-app`, e o papel customizado `firebaseAppConfigReader` **só em cada projeto de parceiro** (passo 8 do cadastro).
-6. Publique (no primeiro deploy, responda **1** dia à pergunta de limpeza de imagens):
+6. Crie a conta de serviço da `expirePartners` e ative o Cloud Scheduler (seção 7):
+   ```sh
+   gcloud services enable cloudscheduler.googleapis.com cloudresourcemanager.googleapis.com --project=monamienet-app
+   gcloud iam service-accounts create partner-expirer --project=monamienet-app --display-name="Partner expirer"
+   gcloud projects add-iam-policy-binding monamienet-app --role=roles/datastore.user \
+     --member=serviceAccount:partner-expirer@monamienet-app.iam.gserviceaccount.com
+   ```
+   Publique (no primeiro deploy, responda **1** dia à pergunta de limpeza de imagens):
    ```sh
    (cd central/functions && npm ci)
    (cd central && firebase deploy --project monamienet-app --only functions,firestore)
@@ -104,7 +111,7 @@ Os passos 1 a 9 cuidam dos três obrigatórios: projeto, grupo raiz e nome. O pa
     dart run tool/partner.dart check <id>
     dart run tool/partner.dart activate <id>
     ```
-    `activate <id> --deactivate` impede novos logins no parceiro.
+    O `activate` põe o status do parceiro em `active` (seção 7). Ele recusa um identificador aposentado e um parceiro em `awaiting_billing`, `migrating` ou `deleting`.
 
 A ferramenta usa as contas do seu `firebase login` e `gcloud auth login`. Ler o grupo raiz exige a função de administrador do Google Workspace **Leitor de grupos** na sua conta (admin.google.com → Conta → Funções de administrador); ser administrador da organização no Google Cloud não basta, e sem ela o `check` diz que o grupo não existe. A mesma mensagem enganosa aparece quando a `cloudidentity.googleapis.com` está desligada no `monamienet-app`, o projeto que paga as consultas de grupos da ferramenta.
 
@@ -113,3 +120,42 @@ A ferramenta usa as contas do seu `firebase login` e `gcloud auth login`. Ler o 
 - **Android:** `flutter build apk` (sem `--flavor`). O build busca o `google-services.json` central quando ele não existe; `REFRESH_FIREBASE_CONFIG=1` força a atualização.
 - **Web:** `dart run tool/partner.dart web` grava `web/central/firebase.json` (opções do Firebase central e o client id do Google); depois, `flutter build web`. Veja `rodar-web-localmente.md`.
 - **Funções:** a CI só publica o app. Depois de um merge que mude `central/`, publique de novo o projeto central (seção 4, passo 6); depois de um que mude `functions/` ou `firestore.rules`, publique de novo **todos** os projetos de parceiro (seção 5, passo 5).
+
+## 7. Status do parceiro
+
+A entrada de cada parceiro no registro central, `partners/{id}` em `monamienet-app`, tem um único campo `status`. Só as funções centrais o alteram, pela `transitionPartnerStatus` (`central/functions/partner_status.js`), que recusa qualquer transição fora do diagrama abaixo. A única exceção é o `tool/partner.dart activate`, o caminho manual da MonAmieNet: ele põe `active` num parceiro ainda sem status, ou em `provisioning`, `failed` ou `active`.
+
+```mermaid
+stateDiagram-v2
+    [*] --> reserved
+    reserved --> awaiting_billing: create [Standard]
+    reserved --> provisioning: create [Community]
+    awaiting_billing --> provisioning: billing linked
+    awaiting_billing --> [*]: after 7 days
+    provisioning --> active: done
+    provisioning --> failed: error
+    failed --> provisioning: retry
+    active --> migrating: upgrade to Standard
+    migrating --> active: copy finished
+    active --> deleting: owner deletes their account
+    deleting --> active: cancel
+    deleting --> [*]: after 30 days
+```
+
+| `status` | Significado | O app mostra |
+| :--- | :--- | :--- |
+| `reserved` | identificador reservado, criação começando (segundos) | nada ainda (`resolvePartners` não o devolve) |
+| `awaiting_billing` | só Standard: projeto criado, esperando o parceiro vincular o faturamento | *Ativar faturamento* |
+| `provisioning` | configurando Firestore, regras, funções e grupos | *Ativar faturamento*, parte do andamento |
+| `active` | funcionando | o mapa |
+| `migrating` | cópia de Community para Standard em andamento | o mapa, só leitura; compartilhamento pausado |
+| `failed` | uma etapa da criação falhou depois das novas tentativas; a MonAmieNet é avisada | *Falha na criação* |
+| `deleting` | o responsável excluiu a conta; `deleteAt` = pedido + 30 dias | *Em exclusão* |
+
+**O fim é um documento apagado, não um status.** Entrar em `awaiting_billing` ou `deleting` grava `deleteAt` (7 ou 30 dias depois); sair deles remove o campo. Todo dia às 03:00 (São Paulo), a função agendada `expirePartners` pega os parceiros cujo `deleteAt` já passou, apaga o projeto do Google Cloud, apaga `partners/{id}` e grava `retiredPartnerIds/{id}` só com `retiredAt`. O id de um projeto apagado nunca pode ser reutilizado, então um identificador aposentado é recusado para sempre: a criação confere isso na etapa do nome, e o `activate` também recusa. O Google ainda deixa um projeto apagado recuperável por até 30 dias antes de apagá-lo de vez.
+
+A `expirePartners` roda com uma conta de serviço própria, `partner-expirer@monamienet-app.iam.gserviceaccount.com`, com `roles/datastore.user` no `monamienet-app`. Ela só consegue apagar projetos onde tem `roles/resourcemanager.projectDeleter`, papel que a criação pelo app concede nos projetos que cria. Nunca dê esse papel num parceiro cadastrado à mão: esses não expiram.
+
+### Migração do campo `active` (uma vez só)
+
+Registros gravados antes do ciclo de vida têm `active: true` e nenhum `status`. Depois de publicar o `central/` com esta mudança, rode o `activate` para cada parceiro listado em `partners/` (console do Firebase → `monamienet-app` → Firestore): ele roda as verificações e regrava a entrada como `status: "active"`, removendo `active`. Até lá o parceiro some do login, então rode os dois passos em seguida.

@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineString } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
@@ -6,6 +7,12 @@ const { GoogleAuth } = require("google-auth-library");
 const { partnerIdsFromGroups } = require("./partner_groups");
 const { PartnerOptionsReader } = require("./partner_options");
 const { TtlCache } = require("./ttl_cache");
+const {
+  BINDABLE,
+  VISIBLE,
+  duePartnerIds,
+  retirePartner,
+} = require("./partner_status");
 
 admin.initializeApp();
 
@@ -32,13 +39,14 @@ const groupsByEmail = new TtlCache(10 * 60 * 1000);
  *
  * The user signed in to this central project with Google. Their partners
  * are derived from the names of their groups (`<id>NN@monamienet.org`),
- * kept only when active in the registry (`partners/{id}.active`), and
- * returned with the FirebaseOptions of each partner project for the
- * caller's platform. The partner's own syncClaims still decides what the
- * user may access there.
+ * kept when their registry entry `partners/{id}` has a status the app shows
+ * (every status but `reserved`), and returned with that status. Partners
+ * the app binds (`active`, `migrating`, `deleting`) also carry the
+ * FirebaseOptions of their project for the caller's platform. The partner's
+ * own syncClaims still decides what the user may access there.
  *
  * Request: `{platform: "android" | "web"}`.
- * Response: `{partners: [{id, options}]}`, sorted by id.
+ * Response: `{partners: [{id, status, options?}]}`, sorted by id.
  */
 exports.resolvePartners = onCall({ invoker: "public" }, async (request) => {
   if (!request.auth) {
@@ -56,12 +64,16 @@ exports.resolvePartners = onCall({ invoker: "public" }, async (request) => {
   const groups = await groupsByEmail.getOrCompute(email.toLowerCase(), () =>
     fetchUserGroups(bearerToken(request), email)
   );
-  const ids = await activePartnerIds(partnerIdsFromGroups(groups));
+  const entries = await visiblePartners(partnerIdsFromGroups(groups));
 
   const partners = [];
-  for (const id of ids) {
+  for (const { id, status } of entries) {
+    if (!BINDABLE.includes(status)) {
+      partners.push({ id, status });
+      continue;
+    }
     try {
-      partners.push({ id, options: await options.get(id, platform) });
+      partners.push({ id, status, options: await options.get(id, platform) });
     } catch (error) {
       // One misconfigured partner must not block the user's other partners.
       logger.error(`[resolvePartners] Skipping ${id}: ${error.message}`);
@@ -97,9 +109,70 @@ async function fetchUserGroups(idToken, email) {
   return Array.isArray(body?.groups) ? body.groups : [];
 }
 
-async function activePartnerIds(ids) {
+async function visiblePartners(ids) {
   if (ids.length === 0) return [];
   const db = admin.firestore();
   const docs = await db.getAll(...ids.map((id) => db.doc(`partners/${id}`)));
-  return docs.filter((doc) => doc.get("active") === true).map((doc) => doc.id);
+  return docs
+    .filter((doc) => VISIBLE.includes(doc.get("status")))
+    .map((doc) => ({ id: doc.id, status: doc.get("status") }));
+}
+
+// Runs as its own service account: it is the only identity allowed to
+// delete partner projects (roles/resourcemanager.projectDeleter on each).
+const EXPIRER_SERVICE_ACCOUNT =
+  "partner-expirer@monamienet-app.iam.gserviceaccount.com";
+
+const cloudPlatform = new GoogleAuth({
+  scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+});
+
+/**
+ * Retires partners whose timed exit is due: 7 days in `awaiting_billing`
+ * (billing never linked) or 30 days in `deleting` (the grace period ended).
+ * Each one loses its project and its registry entry, and its id is retired.
+ */
+exports.expirePartners = onSchedule(
+  {
+    schedule: "every day 03:00",
+    timeZone: "America/Sao_Paulo",
+    serviceAccount: EXPIRER_SERVICE_ACCOUNT,
+  },
+  async () => {
+    const db = admin.firestore();
+    const now = new Date();
+    const snapshot = await db
+      .collection("partners")
+      .where("deleteAt", "<=", now)
+      .get();
+    const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    for (const id of duePartnerIds(docs, now)) {
+      try {
+        await retirePartner(db, id, deletePartnerProject, { now });
+        logger.info(`[expirePartners] Retired ${id}.`);
+      } catch (error) {
+        // The next run retries; one partner must not block the others.
+        logger.error(`[expirePartners] Could not retire ${id}: ${error.message}`);
+      }
+    }
+  }
+);
+
+/**
+ * Deletes partner `id`'s Google Cloud project. Google keeps it restorable
+ * for up to 30 days, then erases it with all its data; its id can never be
+ * used again. A project already waiting for deletion counts as deleted.
+ */
+async function deletePartnerProject(id) {
+  const url = `https://cloudresourcemanager.googleapis.com/v3/projects/monamienet-${id}`;
+  const client = await cloudPlatform.getClient();
+  try {
+    await client.request({ url, method: "DELETE" });
+  } catch (error) {
+    const project = await client
+      .request({ url })
+      .then((response) => response.data)
+      .catch(() => null);
+    if (project?.state !== "DELETE_REQUESTED") throw error;
+  }
 }

@@ -65,6 +65,15 @@ class FakeFirestoreDocuments implements FirestoreDocuments {
     required Map<String, Object?> data,
     required String accessToken,
   }) => throw UnimplementedError('checkPartner must not write');
+
+  @override
+  Future<void> update({
+    required String projectId,
+    required String path,
+    required Map<String, Object?> data,
+    required List<String> fieldPaths,
+    required String accessToken,
+  }) => throw UnimplementedError('checkPartner must not write');
 }
 
 GroupMember subgroup(String email) => GroupMember(email: email, isGroup: true);

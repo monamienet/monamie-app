@@ -10,6 +10,7 @@ class PartnerCandidate {
 
 /// Finds the partners of the user signed in to the central project.
 abstract interface class PartnerDirectory {
-  /// The user's active partners, sorted by id; empty when none.
+  /// The user's partners whose status is `active`, sorted by id; empty
+  /// when none.
   Future<List<PartnerCandidate>> partnersOfSignedInUser();
 }

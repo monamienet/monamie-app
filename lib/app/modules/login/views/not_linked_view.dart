@@ -5,7 +5,8 @@ import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// Shown, in the MonAmie brand, when the signed-in Google account belongs to
-/// no active partner: it is in no `<id>NN@monamienet.org` group.
+/// no partner with status `active`: it is in no `<id>NN@monamienet.org`
+/// group, or its partners are not active.
 class NotLinkedView extends StatelessWidget {
   const NotLinkedView({super.key});
 

@@ -413,4 +413,155 @@ void main() {
       await expectLater(writing, throwsA(isA<PartnerToolException>()));
     });
   });
+
+  group('HttpFirestoreDocuments.update - Unit Test Suite', () {
+    test(
+      'Happy Path: sends PATCH to the document URL with the token',
+      () async {
+        // 1. Arrange
+        final requests = <http.Request>[];
+        final documents = HttpFirestoreDocuments(client: answering(requests));
+
+        // 2. Act
+        await documents.update(
+          projectId: 'monamienet-acme',
+          path: 'config/branding',
+          data: {'name': 'Acme'},
+          fieldPaths: const ['name'],
+          accessToken: 'token-123',
+        );
+
+        // 3. Assert
+        final request = requests.single;
+        expect(
+          [
+            request.method,
+            request.url.toString().split('?').first,
+            request.headers['Authorization'],
+          ],
+          ['PATCH', Uri.parse(documentUrl).toString(), 'Bearer token-123'],
+        );
+      },
+    );
+
+    test(
+      'Happy Path: sends one updateMask.fieldPaths per field, in order',
+      () async {
+        // 1. Arrange
+        final requests = <http.Request>[];
+        final documents = HttpFirestoreDocuments(client: answering(requests));
+
+        // 2. Act
+        await documents.update(
+          projectId: 'monamienet-acme',
+          path: 'config/branding',
+          data: {'status': 'active', 'active': true},
+          fieldPaths: const ['status', 'updatedAt', 'active', 'deleteAt'],
+          accessToken: 'token-123',
+        );
+
+        // 3. Assert
+        expect(requests.single.url.queryParametersAll, {
+          'updateMask.fieldPaths': [
+            'status',
+            'updatedAt',
+            'active',
+            'deleteAt',
+          ],
+        });
+      },
+    );
+
+    test('Happy Path: the body holds the encoded fields', () async {
+      // 1. Arrange
+      final requests = <http.Request>[];
+      final documents = HttpFirestoreDocuments(client: answering(requests));
+
+      // 2. Act
+      await documents.update(
+        projectId: 'monamienet-acme',
+        path: 'config/branding',
+        data: {'status': 'active', 'updatedAt': DateTime.utc(2026, 10, 26, 12)},
+        fieldPaths: const ['status', 'updatedAt'],
+        accessToken: 'token-123',
+      );
+
+      // 3. Assert
+      expect(jsonDecode(requests.single.body), {
+        'fields': {
+          'status': {'stringValue': 'active'},
+          'updatedAt': {'timestampValue': '2026-10-26T12:00:00.000Z'},
+        },
+      });
+    });
+
+    test(
+      'Edge Case: a masked field absent from data is not in the body',
+      () async {
+        // 1. Arrange
+        final requests = <http.Request>[];
+        final documents = HttpFirestoreDocuments(client: answering(requests));
+
+        // 2. Act
+        await documents.update(
+          projectId: 'monamienet-acme',
+          path: 'config/branding',
+          data: {'status': 'active'},
+          fieldPaths: const ['status', 'deleteAt'],
+          accessToken: 'token-123',
+        );
+
+        // 3. Assert
+        final body = jsonDecode(requests.single.body) as Map;
+        expect((body['fields'] as Map).keys, ['status']);
+      },
+    );
+
+    test('Sad Path: an error status throws a PartnerToolException', () async {
+      // 1. Arrange
+      final documents = HttpFirestoreDocuments(
+        client: answering([], status: 403, body: {'error': {}}),
+      );
+
+      // 2. Act
+      final updating = documents.update(
+        projectId: 'monamienet-acme',
+        path: 'config/branding',
+        data: {'status': 'active'},
+        fieldPaths: const ['status'],
+        accessToken: 'token-123',
+      );
+
+      // 3. Assert
+      await expectLater(
+        updating,
+        throwsA(
+          isA<PartnerToolException>().having(
+            (e) => e.message,
+            'message',
+            contains('HTTP 403'),
+          ),
+        ),
+      );
+    });
+
+    test('Sad Path: a missing document (404) on update throws', () async {
+      // 1. Arrange
+      final documents = HttpFirestoreDocuments(
+        client: answering([], status: 404, body: {'error': {}}),
+      );
+
+      // 2. Act
+      final updating = documents.update(
+        projectId: 'monamienet-acme',
+        path: 'config/branding',
+        data: {'status': 'active'},
+        fieldPaths: const ['status'],
+        accessToken: 'token-123',
+      );
+
+      // 3. Assert
+      await expectLater(updating, throwsA(isA<PartnerToolException>()));
+    });
+  });
 }

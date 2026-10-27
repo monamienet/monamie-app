@@ -18,7 +18,7 @@ A Google account says nothing about a partner. The bridge is the **groups**: eve
 ## 2. What happens when a user signs in
 
 1. **Google sign-in** to the central project `monamienet-app`. The screen is MonAmie-branded: no partner is known yet.
-2. **`resolvePartners`** (central function) asks the groups gateway for the user's groups, turns the names into partner ids, keeps the ones marked active in the central registry `partners/{id}`, and returns each partner's Firebase options.
+2. **`resolvePartners`** (central function) asks the groups gateway for the user's groups, turns the names into partner ids, keeps the ones whose status in the central registry `partners/{id}` is not `reserved`, and returns each one's status and, for the ones it can bind, its Firebase options. The app enters only `active` partners (section 7).
 3. The app reads each partner's **`config/branding`** (public). With no partner the user sees "your account is not linked to any organization"; with one, the app enters it; with several, a picker shows each partner's name and icon.
 4. **Binding:** the partner's Firebase project (a named Firebase app `partner-<id>`), its root group and its branding are bound together. The app signs in to the partner project with the same Google ID token (the partner allows the central web client) and runs the partner's `syncClaims`, which decides what the user may see, exactly as before.
 5. **Remembering:** the binding is saved on the device. Next launches open directly in the partner's brand, without the central project.
@@ -32,7 +32,7 @@ The launcher icon, the app name on the home screen, the Play listing and the nat
 | Kind | Examples | Where |
 |---|---|---|
 | Partner's choice | name (required); colors, logo, icon (optional) | `config/branding` in `monamienet-<id>` |
-| MonAmie's choice | partner is active | `partners/{id}` in `monamienet-app` |
+| MonAmie's choice | partner status (section 7) | `partners/{id}` in `monamienet-app` |
 | Derived by rule | `monamienet-<id>`, `<id>00@monamienet.org`, id from a group name | code |
 | Fetched at build time | central `google-services.json` | `android/app/google-services.json` (gitignored) |
 | Fetched at runtime | partner's Firebase options | `resolvePartners`, then the device |
@@ -60,7 +60,14 @@ Done for `monamienet-app` on 2026-10-21; the log is in issue #65. Kept here to r
 3. Register the Android app `org.monamienet.app` and one web app (`firebase apps:create`), and add the SHA-1s of the debug key, the upload key and, after the first Play upload, Play App Signing (`firebase apps:android:sha:create`; see `publish-internal-testing.md`, steps C1–C3 and C8).
 4. Console → Authentication → enable **Google** (public name "MonAmie"). Firebase creates the web OAuth client and already authorizes `localhost`, `localhost:5000` and the `firebaseapp.com` domain; add only a custom hosting domain.
 5. The organization gives default service accounts **no roles** (policy `iam.automaticIamGrantsForDefaultServiceAccounts`). Grant the function's account (`<project number>-compute@developer.gserviceaccount.com`) `roles/cloudbuild.builds.builder`, `roles/datastore.user` and `roles/logging.logWriter` on `monamienet-app`, and the custom role `firebaseAppConfigReader` on **each partner project only** (onboarding step 8).
-6. Deploy (answer **1** day to the container image cleanup question on the first deploy):
+6. Create the service account of `expirePartners` and enable Cloud Scheduler (section 7):
+   ```sh
+   gcloud services enable cloudscheduler.googleapis.com cloudresourcemanager.googleapis.com --project=monamienet-app
+   gcloud iam service-accounts create partner-expirer --project=monamienet-app --display-name="Partner expirer"
+   gcloud projects add-iam-policy-binding monamienet-app --role=roles/datastore.user \
+     --member=serviceAccount:partner-expirer@monamienet-app.iam.gserviceaccount.com
+   ```
+   Deploy (answer **1** day to the container image cleanup question on the first deploy):
    ```sh
    (cd central/functions && npm ci)
    (cd central && firebase deploy --project monamienet-app --only functions,firestore)
@@ -104,7 +111,7 @@ Steps 1–9 cover the three required things: project, root group and name. Step 
     dart run tool/partner.dart check <id>
     dart run tool/partner.dart activate <id>
     ```
-    `activate <id> --deactivate` stops new sign-ins to a partner.
+    `activate` sets the partner's status to `active` (section 7). It refuses a retired id and a partner in `awaiting_billing`, `migrating` or `deleting`.
 
 The tool uses your `firebase login` and `gcloud auth login` accounts. Reading the root group needs the Google Workspace admin role **Groups Reader** on your account (admin.google.com → Account → Admin roles); being an organization admin in Google Cloud does not cover it, and without it `check` says the group does not exist. The same misleading message appears when `cloudidentity.googleapis.com` is disabled in `monamienet-app`, the project that pays for the tool's group lookups.
 
@@ -113,3 +120,42 @@ The tool uses your `firebase login` and `gcloud auth login` accounts. Reading th
 - **Android:** `flutter build apk` (no `--flavor`). The build fetches the central `google-services.json` when it is missing; `REFRESH_FIREBASE_CONFIG=1` refreshes it.
 - **Web:** `dart run tool/partner.dart web` writes `web/central/firebase.json` (central Firebase options and the Google client id), then `flutter build web`. See `run-web-locally.md`.
 - **Functions:** CI only ships the app. After a merge that changes `central/`, redeploy the central project (section 4, step 6); after one that changes `functions/` or `firestore.rules`, redeploy **every** partner project (section 5, step 5).
+
+## 7. Partner status
+
+Each partner's entry in the central registry, `partners/{id}` in `monamienet-app`, has one `status` field. Only the central functions change it, through `transitionPartnerStatus` (`central/functions/partner_status.js`), which refuses any transition not drawn below. The one exception is `tool/partner.dart activate`, MonAmieNet's manual path: it sets `active` on a partner with no status yet, or in `provisioning`, `failed` or `active`.
+
+```mermaid
+stateDiagram-v2
+    [*] --> reserved
+    reserved --> awaiting_billing: create [Standard]
+    reserved --> provisioning: create [Community]
+    awaiting_billing --> provisioning: billing linked
+    awaiting_billing --> [*]: after 7 days
+    provisioning --> active: done
+    provisioning --> failed: error
+    failed --> provisioning: retry
+    active --> migrating: upgrade to Standard
+    migrating --> active: copy finished
+    active --> deleting: owner deletes their account
+    deleting --> active: cancel
+    deleting --> [*]: after 30 days
+```
+
+| `status` | Meaning | The app shows |
+| :--- | :--- | :--- |
+| `reserved` | id reserved, creation starting (seconds) | nothing yet (`resolvePartners` leaves it out) |
+| `awaiting_billing` | Standard only: project created, waiting for the partner to link billing | *Ativar faturamento* |
+| `provisioning` | setting up Firestore, rules, functions and groups | *Ativar faturamento*, progress part |
+| `active` | working | the map |
+| `migrating` | Community → Standard copy in progress | the map, read-only; sharing paused |
+| `failed` | a provisioning step failed after retries; MonAmieNet is alerted | *Falha na criação* |
+| `deleting` | the owner deleted their account; `deleteAt` = request + 30 days | *Em exclusão* |
+
+**The end is a deleted document, not a status.** Entering `awaiting_billing` or `deleting` sets `deleteAt` (7 or 30 days later); leaving them removes it. Every day at 03:00 (São Paulo) the scheduled function `expirePartners` takes the partners whose `deleteAt` has passed, deletes their Google Cloud project, deletes `partners/{id}` and writes `retiredPartnerIds/{id}` with only `retiredAt`. A deleted project's id can never be reused, so a retired id is refused for good: creation checks it at the name step, and `activate` refuses it too. Google keeps a deleted project restorable for up to 30 more days before erasing it.
+
+`expirePartners` runs as its own service account, `partner-expirer@monamienet-app.iam.gserviceaccount.com`, with `roles/datastore.user` on `monamienet-app`. It can only delete projects where it holds `roles/resourcemanager.projectDeleter`, granted by the in-app creation on the projects it creates. Never grant it on a partner onboarded by hand: those are not meant to expire.
+
+### Migrating from the `active` flag (one-off)
+
+Registries written before the lifecycle have `active: true` and no `status`. After deploying `central/` with this change, run `activate` for every partner listed in `partners/` (Firebase console → `monamienet-app` → Firestore): it runs the checks and rewrites the entry as `status: "active"`, removing `active`. Until then the partner is hidden from sign-in, so run both back to back.
