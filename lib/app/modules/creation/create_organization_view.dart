@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:monamie_app/app/config/partner/monamie_brand.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
 import 'package:monamie_app/app/config/partner/partner_icon.dart';
+import 'package:monamie_app/app/config/partner/partner_theme.dart';
 
 import 'create_organization_controller.dart';
 import 'id_input_formatter.dart';
@@ -504,70 +505,256 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     theme: c.pickedTheme,
   );
 
-  Widget _themeStep() => ListView(
+  /// *Escolha um tema* (`CriarTema.dc.html`): title, a preview of the app
+  /// in the picked theme, the eight themes in a grid of chips with their
+  /// names, and the button at the bottom.
+  Widget _themeStep() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      _title(
-        'Escolha um tema',
-        'Cada tema já traz os tons do app, com contraste garantido para textos e botões.',
-      ),
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: c.pickedTheme.dark,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
+      Expanded(
+        child: ListView(
           children: [
-            PartnerIcon(partner: _preview, size: 44),
-            const SizedBox(width: 12),
-            Text(
-              _preview.name,
-              style: TextStyle(
-                color: c.pickedTheme.onDark,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
+            _title(
+              'Escolha um tema',
+              'Cada tema já traz os tons do app, com contraste garantido para textos e botões.',
+            ),
+            _themePreview(),
+            const SizedBox(height: 20),
+            _themeGrid(),
+          ],
+        ),
+      ),
+      const SizedBox(height: 20),
+      _button('Revisar e criar', () => setState(() => _step = 2)),
+    ],
+  );
+
+  /// The app in the picked theme: its bar with the organization's tile and
+  /// name, a map with a trail, a person, the "Compartilhando" pill and the
+  /// locate button.
+  Widget _themePreview() {
+    final theme = c.pickedTheme;
+    final name = _preview.name;
+    return Semantics(
+      label: 'Prévia do app com o tema',
+      child: Container(
+        height: 220,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _line),
+        ),
+        child: Column(
+          children: [
+            Container(
+              height: 52,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              color: theme.dark,
+              child: Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: theme.primary,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Text(
+                      name.characters.first.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: theme.onPrimary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: theme.onDark,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Equipe Norte',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: theme.onDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Container(
+                color: const Color(0xFFEEF0EB),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _PreviewMapPainter(theme.primary),
+                      ),
+                    ),
+                    Positioned(
+                      left: 182,
+                      top: 80,
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: theme.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Text(
+                          'AL',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: theme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 12,
+                      bottom: 12,
+                      child: Container(
+                        height: 32,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: theme.primary,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          'Compartilhando',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: theme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 12,
+                      bottom: 12,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: theme.light,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.my_location,
+                          size: 20,
+                          color: theme.dark,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
-      const SizedBox(height: 20),
-      GridView.count(
-        crossAxisCount: 4,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
+    );
+  }
+
+  /// Four chips per row, each a swatch of the theme's color with its dark
+  /// shade as a band, and the theme's name under it.
+  Widget _themeGrid() {
+    final themes = c.themes.toList();
+    return LayoutBuilder(
+      builder: (context, box) {
+        const columns = 4;
+        const gap = 10.0;
+        final chip = (box.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: 12,
+          children: [
+            for (final theme in themes)
+              SizedBox(
+                width: chip,
+                child: _themeChip(theme, theme.id == c.themeId.value),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _themeChip(PartnerTheme theme, bool selected) => Semantics(
+    label: theme.name,
+    selected: selected,
+    button: true,
+    excludeSemantics: true,
+    child: InkWell(
+      onTap: () => c.themeId.value = theme.id,
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
         children: [
-          for (final theme in c.themes)
-            Semantics(
-              label: theme.name,
-              selected: theme.id == c.themeId.value,
-              button: true,
-              child: InkWell(
-                onTap: () => c.themeId.value = theme.id,
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.primary,
-                    borderRadius: BorderRadius.circular(14),
-                    border: theme.id == c.themeId.value
-                        ? Border.all(color: _navy, width: 2.5)
-                        : null,
+          Container(
+            height: 56,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              // A cream ring, then an ink one, outside the chip.
+              boxShadow: selected
+                  ? const [
+                      BoxShadow(color: MonAmieBrand.cream, spreadRadius: 2),
+                      BoxShadow(color: _navy, spreadRadius: 4),
+                    ]
+                  : null,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                fit: StackFit.expand,
+                alignment: Alignment.center,
+                children: [
+                  Positioned.fill(child: ColoredBox(color: theme.primary)),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 16,
+                    child: ColoredBox(color: theme.dark),
                   ),
-                  child: theme.id == c.themeId.value
-                      ? Icon(Icons.check, color: theme.onPrimary)
-                      : null,
-                ),
+                  if (selected)
+                    const Icon(Icons.check, size: 22, color: Colors.white),
+                ],
               ),
             ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            theme.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              height: 16 / 12,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+              color: selected ? _navy : _muted,
+            ),
+          ),
         ],
       ),
-      const SizedBox(height: 8),
-      Text(c.pickedTheme.name, style: const TextStyle(color: _muted)),
-      const SizedBox(height: 24),
-      _button('Continuar', () => setState(() => _step = 2)),
-    ],
+    ),
   );
 
   Widget _planCard(
@@ -840,4 +1027,47 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
       ),
     );
   }
+}
+
+/// The roads and the trail of the theme preview, drawn on the canvas' 340 by
+/// 168 grid and stretched to the preview's map area.
+class _PreviewMapPainter extends CustomPainter {
+  const _PreviewMapPainter(this.trail);
+
+  final Color trail;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 340, size.height / 168);
+    final road = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10;
+    final roads = Path()
+      ..moveTo(0, 118)
+      ..lineTo(340, 96)
+      ..moveTo(70, 0)
+      ..lineTo(110, 168)
+      ..moveTo(220, 0)
+      ..lineTo(190, 168)
+      ..moveTo(0, 40)
+      ..lineTo(340, 58);
+    canvas.drawPath(roads, road);
+    canvas.drawPath(
+      Path()
+        ..moveTo(86, 70)
+        ..lineTo(150, 63)
+        ..lineTo(204, 60)
+        ..lineTo(196, 100),
+      Paint()
+        ..color = trail
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PreviewMapPainter old) => old.trail != trail;
 }
