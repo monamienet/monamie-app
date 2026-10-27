@@ -26,7 +26,11 @@ void main() {
   group('parsePartnerCandidates - Unit Test Suite', () {
     test('Happy Path: returns every valid partner sorted by id', () {
       // 1. Arrange
-      final data = response([entry('zeta'), entry('aquariustur'), entry('mar')]);
+      final data = response([
+        entry('zeta'),
+        entry('aquariustur'),
+        entry('mar'),
+      ]);
 
       // 2. Act
       final candidates = parsePartnerCandidates(data);

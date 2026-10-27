@@ -10,7 +10,7 @@ import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// The panel under the map: the sharing switch for people who share, the
-/// observed team for people who watch, and a note for people who only share.
+/// observed team for people who watch.
 class HomeSheet extends StatelessWidget {
   const HomeSheet({super.key});
 
@@ -26,9 +26,7 @@ class HomeSheet extends StatelessWidget {
         canWatch: _groups.canWatch,
         isWeb: kIsWeb,
       );
-      if (!layout.showShareCard &&
-          !layout.showTeam &&
-          !layout.showFieldOnlyNote) {
+      if (!layout.showShareCard && !layout.showTeam) {
         return const SizedBox.shrink();
       }
       return Material(
@@ -57,10 +55,6 @@ class HomeSheet extends StatelessWidget {
                   const ShareCard(),
                 ],
                 if (layout.showTeam) ..._team(),
-                if (layout.showFieldOnlyNote) ...[
-                  const SizedBox(height: 12),
-                  _fieldOnlyNote(),
-                ],
               ],
             ),
           ),
@@ -145,39 +139,6 @@ class HomeSheet extends StatelessWidget {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _fieldOnlyNote() {
-    final teams = _groups.shareTeams.map((team) => team.name).join(', ');
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: HomeColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 1),
-            child: Icon(Icons.info_outline, size: 18, color: HomeColors.muted),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Você compartilha sua localização com $teams. Quem acompanha a '
-              'equipe vê você no mapa; daqui você vê só a sua posição.',
-              style: const TextStyle(
-                color: HomeColors.muted,
-                fontSize: 14,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
         ],
       ),
     );

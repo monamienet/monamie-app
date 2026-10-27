@@ -1,11 +1,7 @@
 /// What the home screen shows to a person, decided by their capabilities in
 /// the bound partner.
 class HomeLayout {
-  const HomeLayout({
-    required this.showShareCard,
-    required this.showTeam,
-    required this.showFieldOnlyNote,
-  });
+  const HomeLayout({required this.showShareCard, required this.showTeam});
 
   /// Whether the card that turns location sharing on and off is shown.
   final bool showShareCard;
@@ -13,20 +9,13 @@ class HomeLayout {
   /// Whether the team's people are listed under the map.
   final bool showTeam;
 
-  /// Whether the note says who sees a person who only shares.
-  final bool showFieldOnlyNote;
-
   /// [canShare] and [canWatch] are the person's capabilities; background
   /// sharing needs a phone, so [isWeb] hides the card.
   factory HomeLayout.of({
     required bool canShare,
     required bool canWatch,
     required bool isWeb,
-  }) => HomeLayout(
-    showShareCard: canShare && !isWeb,
-    showTeam: canWatch,
-    showFieldOnlyNote: canShare && !canWatch,
-  );
+  }) => HomeLayout(showShareCard: canShare && !isWeb, showTeam: canWatch);
 }
 
 /// The text of the team chip under the app bar.

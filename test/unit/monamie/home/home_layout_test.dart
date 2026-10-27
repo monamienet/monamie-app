@@ -3,35 +3,11 @@ import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 
 void main() {
   group('HomeLayout.of - Unit Test Suite', () {
-    // (label, canShare, canWatch, isWeb, showShareCard, showTeam, showNote)
-    final cases = <(String, bool, bool, bool, bool, bool, bool)>[
-      (
-        'Happy Path: share only on a phone',
-        true,
-        false,
-        false,
-        true,
-        false,
-        true,
-      ),
-      (
-        'Happy Path: watch only on a phone',
-        false,
-        true,
-        false,
-        false,
-        true,
-        false,
-      ),
-      (
-        'Happy Path: share and watch on a phone',
-        true,
-        true,
-        false,
-        true,
-        true,
-        false,
-      ),
+    // (label, canShare, canWatch, isWeb, showShareCard, showTeam)
+    final cases = <(String, bool, bool, bool, bool, bool)>[
+      ('Happy Path: share only on a phone', true, false, false, true, false),
+      ('Happy Path: watch only on a phone', false, true, false, false, true),
+      ('Happy Path: share and watch on a phone', true, true, false, true, true),
       (
         'Edge Case: share only on the web has no card but keeps the note',
         true,
@@ -39,17 +15,8 @@ void main() {
         true,
         false,
         false,
-        true,
       ),
-      (
-        'Edge Case: watch only on the web',
-        false,
-        true,
-        true,
-        false,
-        true,
-        false,
-      ),
+      ('Edge Case: watch only on the web', false, true, true, false, true),
       (
         'Edge Case: share and watch on the web has no card',
         true,
@@ -57,11 +24,9 @@ void main() {
         true,
         false,
         true,
-        false,
       ),
       (
         'Sad Path: no capabilities show nothing',
-        false,
         false,
         false,
         false,
@@ -75,10 +40,9 @@ void main() {
         true,
         false,
         false,
-        false,
       ),
     ];
-    for (final (label, share, watch, web, card, team, note) in cases) {
+    for (final (label, share, watch, web, card, team) in cases) {
       test(label, () {
         // 1. Arrange
         final canShare = share;
@@ -92,10 +56,7 @@ void main() {
         );
 
         // 3. Assert
-        expect(
-          (layout.showShareCard, layout.showTeam, layout.showFieldOnlyNote),
-          (card, team, note),
-        );
+        expect((layout.showShareCard, layout.showTeam), (card, team));
       });
     }
   });
