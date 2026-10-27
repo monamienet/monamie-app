@@ -267,7 +267,7 @@ class GoogleGroupsController extends GetxController {
         final rawName = (m['name'] as String?)?.trim();
         final name = (rawName != null && rawName.isNotEmpty)
             ? rawName
-            : (email.isNotEmpty ? email.split('@').first : 'Sem nome');
+            : (email.isNotEmpty ? email : 'Sem nome');
         return GoogleGroupMember(name: name, email: email);
       }).toList();
     } catch (e) {
