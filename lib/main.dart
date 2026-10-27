@@ -43,7 +43,7 @@ Future<void> main() async {
   runApp(
     GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: Partner.current?.displayName ?? MonAmieBrand.name,
+      title: Partner.current?.name ?? MonAmieBrand.name,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light,

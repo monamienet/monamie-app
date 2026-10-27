@@ -25,7 +25,7 @@ A conta Google não diz nada sobre o parceiro. A ponte são os **grupos**: cada 
 
 O app **esquece** o parceiro quando a pessoa sai, quando uma atualização de grupos não encontra mais nenhum grupo do parceiro, ou quando a `syncClaims` não devolve nenhum papel.
 
-O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa são sempre MonAmie: o Android os lê do pacote instalado.
+O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa são sempre MonAmie: o Android os lê do pacote instalado. Os dois nomes nunca aparecem lado a lado: as telas da própria MonAmie dizem "MonAmie" e, depois que o parceiro é vinculado, o app mostra só o nome dele ("AquariusTur", nunca "MonAmie AquariusTur").
 
 ## 3. Onde cada valor mora
 

@@ -15,7 +15,7 @@ class LoginView extends GetView<LoginController> {
   AppBar _appBar() {
     return AppBar(
       title: Text(
-        Partner.current?.displayName ?? MonAmieBrand.name,
+        Partner.current?.name ?? MonAmieBrand.name,
         style: TextStyle(
           color: AppColors.onPrimaryDark,
           fontWeight: FontWeight.bold,

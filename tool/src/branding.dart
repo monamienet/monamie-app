@@ -27,7 +27,8 @@ Map<String, Object?> buildBrandingDocument({
   }
   if (trimmedName.toLowerCase().startsWith('monamie ')) {
     throw PartnerToolException(
-      "Pass the name without the 'MonAmie ' prefix: the app adds it.",
+      "The partner name must not start with 'MonAmie ': it would read as "
+      "MonAmie's own brand, and the app never shows the two names together.",
     );
   }
   return {

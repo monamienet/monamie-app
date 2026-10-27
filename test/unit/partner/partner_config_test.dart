@@ -298,7 +298,7 @@ void main() {
       ]);
     });
 
-    test('Happy Path: derived names use the id and the MonAmie prefix', () {
+    test('Happy Path: derived names use the id', () {
       // 1. Arrange
       final data = fullBranding();
 
@@ -307,12 +307,8 @@ void main() {
 
       // 3. Assert
       expect(
-        [config.displayName, config.rootGroupEmail, config.firebaseProjectId],
-        [
-          'MonAmie AquariusTur',
-          'aquariustur00@monamienet.org',
-          'monamienet-aquariustur',
-        ],
+        [config.rootGroupEmail, config.firebaseProjectId],
+        ['aquariustur00@monamienet.org', 'monamienet-aquariustur'],
       );
     });
 

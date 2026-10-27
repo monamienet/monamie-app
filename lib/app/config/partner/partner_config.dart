@@ -93,7 +93,8 @@ class PartnerConfig {
   /// Permanent partner id: `<id>` in `monamienet-<id>` and `<id>NN@...`.
   final String id;
 
-  /// The partner's own name, without the `MonAmie ` prefix.
+  /// The partner's own name. Users see it alone: the MonAmie name and a
+  /// partner's name are never shown side by side.
   final String name;
 
   /// `colors.primary`: the brand color, or `null` for MonAmie's colors.
@@ -107,9 +108,6 @@ class PartnerConfig {
 
   /// `iconSvg`: the logo without text, or `null` to show [name]'s initial.
   final String? iconSvg;
-
-  /// The name users see.
-  String get displayName => 'MonAmie $name';
 
   /// The partner's root group: `<id>00@monamienet.org`.
   String get rootGroupEmail => rootGroupEmailFor(id);

@@ -25,7 +25,7 @@ A Google account says nothing about a partner. The bridge is the **groups**: eve
 
 The app **forgets** the partner on sign-out, when a group refresh finds no group of the partner anymore, or when `syncClaims` returns no roles.
 
-The launcher icon, the app name on the home screen, the Play listing and the native splash are always MonAmie: Android reads them from the installed package.
+The launcher icon, the app name on the home screen, the Play listing and the native splash are always MonAmie: Android reads them from the installed package. The two names are never shown side by side: MonAmie's own screens say "MonAmie", and once a partner is bound the app shows only the partner's name ("AquariusTur", never "MonAmie AquariusTur").
 
 ## 3. Where each value lives
 

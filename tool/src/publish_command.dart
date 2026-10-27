@@ -11,7 +11,7 @@ import 'partners.dart';
 class PublishCommand extends Command<void> {
   PublishCommand(this._firestore, this._tokens) {
     argParser
-      ..addOption('name', help: 'Partner name, without "MonAmie " (required).')
+      ..addOption('name', help: 'Partner name, never starting with "MonAmie " (required).')
       ..addOption('primary', help: 'Brand color, #RRGGBB.')
       ..addOption('secondary', help: 'Background color, #RRGGBB.')
       ..addOption('logo', help: 'SVG logo with the name (logo-com-texto.svg).')
