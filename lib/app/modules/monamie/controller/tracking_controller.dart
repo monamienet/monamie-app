@@ -18,6 +18,7 @@ import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart';
 import 'package:monamie_app/app/data/services/foreground_service.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
 
@@ -292,7 +293,10 @@ class TrackingController extends GetxController
   void _subscribeToGroupUsers(String groupEmail) {
     _groupUsersSubscription?.cancel();
     _groupUsersSubscription = FirebaseProvider()
-        .streamUsersByGroup(groupEmail)
+        .streamUsersByGroup(
+          groupEmail,
+          staleAfter: Get.find<TrackingSettingsController>().staleAfter,
+        )
         .listen(
           (users) {
             firebaseUsers.value = users;

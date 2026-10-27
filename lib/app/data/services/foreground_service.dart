@@ -8,14 +8,19 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 import 'package:monamie_app/app/data/partner/partner_session.dart';
+import 'package:monamie_app/app/data/tracking/firestore_tracking_settings_repository.dart';
+import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
 
 Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;
 StreamSubscription<User?>? _authSubscription;
-int interval = 5;
-int distance = 10;
 int heartbeatInterval = 5;
+
+/// The owner's tracking settings (`config/tracking`), applied to the
+/// position stream; a change restarts the stream with the new values.
+TrackingSettings _settings = TrackingSettings.defaults;
+StreamSubscription<TrackingSettings>? _settingsSubscription;
 Position? _lastRecordedPosition;
 
 /// The plan's minimum time between two positions (Community), read from
@@ -128,6 +133,8 @@ void onStart(ServiceInstance service) async {
 void _stopTracking(ServiceInstance service) {
   _authSubscription?.cancel();
   _authSubscription = null;
+  _settingsSubscription?.cancel();
+  _settingsSubscription = null;
   _heartbeatTimer?.cancel();
   _heartbeatTimer = null;
   _positionSubscription?.cancel();
@@ -156,13 +163,42 @@ Future<void> updateLocation(
 ]) async {
   _lastRecordedPosition = null;
 
+  // Follow the owner's settings: the first value applies now, later ones
+  // restart this function with the new interval and distance.
+  if (_settingsSubscription == null) {
+    final first = Completer<void>();
+    _settingsSubscription = const FirestoreTrackingSettingsRepository()
+        .watch()
+        .listen(
+          (settings) {
+            final changed = first.isCompleted && settings != _settings;
+            _settings = settings;
+            if (!first.isCompleted) first.complete();
+            if (changed) {
+              debugPrint(
+                '[ForegroundService] New settings: every '
+                '${settings.intervalMinutes} min, ${settings.distanceMeters} m.',
+              );
+              updateLocation(service, email, name, grupoAtivo);
+            }
+          },
+          onError: (Object e) {
+            debugPrint('[ForegroundService] Could not read the settings: $e');
+            if (!first.isCompleted) first.complete();
+          },
+        );
+    await first.future.timeout(const Duration(seconds: 5), onTimeout: () {});
+  }
+  final interval = _settings.intervalMinutes;
+  final distance = _settings.distanceMeters;
+
   // Configuração do GPS
   late LocationSettings locationSettings;
 
   if (Platform.isAndroid) {
     locationSettings = AndroidSettings(
       accuracy: LocationAccuracy.high, // TODO: testar outros valores aqui
-      distanceFilter: distance, // Só atualiza se mover mais de 10 metros
+      distanceFilter: distance,
       intervalDuration: Duration(minutes: interval),
     );
   } else if (Platform.isIOS) {
@@ -200,7 +236,8 @@ Future<void> updateLocation(
     final initialPosition = await Geolocator.getCurrentPosition(
       locationSettings: locationSettings,
     );
-    if (await FirebaseProvider().doesDocumentExist(email)) {
+    if (_positionIntervalElapsed(DateTime.now()) &&
+        await FirebaseProvider().doesDocumentExist(email)) {
       try {
         await FirebaseProvider().updateLocationAndTimestamp(
           email: email,

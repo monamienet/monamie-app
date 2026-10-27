@@ -786,6 +786,104 @@ describe("partner rules: config/plan - Rules Test Suite", () => {
   });
 });
 
+/** config/tracking as the owner's app writes it. */
+function trackingBy(email, intervalMinutes = 5, distanceMeters = 10) {
+  return { intervalMinutes, distanceMeters, updatedAt: serverTimestamp(), updatedBy: email };
+}
+
+describe("partner rules: config/tracking - Rules Test Suite", () => {
+  test("Happy Path: a member reads the tracking settings", async () => {
+    // 1. Arrange
+    await seed((admin) => setDoc(doc(admin, `${HERE}/config/tracking`), { intervalMinutes: 5, distanceMeters: 10 }));
+    const db = dbOf("ana");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/config/tracking`));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  test("Sad Path: a member of another partner cannot read the tracking settings", async () => {
+    // 1. Arrange
+    await seed((admin) => setDoc(doc(admin, `${HERE}/config/tracking`), { intervalMinutes: 5, distanceMeters: 10 }));
+    const db = dbOf("otto");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/config/tracking`));
+
+    // 3. Assert
+    await assertFails(read);
+  });
+
+  test("Sad Path: an unauthenticated client cannot read the tracking settings", async () => {
+    // 1. Arrange
+    const db = env.unauthenticatedContext().firestore();
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/config/tracking`));
+
+    // 3. Assert
+    await assertFails(read);
+  });
+
+  test("Happy Path: the owner writes allowed values (no plan: 1 min, 5 m)", async () => {
+    // 1. Arrange
+    const db = dbOf("olga");
+
+    // 2. Act
+    const write = setDoc(doc(db, `${HERE}/config/tracking`), trackingBy("olga@example.com", 1, 5));
+
+    // 3. Assert
+    await assertSucceeds(write);
+  });
+
+  const allowedOnCommunity = [
+    ["Edge Case: on a 15-minute plan the owner writes 15 minutes", 15],
+    ["Edge Case: on a 15-minute plan the owner writes 30 minutes", 30],
+  ];
+  for (const [label, minutes] of allowedOnCommunity) {
+    test(label, async () => {
+      // 1. Arrange
+      const db = dbOf("otto");
+
+      // 2. Act
+      const write = setDoc(doc(db, `${THERE}/config/tracking`), trackingBy("otto@example.com", minutes, 100));
+
+      // 3. Assert
+      await assertSucceeds(write);
+    });
+  }
+
+  const denied = [
+    ["a member who is not the owner", "ana", HERE, trackingBy("ana@example.com")],
+    ["the owner of another partner", "otto", HERE, trackingBy("otto@example.com")],
+    ["interval 4, not an allowed value", "olga", HERE, trackingBy("olga@example.com", 4, 10)],
+    ["distance 15, not an allowed value", "olga", HERE, trackingBy("olga@example.com", 5, 15)],
+    [
+      "a client timestamp in updatedAt",
+      "olga",
+      HERE,
+      { ...trackingBy("olga@example.com"), updatedAt: Timestamp.now() },
+    ],
+    ["someone else's e-mail in updatedBy", "olga", HERE, trackingBy("ana@example.com")],
+    ["an extra field", "olga", HERE, { ...trackingBy("olga@example.com"), extra: true }],
+    ["interval 5 on a 15-minute plan", "otto", THERE, trackingBy("otto@example.com", 5, 100)],
+  ];
+  for (const [label, who, partner, data] of denied) {
+    test(`Sad Path: write denied with ${label} (${who})`, async () => {
+      // 1. Arrange
+      const db = dbOf(who);
+
+      // 2. Act
+      const write = setDoc(doc(db, `${partner}/config/tracking`), data);
+
+      // 3. Assert
+      await assertFails(write);
+    });
+  }
+});
+
 // zack has every capability in rotasul (share, watch, owns) and none in
 // outro; nothing under partners/outro is his, whatever his claims allow in
 // rotasul.

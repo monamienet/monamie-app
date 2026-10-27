@@ -3,7 +3,11 @@ import 'package:monamie_app/app/modules/monamie/ui/monamie_page.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/data/partner/partner_session.dart';
+import 'package:monamie_app/app/data/tracking/firestore_tracking_settings_repository.dart';
+import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart';
 import 'package:monamie_app/app/modules/admin/appearance_controller.dart';
+import 'package:monamie_app/app/modules/admin/tracking_settings_edit_controller.dart';
+import 'package:monamie_app/app/modules/admin/tracking_settings_view.dart';
 import 'package:monamie_app/app/modules/admin/appearance_view.dart';
 import 'package:monamie_app/app/modules/admin/firebase_appearance_backend.dart';
 
@@ -29,6 +33,17 @@ class AppPages {
     GetPage(
       name: _Paths.NO_ORGANIZATION,
       page: () => const NoOrganizationView(),
+    ),
+    GetPage(
+      name: _Paths.TRACKING_SETTINGS,
+      page: () => TrackingSettingsView(
+        controller: Get.put(
+          TrackingSettingsEditController(
+            repository: const FirestoreTrackingSettingsRepository(),
+            saved: Get.find<TrackingSettingsController>().settings.value,
+          ),
+        ),
+      ),
     ),
     GetPage(
       name: _Paths.APPEARANCE,

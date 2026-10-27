@@ -18,8 +18,7 @@ import 'package:monamie_app/app/modules/monamie/ui/widgets/tracking_toggle_butto
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart' hide Path;
-import 'package:monamie_app/app/data/services/foreground_service.dart'
-    as foreground_service;
+import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart';
 
 class MonamiePage extends StatelessWidget {
   const MonamiePage({super.key});
@@ -392,9 +391,8 @@ class MonamiePage extends StatelessWidget {
                                     DateTime.now().difference(
                                           user.timestamp!,
                                         ) >=
-                                        Duration(
-                                          minutes: foreground_service.interval,
-                                        )
+                                        Get.find<TrackingSettingsController>()
+                                            .staleAfter
                                 ? trackingCtrl
                                       .setMarkerColor(user)
                                       .withAlpha(100)

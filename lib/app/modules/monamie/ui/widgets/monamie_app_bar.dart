@@ -72,14 +72,28 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
             onSelected: (value) {
               if (value == 'sair') {
                 authController.logout();
+              } else if (value == 'acompanhamento') {
+                Get.toNamed(Routes.TRACKING_SETTINGS);
               } else if (value == 'aparencia') {
                 Get.toNamed(Routes.APPEARANCE);
-              }
-            },
               } else if (value == 'trocar') {
                 authController.switchOrganization();
+              }
+            },
             itemBuilder: (BuildContext context) => [
               // Only the owner (responsável) changes the organization's look.
+              if (googleGroupsController.isOwner)
+                const PopupMenuItem<String>(
+                  value: 'acompanhamento',
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.tune, color: Colors.black87),
+                      SizedBox(width: 8),
+                      Text('Ajustes de acompanhamento'),
+                    ],
+                  ),
+                ),
               if (googleGroupsController.isOwner)
                 const PopupMenuItem<String>(
                   value: 'aparencia',
@@ -92,6 +106,17 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ],
                   ),
                 ),
+              const PopupMenuItem<String>(
+                value: 'trocar',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.swap_horiz, color: Colors.black87),
+                    SizedBox(width: 8),
+                    Text('Trocar de organização'),
+                  ],
+                ),
+              ),
               const PopupMenuItem<String>(
                 value: 'sair',
                 child: Row(
@@ -106,17 +131,6 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-              const PopupMenuItem<String>(
-                value: 'trocar',
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.swap_horiz, color: Colors.black87),
-                    SizedBox(width: 8),
-                    Text('Trocar de organização'),
-                  ],
-                ),
-              ),
                   ],
                 ),
               ),

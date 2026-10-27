@@ -54,7 +54,10 @@ Future<Uint8List> toSquareLogoPng(Uint8List bytes) async {
       final target = containRect(info.size, side);
       canvas
         ..translate(target.left, target.top)
-        ..scale(target.width / info.size.width, target.height / info.size.height)
+        ..scale(
+          target.width / info.size.width,
+          target.height / info.size.height,
+        )
         ..drawPicture(info.picture);
       info.picture.dispose();
     } else {

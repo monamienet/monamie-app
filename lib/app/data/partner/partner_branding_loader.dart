@@ -82,7 +82,9 @@ class PartnerBrandingLoader {
       return resolvePartnerTheme(themeId, catalog);
     } catch (error) {
       debugPrint('Could not read the theme catalog: $error');
-      return stored != null && stored.id == themeId ? stored : defaultPartnerTheme;
+      return stored != null && stored.id == themeId
+          ? stored
+          : defaultPartnerTheme;
     }
   }
 

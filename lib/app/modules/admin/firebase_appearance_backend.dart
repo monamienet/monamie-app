@@ -27,10 +27,9 @@ class FirebaseAppearanceBackend implements AppearanceBackend {
 
   @override
   Future<void> uploadLogo(String partnerId, Uint8List png) async {
-    await _logo(partnerId).putData(
-      png,
-      SettableMetadata(contentType: 'image/png'),
-    );
+    await _logo(
+      partnerId,
+    ).putData(png, SettableMetadata(contentType: 'image/png'));
   }
 
   @override

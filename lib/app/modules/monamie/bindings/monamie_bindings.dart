@@ -6,6 +6,7 @@ import 'package:monamie_app/app/modules/monamie/controller/permissions_controlle
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart';
 
 class MonamieBindings implements Bindings {
   @override
@@ -19,5 +20,6 @@ class MonamieBindings implements Bindings {
     Get.lazyPut(() => GoogleGroupsController());
     Get.lazyPut(() => CalendarController());
     Get.lazyPut(() => CallController());
+    Get.lazyPut(() => TrackingSettingsController());
   }
 }

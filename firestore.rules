@@ -196,3 +196,20 @@ service cloud.firestore {
     // Everything else is denied: Firestore denies by default.
   }
 }
+      // ── config/tracking: how often people in the field send positions ──
+      // Fields: intervalMinutes, distanceMeters, updatedAt, updatedBy.
+      // Members read it (the background service applies it); only the owner
+      // writes it, with the values the app offers and never below the
+      // plan's minimum interval.
+      match /config/tracking {
+        allow read: if isMember();
+        allow write: if claimList('owns').hasAny([partnerId])
+          && request.resource.data.keys().hasOnly(
+               ['intervalMinutes', 'distanceMeters', 'updatedAt', 'updatedBy'])
+          && request.resource.data.intervalMinutes in [1, 2, 3, 5, 10, 15, 20, 30]
+          && request.resource.data.distanceMeters in [5, 10, 20, 50, 100, 200, 300, 500]
+          && request.resource.data.intervalMinutes >= minIntervalMinutes()
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.updatedBy == request.auth.token.email;
+      }
+

@@ -44,7 +44,12 @@ class FirebaseProvider {
     });
   }
 
-  Stream<List<UserModel>> streamUsersByGroup(String groupEmail) {
+  /// People sharing with [groupEmail] who updated within [staleAfter] (two
+  /// of the owner's intervals, see `TrackingSettings.staleAfter`).
+  Stream<List<UserModel>> streamUsersByGroup(
+    String groupEmail, {
+    Duration staleAfter = const Duration(minutes: 10),
+  }) {
     try {
       return collectionRef
           .where('grupo_ativo', isEqualTo: normalizeGroupEmail(groupEmail))
@@ -52,7 +57,7 @@ class FirebaseProvider {
           .snapshots()
           .map((QuerySnapshot query) {
             List<UserModel> users = [];
-            final limit = DateTime.now().subtract(const Duration(minutes: 5));
+            final limit = DateTime.now().subtract(staleAfter);
             for (var doc in query.docs) {
               final user = UserModel.fromMap(
                 doc.data() as Map<String, dynamic>,
@@ -65,26 +70,6 @@ class FirebaseProvider {
           });
     } catch (e) {
       throw Exception("Erro ao buscar usuários do grupo: $e");
-    }
-  }
-
-  Stream<List<UserModel>> getAllTrackedUsers() {
-    try {
-      return collectionRef.where('isTracked', isEqualTo: true).snapshots().map((
-        QuerySnapshot query,
-      ) {
-        List<UserModel> users = [];
-        final limit = DateTime.now().subtract(const Duration(minutes: 2));
-        for (var doc in query.docs) {
-          final user = UserModel.fromMap(doc.data() as Map<String, dynamic>);
-          if (user.timestamp != null && user.timestamp!.isAfter(limit)) {
-            users.add(user);
-          }
-        }
-        return users;
-      });
-    } catch (e) {
-      throw Exception("Erro ao buscar usuários: $e");
     }
   }
 
