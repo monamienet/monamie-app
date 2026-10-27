@@ -6,8 +6,8 @@ import 'partners.dart';
 /// limited to 1 MiB, and every app launch may download the document.
 const maxSvgBytes = 200 * 1024;
 
-/// Path of the branding document in every partner project.
-const brandingDocumentPath = 'config/branding';
+/// Path of partner [id]'s branding document in its project.
+String brandingDocumentPath(String id) => '${partnerDataPath(id)}/config/branding';
 
 /// Builds the `config/branding` document of a partner.
 ///

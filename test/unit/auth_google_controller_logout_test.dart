@@ -79,7 +79,10 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   Future<String?> signInGoogle() async => null;
 
   @override
-  Future<UserGoogleModel?> signInToPartner(String idToken) async => null;
+  Future<void> signInToPartner(String idToken) async {}
+
+  @override
+  Future<UserGoogleModel?> savePartnerProfile() async => null;
 
   @override
   Future<String?> getFirebaseIdToken() async => null;

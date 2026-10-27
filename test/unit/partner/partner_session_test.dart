@@ -59,6 +59,10 @@ class UnusedPartnerFirebase implements PartnerFirebase {
 
   @override
   FirebaseFunctions get functions => throw UnimplementedError();
+
+  @override
+  DocumentReference<Map<String, dynamic>> get partnerData =>
+      throw UnimplementedError();
 }
 
 void main() {

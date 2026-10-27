@@ -140,10 +140,47 @@ void main() {
         [
           {'monamienet-acme'},
           ['acme00@monamienet.org'],
-          [(projectId: 'monamienet-acme', path: 'config/branding')],
+          [
+            (
+              projectId: 'monamienet-acme',
+              path: 'partners/acme/config/branding',
+            ),
+          ],
         ],
       );
     });
+
+    test(
+      'Edge Case: a Community partner is checked in the shared project',
+      () async {
+        // 1. Arrange
+        final cli = readyCli();
+        final firestore = readyFirestore();
+
+        // 2. Act
+        await checkPartner(
+          id: 'acme',
+          cli: cli,
+          groups: readyGroups(),
+          firestore: firestore,
+          plan: 'community',
+        );
+
+        // 3. Assert
+        expect(
+          [cli.listedProjects.toSet(), firestore.reads],
+          [
+            {'monamienet-community'},
+            [
+              (
+                projectId: 'monamienet-community',
+                path: 'partners/acme/config/branding',
+              ),
+            ],
+          ],
+        );
+      },
+    );
 
     test('Edge Case: a root group with no subgroups passes', () async {
       // 1. Arrange

@@ -7,9 +7,12 @@ import 'partner_firebase.dart';
 
 /// [PartnerFirebase] backed by one [FirebaseApp].
 class FirebaseAppPartnerFirebase implements PartnerFirebase {
-  const FirebaseAppPartnerFirebase(this.app);
+  const FirebaseAppPartnerFirebase(this.app, this.partnerId);
 
   final FirebaseApp app;
+
+  /// The partner whose data this app reads: `partners/{partnerId}`.
+  final String partnerId;
 
   @override
   FirebaseAuth get auth => FirebaseAuth.instanceFor(app: app);
@@ -19,4 +22,11 @@ class FirebaseAppPartnerFirebase implements PartnerFirebase {
 
   @override
   FirebaseFunctions get functions => FirebaseFunctions.instanceFor(app: app);
+
+  @override
+  DocumentReference<Map<String, dynamic>> get partnerData =>
+      firestore.doc(partnerDataPath(partnerId));
 }
+
+/// `partners/{partnerId}`: where a partner's data lives in its project.
+String partnerDataPath(String partnerId) => 'partners/$partnerId';

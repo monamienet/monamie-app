@@ -10,7 +10,13 @@ import 'partners.dart';
 
 /// `check <id>`: reports whether a partner is ready to be activated.
 class CheckCommand extends Command<void> {
-  CheckCommand(this._cli, this._groups, this._firestore);
+  CheckCommand(this._cli, this._groups, this._firestore) {
+    argParser.addFlag(
+      'community',
+      negatable: false,
+      help: 'The partner is on the Community plan ($communityProjectId).',
+    );
+  }
 
   final FirebaseCli _cli;
   final GroupDirectory _groups;
@@ -36,6 +42,7 @@ class CheckCommand extends Command<void> {
       cli: _cli,
       groups: _groups,
       firestore: _firestore,
+      plan: argResults!.flag('community') ? 'community' : null,
     );
     printCheckResults(results);
     if (results.any((r) => !r.passed)) {

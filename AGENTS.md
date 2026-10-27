@@ -6,9 +6,11 @@ This application is maintained by the company MonAmieNet and provides clients (p
 
 ## Business Architecture
 
-MonAmie publishes a **single app** on its Google Developer Account: `org.monamienet.app`, named "MonAmie" (launcher, Play listing and native splash are the same for everyone). Each partner (client) keeps:
-- its own Firebase project `monamienet-<id>`, associated to the partner's billing account, where all its data lives;
-- its own branding (name, colors, logo, icon) in that project's Firestore, `config/branding`, publicly readable.
+MonAmie publishes a **single app** on its Google Developer Account: `org.monamienet.app`, named "MonAmie" (launcher, Play listing and native splash are the same for everyone). Each partner (client) is on one of two **plans** (`plan` in the central registry `partners/{id}`):
+- **Standard**: its own Firebase project `monamienet-<id>`, on the partner's own billing account;
+- **Community** (free): the shared project `monamienet-community`, owned and paid by MonAmieNet, restricted to the *Economia* tracking preset (one position every 15 minutes at most, enforced by the rules through `partners/{id}/config/plan.minIntervalMinutes`). The central project and the Community project stay separate projects (Auth, claims, IAM and quotas are per project).
+
+On both plans **every partner's data lives under `partners/{partnerId}/…`** of its project: `config/branding` (publicly readable), `config/plan`, `usuarios/{email}` with `historico_posicoes`, `users/{uid}`. A Standard project is simply a project holding one partner, so code, rules and tests are the same for both plans; no path is ever read at the root. The rules scope every match by partner (the `partners` claim) and test cross-partner access. Partners created before this layout are copied with `dart run tool/partner.dart migrate-layout <id>` (prints counts; `--apply` writes; the old root documents stay until deleted by hand).
 
 The app binds the partner **at runtime**, after Google sign-in, never at build time:
 1. Google sign-in goes through the central MonAmie project `monamienet-app` (the `[DEFAULT]` Firebase app). Only one OAuth client may exist per package + SHA-1, so it lives there, and every partner project allows the central web client under "Allowed client IDs".
@@ -16,9 +18,9 @@ The app binds the partner **at runtime**, after Google sign-in, never at build t
 3. The app binds the chosen partner (`PartnerSession`): its Firebase project (a named app `partner-<id>`), its root group and its branding, all together, and remembers the binding on the device (`SharedPreferences`) until sign-out or removal from the partner's groups.
 
 Where each value lives:
-- **Partner's choice** (name required; colors, logo, icon optional with fallbacks): `config/branding` in the partner project, written by `dart run tool/partner.dart publish <id>`.
+- **Partner's choice** (name required; colors, logo, icon optional with fallbacks): `partners/<id>/config/branding` in the partner's project, written by `dart run tool/partner.dart publish <id>`.
 - **MonAmie's choice**: the partner's `status` in `partners/{id}` and the **theme catalog** `themes/{id}` (`name`, `primary`, `dark`, `light`, `onPrimary`, `onDark`, `order`, `active`), both in the central project. Partners pick a theme, never free colors; an unknown or missing `themeId` falls back to Grafite, and a retired theme (`active: false`) still resolves. The catalog is seeded with `dart run tool/partner.dart themes` and is publicly readable.
-- **Derived by rule**, never stored: project `monamienet-<id>`, root group `<id>00@monamienet.org`, partner id from a group name.
+- **Derived by rule**, never stored: project `monamienet-<id>` (Standard) or `monamienet-community` (Community, from `plan`), root group `<id>00@monamienet.org`, partner id from a group name.
 - **Names never side by side**: "MonAmie" appears alone on MonAmie's own screens (launcher, Play listing, splash, sign-in, organization picker, organization creation); once a partner is bound, the app shows only the partner's name. `publish` refuses a partner name starting with "MonAmie ".
 - **Owned by another system**, fetched, never versioned: the central `google-services.json` (build time, `tool/partner.dart firebase`) and each partner's Firebase options (runtime, `resolvePartners`).
 

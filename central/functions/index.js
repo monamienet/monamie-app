@@ -5,7 +5,10 @@ const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { GoogleAuth } = require("google-auth-library");
 const { partnerIdsFromGroups } = require("./partner_groups");
-const { PartnerOptionsReader } = require("./partner_options");
+const {
+  COMMUNITY_PROJECT_ID,
+  PartnerOptionsReader,
+} = require("./partner_options");
 const { TtlCache } = require("./ttl_cache");
 const {
   BINDABLE,
@@ -68,13 +71,17 @@ exports.resolvePartners = onCall({ invoker: "public" }, async (request) => {
   const entries = await visiblePartners(partnerIdsFromGroups(groups));
 
   const partners = [];
-  for (const { id, status } of entries) {
+  for (const { id, status, plan } of entries) {
     if (!BINDABLE.includes(status)) {
       partners.push({ id, status });
       continue;
     }
     try {
-      partners.push({ id, status, options: await options.get(id, platform) });
+      partners.push({
+        id,
+        status,
+        options: await options.get(id, platform, plan),
+      });
     } catch (error) {
       // One misconfigured partner must not block the user's other partners.
       logger.error(`[resolvePartners] Skipping ${id}: ${error.message}`);
@@ -116,7 +123,11 @@ async function visiblePartners(ids) {
   const docs = await db.getAll(...ids.map((id) => db.doc(`partners/${id}`)));
   return docs
     .filter((doc) => VISIBLE.includes(doc.get("status")))
-    .map((doc) => ({ id: doc.id, status: doc.get("status") }));
+    .map((doc) => ({
+      id: doc.id,
+      status: doc.get("status"),
+      plan: doc.get("plan"),
+    }));
 }
 
 // Runs as its own service account: it is the only identity allowed to
@@ -149,7 +160,7 @@ exports.expirePartners = onSchedule(
     const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     for (const id of duePartnerIds(docs, now)) {
       try {
-        await retirePartner(db, id, deletePartnerProject, { now });
+        await retirePartner(db, id, erasePartnerData, { now });
         logger.info(`[expirePartners] Retired ${id}.`);
       } catch (error) {
         // The next run retries; one partner must not block the others.
@@ -158,6 +169,31 @@ exports.expirePartners = onSchedule(
     }
   }
 );
+
+/**
+ * Erases partner `id`'s data: its whole project on the Standard plan, or
+ * its subtree `partners/{id}/**` in the shared Community project.
+ */
+async function erasePartnerData(id, registry) {
+  if (registry?.plan === "community") {
+    const community = communityFirestore();
+    await community.recursiveDelete(community.doc(`partners/${id}`));
+    return;
+  }
+  await deletePartnerProject(id);
+}
+
+/**
+ * Firestore of the shared Community project, through a second Admin app.
+ * The function's service account needs roles/datastore.user there.
+ */
+function communityFirestore() {
+  const name = "community";
+  const app =
+    admin.apps.find((a) => a?.name === name) ??
+    admin.initializeApp({ projectId: COMMUNITY_PROJECT_ID }, name);
+  return app.firestore();
+}
 
 /**
  * Deletes partner `id`'s Google Cloud project. Google keeps it restorable

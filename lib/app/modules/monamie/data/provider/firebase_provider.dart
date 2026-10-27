@@ -7,15 +7,11 @@ import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 class FirebaseProvider {
   CollectionReference get collectionRef =>
-      CurrentPartnerFirebase.instance.firestore.collection('usuarios');
+      CurrentPartnerFirebase.instance.partnerData.collection('usuarios');
 
   Future<void> adicionarDados(UserModel userLocation) async {
-    // 1. Instanciar o Firestore com o app específico e banco de dados
-    FirebaseFirestore firestore = CurrentPartnerFirebase.instance.firestore;
-
-    // 2. Referenciar a coleção e adicionar dados
     try {
-      await firestore.collection('usuarios').doc(userLocation.email).set({
+      await collectionRef.doc(userLocation.email).set({
         'email': userLocation.email,
         'lat': userLocation.lat,
         'lng': userLocation.lng,
@@ -32,10 +28,8 @@ class FirebaseProvider {
   }
 
   Future<void> setUser(UserModel user) async {
-    FirebaseFirestore firestore = CurrentPartnerFirebase.instance.firestore;
-
     try {
-      await firestore.collection('usuarios').doc(user.email).set(user.toMap());
+      await collectionRef.doc(user.email).set(user.toMap());
       debugPrint("Usuário criado com sucesso!");
     } catch (e) {
       throw Exception("Erro ao criar usuário!");
@@ -162,33 +156,33 @@ class FirebaseProvider {
     String? grupoAtivo,
   }) async {
     try {
+      // The position and its trail point go in one batch, both stamped
+      // with the server's time: the rules limit how often a position may
+      // change (Community plan) and only accept a point written together
+      // with the position it records.
+      final userDoc = collectionRef.doc(email);
       final Map<String, dynamic> userUpdates = {
         'email': email,
         'nome': nome,
         'lat': lat,
         'lng': lng,
         'timestamp': timestamp,
+        'positionAt': FieldValue.serverTimestamp(),
       };
-      if (grupoAtivo != null) {
-        userUpdates['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
-      }
-
-      await collectionRef.doc(email).update(userUpdates);
-
-      // Salva o ponto na subcoleção permanente de histórico de posições.
       final Map<String, dynamic> pointData = {
         'lat': lat,
         'lng': lng,
-        'timestamp': timestamp,
+        'timestamp': FieldValue.serverTimestamp(),
       };
       if (grupoAtivo != null) {
+        userUpdates['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
         pointData['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
       }
 
-      await collectionRef
-          .doc(email)
-          .collection('historico_posicoes')
-          .add(pointData);
+      final batch = CurrentPartnerFirebase.instance.firestore.batch()
+        ..update(userDoc, userUpdates)
+        ..set(userDoc.collection('historico_posicoes').doc(), pointData);
+      await batch.commit();
 
       if (kDebugMode) print("Dados atualizados no firestore com sucesso!");
     } catch (e) {

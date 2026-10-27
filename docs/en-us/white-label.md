@@ -25,7 +25,7 @@ Adding a person's e-mail to a leaf (or to the root) is what makes them a user of
 
 1. **Google sign-in** to the central project `monamienet-app`. The screen is MonAmie-branded: no partner is known yet.
 2. **`resolvePartners`** (central function) asks the groups gateway for the user's groups, turns the names into partner ids, keeps the ones whose status in the central registry `partners/{id}` is not `reserved`, and returns each one's status and, for the ones it can bind, its Firebase options. The app enters only `active` partners (section 7).
-3. The app reads each partner's **`config/branding`** (public). With no partner the user sees "your account is not linked to any organization"; with one, the app enters it; with several, a picker shows each partner's name and icon.
+3. The app reads each partner's **`partners/<id>/config/branding`** (public). With no partner the user sees "your account is not linked to any organization"; with one, the app enters it; with several, a picker shows each partner's name and icon.
 4. **Binding:** the partner's Firebase project (a named Firebase app `partner-<id>`), its root group and its branding are bound together. The app signs in to the partner project with the same Google ID token (the partner allows the central web client) and runs the partner's `syncClaims`, which decides what the user may see, exactly as before.
 5. **Remembering:** the binding is saved on the device. Next launches open directly in the partner's brand, without the central project.
 
@@ -37,7 +37,7 @@ The launcher icon, the app name on the home screen, the Play listing and the nat
 
 | Kind | Examples | Where |
 |---|---|---|
-| Partner's choice | name (required); colors, logo, icon (optional) | `config/branding` in `monamienet-<id>` |
+| Partner's choice | name (required); colors, logo, icon (optional) | `partners/<id>/config/branding` in the partner's project (section 9) |
 | MonAmie's choice | partner status (section 7) | `partners/{id}` in `monamienet-app` |
 | MonAmie's choice | theme catalog (section 8) | `themes/{id}` in `monamienet-app` |
 | Derived by rule | `monamienet-<id>`, `<id>00@monamienet.org`, id from a group name | code |
@@ -188,3 +188,37 @@ Partners pick one of a fixed set of themes, never free colors. The catalog lives
 - **Retiring** a theme: set `active: false` (in the tool too, or the next seed revives it). It disappears from the picker but still resolves for the partners that use it; never delete a theme document.
 - **Unknown or missing `themeId`**: the app uses Grafite and never blocks. The resolved colors are stored with the binding, so the first screen is branded without network even when the catalog cannot be read.
 - **Reading** is public (names and colors only): the app reads it, and the partner functions that save a `themeId` check it against the active themes, because a partner project's rules cannot read the central database.
+
+## 9. Plans and the data layout
+
+| | **Community** (free) | **Standard** |
+| :--- | :--- | :--- |
+| Firebase project | `monamienet-community`, shared by every Community partner, paid by MonAmieNet | the partner's own `monamienet-<id>`, on the partner's billing account |
+| Tracking | at most one position every 15 minutes (*Economia*) | every preset |
+| Registry | `partners/{id}.plan = "community"` | `plan = "standard"` (or no `plan`, for entries made before plans) |
+
+**One layout for both.** Every partner keeps its data under `partners/{partnerId}/` of its project:
+
+```
+partners/{partnerId}/config/branding      public: name and look
+partners/{partnerId}/config/plan          Community only: {minIntervalMinutes: 15}
+partners/{partnerId}/usuarios/{email}     live position (positionAt = server time of the last position)
+partners/{partnerId}/usuarios/{email}/historico_posicoes/{pointId}
+partners/{partnerId}/users/{uid}          Google profile (name, avatar)
+```
+
+- **Rules** scope every path by partner. A person needs the claim `partners` to contain the partner (set by `syncClaims` from their groups) to read profiles or write anything; positions also need `watch`/`share` in a team **of that partner**. In the Community project `syncClaims` only counts the partners whose `partners/{id}/config/branding` exists there.
+- **Community interval, enforced by the rules**: a new position must carry `positionAt == request.time` and come at least `minIntervalMinutes` after the previous one; a trail point is only accepted in the same batch as the position it records (`getAfter`). The app reads the same value and does not try sooner.
+- **`resolvePartners`** returns the Community project's Firebase options for Community partners (each still gets its own named app `partner-<id>` on the device).
+- **Expiry** (section 7) deletes a Community partner's `partners/{id}/**` in the shared project instead of a project; the `partner-expirer` account needs `roles/datastore.user` on `monamienet-community`.
+
+**Moving an existing Standard partner to the layout** (one-off, per project): deploy the new rules and functions, then
+
+```sh
+dart run tool/partner.dart migrate-layout <id>          # counts
+dart run tool/partner.dart migrate-layout <id> --apply  # copies to partners/<id>/
+```
+
+The copy keeps every field and type. The old root documents stay; delete them by hand once every device runs the new app (old versions still read the root).
+
+**Setting up `monamienet-community`** (once): create the project on MonAmieNet's billing account (it needs a free slot on that account), add Firebase, Firestore in `southamerica-east1`, the Google provider with the central web client in *Allowed client IDs*, the Android app `org.monamienet.app` without a SHA-1 and exactly one web app, the same IAM as a partner project (section 5, steps 4 and 8) plus `roles/datastore.user` for `partner-expirer@monamienet-app.iam.gserviceaccount.com`, then deploy `firestore.rules` and `functions/` to it. Add a **budget alert**: the free Firestore quota (50,000 reads and 20,000 writes a day) is shared by every Community partner.

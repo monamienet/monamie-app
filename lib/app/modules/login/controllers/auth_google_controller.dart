@@ -163,23 +163,25 @@ class AuthGoogleController extends GetxController {
       _refreshTheme();
       // Set after binding, so the screen rebuilds in the partner's brand.
       enteringPartnerName.value = binding.partner.name;
-      final user = await _authGoogle.signInToPartner(idToken);
+      await _authGoogle.signInToPartner(idToken);
+
+      // Sync the claims first: the rules only let the partner's members
+      // write their profile, read the map or write their own position.
+      final capabilities = await _syncClaims();
+      if (claimsShowNoAccess(capabilities)) {
+        // A group is named after the partner but gives no capability.
+        throw StateError(
+          'sua conta não tem papel em nenhum grupo de ${binding.partner.name}',
+        );
+      }
+
+      final user = await _authGoogle.savePartnerProfile();
       if (user == null) {
         throw StateError('No user after signing in to ${binding.partner.id}.');
       }
       await _userRepository.saveUserGoogleModel(user);
       final token = await _authGoogle.getFirebaseIdToken();
       await _getGdiGroupsGoogle(token ?? '', user.email);
-
-      // Sync the claims before navigating: the rules need them to read the
-      // map or write the person's own position.
-      final capabilities = await _syncClaims();
-      if (claimsShowNoAccess(capabilities)) {
-        // A group is named after the partner but is not under its root.
-        throw StateError(
-          'sua conta não tem papel em nenhum grupo de ${binding.partner.name}',
-        );
-      }
 
       _pendingIdToken = null;
       partnerChoices.clear();

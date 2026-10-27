@@ -64,7 +64,14 @@ class PublishCommand extends Command<void> {
       }
     }
 
-    final projectId = firebaseProjectId(id);
+    final accessToken = await _tokens.accessToken();
+    final registry = await _firestore.get(
+      projectId: centralProjectId,
+      path: 'partners/$id',
+      accessToken: accessToken,
+    );
+    final plan = registry?['plan'];
+    final projectId = firebaseProjectId(id, plan: plan is String ? plan : null);
     stdout.writeln(
       "Branding of '$id': name '${document['name']}', colors "
       "${document['colors']}, logo ${document.containsKey('logoSvg') ? 'yes' : 'no (name as text)'}, "
@@ -76,10 +83,10 @@ class PublishCommand extends Command<void> {
     }
     await _firestore.set(
       projectId: projectId,
-      path: brandingDocumentPath,
+      path: brandingDocumentPath(id),
       data: document,
-      accessToken: await _tokens.accessToken(),
+      accessToken: accessToken,
     );
-    stdout.writeln('Wrote $brandingDocumentPath in $projectId.');
+    stdout.writeln('Wrote ${brandingDocumentPath(id)} in $projectId.');
   }
 }

@@ -304,6 +304,19 @@ void main() {
     });
   });
 
+  group('brandingDocumentPath - Unit Test Suite', () {
+    test('Happy Path: the branding lives under the partner', () {
+      // 1. Arrange
+      const id = 'rotasul';
+
+      // 2. Act
+      final path = brandingDocumentPath(id);
+
+      // 3. Assert
+      expect(path, 'partners/rotasul/config/branding');
+    });
+  });
+
   group('svgWarnings - Unit Test Suite', () {
     test('Happy Path: an SVG without live text has no warnings', () {
       // 1. Arrange

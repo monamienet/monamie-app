@@ -2,6 +2,9 @@ const { isValidPartnerId } = require("./group_address");
 
 const PROJECT_PREFIX = "monamienet-";
 
+/** The shared project of every Community partner. */
+const COMMUNITY_PROJECT_ID = "monamienet-community";
+
 /**
  * The partner whose own Firebase project is `projectId`.
  *
@@ -38,4 +41,4 @@ function rootGroupEmailFor(projectId) {
   return `${partnerIdForProject(projectId)}00@monamienet.org`;
 }
 
-module.exports = { partnerIdForProject, rootGroupEmailFor };
+module.exports = { COMMUNITY_PROJECT_ID, partnerIdForProject, rootGroupEmailFor };

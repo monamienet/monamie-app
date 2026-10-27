@@ -18,6 +18,39 @@ int distance = 10;
 int heartbeatInterval = 5;
 Position? _lastRecordedPosition;
 
+/// The plan's minimum time between two positions (Community), read from
+/// `partners/{id}/config/plan` at start. The rules refuse a sooner write.
+Duration _minPositionInterval = Duration.zero;
+DateTime? _lastPositionWriteAt;
+
+/// Reads the plan's minimum interval; none when the document is missing
+/// (Standard) or cannot be read.
+Future<Duration> _readMinPositionInterval() async {
+  try {
+    final plan = await CurrentPartnerFirebase.instance.partnerData
+        .collection('config')
+        .doc('plan')
+        .get()
+        .timeout(const Duration(seconds: 5));
+    final minutes = plan.data()?['minIntervalMinutes'];
+    return minutes is int && minutes > 0
+        ? Duration(minutes: minutes)
+        : Duration.zero;
+  } catch (e) {
+    debugPrint('[ForegroundService] Could not read the plan: $e');
+    return Duration.zero;
+  }
+}
+
+/// Whether enough time passed since the last position write, with a few
+/// seconds of slack for the difference between device and server clocks.
+bool _positionIntervalElapsed(DateTime now) {
+  final last = _lastPositionWriteAt;
+  if (last == null || _minPositionInterval == Duration.zero) return true;
+  return now.difference(last) >=
+      _minPositionInterval + const Duration(seconds: 10);
+}
+
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   // [DEFAULT] is the central project (from google-services.json); the
@@ -160,6 +193,8 @@ Future<void> updateLocation(
     }
   });
 
+  _minPositionInterval = await _readMinPositionInterval();
+
   // Tenta obter e sincronizar a localização inicial imediatamente
   try {
     final initialPosition = await Geolocator.getCurrentPosition(
@@ -176,6 +211,7 @@ Future<void> updateLocation(
           grupoAtivo: grupoAtivo,
         );
         _lastRecordedPosition = initialPosition;
+        _lastPositionWriteAt = DateTime.now();
         _consecutivePermissionErrors = 0;
       } catch (e) {
         debugPrint(
@@ -223,6 +259,12 @@ Future<void> updateLocation(
           }
         }
 
+        // The plan limits how often a position may be written.
+        if (!_positionIntervalElapsed(DateTime.now())) {
+          service.invoke('updateLocationLocally', {'position': position});
+          return;
+        }
+
         // Atualiza firebase
         if (await FirebaseProvider().doesDocumentExist(email)) {
           try {
@@ -235,6 +277,7 @@ Future<void> updateLocation(
               grupoAtivo: grupoAtivo,
             );
             _lastRecordedPosition = position;
+            _lastPositionWriteAt = DateTime.now();
             // Reset do contador em caso de sucesso
             _consecutivePermissionErrors = 0;
           } catch (e) {

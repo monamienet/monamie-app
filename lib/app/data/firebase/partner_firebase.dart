@@ -11,4 +11,9 @@ abstract interface class PartnerFirebase {
   FirebaseAuth get auth;
   FirebaseFirestore get firestore;
   FirebaseFunctions get functions;
+
+  /// `partners/{id}` of the bound partner: the root of all its data. A
+  /// Standard project holds one partner and the shared Community project
+  /// many, with the same layout.
+  DocumentReference<Map<String, dynamic>> get partnerData;
 }

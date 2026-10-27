@@ -6,24 +6,24 @@ const { capabilitiesFromGroups, hasNoAccess } = require("../capabilities");
 const hostsEverything = () => true;
 const hostsOnlyRotasul = (partnerId) => partnerId === "rotasul";
 
-const none = { share: [], watch: [], owns: [], ignored: [] };
+const none = { share: [], watch: [], owns: [], partners: [], ignored: [] };
 
 describe("capabilitiesFromGroups - Unit Test Suite", () => {
   const single = [
     [
       "Happy Path: a share leaf gives share in its team",
       "rotasul01w@monamienet.org",
-      { ...none, share: ["rotasul01"] },
+      { ...none, share: ["rotasul01"], partners: ["rotasul"] },
     ],
     [
       "Happy Path: a watch leaf gives watch in its team",
       "rotasul01r@monamienet.org",
-      { ...none, watch: ["rotasul01"] },
+      { ...none, watch: ["rotasul01"], partners: ["rotasul"] },
     ],
     [
       "Happy Path: the root group makes the person the owner",
       "rotasul00@monamienet.org",
-      { ...none, owns: ["rotasul"] },
+      { ...none, owns: ["rotasul"], partners: ["rotasul"] },
     ],
     [
       "Edge Case: a direct team group grants nothing and is reported",
@@ -71,6 +71,7 @@ describe("capabilitiesFromGroups - Unit Test Suite", () => {
       share: ["rotasul01", "rotasul02"],
       watch: ["rotasul01", "rotasul03"],
       owns: ["rotasul"],
+      partners: ["rotasul"],
       ignored: ["rotasul04@monamienet.org", "rotasul05@monamienet.org"],
     });
   });
@@ -89,7 +90,7 @@ describe("capabilitiesFromGroups - Unit Test Suite", () => {
     const caps = capabilitiesFromGroups(groups, hostsOnlyRotasul);
 
     // 3. Assert
-    assert.deepEqual(caps, { ...none, share: ["rotasul01"] });
+    assert.deepEqual(caps, { ...none, share: ["rotasul01"], partners: ["rotasul"] });
   });
 
   for (const [label, value] of [
@@ -126,7 +127,47 @@ describe("capabilitiesFromGroups - Unit Test Suite", () => {
     const caps = capabilitiesFromGroups(groups, hostsEverything);
 
     // 3. Assert
-    assert.deepEqual(caps, { ...none, watch: ["rotasul01"] });
+    assert.deepEqual(caps, { ...none, watch: ["rotasul01"], partners: ["rotasul"] });
+  });
+});
+
+describe("capabilitiesFromGroups partners - Unit Test Suite", () => {
+  test("Happy Path: partners lists every hosted partner with a capability, sorted", () => {
+    // 1. Arrange
+    const groups = [
+      { email: "zeta01r@monamienet.org" },
+      { email: "rotasul01w@monamienet.org" },
+      { email: "alfa00@monamienet.org" },
+      { email: "rotasul02r@monamienet.org" },
+    ];
+
+    // 2. Act
+    const caps = capabilitiesFromGroups(groups, hostsEverything);
+
+    // 3. Assert
+    assert.deepEqual(caps.partners, ["alfa", "rotasul", "zeta"]);
+  });
+
+  test("Edge Case: a direct team group of another partner does not add that partner", () => {
+    // 1. Arrange
+    const groups = [{ email: "rotasul01w@monamienet.org" }, { email: "outro01@monamienet.org" }];
+
+    // 2. Act
+    const caps = capabilitiesFromGroups(groups, hostsEverything);
+
+    // 3. Assert
+    assert.deepEqual(caps.partners, ["rotasul"]);
+  });
+
+  test("Sad Path: a partner not hosted here is not listed", () => {
+    // 1. Arrange
+    const groups = [{ email: "outro00@monamienet.org" }, { email: "outro01w@monamienet.org" }];
+
+    // 2. Act
+    const caps = capabilitiesFromGroups(groups, hostsOnlyRotasul);
+
+    // 3. Assert
+    assert.deepEqual(caps.partners, []);
   });
 });
 

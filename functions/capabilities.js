@@ -19,26 +19,35 @@ const { parseGroupAddress } = require("./group_address");
  * @param {(partnerId: string) => boolean} isHostedHere - Whether a partner's
  *   data lives in this project; other partners' groups are left out
  * @returns {{share: string[], watch: string[], owns: string[],
- *   ignored: string[]}} Sorted, without duplicates
+ *   partners: string[], ignored: string[]}} Sorted, without duplicates.
+ *   `partners` lists every partner where the person has any capability, so
+ *   the rules can tell members of one partner from another's in a project
+ *   that hosts several (Community).
  */
 function capabilitiesFromGroups(groups, isHostedHere) {
   const share = new Set();
   const watch = new Set();
   const owns = new Set();
+  const partners = new Set();
   const ignored = new Set();
   for (const group of groups ?? []) {
     const address = parseGroupAddress(group?.email);
     if (!address || !isHostedHere(address.partnerId)) continue;
+    if (address.level === 1) {
+      ignored.add(String(group.email).trim().toLowerCase());
+      continue;
+    }
     if (address.level === 0) owns.add(address.partnerId);
     else if (address.leaf === "w") share.add(address.teamKey);
-    else if (address.leaf === "r") watch.add(address.teamKey);
-    else ignored.add(String(group.email).trim().toLowerCase());
+    else watch.add(address.teamKey);
+    partners.add(address.partnerId);
   }
   const sorted = (set) => [...set].sort();
   return {
     share: sorted(share),
     watch: sorted(watch),
     owns: sorted(owns),
+    partners: sorted(partners),
     ignored: sorted(ignored),
   };
 }

@@ -91,11 +91,13 @@ class ActivateCommand extends Command<void> {
     final problem = activationProblem(id, registry, retired: retired != null);
     if (problem != null) throw PartnerToolException(problem);
 
+    final plan = registry?['plan'];
     final results = await checkPartner(
       id: id,
       cli: _cli,
       groups: _groups,
       firestore: _firestore,
+      plan: plan is String ? plan : null,
     );
     printCheckResults(results);
     if (results.any((r) => !r.passed)) {

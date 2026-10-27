@@ -25,7 +25,7 @@ Pôr o e-mail de uma pessoa numa folha (ou na raiz) é o que a torna usuária da
 
 1. **Login Google** no projeto central `monamienet-app`. A tela tem a marca MonAmie: ainda não se sabe o parceiro.
 2. **`resolvePartners`** (função central) pede ao gateway os grupos do usuário, transforma os nomes em ids de parceiro, mantém os que têm, no registro central `partners/{id}`, um status diferente de `reserved` e devolve o status de cada um e, para os que o app pode vincular, as opções do Firebase. O app só entra em parceiros `active` (seção 7).
-3. O app lê o **`config/branding`** (público) de cada parceiro. Sem parceiro, o usuário vê "sua conta não está vinculada a nenhuma organização"; com um, o app entra nele; com vários, um seletor mostra o nome e o ícone de cada um.
+3. O app lê o **`partners/<id>/config/branding`** (público) de cada parceiro. Sem parceiro, o usuário vê "sua conta não está vinculada a nenhuma organização"; com um, o app entra nele; com vários, um seletor mostra o nome e o ícone de cada um.
 4. **Ligação:** o projeto Firebase do parceiro (um app Firebase nomeado `partner-<id>`), o grupo raiz e a marca são ligados juntos. O app entra no projeto do parceiro com o mesmo ID token do Google (o parceiro aceita o cliente web central) e chama a `syncClaims` do parceiro, que decide o que o usuário pode ver, como antes.
 5. **Lembrança:** a ligação fica salva no aparelho. As próximas aberturas já começam com a marca do parceiro, sem consultar o projeto central.
 
@@ -37,7 +37,7 @@ O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa 
 
 | Tipo | Exemplos | Onde |
 |---|---|---|
-| Escolha do parceiro | nome (obrigatório); cores, logo, ícone (opcionais) | `config/branding` em `monamienet-<id>` |
+| Escolha do parceiro | nome (obrigatório); cores, logo, ícone (opcionais) | `partners/<id>/config/branding` no projeto do parceiro (seção 9) |
 | Escolha da MonAmie | status do parceiro (seção 7) | `partners/{id}` em `monamienet-app` |
 | Escolha da MonAmie | catálogo de temas (seção 8) | `themes/{id}` em `monamienet-app` |
 | Derivado por regra | `monamienet-<id>`, `<id>00@monamienet.org`, id a partir do nome do grupo | código |
@@ -188,3 +188,37 @@ Os parceiros escolhem um tema de um conjunto fixo, nunca cores livres. O catálo
 - **Aposentar** um tema: `active: false` (na ferramenta também, senão a próxima carga o reativa). Ele some do seletor, mas continua valendo para os parceiros que o usam; nunca apague o documento de um tema.
 - **`themeId` desconhecido ou ausente**: o app usa o Grafite e nunca trava. As cores resolvidas ficam guardadas com a ligação, então a primeira tela já sai com a marca mesmo sem rede e sem conseguir ler o catálogo.
 - **Leitura** pública (só nomes e cores): o app lê, e as funções do parceiro que gravam um `themeId` o conferem contra os temas ativos, porque as regras do projeto do parceiro não leem o banco central.
+
+## 9. Planos e o layout dos dados
+
+| | **Community** (gratuito) | **Standard** |
+| :--- | :--- | :--- |
+| Projeto Firebase | `monamienet-community`, compartilhado por todos os parceiros Community, pago pela MonAmieNet | o `monamienet-<id>` do próprio parceiro, na conta de faturamento dele |
+| Acompanhamento | no máximo uma posição a cada 15 minutos (*Economia*) | todas as opções |
+| Registro | `partners/{id}.plan = "community"` | `plan = "standard"` (ou sem `plan`, nas entradas anteriores aos planos) |
+
+**Um layout para os dois.** Todo parceiro guarda seus dados em `partners/{partnerId}/` do seu projeto:
+
+```
+partners/{partnerId}/config/branding      público: nome e aparência
+partners/{partnerId}/config/plan          só Community: {minIntervalMinutes: 15}
+partners/{partnerId}/usuarios/{email}     posição atual (positionAt = hora do servidor da última posição)
+partners/{partnerId}/usuarios/{email}/historico_posicoes/{pontoId}
+partners/{partnerId}/users/{uid}          perfil Google (nome, foto)
+```
+
+- **Regras** separam todo caminho por parceiro. Para ler perfis ou gravar qualquer coisa, a claim `partners` da pessoa precisa conter o parceiro (a `syncClaims` a calcula pelos grupos); posições também exigem `watch`/`share` numa equipe **daquele parceiro**. No projeto Community a `syncClaims` só considera os parceiros cujo `partners/{id}/config/branding` existe lá.
+- **Intervalo do Community, garantido pelas regras**: uma posição nova precisa ter `positionAt == request.time` e vir pelo menos `minIntervalMinutes` depois da anterior; um ponto do trajeto só é aceito no mesmo batch da posição que ele registra (`getAfter`). O app lê o mesmo valor e não tenta antes.
+- **`resolvePartners`** devolve as opções do Firebase do projeto Community para os parceiros Community (cada um continua com seu app nomeado `partner-<id>` no aparelho).
+- **Expiração** (seção 7) apaga `partners/{id}/**` de um parceiro Community no projeto compartilhado, em vez de um projeto; a conta `partner-expirer` precisa de `roles/datastore.user` no `monamienet-community`.
+
+**Levar um parceiro Standard existente para o layout** (uma vez, por projeto): publique as regras e funções novas e depois
+
+```sh
+dart run tool/partner.dart migrate-layout <id>          # conta
+dart run tool/partner.dart migrate-layout <id> --apply  # copia para partners/<id>/
+```
+
+A cópia mantém todos os campos e tipos. Os documentos antigos na raiz continuam lá; apague-os à mão quando todos os aparelhos estiverem na versão nova (as antigas ainda leem a raiz).
+
+**Configurar o `monamienet-community`** (uma vez): crie o projeto na conta de faturamento da MonAmieNet (precisa de uma vaga livre nela), adicione o Firebase, o Firestore em `southamerica-east1`, o provedor Google com o cliente web central em *IDs de cliente permitidos*, o app Android `org.monamienet.app` sem SHA-1 e exatamente um app web, o mesmo IAM de um projeto de parceiro (seção 5, passos 4 e 8) mais `roles/datastore.user` para `partner-expirer@monamienet-app.iam.gserviceaccount.com`, e publique o `firestore.rules` e o `functions/` nele. Crie um **alerta de orçamento**: a cota gratuita do Firestore (50.000 leituras e 20.000 gravações por dia) é dividida entre todos os parceiros Community.

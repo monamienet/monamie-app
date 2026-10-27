@@ -4,7 +4,8 @@ const { defineString, projectID } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { capabilitiesFromGroups } = require("./capabilities");
-const { partnerIdForProject } = require("./root_group");
+const { parseGroupAddress } = require("./group_address");
+const { COMMUNITY_PROJECT_ID, partnerIdForProject } = require("./root_group");
 admin.initializeApp();
 
 // Host of the workspace-groups-gateway, shared by every partner (functions/.env).
@@ -20,9 +21,12 @@ const GATEWAY_TIMEOUT_MS = 10000;
  * and `<id>00` (the owner) watches every team. Only the person's direct
  * groups are needed: one gateway call, no walk of the group tree.
  *
- * Claims: `{share: [teamKey], watch: [teamKey], owns: [partnerId]}`, where a
- * team key is the team group's local part (`rotasul01`). Only the partners
- * hosted by this project are kept.
+ * Claims: `{share: [teamKey], watch: [teamKey], owns: [partnerId],
+ * partners: [partnerId]}`, where a team key is the team group's local part
+ * (`rotasul01`) and `partners` lists the partners where the person has any
+ * capability. Only the partners hosted by this project are kept: the one
+ * named by a Standard project's id, or, in the shared Community project,
+ * every partner whose `partners/{id}/config/branding` exists here.
  *
  * Request: `{idToken}` (forwarded to the gateway).
  * Response: the claims set.
@@ -44,11 +48,10 @@ exports.syncClaims = onCall({ invoker: "public", region: "us-central1" }, async 
     throw new HttpsError("invalid-argument", "idToken é obrigatório.");
   }
 
-  const hostedId = partnerIdForProject(projectID.value());
   const groups = await fetchUserGroups(idToken, email);
-  const { ignored, ...claims } = capabilitiesFromGroups(
-    groups,
-    (partnerId) => partnerId === hostedId
+  const hosted = await hostedPartners(projectID.value(), groups);
+  const { ignored, ...claims } = capabilitiesFromGroups(groups, (partnerId) =>
+    hosted.has(partnerId)
   );
   if (ignored.length > 0) {
     logger.warn(
@@ -59,6 +62,29 @@ exports.syncClaims = onCall({ invoker: "public", region: "us-central1" }, async 
   await getAuth().setCustomUserClaims(uid, claims);
   return claims;
 });
+
+/**
+ * The partners of `groups` whose data lives in this project.
+ *
+ * @param {string} projectId - This Firebase project
+ * @param {Array<{email?: unknown}>} groups - The person's groups
+ * @returns {Promise<Set<string>>}
+ */
+async function hostedPartners(projectId, groups) {
+  if (projectId !== COMMUNITY_PROJECT_ID) {
+    return new Set([partnerIdForProject(projectId)]);
+  }
+  const ids = new Set();
+  for (const group of groups) {
+    const address = parseGroupAddress(group?.email);
+    if (address) ids.add(address.partnerId);
+  }
+  const db = admin.firestore();
+  const refs = [...ids].map((id) => db.doc(`partners/${id}/config/branding`));
+  if (refs.length === 0) return new Set();
+  const docs = await db.getAll(...refs);
+  return new Set(docs.filter((doc) => doc.exists).map((doc) => doc.ref.parent.parent.id));
+}
 
 /**
  * The person's direct groups from the gateway's `/groups?email=`.

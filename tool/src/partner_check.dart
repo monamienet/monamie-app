@@ -27,9 +27,10 @@ Future<List<CheckResult>> checkPartner({
   required FirebaseCli cli,
   required GroupDirectory groups,
   required FirestoreDocuments firestore,
+  String? plan,
 }) async {
   checkPartnerId(id);
-  final projectId = firebaseProjectId(id);
+  final projectId = firebaseProjectId(id, plan: plan);
   return [
     await _check("Android app $appPackageName in $projectId", () async {
       final apps = await cli.listAndroidApps(projectId);
@@ -57,10 +58,10 @@ Future<List<CheckResult>> checkPartner({
           : 'subgroups not named ${id}NN@monamienet.org (a team), so the app '
                 'cannot find their members: ${misnamed.join(', ')}.';
     }),
-    await _check('Branding name ($brandingDocumentPath)', () async {
+    await _check('Branding name (${brandingDocumentPath(id)})', () async {
       final branding = await firestore.get(
         projectId: projectId,
-        path: brandingDocumentPath,
+        path: brandingDocumentPath(id),
       );
       final name = branding?['name'];
       return name is String && name.trim().isNotEmpty

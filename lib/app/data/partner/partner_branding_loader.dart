@@ -11,8 +11,9 @@ import 'partner_binding.dart';
 import 'partner_directory.dart';
 import 'partner_session.dart';
 
-/// Path of the branding document in every partner project.
-const brandingDocumentPath = 'config/branding';
+/// Path of partner [partnerId]'s branding document in its project.
+String brandingDocumentPath(String partnerId) =>
+    'partners/$partnerId/config/branding';
 
 const _brandingTimeout = Duration(seconds: 10);
 
@@ -44,7 +45,7 @@ class PartnerBrandingLoader {
       final app = await partnerFirebaseApp(binding);
       final snapshot = await FirebaseFirestore.instanceFor(
         app: app,
-      ).doc(brandingDocumentPath).get().timeout(_brandingTimeout);
+      ).doc(brandingDocumentPath(binding.partner.id)).get().timeout(_brandingTimeout);
       final data = snapshot.data();
       return PartnerConfig.fromBranding(
         binding.partner.id,

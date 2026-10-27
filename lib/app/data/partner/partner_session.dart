@@ -23,7 +23,9 @@ class PartnerSession {
   /// so the next launch (and the background isolate) binds it too.
   Future<void> bind(PartnerBinding binding, {bool remember = true}) async {
     final app = await partnerFirebaseApp(binding);
-    CurrentPartnerFirebase.set(FirebaseAppPartnerFirebase(app));
+    CurrentPartnerFirebase.set(
+      FirebaseAppPartnerFirebase(app, binding.partner.id),
+    );
     Partner.bind(binding.partner);
     if (remember) await _store.write(binding);
   }
