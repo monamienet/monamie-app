@@ -53,6 +53,11 @@ class TrackingController extends GetxController
   final PermissionsController permissionsCtrl =
       Get.find<PermissionsController>();
   final Rx<double?> heading = Rx<double?>(null);
+
+  /// Where this device is, once a fix is known. It is the person's own
+  /// marker on the map, which a person who only shares cannot get from the
+  /// team's documents (they observe no team).
+  final Rxn<LatLng> ownPosition = Rxn<LatLng>();
   //StreamSubscription<CompassEvent>? _compassSubscription;
 
   /// Indica se o dia observado no calendário é o dia atual.
@@ -380,21 +385,43 @@ class TrackingController extends GetxController
     });
 
     _initPosition();
+    // The person's capabilities and the location permission arrive after this
+    // controller starts: look for the device again when they do.
+    ever(Get.find<GoogleGroupsController>().capabilities, (_) {
+      _initPosition();
+    });
+    ever(permissionsCtrl.hasWhenInUseLocationPermission, (granted) {
+      if (granted) _initPosition();
+    });
 
     isTrackingEnabled.value = await _service.isRunning();
   }
 
+  void _setPosition(Position value) {
+    position = value;
+    ownPosition.value = LatLng(value.latitude, value.longitude);
+  }
+
+  bool _locating = false;
+
   Future<void> _initPosition() async {
-    if (userCtrl.isTrackable()) {
-      try {
-        position = await Geolocator.getCurrentPosition().timeout(
+    // One look at a time; only for people who can share.
+    if (_locating || !userCtrl.isTrackable()) return;
+    _locating = true;
+    try {
+      _setPosition(
+        await Geolocator.getCurrentPosition().timeout(
           const Duration(seconds: 5),
-        );
-      } catch (e) {
-        debugPrint(
-          '[TrackingController] Erro ao obter posição inicial no onInit: $e',
-        );
+        ),
+      );
+      // A person who only shares has no team on the map: show them.
+      if (!Get.find<GoogleGroupsController>().canWatch) {
+        await centerMapOnCurrentLocation();
       }
+    } catch (e) {
+      debugPrint('[TrackingController] Erro ao obter posição inicial: $e');
+    } finally {
+      _locating = false;
     }
   }
 
@@ -672,8 +699,10 @@ class TrackingController extends GetxController
 
     // Tenta obter a posição GPS atual para sincronizar imediatamente
     try {
-      position = await Geolocator.getCurrentPosition().timeout(
-        const Duration(seconds: 5),
+      _setPosition(
+        await Geolocator.getCurrentPosition().timeout(
+          const Duration(seconds: 5),
+        ),
       );
     } catch (e) {
       debugPrint(
@@ -711,7 +740,7 @@ class TrackingController extends GetxController
       event,
     ) {
       if (event != null) {
-        position = Position.fromMap(event['position']);
+        _setPosition(Position.fromMap(event['position']));
       }
     });
 

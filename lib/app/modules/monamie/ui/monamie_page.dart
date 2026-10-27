@@ -107,6 +107,12 @@ class MonamiePage extends StatelessWidget {
               trackingCtrl.position.latitude,
               trackingCtrl.position.longitude,
             ),
+            // A person who only shares has no team on the map: start on them.
+            onMapReady: () {
+              if (!googleGroupsController.canWatch) {
+                trackingCtrl.centerMapOnCurrentLocation();
+              }
+            },
             minZoom: 3.0,
             maxZoom: 19.0,
             cameraConstraint: CameraConstraint.contain(
@@ -117,6 +123,7 @@ class MonamiePage extends StatelessWidget {
             _tile(),
             _highlightedTrajectories(),
             _firebaseMarkers(),
+            _ownMarker(),
             _centralizeButton(),
           ],
         ),
@@ -285,6 +292,47 @@ class MonamiePage extends StatelessWidget {
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       userAgentPackageName: 'org.monamienet.app',
     );
+  }
+
+  /// The person's own place on the map, for whoever shares: the team's
+  /// documents only draw them when they also watch the team they share with.
+  Widget _ownMarker() {
+    const markerSize = 50.0;
+    return Obx(() {
+      final point = trackingCtrl.ownPosition.value;
+      final me = userCtrl.user?.email;
+      if (point == null || me == null || !userCtrl.isTrackable()) {
+        return const SizedBox.shrink();
+      }
+      final drawnWithTheTeam =
+          googleGroupsController.observedMembers.any((m) => m.email == me) &&
+          trackingCtrl.firebaseUsers.any((u) => u.email == me);
+      if (drawnWithTheTeam) return const SizedBox.shrink();
+      return MarkerLayer(
+        markers: [
+          Marker(
+            point: point,
+            width: markerSize,
+            height: markerSize,
+            child: Container(
+              margin: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.indigo,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    });
   }
 
   Widget _firebaseMarkers() {
