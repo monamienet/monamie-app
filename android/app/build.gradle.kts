@@ -31,8 +31,9 @@ android {
         applicationId = "org.monamienet.app"
         // The launcher and Play name; the partner's name shows inside the app.
         manifestPlaceholders["appLabel"] = "MonAmie"
-        // Used by drawable[-v21]/launch_background.xml.
-        resValue("color", "splash_background", "#FFFFFF")
+        // MonAmie ink, the splash background: drawable[-v21]/launch_background.xml
+        // and the Android 12+ splash theme (values-v31).
+        resValue("color", "splash_background", "#1B1838")
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
