@@ -7,7 +7,6 @@ const reservedPartnerIds = {'app', 'community'};
 /// Lowercase letters only, at least three: what lets a group address be
 /// split into partner, team and leaf (`rotasul01w`).
 final _partnerIdPattern = RegExp(r'^[a-z]{3,}$');
-final _hexColorPattern = RegExp(r'^#[0-9A-Fa-f]{6}$');
 
 /// The shared Firebase project of every Community partner.
 const communityProjectId = 'monamienet-community';
@@ -21,10 +20,6 @@ String firebaseProjectId(String id, {String? plan}) =>
 /// Path of partner [id]'s data root in its project. Every partner, on any
 /// plan, keeps its data under it.
 String partnerDataPath(String id) => 'partners/$id';
-
-/// Whether [value] is a color in the `#RRGGBB` format (either case).
-bool isHexColor(Object? value) =>
-    value is String && _hexColorPattern.hasMatch(value);
 
 /// A failure the partner tool reports to the user as a plain message.
 class PartnerToolException implements Exception {

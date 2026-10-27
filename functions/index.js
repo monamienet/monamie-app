@@ -1,8 +1,15 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAuth } = require("firebase-admin/auth");
+const { FieldValue } = require("firebase-admin/firestore");
 const { defineString, projectID } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const {
+  BrandingError,
+  THEMES_URL,
+  activeThemeIdsFrom,
+  validateBranding,
+} = require("./branding");
 const { capabilitiesFromGroups } = require("./capabilities");
 const { parseGroupAddress } = require("./group_address");
 const { COMMUNITY_PROJECT_ID, partnerIdForProject } = require("./root_group");
@@ -107,4 +114,57 @@ async function fetchUserGroups(idToken, email) {
   }
   const body = await response.json();
   return Array.isArray(body?.groups) ? body.groups : [];
+}
+
+/**
+ * Changes the bound partner's name, theme or logo flag. Owner only.
+ *
+ * The partner project's rules cannot read the central theme catalog, so
+ * the theme is checked here, against the active themes (public REST read).
+ * The logo itself is uploaded by the owner's app to
+ * `partners/{id}/logo.png` (storage.rules); `logo: "set"` then bumps
+ * `logoVersion` so every device fetches the new file, and `"removed"`
+ * drops it.
+ *
+ * Request: `{partnerId, name?, themeId?, logo?: "set" | "removed"}`.
+ * Response: the fields written.
+ */
+exports.setBranding = onCall({ invoker: "public", region: "us-central1" }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Autenticação necessária.");
+  }
+  const partnerId = request.data?.partnerId;
+  const owns = request.auth.token.owns;
+  if (typeof partnerId !== "string" || !Array.isArray(owns) || !owns.includes(partnerId)) {
+    throw new HttpsError("permission-denied", "Só o responsável muda a aparência.");
+  }
+  let change;
+  try {
+    const needsThemes = request.data?.themeId !== undefined;
+    const themes = needsThemes ? await fetchActiveThemeIds() : new Set();
+    change = validateBranding(request.data, themes);
+  } catch (error) {
+    if (error instanceof BrandingError) {
+      throw new HttpsError("invalid-argument", error.message, { field: error.code });
+    }
+    throw error;
+  }
+  const { logo, ...fields } = change;
+  const data = { ...fields, updatedAt: new Date() };
+  if (logo === "set") data.logoVersion = Date.now();
+  if (logo === "removed") data.logoVersion = FieldValue.delete();
+  await admin
+    .firestore()
+    .doc(`partners/${partnerId}/config/branding`)
+    .set(data, { merge: true });
+  return { ...fields, ...(logo ? { logo } : {}) };
+});
+
+async function fetchActiveThemeIds() {
+  const response = await fetch(THEMES_URL, { signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS) });
+  if (!response.ok) {
+    logger.error(`[setBranding] Theme catalog answered ${response.status}.`);
+    throw new HttpsError("unavailable", "Não foi possível ler os temas.");
+  }
+  return activeThemeIdsFrom(await response.json());
 }

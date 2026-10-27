@@ -37,14 +37,14 @@ O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa 
 
 | Tipo | Exemplos | Onde |
 |---|---|---|
-| Escolha do parceiro | nome (obrigatório); cores, logo, ícone (opcionais) | `partners/<id>/config/branding` no projeto do parceiro (seção 9) |
+| Escolha do parceiro | nome (obrigatório), tema do catálogo, logo (opcional) | `partners/<id>/config/branding` no projeto do parceiro (seção 9) |
 | Escolha da MonAmie | status do parceiro (seção 7) | `partners/{id}` em `monamienet-app` |
 | Escolha da MonAmie | catálogo de temas (seção 8) | `themes/{id}` em `monamienet-app` |
 | Derivado por regra | `monamienet-<id>`, `<id>00@monamienet.org`, id a partir do nome do grupo | código |
 | Buscado no build | `google-services.json` central | `android/app/google-services.json` (ignorado pelo git) |
 | Buscado em tempo de execução | opções do Firebase do parceiro | `resolvePartners`, depois o aparelho |
 
-Cada dado opcional que faltar usa o próprio plano B: sem cor principal → azul MonAmie `#315399`; sem fundo → branco; sem logo → o nome escrito na cor do parceiro; sem ícone → a inicial do nome num círculo.
+A marca é um **nome**, um **tema** do catálogo (seção 8) e, opcionalmente, **um logo**: um PNG quadrado de 512 px em `partners/<id>/logo.png` no Cloud Storage do parceiro (leitura pública; só o responsável grava, `image/png` de até 1 MB). O responsável muda os três no app, em *Aparência*: o aparelho converte qualquer arquivo escolhido (SVG, PNG, JPEG, WebP, HEIC quando o Android decodifica) nesse PNG, então um SVG nunca é guardado; a função `setBranding` confere o tema contra o catálogo ativo e avança o `logoVersion`, que avisa os aparelhos para buscar o logo novo. Planos B: sem tema ou tema desconhecido → Grafite; sem logo, ou logo que não abre → a inicial do nome num quadrado na cor do tema; sem nome → o id com a primeira letra maiúscula. As cores resolvidas e o logo ficam guardados com a ligação, então a primeira tela sai com a marca sem rede; as mudanças chegam a cada aparelho na próxima abertura.
 
 ## 4. Configuração única do projeto central (mantenedor)
 
@@ -92,7 +92,7 @@ Os passos 1 a 9 cuidam dos três obrigatórios: projeto, grupo raiz e nome. O pa
 1. Crie `monamienet-<id>` na conta de cobrança do parceiro.
 2. Ative o Firestore e o provedor de login Google. Em **Allowed client IDs** (só pelo console), adicione o client id web central: projeto central → Authentication → Google → Configuração do SDK da Web.
 3. Registre o app Android `org.monamienet.app` **sem SHA-1** (o par pacote + SHA-1 só pode ter cliente OAuth num projeto: o central) e **exatamente um** app web. O `flutterfire configure` cria um app web por plataforma (ex.: "windows"); remova os extras, senão `check`, `activate` e `resolvePartners` falham.
-4. Dê à conta da função (`<número do projeto do parceiro>-compute@developer.gserviceaccount.com`) `roles/firebaseauth.admin` (a `syncClaims` grava claims), `roles/cloudbuild.builds.builder` e `roles/logging.logWriter`.
+4. Dê à conta da função (`<número do projeto do parceiro>-compute@developer.gserviceaccount.com`) `roles/firebaseauth.admin` (a `syncClaims` grava claims), `roles/datastore.user` (a `setBranding` grava a marca), `roles/cloudbuild.builds.builder` e `roles/logging.logWriter`. Ative o Cloud Storage (o bucket padrão guarda o logo) e publique o `storage.rules` junto com o resto.
 5. Publique as regras e a `syncClaims` a partir da raiz do repositório (no primeiro deploy, responda **1** dia à pergunta de limpeza):
    ```sh
    (cd functions && npm ci)
@@ -107,13 +107,11 @@ Os passos 1 a 9 cuidam dos três obrigatórios: projeto, grupo raiz e nome. O pa
 
 **Marca e ativação**
 
-9. Baixe o envio do formulário com `rclone` numa pasta temporária (veja o `AGENTS.md`) e publique a marca:
+9. Publique o nome e o tema (o responsável põe o logo depois, no app):
    ```sh
-   dart run tool/partner.dart publish <id> --name "<Nome>" \
-     --primary '#RRGGBB' --secondary '#RRGGBB' \
-     --logo <pasta>/logo-com-texto.svg --icon <pasta>/logo-sem-texto.svg
+   dart run tool/partner.dart publish <id> --name "<Nome>" --theme <themeId>
    ```
-   Só `--name` é obrigatório; use `--dry-run` para conferir antes. Um aviso de `<text>` no logo quer dizer que o celular pode desenhar o texto com outra fonte: peça ao parceiro uma versão com o texto convertido em contornos. Publicar de novo depois atualiza a marca para todos na próxima abertura do app.
+   O `--theme` é um dos ids do catálogo (seção 8); use `--dry-run` para conferir antes. Publicar de novo atualiza a marca na próxima abertura de cada aparelho e também remove os campos do formato antigo (`colors`, `logoSvg`, `iconSvg`).
 10. Confira e ative (a ativação roda as mesmas conferências e recusa se alguma falhar):
     ```sh
     dart run tool/partner.dart check <id>

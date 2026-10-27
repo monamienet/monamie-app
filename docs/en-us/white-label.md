@@ -37,14 +37,14 @@ The launcher icon, the app name on the home screen, the Play listing and the nat
 
 | Kind | Examples | Where |
 |---|---|---|
-| Partner's choice | name (required); colors, logo, icon (optional) | `partners/<id>/config/branding` in the partner's project (section 9) |
+| Partner's choice | name (required), catalog theme, logo (optional) | `partners/<id>/config/branding` in the partner's project (section 9) |
 | MonAmie's choice | partner status (section 7) | `partners/{id}` in `monamienet-app` |
 | MonAmie's choice | theme catalog (section 8) | `themes/{id}` in `monamienet-app` |
 | Derived by rule | `monamienet-<id>`, `<id>00@monamienet.org`, id from a group name | code |
 | Fetched at build time | central `google-services.json` | `android/app/google-services.json` (gitignored) |
 | Fetched at runtime | partner's Firebase options | `resolvePartners`, then the device |
 
-Missing optional branding falls back on its own: no primary color → MonAmie blue `#315399`; no background → white; no logo → the name written in the partner's color; no icon → the name's initial in a circle.
+Branding is a **name**, a **theme** from the catalog (section 8) and, optionally, **one logo**: a square 512 px PNG at `partners/<id>/logo.png` in the partner's Cloud Storage (public read; written only by the owner, `image/png` up to 1 MB). The owner changes all three in the app, *Aparência*: the device converts any picked file (SVG, PNG, JPEG, WebP, HEIC where Android decodes it) to that PNG, so an SVG is never stored; the `setBranding` function checks the theme against the active catalog and bumps `logoVersion`, which tells devices to fetch the new logo. Fallbacks: no or unknown theme → Grafite; no logo, or one that does not decode → the name's initial in a tile of the theme's color; no name → the id capitalized. The resolved colors and the logo are stored with the binding, so the first screen is branded without network; changes reach each device on its next launch.
 
 ## 4. One-time setup of the central project (maintainer)
 
@@ -92,7 +92,7 @@ Steps 1–9 cover the three required things: project, root group and name. Step 
 1. Create `monamienet-<id>` on the partner's billing account.
 2. Enable Firestore and the Google sign-in provider. Under **Allowed client IDs** (console only), add the central web client id: central project → Authentication → Google → Web SDK configuration.
 3. Register the Android app `org.monamienet.app` **without a SHA-1** (the package + SHA-1 pair can only have an OAuth client in one project: the central one) and **exactly one** web app. `flutterfire configure` creates one web app per platform (e.g. "windows"); remove the extra ones, or `check`, `activate` and `resolvePartners` fail.
-4. Grant the function's account (`<partner project number>-compute@developer.gserviceaccount.com`) `roles/firebaseauth.admin` (`syncClaims` writes custom claims), `roles/cloudbuild.builds.builder` and `roles/logging.logWriter`.
+4. Grant the function's account (`<partner project number>-compute@developer.gserviceaccount.com`) `roles/firebaseauth.admin` (`syncClaims` writes custom claims), `roles/datastore.user` (`setBranding` writes the branding), `roles/cloudbuild.builds.builder` and `roles/logging.logWriter`. Enable Cloud Storage (the default bucket holds the logo) and deploy `storage.rules` with the rest.
 5. Deploy the rules and `syncClaims` from the repository root (first deploy: answer **1** day to the cleanup question):
    ```sh
    (cd functions && npm ci)
@@ -107,13 +107,11 @@ Steps 1–9 cover the three required things: project, root group and name. Step 
 
 **Branding and activation**
 
-9. Download the onboarding submission with `rclone` into a temp folder (see `AGENTS.md`), then publish the branding:
+9. Publish the name and theme (the owner adds the logo later in the app):
    ```sh
-   dart run tool/partner.dart publish <id> --name "<Name>" \
-     --primary '#RRGGBB' --secondary '#RRGGBB' \
-     --logo <dir>/logo-com-texto.svg --icon <dir>/logo-sem-texto.svg
+   dart run tool/partner.dart publish <id> --name "<Name>" --theme <themeId>
    ```
-   Only `--name` is required; add `--dry-run` to check first. A warning about live `<text>` means the phone may draw the logo's text in another font: ask the partner for a version with the text converted to outlines. Publishing again later updates the brand for every user on their next launch.
+   `--theme` is one of the catalog ids (section 8); add `--dry-run` to check first. Publishing again updates the brand on every device's next launch and also removes the fields of the old format (`colors`, `logoSvg`, `iconSvg`).
 10. Check and activate (activation runs the same checks and refuses on failure):
     ```sh
     dart run tool/partner.dart check <id>

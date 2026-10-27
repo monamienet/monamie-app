@@ -1,25 +1,20 @@
-import 'dart:io';
-
 import 'partners.dart';
 
-/// Largest SVG accepted in the branding document. Firestore documents are
-/// limited to 1 MiB, and every app launch may download the document.
-const maxSvgBytes = 200 * 1024;
-
 /// Path of partner [id]'s branding document in its project.
-String brandingDocumentPath(String id) => '${partnerDataPath(id)}/config/branding';
+String brandingDocumentPath(String id) =>
+    '${partnerDataPath(id)}/config/branding';
 
-/// Builds the `config/branding` document of a partner.
+/// Builds the `config/branding` document of a partner: its [name] and the
+/// catalog theme [themeId] (one of [themeIds]).
 ///
-/// [name] is mandatory. Colors and SVG files are optional, but when given
-/// they must be valid; otherwise a [PartnerToolException] says which value
-/// to fix. Optional values left out make the app use its fallbacks.
+/// The name is mandatory and must not start with "MonAmie " (it would read
+/// as MonAmie's own brand; the app never shows the two names together).
+/// Partners pick a theme, never free colors. The logo is not set here: the
+/// owner uploads it from the app (*Aparência*).
 Map<String, Object?> buildBrandingDocument({
   required String name,
-  String? primary,
-  String? secondary,
-  File? logo,
-  File? icon,
+  required String themeId,
+  required Iterable<String> themeIds,
 }) {
   final trimmedName = name.trim();
   if (trimmedName.isEmpty) {
@@ -31,54 +26,10 @@ Map<String, Object?> buildBrandingDocument({
       "MonAmie's own brand, and the app never shows the two names together.",
     );
   }
-  return {
-    'name': trimmedName,
-    'colors': {
-      'primary': ?_color('--primary', primary),
-      'secondary': ?_color('--secondary', secondary),
-    },
-    'logoSvg': ?_svg('--logo', logo),
-    'iconSvg': ?_svg('--icon', icon),
-  };
-}
-
-String? _color(String option, String? value) {
-  if (value == null) return null;
-  if (!isHexColor(value)) {
-    throw PartnerToolException("$option must be a color like '#0ABAB5'.");
-  }
-  return value.toUpperCase();
-}
-
-String? _svg(String option, File? file) {
-  if (file == null) return null;
-  if (!file.existsSync()) {
-    throw PartnerToolException('$option: ${file.path} does not exist.');
-  }
-  if (file.lengthSync() > maxSvgBytes) {
+  if (!themeIds.contains(themeId)) {
     throw PartnerToolException(
-      '$option: ${file.path} is larger than ${maxSvgBytes ~/ 1024} KiB.',
+      "Unknown theme '$themeId'. Pick one of: ${themeIds.join(', ')}.",
     );
   }
-  final String source;
-  try {
-    source = file.readAsStringSync();
-  } on FileSystemException {
-    throw PartnerToolException('$option: ${file.path} is not UTF-8 text.');
-  }
-  if (!RegExp(r'<svg[\s>]').hasMatch(source) || !source.contains('</svg>')) {
-    throw PartnerToolException('$option: ${file.path} is not an SVG file.');
-  }
-  if (RegExp(r'<script[\s>]', caseSensitive: false).hasMatch(source)) {
-    throw PartnerToolException('$option: ${file.path} contains a <script>.');
-  }
-  return source;
+  return {'name': trimmedName, 'themeId': themeId};
 }
-
-/// Warnings about an SVG that is valid but may render differently on the
-/// devices: live `<text>` depends on fonts the phone may not have.
-List<String> svgWarnings(String option, String svg) => [
-  if (RegExp(r'<text[\s>]').hasMatch(svg))
-    '$option has live <text>; phones may render it in another font. Ask the '
-        'partner for a version with the text converted to outlines.',
-];
