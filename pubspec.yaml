@@ -86,6 +86,21 @@ flutter:
   assets:
     - assets/monamie/
 
+  # Manrope, the font of the design canvas (SIL Open Font License, see
+  # assets/fonts/Manrope-OFL.txt). One static file per weight, cut from the
+  # variable font because Flutter does not map FontWeight to its axis.
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-400.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-500.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-700.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-800.ttf
+          weight: 800
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg
