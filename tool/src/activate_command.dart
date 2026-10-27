@@ -53,7 +53,14 @@ String? activationProblem(
 /// registry, but only after `check` passes and only from the statuses in
 /// [manualActivationStatuses].
 class ActivateCommand extends Command<void> {
-  ActivateCommand(this._cli, this._groups, this._firestore, this._tokens);
+  ActivateCommand(this._cli, this._groups, this._firestore, this._tokens) {
+    argParser.addOption(
+      'owner',
+      help:
+          "E-mail of the partner's owner (responsável), the member of its "
+          'root group; the team and invite functions only accept them.',
+    );
+  }
 
   final FirebaseCli _cli;
   final GroupDirectory _groups;
@@ -107,11 +114,22 @@ class ActivateCommand extends Command<void> {
     }
     // The mask also removes the legacy `active` flag and any `deleteAt`,
     // and keeps every other field (the creator, the plan…).
+    final owner = argResults!.option('owner')?.trim().toLowerCase();
     await _firestore.update(
       projectId: centralProjectId,
       path: registryDocumentPath(id),
-      data: {'status': 'active', 'updatedAt': DateTime.now()},
-      fieldPaths: const ['status', 'updatedAt', 'active', 'deleteAt'],
+      data: {
+        'status': 'active',
+        'updatedAt': DateTime.now(),
+        'ownerEmail': ?owner,
+      },
+      fieldPaths: [
+        'status',
+        'updatedAt',
+        'active',
+        'deleteAt',
+        if (owner != null) 'ownerEmail',
+      ],
       accessToken: accessToken,
     );
     stdout.writeln("Partner '$id' is now active in $centralProjectId.");

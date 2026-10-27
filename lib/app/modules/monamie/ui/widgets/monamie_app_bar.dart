@@ -72,6 +72,8 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
             onSelected: (value) {
               if (value == 'sair') {
                 authController.logout();
+              } else if (value == 'equipes') {
+                Get.toNamed(Routes.TEAMS);
               } else if (value == 'acompanhamento') {
                 Get.toNamed(Routes.TRACKING_SETTINGS);
               } else if (value == 'aparencia') {
@@ -82,6 +84,18 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
             },
             itemBuilder: (BuildContext context) => [
               // Only the owner (responsável) changes the organization's look.
+              if (googleGroupsController.isOwner)
+                const PopupMenuItem<String>(
+                  value: 'equipes',
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.groups_outlined, color: Colors.black87),
+                      SizedBox(width: 8),
+                      Text('Equipes'),
+                    ],
+                  ),
+                ),
               if (googleGroupsController.isOwner)
                 const PopupMenuItem<String>(
                   value: 'acompanhamento',

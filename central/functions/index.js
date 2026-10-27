@@ -10,6 +10,17 @@ const {
   PartnerOptionsReader,
 } = require("./partner_options");
 const { TtlCache } = require("./ttl_cache");
+const { GROUPS_SCOPES, GroupsApi } = require("./groups_api");
+const { TeamError } = require("./teams");
+const {
+  createTeam,
+  deleteTeam,
+  deletionImpact,
+  listTeams,
+  removePerson,
+  renameTeam,
+  setRoles,
+} = require("./team_service");
 const {
   BINDABLE,
   VISIBLE,
@@ -217,3 +228,90 @@ async function deletePartnerProject(id) {
     if (project?.state !== "DELETE_REQUESTED") throw error;
   }
 }
+
+// ── Teams (#98) ────────────────────────────────────────────────────────────
+// Run as groups-admin@, which holds the Workspace "Groups Administrator"
+// admin role. Every call checks that the caller is the partner's owner
+// (`ownerEmail` in partners/{id}) and only touches that partner's groups.
+const GROUPS_ADMIN_SERVICE_ACCOUNT =
+  "groups-admin@monamienet-app.iam.gserviceaccount.com";
+
+const groupsAuth = new GoogleAuth({ scopes: GROUPS_SCOPES });
+const groupsApi = new GroupsApi(async (options) => {
+  const client = await groupsAuth.getClient();
+  return (await client.request(options)).data;
+});
+
+/**
+ * The partner id of a team call, once the caller is known to own it.
+ *
+ * @throws {HttpsError} unauthenticated / permission-denied
+ */
+async function ownedPartnerId(request) {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+  const partnerId = request.data?.partnerId;
+  const email = String(request.auth.token.email ?? "").toLowerCase();
+  if (typeof partnerId !== "string" || !email) {
+    throw new HttpsError("invalid-argument", "partnerId is required.");
+  }
+  const registry = await admin.firestore().doc(`partners/${partnerId}`).get();
+  const owner = String(registry.get("ownerEmail") ?? "").toLowerCase();
+  if (!registry.exists || registry.get("status") !== "active" || owner !== email) {
+    throw new HttpsError("permission-denied", "Só o responsável gerencia equipes.");
+  }
+  return partnerId;
+}
+
+/** Wraps a team operation: owner check, then TeamError → invalid-argument. */
+function teamCall(operation) {
+  return onCall(
+    { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT },
+    async (request) => {
+      const partnerId = await ownedPartnerId(request);
+      try {
+        return await operation(partnerId, request.data ?? {});
+      } catch (error) {
+        if (error instanceof TeamError) {
+          throw new HttpsError(
+            error.code === "full" ? "failed-precondition" : "invalid-argument",
+            error.message,
+            { field: error.code }
+          );
+        }
+        logger.error(`[teams] ${partnerId}: ${error.message}`);
+        throw new HttpsError("unavailable", "Não foi possível falar com os grupos agora.");
+      }
+    }
+  );
+}
+
+exports.listTeams = teamCall(async (partnerId) => ({
+  teams: await listTeams(groupsApi, partnerId),
+}));
+
+exports.createTeam = teamCall((partnerId, data) =>
+  createTeam(groupsApi, partnerId, data.name)
+);
+
+exports.renameTeam = teamCall((partnerId, data) =>
+  renameTeam(groupsApi, partnerId, String(data.team ?? ""), data.name)
+);
+
+exports.teamDeletionImpact = teamCall((partnerId, data) =>
+  deletionImpact(groupsApi, partnerId, String(data.team ?? ""))
+);
+
+exports.deleteTeam = teamCall(async (partnerId, data) => {
+  await deleteTeam(groupsApi, partnerId, String(data.team ?? ""));
+  return { deleted: true };
+});
+
+exports.setMemberRoles = teamCall((partnerId, data) =>
+  setRoles(groupsApi, partnerId, String(data.team ?? ""), String(data.email ?? ""), data.roles)
+);
+
+exports.removeMember = teamCall(async (partnerId, data) => {
+  await removePerson(groupsApi, partnerId, String(data.team ?? ""), String(data.email ?? ""));
+  return { removed: true };
+});
+

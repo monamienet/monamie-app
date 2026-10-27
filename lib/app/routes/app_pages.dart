@@ -9,6 +9,9 @@ import 'package:monamie_app/app/modules/admin/appearance_controller.dart';
 import 'package:monamie_app/app/modules/admin/tracking_settings_edit_controller.dart';
 import 'package:monamie_app/app/modules/admin/tracking_settings_view.dart';
 import 'package:monamie_app/app/modules/admin/appearance_view.dart';
+import 'package:monamie_app/app/modules/admin/teams/firebase_teams_backend.dart';
+import 'package:monamie_app/app/modules/admin/teams/teams_controller.dart';
+import 'package:monamie_app/app/modules/admin/teams/teams_views.dart';
 import 'package:monamie_app/app/modules/admin/firebase_appearance_backend.dart';
 
 import '../modules/login/bindings/login_binding.dart';
@@ -41,6 +44,17 @@ class AppPages {
           TrackingSettingsEditController(
             repository: const FirestoreTrackingSettingsRepository(),
             saved: Get.find<TrackingSettingsController>().settings.value,
+          ),
+        ),
+      ),
+    ),
+    GetPage(
+      name: _Paths.TEAMS,
+      page: () => TeamsView(
+        controller: Get.put(
+          TeamsController(
+            partnerId: Partner.current!.id,
+            backend: const FirebaseTeamsBackend(),
           ),
         ),
       ),
