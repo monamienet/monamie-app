@@ -124,6 +124,11 @@ class AuthGoogleController extends GetxController {
   // indica se o logout (parada do rastreamento + saída) está em andamento
   final RxBool isLoggingOut = false.obs;
 
+  /// The busy operation is a change of organization, not a sign-out: both set
+  /// [isLoggingOut] (the lock and the overlay), and this decides the overlay's
+  /// message.
+  final RxBool isSwitchingOrganization = false.obs;
+
   /// Name of the partner being entered, for the "Entrando em ..." message.
   final RxnString enteringPartnerName = RxnString();
 
@@ -392,6 +397,7 @@ class AuthGoogleController extends GetxController {
     }
 
     isLoggingOut.value = true;
+    isSwitchingOrganization.value = true;
     try {
       final candidates = await _partnerDirectory.partnersOfSignedInUser();
       final bindings = await Future.wait(candidates.map(_brandingLoader.load));
@@ -422,6 +428,7 @@ class AuthGoogleController extends GetxController {
       );
     } finally {
       isLoggingOut.value = false;
+      isSwitchingOrganization.value = false;
     }
   }
 

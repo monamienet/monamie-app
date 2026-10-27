@@ -1286,5 +1286,124 @@ void main() {
         expect(harness.controller.isLoggingOut.value, isFalse);
       },
     );
+
+    // isSwitchingOrganization: the harness has no seam to pause the run, so
+    // the in-flight value is observed through the values the Rx emits.
+    testWidgets(
+      'Happy Path: Deve emitir isSwitchingOrganization true e depois false ao trocar de organização',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul]);
+        await _pumpApp(tester);
+        final seen = <bool>[];
+        final sub = harness.controller.isSwitchingOrganization.listen(
+          seen.add,
+        );
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        await sub.cancel();
+        expect(seen, [true, false]);
+        expect(harness.controller.isSwitchingOrganization.value, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Deve emitir isSwitchingOrganization true e depois false quando a busca de organizações lançar',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(directoryError: Exception('sem rede'));
+        await _pumpApp(tester);
+        final seen = <bool>[];
+        final sub = harness.controller.isSwitchingOrganization.listen(
+          seen.add,
+        );
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        await sub.cancel();
+        expect(seen, [true, false]);
+        expect(harness.controller.isSwitchingOrganization.value, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Edge Case: Não deve marcar isSwitchingOrganization durante um logout comum',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness();
+        await _pumpApp(tester);
+        final seen = <bool>[];
+        final sub = harness.controller.isSwitchingOrganization.listen(
+          seen.add,
+        );
+
+        // 2. Act
+        await _run(tester, harness.controller, harness.controller.logout);
+
+        // 3. Assert
+        await sub.cancel();
+        expect(seen, isEmpty);
+        expect(harness.controller.isSwitchingOrganization.value, isFalse);
+      },
+    );
+
+    test(
+      'Edge Case: Não deve marcar isSwitchingOrganization quando chamado com isLoggingOut true (reentrância)',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul]);
+        harness.controller.isLoggingOut.value = true;
+        final seen = <bool>[];
+        final sub = harness.controller.isSwitchingOrganization.listen(
+          seen.add,
+        );
+
+        // 2. Act
+        await harness.controller.switchOrganization();
+
+        // 3. Assert
+        await sub.cancel();
+        expect(seen, isEmpty);
+        expect(harness.controller.isSwitchingOrganization.value, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: Não deve marcar isSwitchingOrganization quando não houver token válido nem renovação',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
+        await _pumpApp(tester);
+        final seen = <bool>[];
+        final sub = harness.controller.isSwitchingOrganization.listen(
+          seen.add,
+        );
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        await sub.cancel();
+        expect(seen, isEmpty);
+        expect(harness.controller.isSwitchingOrganization.value, isFalse);
+      },
+    );
   });
 }

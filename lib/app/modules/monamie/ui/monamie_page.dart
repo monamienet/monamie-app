@@ -47,7 +47,11 @@ class MonamiePage extends StatelessWidget {
             ),
             Obx(
               () => authCtrl.isLoggingOut.value
-                  ? const LogoutProgressOverlay()
+                  ? LogoutProgressOverlay(
+                      message: authCtrl.isSwitchingOrganization.value
+                          ? 'Trocando de organização…'
+                          : 'Encerrando sessão…',
+                    )
                   : const SizedBox.shrink(),
             ),
           ],
