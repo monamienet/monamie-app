@@ -417,3 +417,77 @@ exports.acceptInvite = onCall(
   }
 );
 
+const { THEMES_URL, activeThemeIdsFrom } = require("./branding_catalog");
+
+// ── Creating an organization (#93) ─────────────────────────────────────────
+// Runs as groups-admin@: it creates the root group and writes the registry
+// (and, for Community, the shared project's Firestore, where the account
+// needs roles/datastore.user).
+const {
+  checkPartnerId,
+  createPartner,
+  myCreations,
+} = require("./creation_service");
+const { CreationError } = require("./partner_creation");
+
+function signedInEmail(request) {
+  const email = request.auth?.token?.email;
+  if (!email || request.auth.token.email_verified !== true) {
+    throw new HttpsError("unauthenticated", "Sign in first.");
+  }
+  return email.toLowerCase();
+}
+
+/** The Workspace customer (`customers/…`) new groups belong to, read from
+ * an existing group of the domain. */
+async function workspaceCustomer() {
+  const known = await groupsApi.lookup(MAIL_FROM.value());
+  return known ? (await groupsApi.get(known)).parent : null;
+}
+
+/** "Disponível" at the name step: format, never retired, not taken. */
+exports.checkPartnerId = onCall({ invoker: "public" }, async (request) => {
+  signedInEmail(request);
+  return checkPartnerId(admin.firestore(), String(request.data?.id ?? ""));
+});
+
+/** Creates the caller's organization (they become its owner). */
+exports.createPartner = onCall(
+  { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT, timeoutSeconds: 120 },
+  async (request) => {
+    const ownerEmail = signedInEmail(request);
+    try {
+      const response = await fetch(THEMES_URL);
+      const themes = activeThemeIdsFrom(await response.json());
+      return await createPartner(
+        admin.firestore(),
+        {
+          groups: groupsApi,
+          customer: await workspaceCustomer(),
+          communityDb: communityFirestore(),
+          // Standard needs a provisioning identity that can create projects
+          // in the organization, and the billing wait (Cloud Workflows).
+          // Until MonAmieNet sets them up, a Standard creation stops as
+          // `failed` with this reason and MonAmieNet finishes it by hand.
+          createStandardProject: async () => {
+            throw new Error("Standard provisioning is not set up yet.");
+          },
+        },
+        { ...request.data, ownerEmail },
+        themes
+      );
+    } catch (error) {
+      if (error instanceof CreationError) {
+        throw new HttpsError("invalid-argument", error.message, { field: error.code });
+      }
+      logger.error(`[createPartner] ${error.message}`);
+      throw new HttpsError("unavailable", "Não foi possível criar agora.");
+    }
+  }
+);
+
+/** The caller's organizations still being created. */
+exports.myCreations = onCall({ invoker: "public" }, async (request) => ({
+  creations: await myCreations(admin.firestore(), signedInEmail(request)),
+}));
+

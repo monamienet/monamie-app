@@ -22,7 +22,13 @@ class GroupsApi {
     this._request = request;
   }
 
-  /** The resource name (`groups/…`) of the group `email`, or null. */
+  /**
+   * The resource name (`groups/…`) of the group `email`, or null.
+   *
+   * Cloud Identity answers 403 "Permission denied … (or it may not exist)"
+   * for a group that does not exist, so 403 counts as missing like 404; a
+   * real permission problem then shows up on the next call (the create).
+   */
   async lookup(email) {
     try {
       const body = await this._request({
@@ -30,7 +36,8 @@ class GroupsApi {
       });
       return body?.name ?? null;
     } catch (error) {
-      if (error?.response?.status === 404 || error?.code === 404) return null;
+      const status = error?.response?.status ?? error?.code;
+      if (status === 404 || status === 403) return null;
       throw error;
     }
   }

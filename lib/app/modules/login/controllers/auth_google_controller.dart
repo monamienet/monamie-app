@@ -16,6 +16,10 @@ import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/flutter_background_service_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/capabilities.dart';
+import 'package:monamie_app/app/data/theme/firestore_theme_catalog.dart';
+import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
+import 'package:monamie_app/app/modules/creation/create_organization_view.dart';
+import 'package:monamie_app/app/modules/creation/firebase_creation_backend.dart';
 import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
@@ -209,6 +213,19 @@ class AuthGoogleController extends GetxController {
     await _continueWithPartners(idToken, fresh: true);
   }
 
+  /// "A <nome> está pronta · Entrar": enters the organization just created.
+  Future<void> enterCreatedOrganization(String partnerId) async {
+    if (isLoading.value) return;
+    isLoading.value = true;
+    try {
+      await _enterWhenListed(partnerId);
+    } catch (e) {
+      _showLoginError("Não foi possível entrar agora: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   /// "Aceitar e entrar": joins the invite's team, then enters its partner
   /// (looked up without the server's cache) and shows *Boas-vindas*.
   Future<void> acceptInvite(Invite invite) async {
@@ -246,13 +263,24 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// "Criar minha organização". The in-app creation flow (#93) replaces this
-  /// notice.
+  /// "Criar minha organização": the creation flow; a Community organization
+  /// is entered as soon as it is ready.
   void startCreatingOrganization() {
-    Get.snackbar(
-      'Criar organização',
-      'A criação de organizações pelo app chega em breve.',
-      snackPosition: SnackPosition.BOTTOM,
+    // Registered with GetX so its lifecycle runs (onInit loads the themes);
+    // a fresh one each time the flow opens.
+    Get.delete<CreateOrganizationController>(force: true);
+    final controller = Get.put(
+      CreateOrganizationController(
+        backend: const FirebaseCreationBackend(),
+        themes: const FirestoreThemeCatalog(),
+      ),
+    );
+    Get.to(
+      () => CreateOrganizationView(
+        controller: controller,
+        ownerEmail: signedInEmail.value ?? '',
+        onReady: () => enterCreatedOrganization(controller.id.value),
+      ),
     );
   }
 
