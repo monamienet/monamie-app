@@ -65,20 +65,37 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         child: Obx(() {
           final result = c.result.value;
           if (result != null) return _outcome(result);
+          // The plan screen scrolls between a header and a footer bar that
+          // reach the screen's edges (`Plano.dc.html`); the others are one
+          // column with 24 px margins.
+          final plan = _step == 3;
           return Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            padding: plan
+                ? const EdgeInsets.only(top: 8)
+                : const EdgeInsets.fromLTRB(24, 8, 24, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _header(),
-                // The canvas spaces the name screen by 24, the others by 20.
-                SizedBox(height: _step == 0 ? 24 : 20),
+                if (plan)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _header(),
+                  )
+                else
+                  _header(),
+                SizedBox(
+                  height: switch (_step) {
+                    0 => 24,
+                    3 => 12,
+                    _ => 20,
+                  },
+                ),
                 Expanded(
                   child: switch (_step) {
                     0 => _nameStep(),
                     1 => _themeStep(),
-                    2 => _planStep(),
-                    _ => _reviewStep(),
+                    2 => _reviewStep(),
+                    _ => _planStep(),
                   },
                 ),
               ],
@@ -137,23 +154,24 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
           ),
         ),
       ),
-      const SizedBox(height: 10),
-      Row(
-        children: [
-          for (var i = 0; i < 2; i++) ...[
-            if (i == 1) const SizedBox(width: 6),
-            Expanded(
-              child: Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  color: i <= _step ? _navy : _line,
-                  borderRadius: BorderRadius.circular(2),
+      if (_step < 2) const SizedBox(height: 10),
+      if (_step < 2)
+        Row(
+          children: [
+            for (var i = 0; i < 2; i++) ...[
+              if (i == 1) const SizedBox(width: 6),
+              Expanded(
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: i <= _step ? _navy : _line,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
-      ),
+        ),
     ],
   );
 
@@ -757,6 +775,429 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     ),
   );
 
+  bool _acceptedTerms = true;
+
+  /// *Tudo certo?* (`CriarRevisao.dc.html`): what the team will see, the
+  /// choices with a link back to each, who becomes the owner, the terms and
+  /// the button that goes on to the plan.
+  Widget _reviewStep() {
+    final theme = c.pickedTheme;
+    final name = _preview.name;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ListView(
+            children: [
+              const Text(
+                'Tudo certo?',
+                style: TextStyle(
+                  fontSize: 34,
+                  height: 1.08,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.035 * 34,
+                  color: _navy,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: theme.dark,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: theme.primary,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        name.characters.first.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: theme.onPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sua equipe vai ver',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: theme.light,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.02 * 22,
+                              color: theme.onDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _line),
+                ),
+                child: Column(
+                  children: [
+                    _reviewRow(
+                      'Nome',
+                      Text(c.name.value.trim(), style: _value),
+                      0,
+                    ),
+                    _reviewRow(
+                      'Identificador',
+                      Text(c.id.value, style: _value),
+                      0,
+                    ),
+                    _reviewRow(
+                      'Tema',
+                      Row(
+                        children: [
+                          Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: theme.primary,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(theme.name, style: _value),
+                        ],
+                      ),
+                      1,
+                      last: true,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _note,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: _navy,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        widget.ownerEmail.isEmpty
+                            ? '?'
+                            : widget.ownerEmail.characters.first.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: MonAmieBrand.cream,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Você será o responsável',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: _navy,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${widget.ownerEmail} poderá convidar pessoas, criar '
+                            'equipes, mudar a aparência e adicionar o logo. '
+                            'Depois, também pode passar essa função para outra '
+                            'pessoa.',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              height: 19 / 13,
+                              fontWeight: FontWeight.w500,
+                              color: _muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: Checkbox(
+                value: _acceptedTerms,
+                activeColor: _navy,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+                onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text.rich(
+                const TextSpan(
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 20 / 14,
+                    fontWeight: FontWeight.w500,
+                    color: _navy,
+                  ),
+                  children: [
+                    TextSpan(text: 'Li e aceito os '),
+                    TextSpan(
+                      text: 'Termos para parceiros',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    TextSpan(text: '.'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _button(
+          'Criar organização',
+          _acceptedTerms ? () => setState(() => _step = 3) : null,
+        ),
+      ],
+    );
+  }
+
+  static const _value = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    color: _navy,
+  );
+
+  /// One line of the review: a small label over its value, and "Alterar",
+  /// which goes back to [step].
+  Widget _reviewRow(
+    String label,
+    Widget value,
+    int step, {
+    bool last = false,
+  }) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: BoxDecoration(
+      border: last ? null : const Border(bottom: BorderSide(color: _note)),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: _muted,
+                ),
+              ),
+              const SizedBox(height: 2),
+              value,
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        InkWell(
+          onTap: c.isCreating.value ? null : () => setState(() => _step = step),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              'Alterar',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: _navy,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  /// *Escolha um plano* (`Plano.dc.html`): the two plans as radio cards, a
+  /// note, and a footer bar whose button creates the organization.
+  Widget _planStep() {
+    final community = c.plan.value == 'community';
+    final name = _preview.name;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            children: [
+              const Text(
+                'Escolha um plano',
+                style: TextStyle(
+                  fontSize: 34,
+                  height: 1.08,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.035 * 34,
+                  color: _navy,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Os dois têm o mapa, as equipes e a aparência da $name. Muda '
+                'onde os dados ficam e quem paga.',
+                style: const TextStyle(
+                  fontSize: 15,
+                  height: 22 / 15,
+                  fontWeight: FontWeight.w500,
+                  color: _muted,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _planCard(
+                'community',
+                'Community',
+                'Grátis',
+                'Para começar agora, sem cadastrar pagamento.',
+                const [
+                  (true, 'Pronta em instantes'),
+                  (
+                    true,
+                    'Dados guardados pela MonAmie, separados das outras organizações',
+                  ),
+                  (
+                    false,
+                    'Localização enviada a cada 15 min (perfil Economia)',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _planCard(
+                'standard',
+                'Standard',
+                'Uso no Google',
+                'Para quem quer o próprio espaço de dados e mais precisão.',
+                [
+                  (true, 'Projeto Firebase só da $name'),
+                  (true, 'Todos os perfis de acompanhamento, até a cada 1 min'),
+                  (
+                    false,
+                    'Pede uma conta de faturamento do Google Cloud; vocês pagam o uso direto ao Google',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: _note,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(top: 1),
+                      child: Icon(Icons.swap_horiz, size: 18, color: _navy),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Dá para passar do Community para o Standard depois, sem perder equipes nem histórico.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 19 / 13,
+                          fontWeight: FontWeight.w500,
+                          color: _navy,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: _line)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (c.errorMessage.value.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    c.errorMessage.value,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 19 / 13,
+                      color: Color(0xFFB3261E),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              _button(
+                community ? 'Começar no Community' : 'Continuar com Standard',
+                c.create,
+                busy: c.isCreating.value,
+                busyLabel: 'Criando…',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _planCard(
     String id,
     String title,
@@ -765,212 +1206,119 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     List<(bool, String)> points,
   ) {
     final selected = c.plan.value == id;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: selected ? _navy : _line,
-            width: selected ? 2.5 : 1,
+    return Semantics(
+      inMutuallyExclusiveGroup: true,
+      checked: selected,
+      button: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: c.isCreating.value ? null : () => c.plan.value = id,
+        child: Container(
+          // The canvas draws the border inside the card (an inset shadow), so
+          // picking a plan must not move its content: the thinner border
+          // gets the difference as padding.
+          padding: EdgeInsets.all(selected ? 15.5 : 17),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? _navy : _line,
+              width: selected ? 2.5 : 1,
+            ),
           ),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => c.plan.value = id,
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(
+                        color: selected ? _navy : _ring,
+                        width: selected ? 7 : 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
                       title,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
+                        letterSpacing: -0.02 * 20,
                         color: _navy,
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Text(
+                  ),
+                  Container(
+                    height: 26,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: id == 'community' ? _navy : _note,
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Text(
                       price,
-                      style: const TextStyle(
+                      style: TextStyle(
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: _muted,
+                        color: id == 'community' ? MonAmieBrand.cream : _navy,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                tagline,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 20 / 14,
+                  fontWeight: FontWeight.w500,
+                  color: _muted,
+                ),
+              ),
+              const SizedBox(height: 12),
+              for (var i = 0; i < points.length; i++) ...[
+                if (i > 0) const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Icon(
+                        points[i].$1 ? Icons.check : Icons.schedule,
+                        size: 18,
+                        color: points[i].$1 ? _navy : _muted,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        points[i].$2,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 20 / 14,
+                          fontWeight: FontWeight.w500,
+                          color: _navy,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(tagline, style: const TextStyle(color: _muted)),
-                const SizedBox(height: 8),
-                for (final (good, text) in points)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          good ? Icons.check : Icons.info_outline,
-                          size: 18,
-                          color: good ? const Color(0xFF2F7347) : _muted,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            text,
-                            style: const TextStyle(color: _navy),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
               ],
-            ),
+            ],
           ),
         ),
       ),
     );
   }
-
-  Widget _planStep() => ListView(
-    children: [
-      _title(
-        'Escolha um plano',
-        'Os dois têm o mapa, as equipes e a aparência da ${_preview.name}. Muda onde os dados ficam e quem paga.',
-      ),
-      _planCard(
-        'community',
-        'Community',
-        'Grátis',
-        'Para começar agora, sem cadastrar pagamento.',
-        const [
-          (true, 'Pronta em instantes'),
-          (
-            true,
-            'Dados guardados pela MonAmie, separados das outras organizações',
-          ),
-          (false, 'Localização enviada a cada 15 min (perfil Economia)'),
-        ],
-      ),
-      _planCard(
-        'standard',
-        'Standard',
-        'Uso no Google',
-        'Para quem quer o próprio espaço de dados e mais precisão.',
-        [
-          (true, 'Projeto Firebase só da ${_preview.name}'),
-          (true, 'Todos os perfis de acompanhamento, até a cada 1 min'),
-          (
-            false,
-            'Pede uma conta de faturamento do Google Cloud; vocês pagam o uso direto ao Google',
-          ),
-        ],
-      ),
-      const Text(
-        'Dá para passar do Community para o Standard depois, sem perder equipes nem histórico.',
-        style: TextStyle(fontSize: 13, color: _muted),
-      ),
-      const SizedBox(height: 20),
-      _button(
-        c.plan.value == 'community'
-            ? 'Começar no Community'
-            : 'Continuar com Standard',
-        () => setState(() => _step = 3),
-      ),
-    ],
-  );
-
-  Widget _reviewRow(String label, String value, int step) => ListTile(
-    contentPadding: EdgeInsets.zero,
-    title: Text(label, style: const TextStyle(fontSize: 12, color: _muted)),
-    subtitle: Text(
-      value,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w800,
-        color: _navy,
-      ),
-    ),
-    trailing: TextButton(
-      onPressed: c.isCreating.value ? null : () => setState(() => _step = step),
-      child: const Text('Alterar'),
-    ),
-  );
-
-  Widget _reviewStep() => ListView(
-    children: [
-      _title('Tudo certo?'),
-      Row(
-        children: [
-          PartnerIcon(partner: _preview, size: 56),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Sua equipe vai ver',
-                  style: TextStyle(color: _muted),
-                ),
-                Text(
-                  _preview.name,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: _navy,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 12),
-      _reviewRow('Nome', c.name.value.trim(), 0),
-      _reviewRow('Identificador', c.id.value, 0),
-      _reviewRow('Tema', c.pickedTheme.name, 1),
-      _reviewRow(
-        'Plano',
-        c.plan.value == 'community' ? 'Community' : 'Standard',
-        2,
-      ),
-      const SizedBox(height: 8),
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(
-          'Você será o responsável. ${widget.ownerEmail} poderá convidar pessoas, '
-          'criar equipes, mudar a aparência e adicionar o logo.',
-          style: const TextStyle(height: 1.45, color: _navy),
-        ),
-      ),
-      const SizedBox(height: 16),
-      if (c.errorMessage.value.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Text(
-            c.errorMessage.value,
-            style: const TextStyle(
-              color: Color(0xFFB3261E),
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      _button(
-        'Criar organização',
-        c.create,
-        busy: c.isCreating.value,
-        busyLabel: 'Criando…',
-      ),
-    ],
-  );
 
   Widget _outcome(String status) {
     final name = c.name.value.trim();
