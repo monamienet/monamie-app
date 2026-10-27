@@ -44,7 +44,6 @@ class TrackingController extends GetxController
   /// Every document of the observed team, sharing or not: the team list's
   /// source. [firebaseUsers] is the live part of it.
   final RxList<UserModel> teamUsers = <UserModel>[].obs;
-  final Rxn<UserModel> selectedFirebaseUser = Rxn<UserModel>();
   late final MapController mapController;
   @override
   final isTrackingEnabled = false.obs;
@@ -494,14 +493,6 @@ class TrackingController extends GetxController
     return someUser.email == currentUserEmail
         ? Colors.indigo
         : Colors.lightBlue;
-  }
-
-  void openFirebaseUserDetails(UserModel user) {
-    selectedFirebaseUser.value = user;
-  }
-
-  void closeFirebaseUserDetails() {
-    selectedFirebaseUser.value = null;
   }
 
   @override

@@ -12,7 +12,6 @@ import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart'
 import 'package:monamie_app/app/modules/monamie/ui/home/home_header.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_menu.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_sheet.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_user_panel.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/logout_progress_overlay.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:get/get.dart';
@@ -113,9 +112,6 @@ class MonamiePage extends StatelessWidget {
             cameraConstraint: CameraConstraint.contain(
               bounds: LatLngBounds(LatLng(-90, -180), LatLng(90, 180)),
             ),
-            onTap: (tapPosition, latLng) {
-              trackingCtrl.closeFirebaseUserDetails();
-            },
           ),
           children: [
             _tile(),
@@ -124,7 +120,6 @@ class MonamiePage extends StatelessWidget {
             _centralizeButton(),
           ],
         ),
-        HighlightedUserPanel(),
       ],
     );
   }
@@ -354,34 +349,26 @@ class MonamiePage extends StatelessWidget {
                     SizedBox(
                       width: markerSize,
                       height: markerSize,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => trackingCtrl.openFirebaseUserDetails(user),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color:
-                                user.isTracked == false ||
-                                    DateTime.now().difference(
-                                          user.timestamp!,
-                                        ) >=
-                                        Get.find<TrackingSettingsController>()
-                                            .staleAfter
-                                ? trackingCtrl
-                                      .setMarkerColor(user)
-                                      .withAlpha(100)
-                                : trackingCtrl.setMarkerColor(user),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          margin: const EdgeInsets.all(10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color:
+                              user.isTracked == false ||
+                                  DateTime.now().difference(user.timestamp!) >=
+                                      Get.find<TrackingSettingsController>()
+                                          .staleAfter
+                              ? trackingCtrl.setMarkerColor(user).withAlpha(100)
+                              : trackingCtrl.setMarkerColor(user),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
+                        margin: const EdgeInsets.all(10),
                       ),
                     ),
                   ],
