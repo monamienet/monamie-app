@@ -6,10 +6,15 @@ import 'package:monamie_app/app/config/partner/partner_config.dart';
 import 'package:monamie_app/app/config/partner/partner_icon.dart';
 
 import 'create_organization_controller.dart';
+import 'id_input_formatter.dart';
 
 const _navy = MonAmieBrand.navy;
 const _muted = MonAmieBrand.mutedInk;
 const _line = Color(0xFFDDD5C4);
+const _ring = Color(0xFFB8AE9A);
+const _danger = Color(0xFFC23F1E);
+const _ok = Color(0xFF2F7347);
+const _note = Color(0xFFECE6D9);
 
 /// *Criar organização*: Nome → Tema → Plano → Revisão, then the outcome.
 class CreateOrganizationView extends StatefulWidget {
@@ -35,6 +40,10 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   late final _name = TextEditingController();
   late final _id = TextEditingController();
 
+  /// The identifier field changed what the person typed (case, accents,
+  /// anything but a to z): the screen says so.
+  bool _adjusted = false;
+
   CreateOrganizationController get c => widget.controller;
 
   @override
@@ -56,44 +65,20 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
           final result = c.result.value;
           if (result != null) return _outcome(result);
           return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 24, 24),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    IconButton(
-                      tooltip: 'Voltar',
-                      onPressed: c.isCreating.value ? null : _back,
-                      icon: const Icon(Icons.arrow_back, color: _navy),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Nova organização',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: _navy,
-                        ),
-                      ),
-                    ),
-                    if (_step < 2)
-                      Text(
-                        '${_step + 1} de 2',
-                        style: const TextStyle(color: _muted),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                _header(),
+                // The canvas spaces the name screen by 24, the others by 20.
+                SizedBox(height: _step == 0 ? 24 : 20),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: switch (_step) {
-                      0 => _nameStep(),
-                      1 => _themeStep(),
-                      2 => _planStep(),
-                      _ => _reviewStep(),
-                    },
-                  ),
+                  child: switch (_step) {
+                    0 => _nameStep(),
+                    1 => _themeStep(),
+                    2 => _planStep(),
+                    _ => _reviewStep(),
+                  },
                 ),
               ],
             ),
@@ -103,16 +88,84 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     ),
   );
 
-  Widget _title(String text, [String? subtitle]) => Column(
+  /// Back arrow, the screen's name and "n de 2", over a two-segment progress
+  /// bar (`CriarNome.dc.html`): the arrow's box starts 12 px left of the
+  /// 24 px margin, so the arrow lines up with the text below.
+  Widget _header() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Transform.translate(
+        offset: const Offset(-12, 0),
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            children: [
+              IconButton(
+                tooltip: 'Voltar',
+                constraints: const BoxConstraints.tightFor(
+                  width: 48,
+                  height: 48,
+                ),
+                padding: EdgeInsets.zero,
+                onPressed: c.isCreating.value ? null : _back,
+                icon: const Icon(Icons.arrow_back, color: _navy),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Nova organização',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: _navy,
+                ),
+              ),
+              const Spacer(),
+              if (_step < 2)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Text(
+                    '${_step + 1} de 2',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: _muted,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 10),
+      Row(
+        children: [
+          for (var i = 0; i < 2; i++) ...[
+            if (i == 1) const SizedBox(width: 6),
+            Expanded(
+              child: Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  color: i <= _step ? _navy : _line,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ],
+  );
+
+  Widget _title(String text, [String? subtitle, double gap = 20]) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
         text,
         style: const TextStyle(
-          fontSize: 30,
-          height: 1.1,
+          fontSize: 34,
+          height: 1.08,
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.8,
+          letterSpacing: -0.035 * 34,
           color: _navy,
         ),
       ),
@@ -120,10 +173,15 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         const SizedBox(height: 10),
         Text(
           subtitle,
-          style: const TextStyle(fontSize: 15, height: 1.45, color: _muted),
+          style: const TextStyle(
+            fontSize: 16,
+            height: 24 / 16,
+            fontWeight: FontWeight.w500,
+            color: _muted,
+          ),
         ),
       ],
-      const SizedBox(height: 20),
+      SizedBox(height: gap),
     ],
   );
 
@@ -139,6 +197,8 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         backgroundColor: _navy,
         foregroundColor: MonAmieBrand.cream,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        disabledBackgroundColor: _line,
+        disabledForegroundColor: _muted,
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
       ),
       onPressed: busy ? null : onPressed,
@@ -164,69 +224,190 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
 
   Widget _nameStep() {
     final check = c.idCheck.value;
-    final idHint = switch (check) {
-      IdCheck.checking => 'Verificando…',
-      IdCheck.available => 'Disponível',
-      IdCheck.unavailable => c.idProblem.value,
-      IdCheck.idle => 'Mínimo 3 letras',
-    };
-    if (_id.text != c.id.value) _id.text = c.id.value;
-    return ListView(
+    final id = c.id.value;
+    final name = c.name.value.trim();
+    if (_id.text != id) _id.text = id;
+    // "Mínimo 3 letras" is the field's own status; any other problem goes
+    // under it, in red.
+    final isShort = id.isNotEmpty && id.length < 3;
+    final problem = check == IdCheck.unavailable && !isShort
+        ? c.idProblem.value
+        : '';
+    final ring = isShort || problem.isNotEmpty ? _danger : _ring;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _title(
-          'Como sua organização se chama?',
-          'Use o nome que a equipe reconhece: da empresa, do grupo ou do projeto.',
-        ),
-        TextField(
-          controller: _name,
-          maxLength: 40,
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(
-            labelText: 'Nome da organização',
-            helperText: c.name.value.trim().isEmpty
-                ? null
-                : 'Sua equipe vai ver ${c.name.value.trim()} no topo do app',
-            filled: true,
-            fillColor: Colors.white,
-            border: const OutlineInputBorder(),
-          ),
-          onChanged: c.setName,
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _id,
-          maxLength: 20,
-          autocorrect: false,
-          decoration: InputDecoration(
-            labelText: 'Identificador',
-            helperText: check == IdCheck.unavailable ? null : idHint,
-            errorText: check == IdCheck.unavailable ? idHint : null,
-            suffixIcon: switch (check) {
-              IdCheck.checking => const Padding(
-                padding: EdgeInsets.all(14),
-                child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+        Expanded(
+          child: ListView(
+            children: [
+              _title(
+                'Como sua organização se chama?',
+                'Use o nome que a equipe reconhece: da empresa, do grupo ou do projeto.',
+                24,
+              ),
+              _label('Nome da organização'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _name,
+                maxLength: 40,
+                textCapitalization: TextCapitalization.words,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                  color: _navy,
+                ),
+                cursorColor: _navy,
+                decoration: InputDecoration(
+                  counterText: '',
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 17,
+                  ),
+                  enabledBorder: _fieldBorder(_ring, 1.5),
+                  focusedBorder: _fieldBorder(_navy, 2),
+                  border: _fieldBorder(_ring, 1.5),
+                ),
+                onChanged: (value) {
+                  _adjusted = false;
+                  c.setName(value);
+                },
+              ),
+              if (name.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text.rich(
+                  TextSpan(
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: _muted,
+                    ),
+                    children: [
+                      const TextSpan(text: 'Sua equipe vai ver '),
+                      TextSpan(
+                        text: name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: _navy,
+                        ),
+                      ),
+                      const TextSpan(text: ' no topo do app'),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              _label('Identificador'),
+              const SizedBox(height: 8),
+              Container(
+                height: 56,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: ring, width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _id,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        keyboardType: TextInputType.visiblePassword,
+                        inputFormatters: [IdInputFormatter(_markAdjusted)],
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.17,
+                          color: _navy,
+                        ),
+                        cursorColor: _navy,
+                        decoration: const InputDecoration(
+                          isCollapsed: true,
+                          border: InputBorder.none,
+                        ),
+                        onChanged: c.setId,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _idStatus(check, isShort),
+                  ],
                 ),
               ),
-              IdCheck.available => const Icon(
-                Icons.check_circle,
-                color: Color(0xFF2F7347),
+              if (problem.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _note13(problem, color: _danger, bold: true),
+              ] else if (_adjusted) ...[
+                const SizedBox(height: 8),
+                _note13(
+                  'Ajustamos para letras minúsculas, sem acentos, espaços ou números.',
+                  color: _navy,
+                  bold: true,
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 19 / 13,
+                    fontWeight: FontWeight.w500,
+                    color: _muted,
+                  ),
+                  children: [
+                    const TextSpan(
+                      text:
+                          'Só letras minúsculas, sem acentos, espaços ou números. '
+                          'Ele aparece nos endereços dos grupos, como ',
+                    ),
+                    TextSpan(
+                      text:
+                          '${id.isEmpty ? 'identificador' : id}01@monamienet.org',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: _navy,
+                      ),
+                    ),
+                    const TextSpan(text: '.'),
+                  ],
+                ),
               ),
-              _ => null,
-            },
-            filled: true,
-            fillColor: Colors.white,
-            border: const OutlineInputBorder(),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: _note,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(top: 1),
+                      child: Icon(Icons.lock_outline, size: 18, color: _navy),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'O identificador não muda depois. O nome pode mudar.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 19 / 13,
+                          fontWeight: FontWeight.w500,
+                          color: _navy,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          onChanged: c.setId,
-        ),
-        Text(
-          'Só letras minúsculas, sem acentos, espaços ou números. Ele aparece '
-          'nos endereços dos grupos, como ${c.id.value.isEmpty ? 'rotasul' : c.id.value}01@monamienet.org. '
-          'O identificador não muda depois. O nome pode mudar.',
-          style: const TextStyle(fontSize: 13, height: 1.45, color: _muted),
         ),
         const SizedBox(height: 24),
         _button(
@@ -235,6 +416,86 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         ),
       ],
     );
+  }
+
+  void _markAdjusted(bool adjusted) {
+    if (adjusted == _adjusted || !mounted) return;
+    setState(() => _adjusted = adjusted);
+  }
+
+  Widget _label(String text) => Text(
+    text,
+    style: const TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w800,
+      color: _navy,
+    ),
+  );
+
+  Widget _note13(String text, {required Color color, bool bold = false}) =>
+      Text(
+        text,
+        style: TextStyle(
+          fontSize: 13,
+          height: 19 / 13,
+          fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
+          color: color,
+        ),
+      );
+
+  OutlineInputBorder _fieldBorder(Color color, double width) =>
+      OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: color, width: width),
+      );
+
+  /// What the field says about the identifier, on its right.
+  Widget _idStatus(IdCheck check, bool isShort) {
+    if (isShort) {
+      return const Text(
+        'Mínimo 3 letras',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: _danger,
+        ),
+      );
+    }
+    return switch (check) {
+      IdCheck.checking => const Row(
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2, color: _muted),
+          ),
+          SizedBox(width: 6),
+          Text(
+            'Verificando…',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: _muted,
+            ),
+          ),
+        ],
+      ),
+      IdCheck.available => const Row(
+        children: [
+          Icon(Icons.check, size: 16, color: _ok),
+          SizedBox(width: 4),
+          Text(
+            'Disponível',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: _ok,
+            ),
+          ),
+        ],
+      ),
+      _ => const SizedBox.shrink(),
+    };
   }
 
   PartnerConfig get _preview => PartnerConfig(
