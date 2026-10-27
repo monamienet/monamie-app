@@ -41,6 +41,7 @@ class PeopleList extends StatelessWidget {
             PersonRowTile(
               row: row,
               highlighted: groups.isHighlighted(row.member),
+              selected: groups.selectedMemberEmail.value == row.member.email,
               onToggleTrail: () => groups.toggleHighlight(row.member),
               onCall: row.member.email == me
                   ? null

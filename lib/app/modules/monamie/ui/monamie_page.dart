@@ -117,6 +117,7 @@ class MonamiePage extends StatelessWidget {
                 trackingCtrl.centerMapOnCurrentLocation();
               }
             },
+            onTap: (_, _) => googleGroupsController.clearSelected(),
             minZoom: 3.0,
             maxZoom: 19.0,
             cameraConstraint: CameraConstraint.contain(
@@ -380,50 +381,58 @@ class MonamiePage extends StatelessWidget {
                 width: isCurrentUser ? markerSize * 3 : markerSize,
                 height: isCurrentUser ? markerSize * 3 : markerSize,
                 alignment: Alignment.center,
-                child: Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none,
-                  children: [
-                    if (isCurrentUser)
-                      Obx(() {
-                        final heading = trackingCtrl.heading.value;
-                        if (heading == null) return const SizedBox.shrink();
+                child: GestureDetector(
+                  onTap: () =>
+                      googleGroupsController.toggleSelected(user.email),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      if (isCurrentUser)
+                        Obx(() {
+                          final heading = trackingCtrl.heading.value;
+                          if (heading == null) return const SizedBox.shrink();
 
-                        return Transform.rotate(
-                          angle: heading * (math.pi / 180),
-                          child: SizedBox(
-                            width: markerSize * 3,
-                            height: markerSize * 3,
-                            child: CustomPaint(painter: _BeamPainter()),
-                          ),
-                        );
-                      }),
-                    SizedBox(
-                      width: markerSize,
-                      height: markerSize,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color:
-                              user.isTracked == false ||
-                                  DateTime.now().difference(user.timestamp!) >=
-                                      Get.find<TrackingSettingsController>()
-                                          .staleAfter
-                              ? trackingCtrl.setMarkerColor(user).withAlpha(100)
-                              : trackingCtrl.setMarkerColor(user),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 4,
-                              offset: Offset(0, 2),
+                          return Transform.rotate(
+                            angle: heading * (math.pi / 180),
+                            child: SizedBox(
+                              width: markerSize * 3,
+                              height: markerSize * 3,
+                              child: CustomPaint(painter: _BeamPainter()),
                             ),
-                          ],
+                          );
+                        }),
+                      SizedBox(
+                        width: markerSize,
+                        height: markerSize,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color:
+                                user.isTracked == false ||
+                                    DateTime.now().difference(
+                                          user.timestamp!,
+                                        ) >=
+                                        Get.find<TrackingSettingsController>()
+                                            .staleAfter
+                                ? trackingCtrl
+                                      .setMarkerColor(user)
+                                      .withAlpha(100)
+                                : trackingCtrl.setMarkerColor(user),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          margin: const EdgeInsets.all(10),
                         ),
-                        margin: const EdgeInsets.all(10),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             })

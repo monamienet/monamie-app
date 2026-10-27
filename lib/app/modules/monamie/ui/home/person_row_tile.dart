@@ -17,6 +17,7 @@ class PersonRowTile extends StatelessWidget {
     required this.row,
     required this.highlighted,
     required this.onToggleTrail,
+    this.selected = false,
     this.onCall,
   });
 
@@ -25,6 +26,10 @@ class PersonRowTile extends StatelessWidget {
   /// Whether the person's trail is drawn on the map.
   final bool highlighted;
   final VoidCallback onToggleTrail;
+
+  /// Whether the person's marker was pressed on the map: the row is tinted
+  /// softly so it can be found in the list.
+  final bool selected;
 
   /// Opens the call; `null` hides the button (a person does not call
   /// themselves).
@@ -38,8 +43,13 @@ class PersonRowTile extends StatelessWidget {
     final trailLabel = highlighted
         ? 'Esconder trajeto de $name'
         : 'Mostrar trajeto de $name';
-    return ConstrainedBox(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
       constraints: const BoxConstraints(minHeight: 52),
+      decoration: BoxDecoration(
+        color: selected ? HomeColors.surface : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Row(

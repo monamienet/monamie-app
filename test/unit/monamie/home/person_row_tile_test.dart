@@ -26,6 +26,7 @@ Future<void> pumpTile(
   required TeamRow row,
   required Taps taps,
   bool highlighted = false,
+  bool selected = false,
   bool withCall = true,
 }) async {
   await tester.pumpWidget(
@@ -34,6 +35,7 @@ Future<void> pumpTile(
         body: PersonRowTile(
           row: row,
           highlighted: highlighted,
+          selected: selected,
           onToggleTrail: () => taps.trail++,
           onCall: withCall ? () => taps.call++ : null,
         ),
@@ -57,6 +59,29 @@ void main() {
       // 3. Assert
       expect(find.text('Ana Souza'), findsOneWidget);
       expect(find.text('Há 12 min'), findsOneWidget);
+    });
+
+    testWidgets('Happy Path: a selected row is tinted, an unselected is not', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final taps = Taps();
+      Color? tint() =>
+          (tester
+                      .widget<AnimatedContainer>(find.byType(AnimatedContainer))
+                      .decoration!
+                  as BoxDecoration)
+              .color;
+      await pumpTile(tester, row: rowOf(live), taps: taps);
+      final before = tint();
+
+      // 2. Act
+      await pumpTile(tester, row: rowOf(live), taps: taps, selected: true);
+      await tester.pumpAndSettle();
+
+      // 3. Assert
+      expect(before, Colors.transparent);
+      expect(tint(), isNot(Colors.transparent));
     });
 
     testWidgets('Happy Path: a live, highlighted person gets the trail note', (

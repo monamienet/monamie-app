@@ -232,6 +232,19 @@ class GoogleGroupsController extends GetxController {
     }
   }
 
+  /// E-mail of the person whose map marker was pressed, or `null`. The list
+  /// row of that person is tinted; it is not the trail switch above.
+  final selectedMemberEmail = RxnString();
+
+  /// Pressing the selected marker again clears the selection.
+  void toggleSelected(String email) {
+    selectedMemberEmail.value = selectedMemberEmail.value == email
+        ? null
+        : email;
+  }
+
+  void clearSelected() => selectedMemberEmail.value = null;
+
   bool isHighlighted(GoogleGroupMember member) {
     return _highlightedObservedUsers.any((m) => m.email == member.email);
   }
