@@ -8,6 +8,7 @@ abstract class Routes {
   static const MONAMIE = _Paths.MONAMIE;
   static const PARTNER_PICKER = _Paths.PARTNER_PICKER;
   static const NOT_LINKED = _Paths.NOT_LINKED;
+  static const APPEARANCE = _Paths.APPEARANCE;
 }
 
 abstract class _Paths {
@@ -16,4 +17,5 @@ abstract class _Paths {
   static const MONAMIE = '/monamie';
   static const PARTNER_PICKER = '/partner';
   static const NOT_LINKED = '/not-linked';
+  static const APPEARANCE = '/admin/appearance';
 }

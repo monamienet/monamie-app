@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
 import 'package:monamie_app/app/config/partner/partner_theme.dart';
@@ -39,6 +42,7 @@ class PartnerBinding {
         id,
         json['branding'],
         theme: _storedTheme(json['theme']),
+        logoPng: _storedLogo(json['logoPng']),
       ),
       options: FirebaseOptions(
         apiKey: required('apiKey'),
@@ -73,7 +77,17 @@ class PartnerBinding {
     'branding': partner.toBranding(),
     if (partner.theme case final theme?)
       'theme': {'id': theme.id, ...theme.toJson()},
+    if (partner.logoPng case final png?) 'logoPng': base64Encode(png),
   };
+}
+
+Uint8List? _storedLogo(Object? value) {
+  if (value is! String) return null;
+  try {
+    return base64Decode(value);
+  } on FormatException {
+    return null;
+  }
 }
 
 PartnerTheme? _storedTheme(Object? json) => switch (json) {

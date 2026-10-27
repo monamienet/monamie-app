@@ -443,100 +443,6 @@ void main() {
     });
   });
 
-  group('PartnerPalette.fromConfig - Unit Test Suite', () {
-    test('Happy Path: primary comes from colors.primary', () {
-      // 1. Arrange
-      const config = PartnerConfig(
-        id: 'aquariustur',
-        name: 'AquariusTur',
-        primaryColor: aquariusTurPrimary,
-        secondaryColor: Color(0xFFFFFFFF),
-      );
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect(palette.primary, config.primaryColor);
-    });
-
-    test('Happy Path: background comes from colors.secondary', () {
-      // 1. Arrange
-      const config = PartnerConfig(
-        id: 'beta',
-        name: 'Beta',
-        primaryColor: Color(0xFF445566),
-        secondaryColor: Color(0xFF000000),
-      );
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect(palette.background, config.secondaryColor);
-    });
-
-    test('Happy Path: gives the same shades as fromColors', () {
-      // 1. Arrange
-      const config = PartnerConfig(
-        id: 'aquariustur',
-        name: 'AquariusTur',
-        primaryColor: aquariusTurPrimary,
-        secondaryColor: Color(0xFFFFFFFF),
-      );
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect(
-        [palette.dark, palette.light, palette.accentDark, palette.accent],
-        [
-          aquariusTurDark,
-          aquariusTurLight,
-          aquariusTurAccentDark,
-          aquariusTurAccent,
-        ],
-      );
-    });
-
-    test('Edge Case: the shades derive from colors.primary, not from '
-        'colors.secondary', () {
-      // 1. Arrange
-      // Same primary as AquariusTur, a very different background.
-      const config = PartnerConfig(
-        id: 'beta',
-        name: 'Beta',
-        primaryColor: aquariusTurPrimary,
-        secondaryColor: Color(0xFFFF0000),
-      );
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect(palette.dark, aquariusTurDark);
-    });
-
-    test('Sad Path: colors.primary and colors.secondary are not swapped', () {
-      // 1. Arrange
-      const config = PartnerConfig(
-        id: 'beta',
-        name: 'Beta',
-        primaryColor: Color(0xFF445566),
-        secondaryColor: Color(0xFFABCDEF),
-      );
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect([
-        palette.primary,
-        palette.background,
-      ], isNot([config.secondaryColor, config.primaryColor]));
-    });
-  });
   group('PartnerPalette.fromTheme - Unit Test Suite', () {
     test('Happy Path: primary, dark and light are the theme tones', () {
       // 1. Arrange
@@ -584,6 +490,7 @@ void main() {
       const config = PartnerConfig(
         id: 'acme',
         name: 'Acme',
+        themeId: 'oceano',
         theme: oceanoTheme,
       );
 
@@ -597,42 +504,34 @@ void main() {
       );
     });
 
-    test('Edge Case: the theme wins over colors.primary and '
-        'colors.secondary', () {
+    test('Edge Case: a config without a theme uses the Grafite tones', () {
       // 1. Arrange
-      const config = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        primaryColor: Color(0xFFE53935),
-        secondaryColor: Color(0xFF000000),
-        theme: oceanoTheme,
-      );
+      const config = PartnerConfig(id: 'acme', name: 'Acme');
 
       // 2. Act
       final palette = PartnerPalette.fromConfig(config);
 
       // 3. Assert
       expect(
-        [palette.primary, palette.background],
-        [aquariusTurPrimary, const Color(0xFFFFFFFF)],
+        [palette.primary, palette.dark, palette.light],
+        [
+          const Color(0xFF3F4754),
+          const Color(0xFF1F2128),
+          const Color(0xFFDCDEE2),
+        ],
       );
     });
 
-    test('Sad Path: a themeId without a resolved theme keeps the legacy '
-        'colors.primary', () {
+    test('Sad Path: a themeId without a resolved theme uses Grafite, not '
+        'the MonAmie blue', () {
       // 1. Arrange
-      const config = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        primaryColor: Color(0xFFE53935),
-        themeId: 'oceano',
-      );
+      const config = PartnerConfig(id: 'acme', name: 'Acme', themeId: 'neon');
 
       // 2. Act
       final palette = PartnerPalette.fromConfig(config);
 
       // 3. Assert
-      expect(palette.primary, const Color(0xFFE53935));
+      expect(palette.primary, const Color(0xFF3F4754));
     });
   });
 }

@@ -90,21 +90,15 @@ class PartnerPalette {
     );
   }
 
-  /// The palette of [config].
-  ///
-  /// A partner with a resolved catalog theme uses its primary, dark and light
-  /// tones as they are, on a white background. A legacy partner without one
-  /// derives the shades from `colors.primary` and `colors.secondary`, each
-  /// falling back on its own (MonAmie blue, white). No partner ([config]
-  /// `null`) gives the MonAmie palette.
-  factory PartnerPalette.fromConfig(PartnerConfig? config) {
-    final theme = config?.theme;
-    if (theme != null) return PartnerPalette.fromTheme(theme);
-    return PartnerPalette.fromColors(
-      primary: config?.primaryColor ?? MonAmieBrand.primary,
-      background: config?.secondaryColor ?? MonAmieBrand.background,
-    );
-  }
+  /// The palette of [config]: its catalog theme, or Grafite when the theme
+  /// is missing or unknown. No partner ([config] `null`) gives the MonAmie
+  /// palette.
+  factory PartnerPalette.fromConfig(PartnerConfig? config) => config == null
+      ? PartnerPalette.fromColors(
+          primary: MonAmieBrand.primary,
+          background: MonAmieBrand.background,
+        )
+      : PartnerPalette.fromTheme(config.effectiveTheme);
 
   /// The palette of a catalog [theme]. Only the two accents are derived.
   factory PartnerPalette.fromTheme(PartnerTheme theme) {

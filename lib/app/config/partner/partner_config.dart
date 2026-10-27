@@ -1,4 +1,4 @@
-import 'dart:ui' show Color;
+import 'dart:typed_data';
 
 import 'group_address.dart';
 import 'partner_theme.dart';
@@ -16,22 +16,20 @@ String rootGroupEmailFor(String partnerId) => '${partnerId}00@$groupDomain';
 String fallbackPartnerName(String id) =>
     id.isEmpty ? id : id[0].toUpperCase() + id.substring(1);
 
-/// A partner and the branding it chose.
+/// A partner and the branding it chose: a name, a catalog theme and,
+/// optionally, a logo.
 ///
-/// Only [id] and [name] are always present. Colors, logo and icon are
-/// optional: when one is missing or malformed it is `null`, and the app shows
-/// the fallback described where it is used (MonAmie colors, white background,
-/// the name as text, the name's initial).
+/// Only [id] and [name] are always present. A missing or unknown theme uses
+/// Grafite; a missing logo (or one that does not decode) shows the name's
+/// initial in a tile of the theme's primary color.
 class PartnerConfig {
   const PartnerConfig({
     required this.id,
     required this.name,
-    this.primaryColor,
-    this.secondaryColor,
-    this.logoSvg,
-    this.iconSvg,
     this.themeId,
     this.theme,
+    this.logoVersion,
+    this.logoPng,
   });
 
   /// Reads the partner's `config/branding` document.
@@ -41,26 +39,25 @@ class PartnerConfig {
   /// invalid [id], which comes from MonAmie's own rules, throws an
   /// [ArgumentError].
   ///
-  /// [theme] is the catalog theme that `themeId` resolved to, when known.
+  /// [theme] is the catalog theme that `themeId` resolved to, and [logoPng]
+  /// the logo file already downloaded for this `logoVersion`, when known.
   factory PartnerConfig.fromBranding(
     String id,
     Object? data, {
     PartnerTheme? theme,
+    Uint8List? logoPng,
   }) {
     final idProblem = partnerIdProblem(id);
     if (idProblem != null) throw ArgumentError.value(id, 'id', idProblem);
     final map = data is Map ? data : const {};
-    final colors = map['colors'] is Map ? map['colors'] as Map : const {};
-    final name = _nonBlank(map['name']);
+    final logoVersion = map['logoVersion'];
     return PartnerConfig(
       id: id,
-      name: name ?? fallbackPartnerName(id),
-      primaryColor: _parseColor(colors['primary']),
-      secondaryColor: _parseColor(colors['secondary']),
-      logoSvg: _nonBlank(map['logoSvg']),
-      iconSvg: _nonBlank(map['iconSvg']),
+      name: _nonBlank(map['name']) ?? fallbackPartnerName(id),
       themeId: _nonBlank(map['themeId']),
       theme: theme,
+      logoVersion: logoVersion is int ? logoVersion : null,
+      logoPng: logoVersion is int ? logoPng : null,
     );
   }
 
@@ -71,47 +68,39 @@ class PartnerConfig {
   /// partner's name are never shown side by side.
   final String name;
 
-  /// `colors.primary`: the brand color, or `null` for MonAmie's colors.
-  final Color? primaryColor;
-
-  /// `colors.secondary`: the brand background, or `null` for white.
-  final Color? secondaryColor;
-
-  /// `logoSvg`: the logo with the name, or `null` to show [name] as text.
-  final String? logoSvg;
-
-  /// `iconSvg`: the logo without text, or `null` to show [name]'s initial.
-  final String? iconSvg;
-
   /// `themeId`: the catalog theme the partner picked, or `null`.
   final String? themeId;
 
   /// The catalog theme [themeId] resolved to, kept with the binding so the
-  /// first screen is branded without network. `null` while unresolved.
+  /// first screen is branded without network. `null` while unresolved, which
+  /// shows the default theme.
   final PartnerTheme? theme;
+
+  /// `logoVersion`: set when the owner uploads a logo, so devices know to
+  /// fetch it again. `null` when the partner has no logo.
+  final int? logoVersion;
+
+  /// The logo file (a square 512 px PNG) for [logoVersion], kept with the
+  /// binding. `null` when there is no logo or it was not downloaded yet.
+  final Uint8List? logoPng;
+
+  /// The theme the app uses: [theme], or the default (Grafite).
+  PartnerTheme get effectiveTheme => theme ?? defaultPartnerTheme;
 
   /// The partner's root group: `<id>00@monamienet.org`.
   String get rootGroupEmail => rootGroupEmailFor(id);
 
-  /// The partner's Firebase project: `monamienet-<id>`.
+  /// The partner's Firebase project when it is on the Standard plan:
+  /// `monamienet-<id>`.
   String get firebaseProjectId => firebaseProjectIdFor(id);
 
   /// The branding document this config was read from, for the local copy.
   Map<String, Object?> toBranding() => {
     'name': name,
-    'colors': {
-      if (primaryColor != null) 'primary': _formatColor(primaryColor!),
-      if (secondaryColor != null) 'secondary': _formatColor(secondaryColor!),
-    },
-    if (logoSvg != null) 'logoSvg': logoSvg,
-    if (iconSvg != null) 'iconSvg': iconSvg,
-    if (themeId != null) 'themeId': themeId,
+    'themeId': ?themeId,
+    'logoVersion': ?logoVersion,
   };
 }
 
 String? _nonBlank(Object? value) =>
     value is String && value.trim().isNotEmpty ? value.trim() : null;
-
-Color? _parseColor(Object? value) => parseHexColor(value);
-
-String _formatColor(Color color) => formatHexColor(color);

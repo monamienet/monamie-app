@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
@@ -61,6 +62,9 @@ class UnusedPartnerFirebase implements PartnerFirebase {
   FirebaseFunctions get functions => throw UnimplementedError();
 
   @override
+  FirebaseStorage get storage => throw UnimplementedError();
+
+  @override
   DocumentReference<Map<String, dynamic>> get partnerData =>
       throw UnimplementedError();
 }
@@ -84,7 +88,7 @@ void main() {
       const newer = PartnerConfig(
         id: 'acme',
         name: 'Acme Tours',
-        logoSvg: '<svg/>',
+        themeId: 'oceano',
       );
 
       // 2. Act
@@ -92,8 +96,8 @@ void main() {
 
       // 3. Assert
       expect(
-        [store.binding?.partner.name, store.binding?.partner.logoSvg],
-        ['Acme Tours', '<svg/>'],
+        [store.binding?.partner.name, store.binding?.partner.themeId],
+        ['Acme Tours', 'oceano'],
       );
     });
 

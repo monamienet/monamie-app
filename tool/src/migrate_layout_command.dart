@@ -43,11 +43,10 @@ class RawFirestore {
     final documents = <(String, Object?)>[];
     String? pageToken;
     do {
-      final uri = Uri.https(
-        'firestore.googleapis.com',
-        '/v1/$_root/$path',
-        {'pageSize': '300', 'pageToken': ?pageToken},
-      );
+      final uri = Uri.https('firestore.googleapis.com', '/v1/$_root/$path', {
+        'pageSize': '300',
+        'pageToken': ?pageToken,
+      });
       final response = await _client.get(uri, headers: _headers);
       if (response.statusCode != 200) {
         throw PartnerToolException(

@@ -50,6 +50,12 @@ class GoogleGroupsController extends GetxController {
     return partner != null && capabilities.value.canWatchIn(partner.id);
   }
 
+  /// Whether the person owns (is the *responsável* of) the bound partner.
+  bool get isOwner {
+    final partner = Partner.current;
+    return partner != null && capabilities.value.isOwnerOf(partner.id);
+  }
+
   /// The teams where the signed-in person shares their location.
   Future<List<GoogleGroupModel>> getObservableGroupsForUser() async =>
       shareTeams.toList();

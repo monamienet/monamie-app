@@ -44,7 +44,7 @@ class AuthGoogleController extends GetxController {
        _injectedUserRepository = userRepository,
        _injectedTrackingStopper = trackingStopper,
        _injectedPartnerDirectory = partnerDirectory,
-       _brandingLoader = brandingLoader ?? const PartnerBrandingLoader(),
+       _brandingLoader = brandingLoader ?? PartnerBrandingLoader(),
        _injectedPartnerSession = partnerSession,
        _refreshTheme =
            refreshTheme ?? (() => Get.changeTheme(AppTheme.lightTheme));

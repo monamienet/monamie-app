@@ -34,7 +34,7 @@ Future<void> main() async {
   if (binding != null) {
     // Picks up branding changes for the next launch, without changing the
     // look of this one.
-    const PartnerBrandingLoader()
+    PartnerBrandingLoader()
         .readBranding(binding)
         .then(session.storeBranding)
         .ignore();

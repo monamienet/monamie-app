@@ -4,13 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/monamie_brand.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
+import 'package:monamie_app/app/config/partner/partner_icon.dart';
 import 'package:monamie_app/app/config/partner/partner_logo.dart';
 
 import '../../support/test_partner.dart';
-
-const validSvg =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">'
-    '<rect width="10" height="10" fill="#112233"/></svg>';
 
 /// Finds the [SvgPicture] that shows the bundled asset [assetName].
 Finder svgAsset(String assetName) => find.byWidgetPredicate(
@@ -26,25 +23,21 @@ void main() {
   tearDown(() => Partner.bind(testPartner));
 
   group('PartnerLogo - Unit Test Suite', () {
-    testWidgets('Happy Path: a partner with a valid logo shows the SVG, not '
-        'its name', (tester) async {
+    testWidgets('Happy Path: an explicit partner shows its icon tile', (
+      tester,
+    ) async {
       // 1. Arrange
-      const partner = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        logoSvg: validSvg,
-      );
+      const partner = PartnerConfig(id: 'acme', name: 'Acme');
 
       // 2. Act
       await tester.pumpWidget(
         host(const PartnerLogo(width: 100, height: 50, partner: partner)),
       );
-      await tester.pumpAndSettle();
 
       // 3. Assert
       expect(
-        [find.byType(SvgPicture), find.text('Acme')],
-        [findsOneWidget, findsNothing],
+        [find.byType(PartnerIcon), find.text('A')],
+        [findsOneWidget, findsOneWidget],
       );
     });
 
@@ -71,7 +64,7 @@ void main() {
       await tester.pumpWidget(host(const PartnerLogo(width: 100, height: 50)));
 
       // 3. Assert
-      expect(find.text('Beta'), findsOneWidget);
+      expect(find.text('B'), findsOneWidget);
     });
 
     testWidgets('Edge Case: useBoundPartner false shows MonAmie even with a '
@@ -88,42 +81,7 @@ void main() {
       expect(svgAsset(MonAmieBrand.logoAsset), findsOneWidget);
     });
 
-    testWidgets('Edge Case: a partner without a logo shows its name as text', (
-      tester,
-    ) async {
-      // 1. Arrange
-      const partner = PartnerConfig(id: 'acme', name: 'Acme Tours');
-
-      // 2. Act
-      await tester.pumpWidget(
-        host(const PartnerLogo(width: 100, height: 50, partner: partner)),
-      );
-
-      // 3. Assert
-      expect(find.text('Acme Tours'), findsOneWidget);
-    });
-
-    testWidgets('Edge Case: the name is written in the partner primary color', (
-      tester,
-    ) async {
-      // 1. Arrange
-      const partner = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        primaryColor: Color(0xFF0ABAB5),
-      );
-
-      // 2. Act
-      await tester.pumpWidget(
-        host(const PartnerLogo(width: 100, height: 50, partner: partner)),
-      );
-
-      // 3. Assert
-      final text = tester.widget<Text>(find.text('Acme'));
-      expect(text.style?.color, const Color(0xFF0ABAB5));
-    });
-
-    testWidgets('Edge Case: an explicit partner wins over the bound one', (
+    testWidgets('Sad Path: an explicit partner wins over the bound one', (
       tester,
     ) async {
       // 1. Arrange
@@ -136,29 +94,7 @@ void main() {
       );
 
       // 3. Assert
-      expect(
-        [find.text('Acme'), find.text('Beta')],
-        [findsOneWidget, findsNothing],
-      );
-    });
-
-    testWidgets('Sad Path: an SVG that does not parse shows the name as '
-        'text', (tester) async {
-      // 1. Arrange
-      const partner = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        logoSvg: '<!-- not an svg -->',
-      );
-
-      // 2. Act
-      await tester.pumpWidget(
-        host(const PartnerLogo(width: 100, height: 50, partner: partner)),
-      );
-      await tester.pumpAndSettle();
-
-      // 3. Assert
-      expect(find.text('Acme'), findsOneWidget);
+      expect([find.text('A'), find.text('B')], [findsOneWidget, findsNothing]);
     });
   });
 }

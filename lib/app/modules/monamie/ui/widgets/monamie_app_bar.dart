@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
@@ -71,9 +72,24 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
             onSelected: (value) {
               if (value == 'sair') {
                 authController.logout();
+              } else if (value == 'aparencia') {
+                Get.toNamed(Routes.APPEARANCE);
               }
             },
             itemBuilder: (BuildContext context) => [
+              // Only the owner (responsável) changes the organization's look.
+              if (googleGroupsController.isOwner)
+                const PopupMenuItem<String>(
+                  value: 'aparencia',
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.palette_outlined, color: Colors.black87),
+                      SizedBox(width: 8),
+                      Text('Aparência'),
+                    ],
+                  ),
+                ),
               const PopupMenuItem<String>(
                 value: 'sair',
                 child: Row(

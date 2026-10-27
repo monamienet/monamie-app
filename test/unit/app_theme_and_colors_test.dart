@@ -3,34 +3,29 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
 import 'package:monamie_app/app/config/partner/partner_palette.dart';
+import 'package:monamie_app/app/config/partner/partner_theme.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:monamie_app/app/utils/app_theme.dart';
 
 import '../support/test_partner.dart';
 
-/// A partner with the AquariusTur colors, for the partner-switch tests.
+/// A catalog theme with the AquariusTur tones, for the partner-switch tests.
+const aquariusTurTheme = PartnerTheme(
+  id: 'aquarius',
+  name: 'Aquarius',
+  primary: Color(0xFF0ABAB5),
+  dark: Color(0xFF073B40),
+  light: Color(0xFFCCF1F0),
+  onPrimary: Color(0xFF000000),
+  onDark: Color(0xFFFFFFFF),
+);
+
+/// A partner that picked [aquariusTurTheme].
 const aquariusTurPartner = PartnerConfig(
   id: 'aquariustur',
   name: 'AquariusTur',
-  primaryColor: Color(0xFF0ABAB5),
-  secondaryColor: Color(0xFFFFFFFF),
-);
-
-/// A partner whose `colors.secondary` is dark, so [AppColors.background]
-/// can be told apart from the white default.
-const darkBackgroundPartner = PartnerConfig(
-  id: 'nightly',
-  name: 'Nightly',
-  primaryColor: Color(0xFF112233),
-  secondaryColor: Color(0xFF101820),
-);
-
-/// A partner with the background of [testPartner] but another primary.
-const sameBackgroundOtherPrimaryPartner = PartnerConfig(
-  id: 'other',
-  name: 'Other',
-  primaryColor: Color(0xFFAA0000),
-  secondaryColor: Color(0xFFFFFFFF),
+  themeId: 'aquarius',
+  theme: aquariusTurTheme,
 );
 
 /// The palette [AppColors] is expected to delegate to.
@@ -38,10 +33,10 @@ PartnerPalette currentPalette() => PartnerPalette.fromConfig(Partner.current);
 
 void main() {
   group('AppColors (current partner palette) - Unit Test Suite', () {
-    test('Happy Path: primary is the colors.primary of the current '
-        'partner', () {
+    test('Happy Path: primary is the theme primary of the current partner '
+        '(Grafite without a theme)', () {
       // 1. Arrange
-      final expected = Partner.current!.primaryColor;
+      const expected = Color(0xFF3F4754);
 
       // 2. Act
       final color = AppColors.primary;
@@ -94,10 +89,9 @@ void main() {
       expect(color, palette.background);
     });
 
-    test('Happy Path: background is the colors.secondary of the current '
-        'partner', () {
+    test('Happy Path: background of the current partner is white', () {
       // 1. Arrange
-      final expected = Partner.current!.secondaryColor;
+      const expected = Color(0xFFFFFFFF);
 
       // 2. Act
       final color = AppColors.background;
@@ -299,32 +293,6 @@ void main() {
       // 3. Assert
       expect(aquariusTurDark, isNot(acmeDark));
     });
-
-    test('Happy Path: background follows the colors.secondary of the '
-        'partner set with Partner.init', () {
-      // 1. Arrange
-      Partner.bind(darkBackgroundPartner);
-
-      // 2. Act
-      final color = AppColors.background;
-
-      // 3. Assert
-      expect(color, const Color(0xFF101820));
-    });
-
-    test('Edge Case: background is not derived from colors.primary', () {
-      // 1. Arrange
-      Partner.bind(sameBackgroundOtherPrimaryPartner);
-
-      // 2. Act
-      final color = AppColors.background;
-
-      // 3. Assert
-      expect(color, testPartner.secondaryColor);
-    });
-
-
-
   });
 
   group('AppTheme.lightTheme - Unit Test Suite', () {
@@ -499,7 +467,5 @@ void main() {
       // 3. Assert
       expect(theme.scaffoldBackgroundColor, const Color(0xFF052E32));
     });
-
-
   });
 }
