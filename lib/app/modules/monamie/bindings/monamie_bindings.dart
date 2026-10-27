@@ -13,7 +13,9 @@ class MonamieBindings implements Bindings {
     Get.lazyPut<UserController>(() => UserController());
     Get.lazyPut<TrackingController>(() => TrackingController());
     Get.lazyPut<PermissionsController>(() => PermissionsController());
-    Get.lazyPut(() => AuthGoogleController());
+    if (!Get.isRegistered<AuthGoogleController>()) {
+      Get.put(AuthGoogleController(), permanent: true);
+    }
     Get.lazyPut(() => GoogleGroupsController());
     Get.lazyPut(() => CalendarController());
     Get.lazyPut(() => CallController());

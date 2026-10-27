@@ -88,6 +88,12 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   Future<String?> getFirebaseIdToken() async => null;
 
   @override
+  Future<String?> centralEmail() async => null;
+
+  @override
+  Future<void> signOutOfPartner() async {}
+
+  @override
   void dispose() {}
 }
 
@@ -391,6 +397,21 @@ void main() {
         expect(harness.controller.isLoggingOut.value, isFalse);
       },
     );
+
+    testWidgets('Happy Path: Deve limpar signedInEmail ao concluir o logout', (
+      WidgetTester tester,
+    ) async {
+      // 1. Arrange
+      final harness = _Harness(storedUser: _storedUser());
+      await _pumpApp(tester, harness);
+      harness.controller.signedInEmail.value = _kStoredEmail;
+
+      // 2. Act
+      await _runLogout(tester, harness.controller);
+
+      // 3. Assert
+      expect(harness.controller.signedInEmail.value, isNull);
+    });
 
     // ---------------------------------------------------------------------
     // Edge Case

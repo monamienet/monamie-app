@@ -7,7 +7,7 @@ abstract class Routes {
   static const LOGIN = _Paths.LOGIN;
   static const MONAMIE = _Paths.MONAMIE;
   static const PARTNER_PICKER = _Paths.PARTNER_PICKER;
-  static const NOT_LINKED = _Paths.NOT_LINKED;
+  static const NO_ORGANIZATION = _Paths.NO_ORGANIZATION;
   static const APPEARANCE = _Paths.APPEARANCE;
 }
 
@@ -16,6 +16,6 @@ abstract class _Paths {
   static const LOGIN = '/login';
   static const MONAMIE = '/monamie';
   static const PARTNER_PICKER = '/partner';
-  static const NOT_LINKED = '/not-linked';
+  static const NO_ORGANIZATION = '/sem-organizacao';
   static const APPEARANCE = '/admin/appearance';
 }

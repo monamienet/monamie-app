@@ -31,8 +31,9 @@ class PartnerIcon extends StatelessWidget {
     final radius = BorderRadius.circular(size * 0.28);
 
     Widget initial(BuildContext context, [Object? error, StackTrace? _]) {
-      if (error != null)
+      if (error != null) {
         debugPrint('Could not decode the partner logo: $error');
+      }
       final palette = PartnerPalette.fromConfig(partner);
       return Container(
         width: size,

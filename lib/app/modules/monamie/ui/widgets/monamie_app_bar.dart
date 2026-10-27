@@ -76,6 +76,8 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Get.toNamed(Routes.APPEARANCE);
               }
             },
+              } else if (value == 'trocar') {
+                authController.switchOrganization();
             itemBuilder: (BuildContext context) => [
               // Only the owner (responsável) changes the organization's look.
               if (googleGroupsController.isOwner)
@@ -104,6 +106,17 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+              const PopupMenuItem<String>(
+                value: 'trocar',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.swap_horiz, color: Colors.black87),
+                    SizedBox(width: 8),
+                    Text('Trocar de organização'),
+                  ],
+                ),
+              ),
                   ],
                 ),
               ),

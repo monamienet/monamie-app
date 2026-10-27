@@ -33,9 +33,13 @@ const options = new PartnerOptionsReader(async (url) => {
   const response = await client.request({ url });
   return response.data;
 });
-// A user who signs in twice in a row reuses their groups: every gateway
-// call spends the Directory API quota shared by all partners.
-const groupsByEmail = new TtlCache(10 * 60 * 1000);
+// Absorbs retry storms (a user tapping sign-in again) without spending the
+// Directory API quota shared by all partners. Kept short (#78): a removal
+// must not keep routing someone to a partner for long. Each instance has
+// its own cache, so a removed user may still be listed for up to a minute;
+// the partner's syncClaims then grants nothing and the app shows
+// *Sem organização*.
+const groupsByEmail = new TtlCache(60 * 1000);
 
 /**
  * Finds the partners the signed-in user belongs to.

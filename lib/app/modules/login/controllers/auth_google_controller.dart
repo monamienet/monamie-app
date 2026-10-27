@@ -89,8 +89,17 @@ class AuthGoogleController extends GetxController {
   /// Partners offered by the picker when the user belongs to several.
   final RxList<PartnerBinding> partnerChoices = <PartnerBinding>[].obs;
 
-  /// Google ID token kept while the user picks a partner.
+  /// Google ID token of this sign-in, kept to enter a partner after the
+  /// picker or after "verificar de novo" on *Sem organização*.
   String? _pendingIdToken;
+
+  /// E-mail of the Google account signed in to MonAmie (central project),
+  /// shown on MonAmie's own screens with "Trocar".
+  final RxnString signedInEmail = RxnString();
+
+  /// Why the user is on *Sem organização* after trying to enter a partner
+  /// (removed from its groups, or no capability there); `null` otherwise.
+  final RxnString noAccessReason = RxnString();
 
   @override
   void onInit() {
@@ -126,11 +135,16 @@ class AuthGoogleController extends GetxController {
   }
 
   /// Finds the user's partners and enters the only one, or offers a choice.
+  ///
+  /// With no partner the user lands on *Sem organização* still signed in to
+  /// MonAmie, so they can check again (after accepting an invite) or create
+  /// their organization without signing in twice.
   Future<void> _continueWithPartners(String idToken) async {
+    _pendingIdToken = idToken;
+    signedInEmail.value = await _authGoogle.centralEmail();
     final candidates = await _partnerDirectory.partnersOfSignedInUser();
     if (candidates.isEmpty) {
-      await _authGoogle.logoutGoogle();
-      Get.offAllNamed(Routes.NOT_LINKED);
+      Get.offAllNamed(Routes.NO_ORGANIZATION);
       return;
     }
     final bindings = await Future.wait(candidates.map(_brandingLoader.load));
@@ -138,9 +152,41 @@ class AuthGoogleController extends GetxController {
       await _enterPartner(bindings.single, idToken);
       return;
     }
-    _pendingIdToken = idToken;
     partnerChoices.assignAll(bindings);
     Get.toNamed(Routes.PARTNER_PICKER);
+  }
+
+  /// "Já me convidaram · verificar de novo": asks again which partners the
+  /// user belongs to, reusing this sign-in when there is one.
+  Future<void> recheckPartners() async {
+    if (isLoading.value) return;
+    isLoading.value = true;
+    noAccessReason.value = null;
+    try {
+      final idToken = _pendingIdToken ?? await _authGoogle.signInGoogle();
+      if (idToken != null) await _continueWithPartners(idToken);
+    } catch (e) {
+      _showLoginError("Não foi possível verificar agora: $e");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// "Criar minha organização". The in-app creation flow (#93) replaces this
+  /// notice.
+  void startCreatingOrganization() {
+    Get.snackbar(
+      'Criar organização',
+      'A criação de organizações pelo app chega em breve.',
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+
+  /// "Trocar de organização": signs out of everything and opens the Google
+  /// account chooser again, which leads to the organization picker.
+  Future<void> switchOrganization() async {
+    // Only ask for an account once the old session is really gone.
+    if (await _signOut()) loginGoogle();
   }
 
   /// Enters the partner the user picked in the partner picker.
@@ -160,8 +206,8 @@ class AuthGoogleController extends GetxController {
   Future<void> _enterPartner(PartnerBinding binding, String idToken) async {
     try {
       await _partnerSession.bind(binding);
-      _refreshTheme();
-      // Set after binding, so the screen rebuilds in the partner's brand.
+      // The screen stays in MonAmie's colors until the user is known to
+      // belong to the partner: a removed user never sees its brand (#78).
       enteringPartnerName.value = binding.partner.name;
       await _authGoogle.signInToPartner(idToken);
 
@@ -169,11 +215,16 @@ class AuthGoogleController extends GetxController {
       // write their profile, read the map or write their own position.
       final capabilities = await _syncClaims();
       if (claimsShowNoAccess(capabilities)) {
-        // A group is named after the partner but gives no capability.
-        throw StateError(
-          'sua conta não tem papel em nenhum grupo de ${binding.partner.name}',
-        );
+        // Listed by the central directory (its group cache may still have
+        // the user) but no capability here: same outcome as no partner.
+        await _authGoogle.signOutOfPartner();
+        await _partnerSession.forget();
+        noAccessReason.value =
+            'Sua conta não tem mais acesso à ${binding.partner.name}.';
+        Get.offAllNamed(Routes.NO_ORGANIZATION);
+        return;
       }
+      _refreshTheme();
 
       final user = await _authGoogle.savePartnerProfile();
       if (user == null) {
@@ -263,18 +314,21 @@ class AuthGoogleController extends GetxController {
   Future<void> logout() => _signOut();
 
   /// Forgets the partner after the user was removed from all its groups:
-  /// the same steps as [logout], then a message saying why.
+  /// the same steps as [logout], then *Sem organização* saying why.
   Future<void> forgetRemovedPartner() async {
     final name = Partner.current?.name;
-    await _signOut(
-      reason: name == null
-          ? 'Você não faz mais parte desta organização.'
-          : 'Você não faz mais parte da $name.',
-    );
+    noAccessReason.value = name == null
+        ? 'Você não faz mais parte desta organização.'
+        : 'Você não faz mais parte da $name.';
+    await _signOut(destination: Routes.NO_ORGANIZATION);
   }
 
-  Future<void> _signOut({String? reason}) async {
-    if (isLoggingOut.value) return;
+  /// Returns whether the sign-out finished.
+  Future<bool> _signOut({
+    String? reason,
+    String destination = Routes.LOGIN,
+  }) async {
+    if (isLoggingOut.value) return false;
 
     isLoggingOut.value = true;
     try {
@@ -298,7 +352,9 @@ class AuthGoogleController extends GetxController {
       await _partnerSession.forget();
       await _partnerLocalData.clear();
       _refreshTheme();
-      Get.offAllNamed(Routes.LOGIN);
+      _pendingIdToken = null;
+      signedInEmail.value = null;
+      Get.offAllNamed(destination);
       if (reason != null) {
         Get.snackbar(
           "Acesso encerrado",
@@ -308,6 +364,7 @@ class AuthGoogleController extends GetxController {
           duration: const Duration(seconds: 6),
         );
       }
+      return true;
     } catch (e) {
       debugPrint("Erro ao sair: $e");
       Get.snackbar(
@@ -317,6 +374,7 @@ class AuthGoogleController extends GetxController {
         backgroundColor: Colors.red.shade100,
         duration: const Duration(seconds: 5),
       );
+      return false;
     } finally {
       isLoggingOut.value = false;
     }

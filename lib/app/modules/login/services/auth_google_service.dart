@@ -155,6 +155,16 @@ class AuthGoogleService {
     }
   }
 
+  /// E-mail of the account signed in to the central project, or `null`.
+  Future<String?> centralEmail() async =>
+      CentralFirebase.auth.currentUser?.email;
+
+  /// Signs out of the bound partner's project only; the MonAmie (central)
+  /// session stays.
+  Future<void> signOutOfPartner() async {
+    if (CurrentPartnerFirebase.isSet) await _partnerAuth.signOut();
+  }
+
   /// Signs out of Google, the central project and the bound partner.
   Future<void> logoutGoogle() async {
     await _googleSignIn.signOut();
