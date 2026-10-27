@@ -8,21 +8,24 @@ const {
 
 describe("partnerIdFromGroupEmail - Unit Test Suite", () => {
   const cases = [
-    ["Happy Path: a subgroup gives its partner id", "aquariustur01@monamienet.org", "aquariustur"],
-    ["Happy Path: the root group gives its partner id", "aquariustur00@monamienet.org", "aquariustur"],
-    ["Edge Case: upper case letters are normalized", "AquariusTur01@MonAmieNet.ORG", "aquariustur"],
-    ["Edge Case: surrounding whitespace is ignored", "  aquariustur01@monamienet.org\n", "aquariustur"],
-    ["Edge Case: only the last two digits are the suffix", "tur201@monamienet.org", "tur2"],
-    ["Edge Case: the shortest valid local part", "x01@monamienet.org", "x"],
-    ["Sad Path: the reserved id app gives null", "app01@monamienet.org", null],
-    ["Sad Path: another domain gives null", "aquariustur01@gmail.com", null],
-    ["Sad Path: a subdomain gives null", "aquariustur01@sub.monamienet.org", null],
-    ["Sad Path: no two-digit suffix gives null", "aquariustur@monamienet.org", null],
-    ["Sad Path: a one-digit suffix gives null", "aquariustur1@monamienet.org", null],
-    ["Sad Path: a local part shorter than 3 characters gives null", "01@monamienet.org", null],
-    ["Sad Path: an id starting with a digit gives null", "2tur01@monamienet.org", null],
-    ["Sad Path: an id with a hyphen gives null", "ti-suporte01@monamienet.org", null],
-    ["Sad Path: a text without @ gives null", "aquariustur01", null],
+    ["Happy Path: the root group gives its partner id", "rotasul00@monamienet.org", "rotasul"],
+    ["Happy Path: a share leaf gives its partner id", "rotasul01w@monamienet.org", "rotasul"],
+    ["Happy Path: a watch leaf gives its partner id", "rotasul01r@monamienet.org", "rotasul"],
+    ["Edge Case: upper case letters are normalized", "RotaSul02W@MonAmieNet.ORG", "rotasul"],
+    ["Edge Case: surrounding whitespace is ignored", "  rotasul01r@monamienet.org\n", "rotasul"],
+    ["Edge Case: the last team number 99 counts", "rotasul99w@monamienet.org", "rotasul"],
+    ["Edge Case: a team group also points to its partner", "rotasul01@monamienet.org", "rotasul"],
+    ["Sad Path: a leaf of the root group gives null", "rotasul00w@monamienet.org", null],
+    ["Sad Path: digits in the partner id give null", "tur201w@monamienet.org", null],
+    ["Sad Path: a partner id shorter than 3 letters gives null", "ab00@monamienet.org", null],
+    ["Sad Path: the reserved id app gives null", "app01w@monamienet.org", null],
+    ["Sad Path: the reserved id community gives null", "community00@monamienet.org", null],
+    ["Sad Path: another domain gives null", "rotasul01w@gmail.com", null],
+    ["Sad Path: a subdomain gives null", "rotasul01w@sub.monamienet.org", null],
+    ["Sad Path: no team number gives null", "rotasul@monamienet.org", null],
+    ["Sad Path: a one-digit team number gives null", "rotasul1w@monamienet.org", null],
+    ["Sad Path: an id with a hyphen gives null", "ti-suporte01w@monamienet.org", null],
+    ["Sad Path: a text without @ gives null", "rotasul01w", null],
   ];
   for (const [label, email, expected] of cases) {
     test(`${label} (${JSON.stringify(email.trim())})`, () => {
@@ -41,7 +44,7 @@ describe("partnerIdFromGroupEmail - Unit Test Suite", () => {
     ["undefined", undefined],
     ["null", null],
     ["a number", 42],
-    ["an object", { email: "aquariustur01@monamienet.org" }],
+    ["an object", { email: "rotasul01w@monamienet.org" }],
   ];
   for (const [label, value] of nonStrings) {
     test(`Sad Path: ${label} gives null`, () => {
@@ -61,9 +64,9 @@ describe("partnerIdsFromGroups - Unit Test Suite", () => {
   test("Happy Path: returns the distinct partner ids, sorted", () => {
     // 1. Arrange
     const groups = [
-      { email: "zeta01@monamienet.org" },
-      { email: "aquariustur02@monamienet.org" },
-      { email: "aquariustur01@monamienet.org" },
+      { email: "zeta01w@monamienet.org" },
+      { email: "rotasul02r@monamienet.org" },
+      { email: "rotasul01w@monamienet.org" },
       { email: "beta00@monamienet.org" },
     ];
 
@@ -71,21 +74,37 @@ describe("partnerIdsFromGroups - Unit Test Suite", () => {
     const ids = partnerIdsFromGroups(groups);
 
     // 3. Assert
-    assert.deepEqual(ids, ["aquariustur", "beta", "zeta"]);
+    assert.deepEqual(ids, ["beta", "rotasul", "zeta"]);
   });
 
   test("Edge Case: the same partner in different cases appears once", () => {
     // 1. Arrange
     const groups = [
-      { email: "AquariusTur01@monamienet.org" },
-      { email: "aquariustur01@monamienet.org" },
+      { email: "RotaSul01W@monamienet.org" },
+      { email: "rotasul01w@monamienet.org" },
     ];
 
     // 2. Act
     const ids = partnerIdsFromGroups(groups);
 
     // 3. Assert
-    assert.deepEqual(ids, ["aquariustur"]);
+    assert.deepEqual(ids, ["rotasul"]);
+  });
+
+  // A partner made before the three-level model (people directly in
+  // <id>NN) must stay reachable until it is migrated.
+  test("Edge Case: a partner reached only through a team group is kept", () => {
+    // 1. Arrange
+    const groups = [
+      { email: "acme01@monamienet.org" },
+      { email: "rotasul01w@monamienet.org" },
+    ];
+
+    // 2. Act
+    const ids = partnerIdsFromGroups(groups);
+
+    // 3. Assert
+    assert.deepEqual(ids, ["acme", "rotasul"]);
   });
 
   test("Edge Case: an empty list gives no ids", () => {
@@ -122,9 +141,10 @@ describe("partnerIdsFromGroups - Unit Test Suite", () => {
       {},
       { email: 42 },
       { email: "ti-suporte@monamienet.org" },
-      { email: "app01@monamienet.org" },
-      { email: "beta01@gmail.com" },
-      { email: "acme01@monamienet.org" },
+      { email: "app01w@monamienet.org" },
+      { email: "beta01w@gmail.com" },
+      { email: "tur201w@monamienet.org" },
+      { email: "acme01r@monamienet.org" },
     ];
 
     // 2. Act

@@ -1,6 +1,6 @@
 {
   "name": "monamie-functions",
-  "description": "Cloud Functions do MonAmie — sincronização de Custom Claims",
+  "description": "MonAmie partner functions: custom claims (share, watch, owns) from Google Groups",
   "engines": {
     "node": "22"
   },

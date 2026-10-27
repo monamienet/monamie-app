@@ -1,52 +1,15 @@
 import 'dart:ui' show Color;
 
+import 'group_address.dart';
 import 'partner_theme.dart';
 
-/// Domain of every MonAmie group.
-const groupDomain = 'monamienet.org';
-
-/// The central MonAmie Firebase project is `monamienet-app`, so `app` can
-/// never be a partner id.
-const _reservedPartnerIds = {'app'};
-
-final _partnerIdPattern = RegExp(r'^[a-z][a-z0-9]*$');
-final _groupSuffixPattern = RegExp(r'^[0-9]{2}$');
-
-/// Returns why [id] is not a valid partner id, or `null` when it is valid.
-String? partnerIdProblem(String id) {
-  if (!_partnerIdPattern.hasMatch(id) || _reservedPartnerIds.contains(id)) {
-    return "invalid partner id '$id': it must match "
-        "${_partnerIdPattern.pattern} and not be one of "
-        '${_reservedPartnerIds.join(', ')}';
-  }
-  return null;
-}
+export 'group_address.dart';
 
 /// The partner's Firebase project: `monamienet-<id>`.
 String firebaseProjectIdFor(String partnerId) => 'monamienet-$partnerId';
 
 /// The partner's root group: `<id>00@monamienet.org`.
 String rootGroupEmailFor(String partnerId) => '${partnerId}00@$groupDomain';
-
-/// The partner a MonAmie group belongs to, or `null` when [email] does not
-/// follow the convention.
-///
-/// Every group of a partner is named `<id>NN@monamienet.org`, where `NN` is
-/// always two digits (`00` is the root group), so the id is the part before
-/// the `@` without its last two characters: `aquariustur01@monamienet.org`
-/// belongs to `aquariustur`.
-String? partnerIdFromGroupEmail(String email) {
-  final normalized = email.trim().toLowerCase();
-  final at = normalized.lastIndexOf('@');
-  if (at < 0 || normalized.substring(at + 1) != groupDomain) return null;
-  final local = normalized.substring(0, at);
-  if (local.length < 3) return null;
-  if (!_groupSuffixPattern.hasMatch(local.substring(local.length - 2))) {
-    return null;
-  }
-  final id = local.substring(0, local.length - 2);
-  return partnerIdProblem(id) == null ? id : null;
-}
 
 /// The name shown when a partner's branding has no usable name: the id with
 /// its first letter in upper case (`aquariustur` → `Aquariustur`).

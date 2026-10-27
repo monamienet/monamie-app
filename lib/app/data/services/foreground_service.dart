@@ -34,7 +34,7 @@ void onStart(ServiceInstance service) async {
   // No Android, o Firebase Auth persiste credenciais via SharedPreferences
   // no nível nativo, que são compartilhadas entre Flutter engines no
   // mesmo processo. Forçamos um refresh do token para garantir que os
-  // custom claims (group_roles) estejam presentes.
+  // custom claims (share, watch, owns) estejam presentes.
   final currentUser = CurrentPartnerFirebase.instance.auth.currentUser;
   if (currentUser != null) {
     try {
@@ -243,7 +243,7 @@ Future<void> updateLocation(
               debugPrint(
                 '[ForegroundService] PERMISSION_DENIED ao atualizar localização '
                 '(tentativa $_consecutivePermissionErrors/$_maxConsecutivePermissionErrors). '
-                'Claims group_roles podem estar ausentes no token.',
+                'O claim share pode estar ausente no token.',
               );
               // Tentar refresh do token para recuperar claims
               try {

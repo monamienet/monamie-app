@@ -114,10 +114,46 @@ class MonamiePage extends StatelessWidget {
             _centralizeButton(),
           ],
         ),
-        Calendar(),
-        HighlightedObservedUsersList(),
+        // Watchers get the team and its history; a field-only person sees
+        // only their own position, with a note saying who sees them.
+        Obx(
+          () => googleGroupsController.canWatch
+              ? Stack(children: [Calendar(), HighlightedObservedUsersList()])
+              : _fieldOnlyNote(),
+        ),
         HighlightedUserPanel(),
       ],
+    );
+  }
+
+  Widget _fieldOnlyNote() {
+    final teams = googleGroupsController.shareTeams.map((t) => t.name);
+    if (teams.isEmpty) return const SizedBox.shrink();
+    return Positioned(
+      left: 16,
+      right: 88,
+      bottom: 16,
+      child: Material(
+        color: AppColors.lightBlue(),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.darkBlue()),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Você compartilha sua localização com ${teams.join(', ')}. '
+                  'Quem acompanha a equipe vê você no mapa; daqui você vê só '
+                  'a sua posição.',
+                  style: TextStyle(color: AppColors.darkBlue(), fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

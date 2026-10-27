@@ -28,11 +28,20 @@ Onboarding a partner needs no app release: see `docs/en-us/white-label.md`. CI o
 
 ### Partners, Groups and Users
 
-- Each partner (client) has exactly one **root group** in the monamienet.org Google Workspace: `<id>00@monamienet.org` (e.g. `aquariustur00@monamienet.org`).
-- The root group can be the parent of many **subgroups**, named after the partner id with a two-digit suffix from `01` to `99`: `<id>01@monamienet.org`, `<id>02@monamienet.org`, … (e.g. `aquariustur01@monamienet.org`). The suffix is always exactly two digits, so a group's partner id is its local part without the last two characters.
-- Each partner has potentially many **users**: the people who sign in to the app. Their role in each group comes from Google Groups membership; the `syncClaims` Cloud Function turns it into the `group_roles` custom claim that `firestore.rules` checks:
-    - **observables**: `MEMBER` or `MANAGER`; they share their own location;
-    - **observers**: `OWNER`, or `METAUSER` (a member of an ancestor group); they only view the observables' locations.
+Groups in the monamienet.org Google Workspace have **three levels**, and **everyone is a plain `MEMBER`**: what a person can do comes from *which* group they are in, never from the `MANAGER`/`OWNER` roles (those carry admin powers in groups.google.com, so nobody outside MonAmieNet gets them).
+
+```
+rotasul00@      level 0: root group; its only member is the owner (responsável)
+├─ rotasul01@   level 1: a team (01–99); holds the team's display name, no direct members
+│  ├─ rotasul01r@   level 2: watch the team's map
+│  └─ rotasul01w@   level 2: share their own location in the team
+└─ rotasul13@ …
+```
+
+- **Parsing**: a group address is split by `^([a-z]+)(\d{2})([rw])?$` (before `@monamienet.org`) into partner id, team number and leaf. This works because **partner ids are lowercase letters only** (at least three); `app` and `community` are reserved. `<id>00r`, `<id>00w`, single-digit teams and `rw` leaves never exist. The parser has twins in `functions/group_address.js`, `central/functions/group_address.js` and `lib/app/config/partner/group_address.dart` (also used by `tool/`).
+- **Capabilities** (custom claims set by the partner's `syncClaims` from the person's **direct** groups, one gateway call, no tree walk): `share: [teamKey]` from `<id>NNw`, `watch: [teamKey]` from `<id>NNr`, `owns: [partnerId]` from `<id>00`, where a team key is `<id>NN`. Owners watch every team of their partner. "Both" means being in both leaves. A direct member of a level-1 group gets nothing (logged as a configuration error). `firestore.rules` checks these claims: reading positions needs `watch` in the team (or owning the partner), writing one's own position needs `share` in it, and a field-only person reads only their own document.
+- **The owner** (*responsável*) is the person who created the organization, alone, and cannot leave (for now). They are the only member of the root group, recorded as `ownerEmail` in the central registry `partners/{id}`, and deleting their account deletes the organization.
+- **Changing a role** = joining or leaving a leaf; **removing someone from a team** = leaving both leaves. Partners created before this model are moved with `dart run tool/partner.dart migrate-groups <id>` (prints the plan; `--apply` runs it).
 
 ### Client Onboarding Data (Google Drive via `rclone`)
 

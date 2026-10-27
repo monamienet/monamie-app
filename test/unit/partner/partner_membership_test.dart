@@ -1,13 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/data/partner/partner_membership.dart';
+import 'package:monamie_app/app/data/services/capabilities.dart';
 
 Map<String, dynamic> groupOf(String email) => {'email': email, 'name': email};
 
 void main() {
   group('belongsToPartner - Unit Test Suite', () {
-    test('Happy Path: a subgroup of the partner means membership', () {
+    test('Happy Path: a share leaf of the partner means membership', () {
       // 1. Arrange
-      final groups = [groupOf('aquariustur01@monamienet.org')];
+      final groups = [groupOf('aquariustur01w@monamienet.org')];
 
       // 2. Act
       final belongs = belongsToPartner('aquariustur', groups);
@@ -20,8 +21,8 @@ void main() {
       // 1. Arrange
       final groups = [
         groupOf('ti-suporte@monamienet.org'),
-        groupOf('beta01@monamienet.org'),
-        groupOf('aquariustur02@monamienet.org'),
+        groupOf('beta01w@monamienet.org'),
+        groupOf('aquariustur02r@monamienet.org'),
       ];
 
       // 2. Act
@@ -33,7 +34,7 @@ void main() {
 
     test('Edge Case: group emails in display-name case still match', () {
       // 1. Arrange
-      final groups = [groupOf('AquariusTur01@MonAmieNet.org')];
+      final groups = [groupOf('AquariusTur01R@MonAmieNet.org')];
 
       // 2. Act
       final belongs = belongsToPartner('aquariustur', groups);
@@ -64,14 +65,12 @@ void main() {
       expect(belongs, isFalse);
     });
 
-    test('Edge Case: a partner whose id is a prefix of another does not '
-        'match its groups', () {
+    test('Edge Case: a direct team group alone means no membership', () {
       // 1. Arrange
-      // tur201 belongs to "tur2", not to "tur".
-      final groups = [groupOf('tur201@monamienet.org')];
+      final groups = [groupOf('aquariustur01@monamienet.org')];
 
       // 2. Act
-      final belongs = belongsToPartner('tur', groups);
+      final belongs = belongsToPartner('aquariustur', groups);
 
       // 3. Assert
       expect(belongs, isFalse);
@@ -80,8 +79,8 @@ void main() {
     test('Sad Path: only groups of other partners means no membership', () {
       // 1. Arrange
       final groups = [
-        groupOf('beta01@monamienet.org'),
-        groupOf('aquariustur01@gmail.com'),
+        groupOf('beta01w@monamienet.org'),
+        groupOf('aquariustur01w@gmail.com'),
       ];
 
       // 2. Act
@@ -94,7 +93,7 @@ void main() {
     test('Sad Path: groups without a string email are ignored', () {
       // 1. Arrange
       final groups = <Map<String, dynamic>>[
-        {'name': 'aquariustur01@monamienet.org'},
+        {'name': 'aquariustur01w@monamienet.org'},
         {'email': null},
         {'email': 42},
       ];
@@ -108,34 +107,42 @@ void main() {
   });
 
   group('claimsShowNoAccess - Unit Test Suite', () {
-    test('Happy Path: empty claims show the user has no access left', () {
+    test('Happy Path: empty capabilities show the user has no access left', () {
       // 1. Arrange
-      final roles = <String, dynamic>{};
+      const capabilities = Capabilities();
 
       // 2. Act
-      final noAccess = claimsShowNoAccess(roles);
+      final noAccess = claimsShowNoAccess(capabilities);
 
       // 3. Assert
       expect(noAccess, isTrue);
     });
 
-    test('Edge Case: claims with one role still give access', () {
+    final withAccess = <(String, Capabilities)>[
+      ('share', const Capabilities(share: {'aquariustur01'})),
+      ('watch', const Capabilities(watch: {'aquariustur01'})),
+      ('owns', const Capabilities(owns: {'aquariustur'})),
+    ];
+    for (final (label, capabilities) in withAccess) {
+      test('Edge Case: a single $label capability still gives access', () {
+        // 1. Arrange
+        final input = capabilities;
+
+        // 2. Act
+        final noAccess = claimsShowNoAccess(input);
+
+        // 3. Assert
+        expect(noAccess, isFalse);
+      });
+    }
+
+    test('Sad Path: null capabilities (failed sync) are not evidence of '
+        'removal', () {
       // 1. Arrange
-      final roles = <String, dynamic>{'aquariustur01@monamienet.org': 'member'};
+      const Capabilities? capabilities = null;
 
       // 2. Act
-      final noAccess = claimsShowNoAccess(roles);
-
-      // 3. Assert
-      expect(noAccess, isFalse);
-    });
-
-    test('Sad Path: null claims (failed sync) are not evidence of removal', () {
-      // 1. Arrange
-      const Map<String, dynamic>? roles = null;
-
-      // 2. Act
-      final noAccess = claimsShowNoAccess(roles);
+      final noAccess = claimsShowNoAccess(capabilities);
 
       // 3. Assert
       expect(noAccess, isFalse);

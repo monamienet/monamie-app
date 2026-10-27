@@ -551,9 +551,8 @@ class TrackingController extends GetxController
       return; // Interrompe a execução para não iniciar o serviço sem GPS
     }
 
-    // Garante que os custom claims (group_roles) estejam presentes
-    // e contenham MEMBER ou MANAGER antes de escrever no Firestore.
-    final hasClaims = await MonAmieClaimsService.ensureClaims();
+    // The rules only accept positions from people who share in a team.
+    final hasClaims = await MonAmieClaimsService.ensureCanShare();
     if (!hasClaims) {
       debugPrint(
         '[TrackingController] Claims inválidos — tracking não iniciado.',
@@ -575,12 +574,11 @@ class TrackingController extends GetxController
         .getObservableGroupsForUser();
 
     if (observableGroups.isEmpty) {
-      debugPrint(
-        '[TrackingController] Usuário não é MEMBER ou MANAGER em nenhum grupo.',
-      );
+      debugPrint('[TrackingController] The user shares in no team.');
       Get.snackbar(
-        'Rastreamento não autorizado',
-        'Você não possui papel de participante (MEMBER ou MANAGER) em nenhum grupo.',
+        'Compartilhamento não autorizado',
+        'Você não está em campo em nenhuma equipe. Peça ao responsável para '
+            'liberar o compartilhamento da sua localização.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade100,
         duration: const Duration(seconds: 5),
@@ -616,7 +614,7 @@ class TrackingController extends GetxController
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Iniciar Rastreamento de Jornada',
+                  'Compartilhar sua localização',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -625,7 +623,7 @@ class TrackingController extends GetxController
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Selecione o grupo operacional em que você atuará neste turno:',
+                  'Escolha a equipe com quem você vai compartilhar neste turno:',
                   style: TextStyle(fontSize: 14, color: Colors.black54),
                 ),
                 const SizedBox(height: 16),

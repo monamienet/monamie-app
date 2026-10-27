@@ -38,7 +38,8 @@ const groupsByEmail = new TtlCache(10 * 60 * 1000);
  * Finds the partners the signed-in user belongs to.
  *
  * The user signed in to this central project with Google. Their partners
- * are derived from the names of their groups (`<id>NN@monamienet.org`),
+ * are derived from the names of their groups (`<id>00@`, `<id>NNr@`,
+ * `<id>NNw@`; see group_address.js),
  * kept when their registry entry `partners/{id}` has a status the app shows
  * (every status but `reserved`), and returned with that status. Partners
  * the app binds (`active`, `migrating`, `deleting`) also carry the

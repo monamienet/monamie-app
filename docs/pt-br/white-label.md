@@ -13,7 +13,13 @@ Este guia explica como isso funciona, o que a MonAmie configura uma única vez e
 | O que tem | marca, projeto Firebase `monamienet-<id>`, grupo raiz `<id>00@monamienet.org` | uma conta Google |
 | Faz login? | não | sim |
 
-A conta Google não diz nada sobre o parceiro. A ponte são os **grupos**: cada parceiro tem um grupo raiz `<id>00@monamienet.org` e subgrupos `<id>01` … `<id>99`. Colocar o e-mail de uma pessoa num deles é o que a torna usuária daquele parceiro. Como o sufixo tem sempre 2 dígitos, o id do parceiro é o nome do grupo sem os 2 últimos caracteres: `aquariustur01@monamienet.org` → `aquariustur`.
+A conta Google não diz nada sobre o parceiro. A ponte são os **grupos**, em três níveis, com todo mundo como `MEMBER` simples:
+
+- `<id>00@monamienet.org`, o **grupo raiz**: só o responsável, que acompanha todas as equipes;
+- `<id>01@` … `<id>99@`, um por **equipe**: guarda o nome da equipe, sem membros diretos;
+- `<id>NNr@` (**vê o mapa** da equipe) e `<id>NNw@` (**em campo**: compartilha a própria localização na equipe), as duas folhas de cada equipe. Estar nas duas é "os dois".
+
+Pôr o e-mail de uma pessoa numa folha (ou na raiz) é o que a torna usuária daquele parceiro; o que ela pode fazer vem de qual grupo é. Um endereço de grupo se divide por `^([a-z]+)(\d{2})([rw])?$`, o que funciona porque o id do parceiro só tem letras minúsculas: `aquariustur01w@monamienet.org` → parceiro `aquariustur`, equipe `01`, em campo.
 
 ## 2. O que acontece no login
 
@@ -23,7 +29,7 @@ A conta Google não diz nada sobre o parceiro. A ponte são os **grupos**: cada 
 4. **Ligação:** o projeto Firebase do parceiro (um app Firebase nomeado `partner-<id>`), o grupo raiz e a marca são ligados juntos. O app entra no projeto do parceiro com o mesmo ID token do Google (o parceiro aceita o cliente web central) e chama a `syncClaims` do parceiro, que decide o que o usuário pode ver, como antes.
 5. **Lembrança:** a ligação fica salva no aparelho. As próximas aberturas já começam com a marca do parceiro, sem consultar o projeto central.
 
-O app **esquece** o parceiro quando a pessoa sai, quando uma atualização de grupos não encontra mais nenhum grupo do parceiro, ou quando a `syncClaims` não devolve nenhum papel.
+O app **esquece** o parceiro quando a pessoa sai, quando uma atualização de grupos não encontra mais nenhum grupo do parceiro, ou quando a `syncClaims` não devolve nenhuma capacidade.
 
 O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa são sempre MonAmie: o Android os lê do pacote instalado. Os dois nomes nunca aparecem lado a lado: as telas da própria MonAmie dizem "MonAmie" e, depois que o parceiro é vinculado, o app mostra só o nome dele ("AquariusTur", nunca "MonAmie AquariusTur").
 
@@ -95,7 +101,7 @@ Os passos 1 a 9 cuidam dos três obrigatórios: projeto, grupo raiz e nome. O pa
 
 **Grupos e acesso**
 
-6. Crie o grupo raiz `<id>00@monamienet.org` e os subgrupos `<id>01`, `<id>02`… com os usuários.
+6. Crie o grupo raiz `<id>00@monamienet.org` com o responsável e, para cada equipe `<id>NN@` (dentro da raiz), as folhas `<id>NNr@` e `<id>NNw@` (dentro da equipe), com as pessoas nas folhas. Todos como `MEMBER`; permita membros de fora da organização em todos os grupos. Um parceiro criado antes do modelo de três níveis é migrado com `dart run tool/partner.dart migrate-groups <id>` (mostra o plano; `--apply` executa).
 7. Se o gateway de grupos mantiver uma lista de projetos aceitos, inclua `monamienet-<id>`.
 8. Conceda `firebaseAppConfigReader` à conta da função central **só neste projeto**.
 

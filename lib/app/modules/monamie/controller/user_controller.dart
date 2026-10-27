@@ -3,10 +3,9 @@ import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
-import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
+import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 class UserController extends GetxController {
   final _user = Rxn<UserModel>();
@@ -24,25 +23,9 @@ class UserController extends GetxController {
     await loadCurrentUser();
   }
 
-  /// Verifica nos Custom Claims do token se o usuário é observável
-  /// (MEMBER ou MANAGER em pelo menos um grupo MonAmie).
-  /// Retorna false se os claims não estiverem definidos.
-  Future<bool> _isObservavelFromClaims() async {
-    final user = CurrentPartnerFirebase.instance.auth.currentUser;
-    if (user == null) return false;
-
-    final idTokenResult = await user.getIdTokenResult();
-    final claims = idTokenResult.claims;
-    if (claims == null) return false;
-
-    final groupRoles = claims['group_roles'];
-    if (groupRoles == null || groupRoles is! Map) return false;
-
-    // Observável se pelo menos um role é MEMBER ou MANAGER
-    return groupRoles.values.any(
-      (role) => role == 'MEMBER' || role == 'MANAGER',
-    );
-  }
+  /// Whether the claims let the person share their location in a team.
+  Future<bool> _canShareFromClaims() async =>
+      (await MonAmieClaimsService.readClaims())?.canShare ?? false;
 
   Future<void> loadCurrentUser() async {
     isLoading.value = true;
@@ -63,19 +46,15 @@ class UserController extends GetxController {
       if (firestoreUser != null) {
         _user.value = firestoreUser;
       } else {
-        // Criar documento no Firestore APENAS se o usuário for observável.
-        // A coleção `usuarios` existe exclusivamente para armazenar
-        // coordenadas de observáveis (MEMBER/MANAGER).
-        final isObservavel = await _isObservavelFromClaims();
-        if (isObservavel) {
+        // Only people who share in a team get a document in `usuarios`:
+        // the collection holds the positions of people in the field.
+        if (await _canShareFromClaims()) {
           await FirebaseProvider().setUser(
             UserModel(email: email, nome: _googleName),
           );
           _user.value = await _initializeUser();
         } else {
-          debugPrint(
-            'Usuário $email não é observável — doc em `usuarios` não criado.',
-          );
+          debugPrint('$email shares in no team: no document in `usuarios`.');
         }
       }
     } finally {
@@ -94,21 +73,11 @@ class UserController extends GetxController {
     return user;
   }
 
-  bool isTrackable() {
-    final googleGroupsCtrl = Get.find<GoogleGroupsController>();
-    final currentUserEmail = _user.value?.email;
-
-    if (currentUserEmail == null) return false;
-
-    // Procura o usuário logado entre os membros do grupo observado
-    final member = googleGroupsCtrl.observedMembers.firstWhereOrNull(
-      (m) => m.email == currentUserEmail,
-    );
-
-    // Retorna true se for manager ou member (owner não conta como trackable)
-    return member?.role == GoogleGroupRole.manager ||
-        member?.role == GoogleGroupRole.member;
-  }
+  /// Whether the person shares their location in some team, so the map
+  /// shows the sharing switch.
+  bool isTrackable() =>
+      _user.value?.email != null &&
+      Get.find<GoogleGroupsController>().capabilities.value.canShare;
 
   String getUserName() {
     return user!.nome ?? _googleName ?? "Nome não informado";

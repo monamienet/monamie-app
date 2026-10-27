@@ -38,28 +38,6 @@ void main() {
       expect(problem, isNull);
     });
 
-    test('Happy Path: an id with digits after the first letter is valid', () {
-      // 1. Arrange
-      const id = 'tur2';
-
-      // 2. Act
-      final problem = partnerIdProblem(id);
-
-      // 3. Assert
-      expect(problem, isNull);
-    });
-
-    test('Edge Case: a single letter is a valid id', () {
-      // 1. Arrange
-      const id = 'x';
-
-      // 2. Act
-      final problem = partnerIdProblem(id);
-
-      // 3. Assert
-      expect(problem, isNull);
-    });
-
     test('Sad Path: the reserved id "app" is invalid', () {
       // 1. Arrange
       const id = 'app';
@@ -119,8 +97,8 @@ void main() {
   group('partnerIdFromGroupEmail - Unit Test Suite', () {
     const cases = <({String label, String email, String? expected})>[
       (
-        label: 'Happy Path: a subgroup gives its partner id',
-        email: 'aquariustur01@monamienet.org',
+        label: 'Happy Path: a share leaf gives its partner id',
+        email: 'aquariustur01w@monamienet.org',
         expected: 'aquariustur',
       ),
       (
@@ -130,23 +108,13 @@ void main() {
       ),
       (
         label: 'Edge Case: upper case letters are normalized',
-        email: 'AquariusTur01@MonAmieNet.ORG',
+        email: 'AquariusTur01W@MonAmieNet.ORG',
         expected: 'aquariustur',
       ),
       (
         label: 'Edge Case: surrounding whitespace is ignored',
-        email: '  aquariustur01@monamienet.org \n',
+        email: '  aquariustur01r@monamienet.org \n',
         expected: 'aquariustur',
-      ),
-      (
-        label: 'Edge Case: only the last two digits are the suffix',
-        email: 'tur201@monamienet.org',
-        expected: 'tur2',
-      ),
-      (
-        label: 'Edge Case: the shortest valid local part (3 characters)',
-        email: 'x01@monamienet.org',
-        expected: 'x',
       ),
       (
         label: 'Sad Path: the reserved id "app" gives null',
@@ -224,13 +192,13 @@ void main() {
 
     test('Edge Case: the root group maps back to its partner id', () {
       // 1. Arrange
-      final email = rootGroupEmailFor('tur2');
+      final email = rootGroupEmailFor('rotasul');
 
       // 2. Act
       final id = partnerIdFromGroupEmail(email);
 
       // 3. Assert
-      expect(id, 'tur2');
+      expect(id, 'rotasul');
     });
 
     test('Happy Path: the Firebase project is monamienet-<id>', () {

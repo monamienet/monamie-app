@@ -15,6 +15,7 @@ import 'package:monamie_app/app/data/repository/user_data_repository.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/flutter_background_service_tracking_stopper.dart';
+import 'package:monamie_app/app/data/services/capabilities.dart';
 import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
@@ -170,10 +171,10 @@ class AuthGoogleController extends GetxController {
       final token = await _authGoogle.getFirebaseIdToken();
       await _getGdiGroupsGoogle(token ?? '', user.email);
 
-      // Sincronizar Custom Claims ANTES de navegar.
-      // A criação do doc em `usuarios` exige claims de observável.
-      final roles = await _syncClaims();
-      if (claimsShowNoAccess(roles)) {
+      // Sync the claims before navigating: the rules need them to read the
+      // map or write the person's own position.
+      final capabilities = await _syncClaims();
+      if (claimsShowNoAccess(capabilities)) {
         // A group is named after the partner but is not under its root.
         throw StateError(
           'sua conta não tem papel em nenhum grupo de ${binding.partner.name}',
@@ -254,11 +255,8 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// Chama a Cloud Function `syncClaims` para sincronizar os
-  /// Custom Claims do Firebase Auth com os papéis do usuário nos
-  /// grupos do MonAmie. Após a chamada, força refresh do token.
-  Future<Map<String, dynamic>?> _syncClaims() =>
-      MonAmieClaimsService.syncClaims();
+  /// Recomputes the person's capabilities in the partner (`syncClaims`).
+  Future<Capabilities?> _syncClaims() => MonAmieClaimsService.syncClaims();
 
   Future<void> logout() => _signOut();
 

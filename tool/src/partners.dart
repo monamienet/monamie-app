@@ -1,8 +1,12 @@
-/// The central MonAmie project is `monamienet-app`, so `app` can never be a
-/// partner id. Kept in sync with `lib/app/config/partner/partner_config.dart`.
-const reservedPartnerIds = {'app'};
+/// Ids that can never be a partner: `app` is the central project
+/// (`monamienet-app`) and `community` the shared Community project. Kept in
+/// sync with `lib/app/config/partner/group_address.dart` and
+/// `functions/group_address.js`.
+const reservedPartnerIds = {'app', 'community'};
 
-final _partnerIdPattern = RegExp(r'^[a-z][a-z0-9]*$');
+/// Lowercase letters only, at least three: what lets a group address be
+/// split into partner, team and leaf (`rotasul01w`).
+final _partnerIdPattern = RegExp(r'^[a-z]{3,}$');
 final _hexColorPattern = RegExp(r'^#[0-9A-Fa-f]{6}$');
 
 /// The Firebase project of partner [id]: `monamienet-<id>`.
@@ -25,7 +29,7 @@ class PartnerToolException implements Exception {
 /// Returns why [id] is not a valid partner id, or `null` when it is valid.
 ///
 /// The id names the partner's Firebase project (`monamienet-<id>`) and its
-/// groups (`<id>NN@monamienet.org`).
+/// groups (`<id>00@`, `<id>NN@`, `<id>NNr@`, `<id>NNw@monamienet.org`).
 String? partnerIdProblem(String id) {
   if (!_partnerIdPattern.hasMatch(id)) {
     return "Invalid partner id '$id': it must match ${_partnerIdPattern.pattern}.";

@@ -13,7 +13,13 @@ This guide explains how that works, what MonAmie sets up once, and how to onboar
 | Owns | branding, Firebase project `monamienet-<id>`, root group `<id>00@monamienet.org` | a Google account |
 | Signs in? | no | yes |
 
-A Google account says nothing about a partner. The bridge is the **groups**: every partner has one root group `<id>00@monamienet.org` and subgroups `<id>01` … `<id>99`. Adding a person's e-mail to one of them is what makes them a user of that partner. Because the suffix is always two digits, the partner id is the group name without its last two characters: `aquariustur01@monamienet.org` → `aquariustur`.
+A Google account says nothing about a partner. The bridge is the **groups**, in three levels, with everyone a plain `MEMBER`:
+
+- `<id>00@monamienet.org`, the **root group**: only the owner, who watches every team;
+- `<id>01@` … `<id>99@`, one per **team**: holds the team's name, no direct members;
+- `<id>NNr@` (**watch** the team's map) and `<id>NNw@` (**share** one's own location in the team), the two leaves of each team. Being in both is "both".
+
+Adding a person's e-mail to a leaf (or to the root) is what makes them a user of that partner; what they can do comes from which group it is. A group address splits by `^([a-z]+)(\d{2})([rw])?$`, which works because partner ids are lowercase letters only: `aquariustur01w@monamienet.org` → partner `aquariustur`, team `01`, share.
 
 ## 2. What happens when a user signs in
 
@@ -23,7 +29,7 @@ A Google account says nothing about a partner. The bridge is the **groups**: eve
 4. **Binding:** the partner's Firebase project (a named Firebase app `partner-<id>`), its root group and its branding are bound together. The app signs in to the partner project with the same Google ID token (the partner allows the central web client) and runs the partner's `syncClaims`, which decides what the user may see, exactly as before.
 5. **Remembering:** the binding is saved on the device. Next launches open directly in the partner's brand, without the central project.
 
-The app **forgets** the partner on sign-out, when a group refresh finds no group of the partner anymore, or when `syncClaims` returns no roles.
+The app **forgets** the partner on sign-out, when a group refresh finds no group of the partner anymore, or when `syncClaims` returns no capability.
 
 The launcher icon, the app name on the home screen, the Play listing and the native splash are always MonAmie: Android reads them from the installed package. The two names are never shown side by side: MonAmie's own screens say "MonAmie", and once a partner is bound the app shows only the partner's name ("AquariusTur", never "MonAmie AquariusTur").
 
@@ -95,7 +101,7 @@ Steps 1–9 cover the three required things: project, root group and name. Step 
 
 **Groups and access**
 
-6. Create the root group `<id>00@monamienet.org` and the subgroups `<id>01`, `<id>02`… with the users.
+6. Create the root group `<id>00@monamienet.org` with the owner, and for each team `<id>NN@` (inside the root) its leaves `<id>NNr@` and `<id>NNw@` (inside the team), with the people in the leaves. Everyone is a `MEMBER`; allow members outside the organization on every group. A partner set up before the three-level model is moved with `dart run tool/partner.dart migrate-groups <id>` (prints the plan; `--apply` runs it).
 7. If the groups gateway keeps a list of accepted projects, add `monamienet-<id>`.
 8. Grant `firebaseAppConfigReader` to the central function's account on **this project only**.
 

@@ -1,3 +1,5 @@
+import 'package:monamie_app/app/config/partner/group_address.dart';
+
 import 'branding.dart';
 import 'firebase_cli.dart';
 import 'firestore_documents.dart';
@@ -13,8 +15,6 @@ class CheckResult {
 
   bool get passed => problem == null;
 }
-
-final _subgroupSuffix = RegExp(r'^[0-9]{2}$');
 
 /// Checks that partner [id] has the three things the app needs before it can
 /// be activated: its Firebase project with the MonAmie apps registered, its
@@ -54,8 +54,8 @@ Future<List<CheckResult>> checkPartner({
       ];
       return misnamed.isEmpty
           ? null
-          : 'subgroups not named ${id}NN@monamienet.org, so the app cannot '
-                'find their members: ${misnamed.join(', ')}.';
+          : 'subgroups not named ${id}NN@monamienet.org (a team), so the app '
+                'cannot find their members: ${misnamed.join(', ')}.';
     }),
     await _check('Branding name ($brandingDocumentPath)', () async {
       final branding = await firestore.get(
@@ -70,14 +70,12 @@ Future<List<CheckResult>> checkPartner({
   ];
 }
 
+/// Whether [email] is a team group of partner [id]: `<id>NN@`, 01–99.
 bool _isSubgroupOf(String id, String email) {
-  final normalized = email.trim().toLowerCase();
-  const domain = '@monamienet.org';
-  if (!normalized.endsWith(domain)) return false;
-  final local = normalized.substring(0, normalized.length - domain.length);
-  return local.length == id.length + 2 &&
-      local.startsWith(id) &&
-      _subgroupSuffix.hasMatch(local.substring(id.length));
+  final address = parseGroupAddress(email);
+  return address != null &&
+      address.partnerId == id &&
+      address.level == GroupLevel.team;
 }
 
 Future<CheckResult> _check(String label, Future<String?> Function() run) async {
