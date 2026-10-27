@@ -5,17 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
-import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
-import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_header.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_menu.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_sheet.dart';
-import 'package:monamie_app/app/modules/monamie/ui/home/people_list.dart';
-import 'package:monamie_app/app/modules/monamie/ui/home/presence.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_user_panel.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/logout_progress_overlay.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
@@ -128,62 +124,9 @@ class MonamiePage extends StatelessWidget {
             _centralizeButton(),
           ],
         ),
-        _nobodySharingNote(),
         HighlightedUserPanel(),
       ],
     );
-  }
-
-  /// Says so when the observed team has people but none is sharing now.
-  Widget _nobodySharingNote() {
-    return Obx(() {
-      if (!googleGroupsController.canWatch) return const SizedBox.shrink();
-      final rows = observedTeamRows();
-      final nobodyLive =
-          rows.isNotEmpty &&
-          rows.every((row) => row.presence.kind != PresenceKind.live);
-      if (!nobodyLive || !Get.find<CalendarController>().isObservingToday) {
-        return const SizedBox.shrink();
-      }
-      return Positioned(
-        left: 24,
-        right: 24,
-        top: 16,
-        child: Material(
-          color: Colors.white,
-          elevation: 4,
-          borderRadius: BorderRadius.circular(18),
-          child: const Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Ninguém compartilhando agora',
-                  style: TextStyle(
-                    color: HomeColors.ink,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Quem está em campo aparece aqui assim que ativar a '
-                  'localização no celular.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: HomeColors.muted,
-                    fontSize: 13,
-                    height: 1.45,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    });
   }
 
   /// Desenha as trajetórias dos usuários destacados (highlightedObservedUsers).
