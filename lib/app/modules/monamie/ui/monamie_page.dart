@@ -117,7 +117,13 @@ class MonamiePage extends StatelessWidget {
         // only their own position, with a note saying who sees them.
         Obx(
           () => googleGroupsController.canWatch
-              ? Stack(children: [Calendar(), HighlightedObservedUsersList()])
+              // Fill the map: the calendar and the list are Positioned in
+              // this Stack, which would otherwise have no size.
+              ? Positioned.fill(
+                  child: Stack(
+                    children: [Calendar(), HighlightedObservedUsersList()],
+                  ),
+                )
               : _fieldOnlyNote(),
         ),
         HighlightedUserPanel(),

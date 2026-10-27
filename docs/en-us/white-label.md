@@ -200,8 +200,10 @@ Partners pick one of a fixed set of themes, never free colors. The catalog lives
 ```
 partners/{partnerId}/config/branding      public: name and look
 partners/{partnerId}/config/plan          Community only: {minIntervalMinutes: 15}
+partners/{partnerId}/config/tracking      owner's choice: {intervalMinutes, distanceMeters}; default 5 min, 10 m
 partners/{partnerId}/usuarios/{email}     live position (positionAt = server time of the last position)
 partners/{partnerId}/usuarios/{email}/historico_posicoes/{pointId}
+partners/{partnerId}/usuarios/{email}/dias/{yyyy-mm-dd}  one summary per day with trails (history calendar dots)
 partners/{partnerId}/users/{uid}          Google profile (name, avatar)
 ```
 

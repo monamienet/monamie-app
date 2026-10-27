@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:monamie_app/app/modules/monamie/history/history_month.dart';
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:monamie_app/app/utils/group_email.dart';
@@ -164,9 +165,21 @@ class FirebaseProvider {
         pointData['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
       }
 
+      // The day summary marks the day in the history calendar, so a month
+      // costs one read per person and day instead of every point.
+      final daySummary = <String, dynamic>{
+        'lastAt': FieldValue.serverTimestamp(),
+        'points': FieldValue.increment(1),
+        'grupo_ativo': ?pointData['grupo_ativo'],
+      };
       final batch = CurrentPartnerFirebase.instance.firestore.batch()
         ..update(userDoc, userUpdates)
-        ..set(userDoc.collection('historico_posicoes').doc(), pointData);
+        ..set(userDoc.collection('historico_posicoes').doc(), pointData)
+        ..set(
+          userDoc.collection('dias').doc(dayKey(DateTime.now())),
+          daySummary,
+          SetOptions(merge: true),
+        );
       await batch.commit();
 
       if (kDebugMode) print("Dados atualizados no firestore com sucesso!");
@@ -174,6 +187,30 @@ class FirebaseProvider {
       debugPrint("Erro ao atualizar coordenadas e timestamp: $e");
       rethrow;
     }
+  }
+
+  /// The days of [month] when any of [emails] shared their location, read
+  /// from the day summaries (at most one read per person and day).
+  Future<Set<String>> trailDays(
+    Iterable<String> emails,
+    HistoryMonth month,
+  ) async {
+    final (first, last) = month.keyRange;
+    final days = <String>{};
+    await Future.wait([
+      for (final email in emails)
+        collectionRef
+            .doc(email)
+            .collection('dias')
+            .where(FieldPath.documentId, isGreaterThanOrEqualTo: first)
+            .where(FieldPath.documentId, isLessThanOrEqualTo: last)
+            .get()
+            .then((snapshot) => days.addAll(snapshot.docs.map((d) => d.id)))
+            .catchError((Object e) {
+              debugPrint('Could not read the days of $email: $e');
+            }),
+    ]);
+    return days;
   }
 
   /// Retorna um Stream com os últimos [limit] pontos da trajetória de um

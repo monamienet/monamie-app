@@ -19,6 +19,7 @@ const {
   doc,
   getDoc,
   getDocs,
+  increment,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -601,6 +602,237 @@ describe("partner rules: usuarios/{email}/historico_posicoes - Rules Test Suite"
       await assertFails(action);
     });
   }
+});
+
+describe("partner rules: usuarios/{email}/dias/{day} - Rules Test Suite", () => {
+  const DAY = "2026-10-27";
+
+  /** A day summary as the app writes it with each position. */
+  function summary(grupoAtivo) {
+    const data = { lastAt: serverTimestamp(), points: increment(1) };
+    if (grupoAtivo !== undefined) data.grupo_ativo = grupoAtivo;
+    return data;
+  }
+
+  /** A day summary as stored (seeded). */
+  function storedSummary(grupoAtivo) {
+    return { lastAt: LONG_AGO, points: 3, grupo_ativo: grupoAtivo };
+  }
+
+  /** A batch with `who`'s position update and `owner`'s summary of `day`. */
+  function batchWithSummary(who, owner, data, day = DAY) {
+    const db = dbOf(who);
+    const batch = writeBatch(db);
+    batch.update(doc(db, `${HERE}/usuarios/${people[who].email}`), moved);
+    batch.set(doc(db, `${HERE}/usuarios/${owner}/dias/${day}`), data, { merge: true });
+    return batch;
+  }
+
+  beforeEach(async () => {
+    await seed(async (db) => {
+      await setDoc(doc(db, `${HERE}/usuarios/ana@example.com/dias/${DAY}`), storedSummary(TEAM_01));
+      await setDoc(doc(db, `${HERE}/usuarios/caio@example.com/dias/${DAY}`), storedSummary(TEAM_01));
+      // bia shares in rotasul02 now; this day was shared in rotasul01.
+      await setDoc(doc(db, `${HERE}/usuarios/bia@example.com/dias/${DAY}`), storedSummary(TEAM_01));
+      await setDoc(doc(db, `${HERE}/usuarios/zeca@example.com/dias/${DAY}`), storedSummary(OTHER_TEAM));
+      // People who do not share, with a live document, so only the
+      // summary rule decides.
+      await setDoc(doc(db, `${HERE}/usuarios/vera@example.com`), stored("vera@example.com", TEAM_01));
+      await setDoc(doc(db, `${HERE}/usuarios/mia@example.com`), stored("mia@example.com", TEAM_01));
+      await setDoc(doc(db, `${HERE}/usuarios/lia@example.com`), stored("lia@example.com", TEAM_01));
+      await setDoc(doc(db, `${HERE}/usuarios/duda@example.com`), stored("duda@example.com", TEAM_01));
+    });
+  });
+
+  test("Happy Path: a new day's summary in the same batch as the position is accepted", async () => {
+    // 1. Arrange
+    const batch = batchWithSummary("ana", "ana@example.com", summary(TEAM_01), "2026-10-28");
+
+    // 2. Act
+    const write = batch.commit();
+
+    // 3. Assert
+    await assertSucceeds(write);
+  });
+
+  test("Happy Path: an existing day's summary is incremented with the position", async () => {
+    // 1. Arrange
+    const batch = batchWithSummary("ana", "ana@example.com", summary(TEAM_01));
+
+    // 2. Act
+    const write = batch.commit();
+
+    // 3. Assert
+    await assertSucceeds(write);
+  });
+
+  test("Edge Case: a summary without grupo_ativo is accepted", async () => {
+    // 1. Arrange
+    const batch = batchWithSummary("ana", "ana@example.com", summary(), "2026-10-28");
+
+    // 2. Act
+    const write = batch.commit();
+
+    // 3. Assert
+    await assertSucceeds(write);
+  });
+
+  test("Edge Case: a summary with grupo_ativo null is accepted", async () => {
+    // 1. Arrange
+    const batch = batchWithSummary("ana", "ana@example.com", summary(null), "2026-10-28");
+
+    // 2. Act
+    const write = batch.commit();
+
+    // 3. Assert
+    await assertSucceeds(write);
+  });
+
+  test("Edge Case: points as a plain int is accepted", async () => {
+    // 1. Arrange
+    const batch = batchWithSummary("ana", "ana@example.com", { ...summary(TEAM_01), points: 1 }, "2026-10-28");
+
+    // 2. Act
+    const write = batch.commit();
+
+    // 3. Assert
+    await assertSucceeds(write);
+  });
+
+  test("Sad Path: a summary written alone, without the position, is denied", async () => {
+    // 1. Arrange
+    const db = dbOf("ana");
+
+    // 2. Act
+    const write = setDoc(doc(db, `${HERE}/usuarios/ana@example.com/dias/2026-10-28`), summary(TEAM_01));
+
+    // 3. Assert
+    await assertFails(write);
+  });
+
+  test("Sad Path: a summary batched with a heartbeat (no new position) is denied", async () => {
+    // 1. Arrange
+    const db = dbOf("ana");
+    const batch = writeBatch(db);
+    batch.update(doc(db, `${HERE}/usuarios/ana@example.com`), { timestamp: new Date() });
+    batch.set(doc(db, `${HERE}/usuarios/ana@example.com/dias/2026-10-28`), summary(TEAM_01));
+
+    // 2. Act
+    const write = batch.commit();
+
+    // 3. Assert
+    await assertFails(write);
+  });
+
+  const deniedWrites = [
+    ["a watch-only person", "vera", "vera@example.com", summary(TEAM_01), DAY],
+    ["someone else's summary", "duda", "ana@example.com", summary(TEAM_01), DAY],
+    ["a person without the partners claim", "lia", "lia@example.com", summary(TEAM_01), DAY],
+    ["a team where they do not share", "ana", "ana@example.com", summary(TEAM_02), DAY],
+    ["another partner's team where they share", "mia", "mia@example.com", summary(OTHER_TEAM), DAY],
+    ["a client lastAt", "ana", "ana@example.com", { ...summary(TEAM_01), lastAt: Timestamp.now() }, DAY],
+    ["points that are not a number", "ana", "ana@example.com", { ...summary(TEAM_01), points: "1" }, DAY],
+    ["points that are not an int", "ana", "ana@example.com", { ...summary(TEAM_01), points: 1.5 }, DAY],
+    ["an extra field", "ana", "ana@example.com", { ...summary(TEAM_01), lat: -22.9 }, DAY],
+    ["a day id without zero padding", "ana", "ana@example.com", summary(TEAM_01), "2026-10-7"],
+    ["a day id in another order", "ana", "ana@example.com", summary(TEAM_01), "27-10-2026"],
+    ["a day id with a suffix", "ana", "ana@example.com", summary(TEAM_01), "2026-10-27x"],
+    ["a day id that is not a date", "ana", "ana@example.com", summary(TEAM_01), "today"],
+  ];
+  for (const [label, who, owner, data, day] of deniedWrites) {
+    test(`Sad Path: writing a day summary is denied for ${label}`, async () => {
+      // 1. Arrange
+      const batch = batchWithSummary(who, owner, data, day);
+
+      // 2. Act
+      const write = batch.commit();
+
+      // 3. Assert
+      await assertFails(write);
+    });
+  }
+
+  const allowedReads = [
+    ["Happy Path: the person reads their own summaries", "ana", "ana@example.com"],
+    ["Happy Path: a watcher of the current team reads the summaries", "vera", "ana@example.com"],
+    ["Happy Path: the owner reads the summaries", "olga", "bia@example.com"],
+  ];
+  for (const [label, who, owner] of allowedReads) {
+    test(`${label} (${who} → ${owner})`, async () => {
+      // 1. Arrange
+      const db = dbOf(who);
+
+      // 2. Act
+      const read = getDocs(collection(db, `${HERE}/usuarios/${owner}/dias`));
+
+      // 3. Assert
+      await assertSucceeds(read);
+    });
+  }
+
+  const deniedReads = [
+    ["a field-only person reading someone else's", "ana", "caio@example.com"],
+    ["a watcher of another team", "walter", "ana@example.com"],
+    ["a member of another partner", "otto", "ana@example.com"],
+    ["the owner of rotasul reading a person whose team is another partner's", "olga", "zeca@example.com"],
+  ];
+  for (const [label, who, owner] of deniedReads) {
+    test(`Sad Path: reading day summaries is denied for ${label}`, async () => {
+      // 1. Arrange
+      const db = dbOf(who);
+
+      // 2. Act
+      const read = getDoc(doc(db, `${HERE}/usuarios/${owner}/dias/${DAY}`));
+
+      // 3. Assert
+      await assertFails(read);
+    });
+  }
+
+  test("Sad Path: reading day summaries is denied when unauthenticated", async () => {
+    // 1. Arrange
+    const db = env.unauthenticatedContext().firestore();
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/usuarios/ana@example.com/dias/${DAY}`));
+
+    // 3. Assert
+    await assertFails(read);
+  });
+
+  // Summaries follow the person's CURRENT team, not the team of each day.
+  test("Edge Case: a watcher of the current team reads a day shared with an old team", async () => {
+    // 1. Arrange
+    const db = dbOf("walter");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/usuarios/bia@example.com/dias/${DAY}`));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  test("Sad Path: a watcher of a former team cannot read the day", async () => {
+    // 1. Arrange
+    const db = dbOf("vera");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/usuarios/bia@example.com/dias/${DAY}`));
+
+    // 3. Assert
+    await assertFails(read);
+  });
+
+  test("Sad Path: deleting their own day summary is denied", async () => {
+    // 1. Arrange
+    const db = dbOf("ana");
+
+    // 2. Act
+    const write = deleteDoc(doc(db, `${HERE}/usuarios/ana@example.com/dias/${DAY}`));
+
+    // 3. Assert
+    await assertFails(write);
+  });
 });
 
 describe("partner rules: users/{uid} - Rules Test Suite", () => {
