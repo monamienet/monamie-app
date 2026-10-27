@@ -99,18 +99,21 @@ class LoginView extends GetView<LoginController> {
 /// letter-spacing -0.045 em, a dot of 0.15 em placed 0.13 em from the top of
 /// the line and 0.073 em from the left of the ı.
 ///
-/// In the canvas the dot is centered on the ı's stem (both at 0.148 em). CSS
-/// puts the letter-spacing after the glyph, while Flutter splits it around
-/// the glyph, which moves the stem left by half of it; the dot follows.
+/// CSS puts the letter-spacing after a glyph, while Flutter centers it around
+/// a glyph drawn on its own, which moved the ı 0.0225 em left of its cell (a
+/// tighter gap before it, a wider one after, and a dot off its stem). The ı is
+/// moved back, so its stem and the dot sit where the canvas has them (both
+/// centered at 0.148 em).
 class _Wordmark extends StatelessWidget {
   const _Wordmark();
 
   static const _size = 48.0;
+  static const _letterSpacing = -0.045 * _size;
   static const _style = TextStyle(
     fontSize: _size,
     height: 1,
     fontWeight: FontWeight.w800,
-    letterSpacing: -0.045 * _size,
+    letterSpacing: _letterSpacing,
     color: MonAmieBrand.cream,
   );
 
@@ -129,9 +132,12 @@ class _Wordmark extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Text('ı', style: _style),
+                Transform.translate(
+                  offset: const Offset(-_letterSpacing / 2, 0),
+                  child: const Text('ı', style: _style),
+                ),
                 Positioned(
-                  left: 0.073 * _size + _style.letterSpacing! / 2,
+                  left: 0.073 * _size,
                   top: 0.13 * _size,
                   child: Container(
                     width: 0.15 * _size,
