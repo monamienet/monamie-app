@@ -8,6 +8,7 @@ const { partnerIdsFromGroups } = require("./partner_groups");
 const {
   COMMUNITY_PROJECT_ID,
   PartnerOptionsReader,
+  projectIdFor,
 } = require("./partner_options");
 const { TtlCache } = require("./ttl_cache");
 const { GROUPS_SCOPES, GroupsApi } = require("./groups_api");
@@ -491,3 +492,107 @@ exports.myCreations = onCall({ invoker: "public" }, async (request) => ({
   creations: await myCreations(admin.firestore(), signedInEmail(request)),
 }));
 
+// ── Deleting an account (#82) ──────────────────────────────────────────────
+// Runs as groups-admin@: it leaves (and on cancel rejoins) the person's
+// teams. The erase runs as partner-expirer@, which needs
+// roles/datastore.user and roles/firebaseauth.admin on each partner project
+// (and on the Community project) and roles/firebaseauth.admin here.
+const {
+  DeletionError,
+  cancelAccountDeletion,
+  eraseDueAccounts,
+  pendingDeletion,
+  requestAccountDeletion,
+} = require("./account_deletion");
+const { PartnerStatusError } = require("./partner_status");
+
+function deletionCall(operation) {
+  return onCall(
+    { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT },
+    async (request) => {
+      const email = signedInEmail(request);
+      try {
+        return await operation(email, request);
+      } catch (error) {
+        if (error instanceof DeletionError) {
+          throw new HttpsError("failed-precondition", error.message, { field: error.code });
+        }
+        if (error instanceof PartnerStatusError) {
+          throw new HttpsError("failed-precondition", error.message);
+        }
+        logger.error(`[accountDeletion] ${error.message}`);
+        throw new HttpsError("unavailable", "Não foi possível agora. Tente de novo.");
+      }
+    }
+  );
+}
+
+/**
+ * Schedules the deletion of the caller's account (and of the organizations
+ * they own, confirmed by typing each id in `confirmIds`).
+ * Response: `{deleteAt: ISO string, ownedPartners: [id], ownedNames: {id: name}}`.
+ */
+exports.requestAccountDeletion = deletionCall(async (email, request) => {
+  const confirmIds = Array.isArray(request.data?.confirmIds)
+    ? request.data.confirmIds.map(String)
+    : [];
+  const result = await requestAccountDeletion(
+    admin.firestore(),
+    {
+      groups: groupsApi,
+      directGroups: (address) => fetchUserGroups(bearerToken(request), address),
+    },
+    { email, uid: request.auth.uid, confirmIds }
+  );
+  groupsByEmail.delete(email);
+  return {
+    deleteAt: result.deleteAt.toISOString(),
+    ownedPartners: result.ownedPartners,
+    ownedNames: result.ownedNames,
+  };
+});
+
+/** Cancels the caller's pending deletion within its 30 days. */
+exports.cancelAccountDeletion = deletionCall(async (email) => {
+  await cancelAccountDeletion(admin.firestore(), { groups: groupsApi }, email);
+  groupsByEmail.delete(email);
+  return { cancelled: true };
+});
+
+/** The caller's pending deletion: `{deletion: {deleteAt, ownedPartners}|null}`. */
+exports.myAccountDeletion = onCall({ invoker: "public" }, async (request) => {
+  const deletion = await pendingDeletion(admin.firestore(), signedInEmail(request));
+  return {
+    deletion: deletion && {
+      deleteAt: new Date(deletion.deleteAt).toISOString(),
+      ownedPartners: deletion.ownedPartners,
+      ownedNames: deletion.ownedNames,
+    },
+  };
+});
+
+/** Erases the accounts whose 30 days are over. */
+exports.eraseAccounts = onSchedule(
+  {
+    schedule: "every day 03:30",
+    timeZone: "America/Sao_Paulo",
+    serviceAccount: EXPIRER_SERVICE_ACCOUNT,
+  },
+  async () => {
+    const db = admin.firestore();
+    const erased = await eraseDueAccounts(db, {
+      partner: async (partnerId) => {
+        const registry = await db.doc(`partners/${partnerId}`).get();
+        if (!registry.exists) return null;
+        const projectId = projectIdFor(partnerId, registry.get("plan"));
+        const name = `erase-${projectId}`;
+        const app =
+          admin.apps.find((a) => a?.name === name) ??
+          admin.initializeApp({ projectId }, name);
+        return { db: app.firestore(), auth: app.auth() };
+      },
+      deleteAuthUser: (uid) => admin.auth().deleteUser(uid),
+    });
+    if (erased.length) logger.info(`[eraseAccounts] Erased ${erased.length} account(s).`);
+  }
+);

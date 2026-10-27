@@ -12,6 +12,8 @@ abstract class Routes {
   static const APPEARANCE = _Paths.APPEARANCE;
   static const TEAMS = _Paths.TEAMS;
   static const TRACKING_SETTINGS = _Paths.TRACKING_SETTINGS;
+  static const MY_ACCOUNT = _Paths.MY_ACCOUNT;
+  static const DELETION_PENDING = _Paths.DELETION_PENDING;
 }
 
 abstract class _Paths {
@@ -24,4 +26,6 @@ abstract class _Paths {
   static const APPEARANCE = '/admin/appearance';
   static const TEAMS = '/admin/teams';
   static const TRACKING_SETTINGS = '/admin/tracking';
+  static const MY_ACCOUNT = '/minha-conta';
+  static const DELETION_PENDING = '/em-exclusao';
 }

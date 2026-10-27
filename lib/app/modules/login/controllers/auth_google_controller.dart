@@ -17,6 +17,9 @@ import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/flutter_background_service_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/capabilities.dart';
 import 'package:monamie_app/app/data/theme/firestore_theme_catalog.dart';
+import 'package:monamie_app/app/modules/account/account_deletion.dart';
+import 'package:monamie_app/app/modules/account/account_deletion_backend.dart';
+import 'package:monamie_app/app/modules/account/firebase_account_deletion_backend.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_view.dart';
 import 'package:monamie_app/app/modules/creation/firebase_creation_backend.dart';
@@ -46,8 +49,11 @@ class AuthGoogleController extends GetxController {
     PartnerSession? partnerSession,
     PartnerLocalData? partnerLocalData,
     InvitesBackend? invitesBackend,
+    AccountDeletionBackend? deletionBackend,
     void Function()? refreshTheme,
   }) : _invitesBackend = invitesBackend ?? const FirebaseInvitesBackend(),
+       _deletionBackend =
+           deletionBackend ?? const FirebaseAccountDeletionBackend(),
        _partnerLocalData = partnerLocalData ?? const HivePartnerLocalData(),
        _injectedAuthGoogle = authGoogleService,
        _injectedUserRepository = userRepository,
@@ -66,6 +72,15 @@ class AuthGoogleController extends GetxController {
   final PartnerSession? _injectedPartnerSession;
   final PartnerLocalData _partnerLocalData;
   final InvitesBackend _invitesBackend;
+  final AccountDeletionBackend _deletionBackend;
+
+  /// The signed-in account's pending deletion, shown on *Em exclusão*.
+  final Rxn<AccountDeletion> accountDeletion = Rxn<AccountDeletion>();
+  final RxBool cancellingDeletion = false.obs;
+
+  /// The deletion was cancelled: *Em exclusão* says everything is back.
+  final RxBool deletionRestored = false.obs;
+  final RxString deletionError = ''.obs;
 
   /// Invites waiting for the signed-in account, shown on *Sem organização*.
   final RxList<Invite> pendingInvites = <Invite>[].obs;
@@ -170,6 +185,16 @@ class AuthGoogleController extends GetxController {
   }) async {
     _pendingIdToken = idToken;
     signedInEmail.value = await _authGoogle.centralEmail();
+    if (!deletionRestored.value) {
+      final deletion = await _pendingDeletion();
+      if (deletion != null) {
+        accountDeletion.value = deletion;
+        Get.offAllNamed(Routes.DELETION_PENDING);
+        return;
+      }
+    }
+    deletionRestored.value = false;
+    accountDeletion.value = null;
     final candidates = await _partnerDirectory.partnersOfSignedInUser(
       fresh: fresh,
     );
@@ -185,6 +210,60 @@ class AuthGoogleController extends GetxController {
     }
     partnerChoices.assignAll(bindings);
     Get.toNamed(Routes.PARTNER_PICKER);
+  }
+
+  /// A failing check must not keep anyone out: the account is then
+  /// treated as not being deleted.
+  Future<AccountDeletion?> _pendingDeletion() async {
+    try {
+      return await _deletionBackend.pending();
+    } catch (e) {
+      debugPrint('[Account] Could not read the deletion: $e');
+      return null;
+    }
+  }
+
+  /// *Minha conta* scheduled the deletion: signs out of everything and
+  /// shows *Em exclusão*.
+  Future<void> accountDeleted(AccountDeletion deletion) async {
+    // Registry entries made before in-app creation have no name: the bound
+    // partner's display name stands in.
+    final partner = Partner.current;
+    accountDeletion.value =
+        partner != null &&
+            deletion.ownedPartners.contains(partner.id) &&
+            !deletion.ownedNames.containsKey(partner.id)
+        ? AccountDeletion(
+            deleteAt: deletion.deleteAt,
+            ownedPartners: deletion.ownedPartners,
+            ownedNames: {...deletion.ownedNames, partner.id: partner.name},
+          )
+        : deletion;
+    deletionRestored.value = false;
+    deletionError.value = '';
+    await _signOut(destination: Routes.DELETION_PENDING);
+  }
+
+  /// "Cancelar exclusão": signs in again if needed (the deletion signed the
+  /// account out), then cancels it.
+  Future<void> cancelAccountDeletion() async {
+    if (cancellingDeletion.value || isLoading.value) return;
+    cancellingDeletion.value = true;
+    deletionError.value = '';
+    try {
+      _pendingIdToken ??= await _authGoogle.signInGoogle();
+      if (_pendingIdToken == null) return;
+      await _deletionBackend.cancel();
+      deletionRestored.value = true;
+    } on AccountDeletionException catch (e) {
+      deletionError.value = e.message;
+    } catch (e) {
+      debugPrint('[Account] Cancel failed: $e');
+      deletionError.value =
+          'Não foi possível cancelar agora. Verifique a conexão e tente de novo.';
+    } finally {
+      cancellingDeletion.value = false;
+    }
   }
 
   Future<void> _loadInvites() async {

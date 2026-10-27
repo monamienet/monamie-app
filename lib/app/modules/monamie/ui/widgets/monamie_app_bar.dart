@@ -78,6 +78,8 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Get.toNamed(Routes.TRACKING_SETTINGS);
               } else if (value == 'aparencia') {
                 Get.toNamed(Routes.APPEARANCE);
+              } else if (value == 'conta') {
+                Get.toNamed(Routes.MY_ACCOUNT);
               } else if (value == 'trocar') {
                 authController.switchOrganization();
               }
@@ -120,6 +122,17 @@ class MonAmieAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ],
                   ),
                 ),
+              const PopupMenuItem<String>(
+                value: 'conta',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.person_outline, color: Colors.black87),
+                    SizedBox(width: 8),
+                    Text('Minha conta'),
+                  ],
+                ),
+              ),
               const PopupMenuItem<String>(
                 value: 'trocar',
                 child: Row(
