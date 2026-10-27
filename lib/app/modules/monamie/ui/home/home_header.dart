@@ -11,7 +11,7 @@ import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart'
 import 'package:monamie_app/app/modules/monamie/ui/home/home_chip.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/initials.dart';
-import 'package:monamie_app/app/modules/monamie/ui/home/team_picker_sheet.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/team_menu_button.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// The home app bar: menu, the organization, the person, and under them the
@@ -98,12 +98,11 @@ class HomeHeader extends StatelessWidget {
       observedTeam: _groups.selectedGroup.value?.name,
       shareTeams: [for (final team in _groups.shareTeams) team.name],
     );
+    if (canWatch) return TeamMenuButton(label: label);
     return HomeChip(
       label: label,
       icon: Icons.groups_outlined,
-      showChevron: canWatch,
-      semanticsLabel: canWatch ? 'Equipe no mapa: $label' : 'Equipe: $label',
-      onTap: canWatch ? TeamPickerSheet.show : null,
+      semanticsLabel: 'Equipe: $label',
     );
   }
 
