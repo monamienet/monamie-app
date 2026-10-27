@@ -98,6 +98,10 @@ class LoginView extends GetView<LoginController> {
 /// measures of the design canvas (`Main.dc.html`): 48 px, weight 800,
 /// letter-spacing -0.045 em, a dot of 0.15 em placed 0.13 em from the top of
 /// the line and 0.073 em from the left of the ı.
+///
+/// In the canvas the dot is centered on the ı's stem (both at 0.148 em). CSS
+/// puts the letter-spacing after the glyph, while Flutter splits it around
+/// the glyph, which moves the stem left by half of it; the dot follows.
 class _Wordmark extends StatelessWidget {
   const _Wordmark();
 
@@ -127,7 +131,7 @@ class _Wordmark extends StatelessWidget {
               children: [
                 const Text('ı', style: _style),
                 Positioned(
-                  left: 0.073 * _size,
+                  left: 0.073 * _size + _style.letterSpacing! / 2,
                   top: 0.13 * _size,
                   child: Container(
                     width: 0.15 * _size,
