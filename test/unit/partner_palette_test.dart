@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart' show HSLColor;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
 import 'package:monamie_app/app/config/partner/partner_palette.dart';
+import 'package:monamie_app/app/config/partner/partner_theme.dart';
 
 /// The AquariusTur brand color, the calibration point of issue #35.
 const aquariusTurPrimary = Color(0xFF0ABAB5);
@@ -14,7 +15,6 @@ const aquariusTurDark = Color(0xFF073B40);
 const aquariusTurLight = Color(0xFFCCF1F0);
 const aquariusTurAccentDark = Color(0xFF052E32);
 const aquariusTurAccent = Color(0xFF088F8B);
-
 
 /// One row of the shade table of issue #35.
 typedef ShadeSpec = ({
@@ -50,6 +50,18 @@ Color expectedShade(Color primary, ShadeSpec spec) {
 
 /// Whether the red, green and blue channels of [color] are equal.
 bool isGrey(Color color) => color.r == color.g && color.g == color.b;
+
+/// A catalog theme whose dark and light tones are not the shades the
+/// AquariusTur primary would derive, so a derived palette is told apart.
+const oceanoTheme = PartnerTheme(
+  id: 'oceano',
+  name: 'Oceano',
+  primary: aquariusTurPrimary,
+  dark: Color(0xFF102030),
+  light: Color(0xFFF0E0D0),
+  onPrimary: Color(0xFFFFFFFF),
+  onDark: Color(0xFFFFFFFF),
+);
 
 void main() {
   group('PartnerPalette.fromColors (AquariusTur calibration) - '
@@ -523,6 +535,104 @@ void main() {
         palette.primary,
         palette.background,
       ], isNot([config.secondaryColor, config.primaryColor]));
+    });
+  });
+  group('PartnerPalette.fromTheme - Unit Test Suite', () {
+    test('Happy Path: primary, dark and light are the theme tones', () {
+      // 1. Arrange
+      const theme = oceanoTheme;
+
+      // 2. Act
+      final palette = PartnerPalette.fromTheme(theme);
+
+      // 3. Assert
+      expect(
+        [palette.primary, palette.dark, palette.light],
+        [aquariusTurPrimary, const Color(0xFF102030), const Color(0xFFF0E0D0)],
+      );
+    });
+
+    test('Edge Case: the background is white', () {
+      // 1. Arrange
+      const theme = oceanoTheme;
+
+      // 2. Act
+      final palette = PartnerPalette.fromTheme(theme);
+
+      // 3. Assert
+      expect(palette.background, const Color(0xFFFFFFFF));
+    });
+
+    test('Sad Path: dark and light are not derived from the primary', () {
+      // 1. Arrange
+      const theme = oceanoTheme;
+
+      // 2. Act
+      final palette = PartnerPalette.fromTheme(theme);
+
+      // 3. Assert
+      expect([
+        palette.dark,
+        palette.light,
+      ], isNot([aquariusTurDark, aquariusTurLight]));
+    });
+  });
+
+  group('PartnerPalette.fromConfig (catalog theme) - Unit Test Suite', () {
+    test('Happy Path: a config with a theme uses the theme tones', () {
+      // 1. Arrange
+      const config = PartnerConfig(
+        id: 'acme',
+        name: 'Acme',
+        theme: oceanoTheme,
+      );
+
+      // 2. Act
+      final palette = PartnerPalette.fromConfig(config);
+
+      // 3. Assert
+      expect(
+        [palette.primary, palette.dark, palette.light],
+        [aquariusTurPrimary, const Color(0xFF102030), const Color(0xFFF0E0D0)],
+      );
+    });
+
+    test('Edge Case: the theme wins over colors.primary and '
+        'colors.secondary', () {
+      // 1. Arrange
+      const config = PartnerConfig(
+        id: 'acme',
+        name: 'Acme',
+        primaryColor: Color(0xFFE53935),
+        secondaryColor: Color(0xFF000000),
+        theme: oceanoTheme,
+      );
+
+      // 2. Act
+      final palette = PartnerPalette.fromConfig(config);
+
+      // 3. Assert
+      expect(
+        [palette.primary, palette.background],
+        [aquariusTurPrimary, const Color(0xFFFFFFFF)],
+      );
+    });
+
+    test('Sad Path: a themeId without a resolved theme keeps the legacy '
+        'colors.primary', () {
+      // 1. Arrange
+      const config = PartnerConfig(
+        id: 'acme',
+        name: 'Acme',
+        primaryColor: Color(0xFFE53935),
+        themeId: 'oceano',
+      );
+
+      // 2. Act
+      final palette = PartnerPalette.fromConfig(config);
+
+      // 3. Assert
+      expect(palette.primary, const Color(0xFFE53935));
     });
   });
 }

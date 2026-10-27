@@ -4,6 +4,7 @@ import 'dart:ui' show Color;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
+import 'package:monamie_app/app/config/partner/partner_theme.dart';
 import 'package:monamie_app/app/data/partner/partner_binding.dart';
 
 const fullOptions = FirebaseOptions(
@@ -29,6 +30,25 @@ const acme = PartnerConfig(
   secondaryColor: Color(0xFFFFFFFF),
   logoSvg: '<svg><rect/></svg>',
   iconSvg: '<svg><circle/></svg>',
+);
+
+const oceano = PartnerTheme(
+  id: 'oceano',
+  name: 'Oceano',
+  primary: Color(0xFF0B7F7B),
+  dark: Color(0xFF0A3D3B),
+  light: Color(0xFFD3EEEC),
+  onPrimary: Color(0xFFFFFFFF),
+  onDark: Color(0xFFFFFFFF),
+);
+
+/// [acme] with the catalog theme it resolved to.
+const themedAcme = PartnerConfig(
+  id: 'acme',
+  name: 'Acme',
+  primaryColor: Color(0xFF112233),
+  themeId: 'oceano',
+  theme: oceano,
 );
 
 /// A stored binding with [options] replaced, as decoded JSON.
@@ -312,6 +332,71 @@ void main() {
 
       // 3. Assert
       expect(action, throwsArgumentError);
+    });
+  });
+
+  group('PartnerBinding theme - Unit Test Suite', () {
+    test('Happy Path: the resolved theme survives a JSON round trip', () {
+      // 1. Arrange
+      const binding = PartnerBinding(partner: themedAcme, options: fullOptions);
+      final json = jsonDecode(jsonEncode(binding.toJson()));
+
+      // 2. Act
+      final copy = PartnerBinding.fromJson(json);
+
+      // 3. Assert
+      expect(
+        [copy.partner.theme?.id, copy.partner.theme?.primary],
+        ['oceano', const Color(0xFF0B7F7B)],
+      );
+    });
+
+    test('Happy Path: toJson stores the theme under "theme" with its id', () {
+      // 1. Arrange
+      const binding = PartnerBinding(partner: themedAcme, options: fullOptions);
+
+      // 2. Act
+      final json = binding.toJson();
+
+      // 3. Assert
+      expect(
+        json['theme'],
+        isA<Map>()
+            .having((theme) => theme['id'], 'id', 'oceano')
+            .having((theme) => theme['primary'], 'primary', '#0B7F7B'),
+      );
+    });
+
+    test('Edge Case: a stored binding without "theme" restores no theme', () {
+      // 1. Arrange
+      final json = storedJson(options: requiredOptionsJson());
+
+      // 2. Act
+      final binding = PartnerBinding.fromJson(json);
+
+      // 3. Assert
+      expect(binding.partner.theme, isNull);
+    });
+
+    test('Sad Path: a stored theme with malformed colors restores no '
+        'theme', () {
+      // 1. Arrange
+      final json = {
+        ...storedJson(options: requiredOptionsJson()),
+        'theme': {
+          'id': 'oceano',
+          'name': 'Oceano',
+          'primary': 'teal',
+          'dark': '#0A3D3B',
+          'light': '#D3EEEC',
+        },
+      };
+
+      // 2. Act
+      final binding = PartnerBinding.fromJson(json);
+
+      // 3. Assert
+      expect(binding.partner.theme, isNull);
     });
   });
 

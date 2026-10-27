@@ -33,6 +33,7 @@ The launcher icon, the app name on the home screen, the Play listing and the nat
 |---|---|---|
 | Partner's choice | name (required); colors, logo, icon (optional) | `config/branding` in `monamienet-<id>` |
 | MonAmie's choice | partner status (section 7) | `partners/{id}` in `monamienet-app` |
+| MonAmie's choice | theme catalog (section 8) | `themes/{id}` in `monamienet-app` |
 | Derived by rule | `monamienet-<id>`, `<id>00@monamienet.org`, id from a group name | code |
 | Fetched at build time | central `google-services.json` | `android/app/google-services.json` (gitignored) |
 | Fetched at runtime | partner's Firebase options | `resolvePartners`, then the device |
@@ -67,10 +68,11 @@ Done for `monamienet-app` on 2026-10-21; the log is in issue #65. Kept here to r
    gcloud projects add-iam-policy-binding monamienet-app --role=roles/datastore.user \
      --member=serviceAccount:partner-expirer@monamienet-app.iam.gserviceaccount.com
    ```
-   Deploy (answer **1** day to the container image cleanup question on the first deploy):
+   Deploy (answer **1** day to the container image cleanup question on the first deploy), then seed the theme catalog (section 8):
    ```sh
    (cd central/functions && npm ci)
    (cd central && firebase deploy --project monamienet-app --only functions,firestore)
+   dart run tool/partner.dart themes
    ```
 7. CI: bind `firebaseAppConfigReader` for `wlif-monamie-app-config@ci-cd-management.iam.gserviceaccount.com` on `monamienet-app`. Remove its binding from `monamienet-aquariustur` **only after** PR #74 is merged: until then, `main` still builds the old app from that project.
 8. Play Console: create the app `org.monamienet.app`, upload the first bundle manually (`--build-number=100`), fill in Data safety and the **background location** declaration, and give the publisher service account access. Then unpublish `org.monamienet.aquariustur`.
@@ -159,3 +161,24 @@ stateDiagram-v2
 ### Migrating from the `active` flag (one-off)
 
 Registries written before the lifecycle have `active: true` and no `status`. After deploying `central/` with this change, run `activate` for every partner listed in `partners/` (Firebase console → `monamienet-app` → Firestore): it runs the checks and rewrites the entry as `status: "active"`, removing `active`. Until then the partner is hidden from sign-in, so run both back to back.
+
+## 8. Theme catalog
+
+Partners pick one of a fixed set of themes, never free colors. The catalog lives in the central project, `themes/{id}`, so MonAmieNet can adjust a tone without an app release:
+
+| id | name | primary | dark | light |
+| :--- | :--- | :--- | :--- | :--- |
+| `oceano` | Oceano | `#315399` | `#131A34` | `#D4DBE9` |
+| `turquesa` | Turquesa | `#0B7F7B` | `#093A3E` | `#CDF0EF` |
+| `floresta` | Floresta | `#2F7347` | `#163123` | `#D6E7DC` |
+| `oliva` | Oliva | `#5E6B1F` | `#2B3512` | `#E6EAD3` |
+| `ambar` | Âmbar | `#9A5B00` | `#433104` | `#F3E2CA` |
+| `petroleo` | Petróleo | `#1F6A85` | `#102837` | `#D2E5EB` |
+| `ameixa` | Ameixa | `#74408F` | `#2A1730` | `#E1D7E6` |
+| `grafite` | Grafite | `#3F4754` | `#1F2128` | `#DCDEE2` |
+
+- Each document also has `onPrimary` and `onDark` (white for all eight: every theme passes WCAG AA for white text on `primary` and `dark`, and for `dark` text on `light`), `order` (picker position) and `active`.
+- **Seeding** is repeatable: `dart run tool/partner.dart themes` (add `--dry-run` to print). The tones live in `tool/src/themes_command.dart`; change them there and seed again.
+- **Retiring** a theme: set `active: false` (in the tool too, or the next seed revives it). It disappears from the picker but still resolves for the partners that use it; never delete a theme document.
+- **Unknown or missing `themeId`**: the app uses Grafite and never blocks. The resolved colors are stored with the binding, so the first screen is branded without network even when the catalog cannot be read.
+- **Reading** is public (names and colors only): the app reads it, and the partner functions that save a `themeId` check it against the active themes, because a partner project's rules cannot read the central database.

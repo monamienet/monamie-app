@@ -17,6 +17,7 @@ The app binds the partner **at runtime**, after Google sign-in, never at build t
 
 Where each value lives:
 - **Partner's choice** (name required; colors, logo, icon optional with fallbacks): `config/branding` in the partner project, written by `dart run tool/partner.dart publish <id>`.
+- **MonAmie's choice**: the partner's `status` in `partners/{id}` and the **theme catalog** `themes/{id}` (`name`, `primary`, `dark`, `light`, `onPrimary`, `onDark`, `order`, `active`), both in the central project. Partners pick a theme, never free colors; an unknown or missing `themeId` falls back to Grafite, and a retired theme (`active: false`) still resolves. The catalog is seeded with `dart run tool/partner.dart themes` and is publicly readable.
 - **Derived by rule**, never stored: project `monamienet-<id>`, root group `<id>00@monamienet.org`, partner id from a group name.
 - **Names never side by side**: "MonAmie" appears alone on MonAmie's own screens (launcher, Play listing, splash, sign-in, organization picker, organization creation); once a partner is bound, the app shows only the partner's name. `publish` refuses a partner name starting with "MonAmie ".
 - **Owned by another system**, fetched, never versioned: the central `google-services.json` (build time, `tool/partner.dart firebase`) and each partner's Firebase options (runtime, `resolvePartners`).
@@ -71,6 +72,8 @@ Clients submit their instance identity through an onboarding Google Form. The an
 ## Testing
 
 Follow `.agents/rules/AI_UNIT_TESTING_GUIDELINES.md`: test only code that makes decisions, never configuration files read with regex, and keep `flutter test test/unit -j 2` under two minutes on an 8 GB laptop. Remove a feature's tests in the same commit that removes the feature.
+
+Security rules are tested for real against the emulators in `test/rules/` (Node, `@firebase/rules-unit-testing`): `cd test/rules && npm ci && nice -n 10 npm test`. Each test file uses its own `demo-*` project id so they share one emulator run.
 
 ## Resource Limits on Dev Machines
 

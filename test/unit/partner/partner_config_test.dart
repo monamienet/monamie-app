@@ -2,6 +2,7 @@ import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
+import 'package:monamie_app/app/config/partner/partner_theme.dart';
 
 const logoSvg = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
 const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>';
@@ -625,6 +626,79 @@ void main() {
 
       // 3. Assert
       expect(copy.primaryColor, const Color(0xFF0ABAB5));
+    });
+  });
+
+  group('PartnerConfig themeId - Unit Test Suite', () {
+    test('Happy Path: fromBranding reads themeId', () {
+      // 1. Arrange
+      final data = {...fullBranding(), 'themeId': 'oceano'};
+
+      // 2. Act
+      final config = PartnerConfig.fromBranding('acme', data);
+
+      // 3. Assert
+      expect(config.themeId, 'oceano');
+    });
+
+    test('Happy Path: fromBranding keeps the given theme', () {
+      // 1. Arrange
+      final data = {...fullBranding(), 'themeId': 'grafite'};
+
+      // 2. Act
+      final config = PartnerConfig.fromBranding(
+        'acme',
+        data,
+        theme: defaultPartnerTheme,
+      );
+
+      // 3. Assert
+      expect(config.theme, same(defaultPartnerTheme));
+    });
+
+    test('Happy Path: toBranding writes themeId when set', () {
+      // 1. Arrange
+      const config = PartnerConfig(id: 'acme', name: 'Acme', themeId: 'oceano');
+
+      // 2. Act
+      final branding = config.toBranding();
+
+      // 3. Assert
+      expect(branding['themeId'], 'oceano');
+    });
+
+    test('Edge Case: fromBranding trims themeId', () {
+      // 1. Arrange
+      final data = {...fullBranding(), 'themeId': '  oceano '};
+
+      // 2. Act
+      final config = PartnerConfig.fromBranding('acme', data);
+
+      // 3. Assert
+      expect(config.themeId, 'oceano');
+    });
+
+    test('Edge Case: a document without themeId gives no themeId and no '
+        'theme', () {
+      // 1. Arrange
+      final data = fullBranding();
+
+      // 2. Act
+      final config = PartnerConfig.fromBranding('acme', data);
+
+      // 3. Assert
+      expect([config.themeId, config.theme], [null, null]);
+    });
+
+    test('Sad Path: a blank themeId is read as null', () {
+      // 1. Arrange
+      final data = {...fullBranding(), 'themeId': '   '};
+
+      // 2. Act
+      final config = PartnerConfig.fromBranding('acme', data);
+
+      // 3. Assert
+      expect(config.themeId, isNull);
     });
   });
 }

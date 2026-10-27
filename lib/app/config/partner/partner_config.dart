@@ -1,5 +1,7 @@
 import 'dart:ui' show Color;
 
+import 'partner_theme.dart';
+
 /// Domain of every MonAmie group.
 const groupDomain = 'monamienet.org';
 
@@ -8,7 +10,6 @@ const groupDomain = 'monamienet.org';
 const _reservedPartnerIds = {'app'};
 
 final _partnerIdPattern = RegExp(r'^[a-z][a-z0-9]*$');
-final _hexColorPattern = RegExp(r'^#[0-9A-Fa-f]{6}$');
 final _groupSuffixPattern = RegExp(r'^[0-9]{2}$');
 
 /// Returns why [id] is not a valid partner id, or `null` when it is valid.
@@ -66,6 +67,8 @@ class PartnerConfig {
     this.secondaryColor,
     this.logoSvg,
     this.iconSvg,
+    this.themeId,
+    this.theme,
   });
 
   /// Reads the partner's `config/branding` document.
@@ -74,7 +77,13 @@ class PartnerConfig {
   /// `null`, and a missing name becomes [fallbackPartnerName]. Only an
   /// invalid [id], which comes from MonAmie's own rules, throws an
   /// [ArgumentError].
-  factory PartnerConfig.fromBranding(String id, Object? data) {
+  ///
+  /// [theme] is the catalog theme that `themeId` resolved to, when known.
+  factory PartnerConfig.fromBranding(
+    String id,
+    Object? data, {
+    PartnerTheme? theme,
+  }) {
     final idProblem = partnerIdProblem(id);
     if (idProblem != null) throw ArgumentError.value(id, 'id', idProblem);
     final map = data is Map ? data : const {};
@@ -87,6 +96,8 @@ class PartnerConfig {
       secondaryColor: _parseColor(colors['secondary']),
       logoSvg: _nonBlank(map['logoSvg']),
       iconSvg: _nonBlank(map['iconSvg']),
+      themeId: _nonBlank(map['themeId']),
+      theme: theme,
     );
   }
 
@@ -109,6 +120,13 @@ class PartnerConfig {
   /// `iconSvg`: the logo without text, or `null` to show [name]'s initial.
   final String? iconSvg;
 
+  /// `themeId`: the catalog theme the partner picked, or `null`.
+  final String? themeId;
+
+  /// The catalog theme [themeId] resolved to, kept with the binding so the
+  /// first screen is branded without network. `null` while unresolved.
+  final PartnerTheme? theme;
+
   /// The partner's root group: `<id>00@monamienet.org`.
   String get rootGroupEmail => rootGroupEmailFor(id);
 
@@ -124,16 +142,13 @@ class PartnerConfig {
     },
     if (logoSvg != null) 'logoSvg': logoSvg,
     if (iconSvg != null) 'iconSvg': iconSvg,
+    if (themeId != null) 'themeId': themeId,
   };
 }
 
 String? _nonBlank(Object? value) =>
     value is String && value.trim().isNotEmpty ? value.trim() : null;
 
-Color? _parseColor(Object? value) {
-  if (value is! String || !_hexColorPattern.hasMatch(value)) return null;
-  return Color(0xFF000000 | int.parse(value.substring(1), radix: 16));
-}
+Color? _parseColor(Object? value) => parseHexColor(value);
 
-String _formatColor(Color color) =>
-    '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+String _formatColor(Color color) => formatHexColor(color);

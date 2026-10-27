@@ -2,6 +2,7 @@ import 'package:flutter/painting.dart';
 
 import 'monamie_brand.dart';
 import 'partner_config.dart';
+import 'partner_theme.dart';
 
 /// How a shade is derived from the brand color in HSL.
 ///
@@ -89,16 +90,37 @@ class PartnerPalette {
     );
   }
 
-  /// The palette of [config]: `colors.primary` and `colors.secondary`.
+  /// The palette of [config].
   ///
-  /// Each missing color falls back on its own: the primary to the MonAmie
-  /// blue, the background to white. No partner ([config] `null`) gives the
-  /// MonAmie palette.
-  factory PartnerPalette.fromConfig(PartnerConfig? config) =>
-      PartnerPalette.fromColors(
-        primary: config?.primaryColor ?? MonAmieBrand.primary,
-        background: config?.secondaryColor ?? MonAmieBrand.background,
-      );
+  /// A partner with a resolved catalog theme uses its primary, dark and light
+  /// tones as they are, on a white background. A legacy partner without one
+  /// derives the shades from `colors.primary` and `colors.secondary`, each
+  /// falling back on its own (MonAmie blue, white). No partner ([config]
+  /// `null`) gives the MonAmie palette.
+  factory PartnerPalette.fromConfig(PartnerConfig? config) {
+    final theme = config?.theme;
+    if (theme != null) return PartnerPalette.fromTheme(theme);
+    return PartnerPalette.fromColors(
+      primary: config?.primaryColor ?? MonAmieBrand.primary,
+      background: config?.secondaryColor ?? MonAmieBrand.background,
+    );
+  }
+
+  /// The palette of a catalog [theme]. Only the two accents are derived.
+  factory PartnerPalette.fromTheme(PartnerTheme theme) {
+    final derived = PartnerPalette.fromColors(
+      primary: theme.primary,
+      background: MonAmieBrand.background,
+    );
+    return PartnerPalette._(
+      primary: theme.primary,
+      dark: theme.dark,
+      light: theme.light,
+      accentDark: derived.accentDark,
+      accent: derived.accent,
+      background: MonAmieBrand.background,
+    );
+  }
 
   /// `colors.primary`: the brand color.
   final Color primary;

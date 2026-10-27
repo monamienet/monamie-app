@@ -33,6 +33,7 @@ O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa 
 |---|---|---|
 | Escolha do parceiro | nome (obrigatório); cores, logo, ícone (opcionais) | `config/branding` em `monamienet-<id>` |
 | Escolha da MonAmie | status do parceiro (seção 7) | `partners/{id}` em `monamienet-app` |
+| Escolha da MonAmie | catálogo de temas (seção 8) | `themes/{id}` em `monamienet-app` |
 | Derivado por regra | `monamienet-<id>`, `<id>00@monamienet.org`, id a partir do nome do grupo | código |
 | Buscado no build | `google-services.json` central | `android/app/google-services.json` (ignorado pelo git) |
 | Buscado em tempo de execução | opções do Firebase do parceiro | `resolvePartners`, depois o aparelho |
@@ -67,10 +68,11 @@ Feita para o `monamienet-app` em 21/10/2026; o registro está na issue #65. Fica
    gcloud projects add-iam-policy-binding monamienet-app --role=roles/datastore.user \
      --member=serviceAccount:partner-expirer@monamienet-app.iam.gserviceaccount.com
    ```
-   Publique (no primeiro deploy, responda **1** dia à pergunta de limpeza de imagens):
+   Publique (no primeiro deploy, responda **1** dia à pergunta de limpeza de imagens) e carregue o catálogo de temas (seção 8):
    ```sh
    (cd central/functions && npm ci)
    (cd central && firebase deploy --project monamienet-app --only functions,firestore)
+   dart run tool/partner.dart themes
    ```
 7. CI: vincule `firebaseAppConfigReader` à conta `wlif-monamie-app-config@ci-cd-management.iam.gserviceaccount.com` no `monamienet-app`. Remova o vínculo dela no `monamienet-aquariustur` **só depois** do merge do PR #74: até lá, a `main` ainda gera o app antigo a partir desse projeto.
 8. Play Console: crie o app `org.monamienet.app`, envie o primeiro bundle manualmente (`--build-number=100`), preencha a Segurança dos dados e a declaração de **localização em segundo plano**, e dê acesso a ele à conta de serviço de publicação. Depois, despublique o `org.monamienet.aquariustur`.
@@ -159,3 +161,24 @@ A `expirePartners` roda com uma conta de serviço própria, `partner-expirer@mon
 ### Migração do campo `active` (uma vez só)
 
 Registros gravados antes do ciclo de vida têm `active: true` e nenhum `status`. Depois de publicar o `central/` com esta mudança, rode o `activate` para cada parceiro listado em `partners/` (console do Firebase → `monamienet-app` → Firestore): ele roda as verificações e regrava a entrada como `status: "active"`, removendo `active`. Até lá o parceiro some do login, então rode os dois passos em seguida.
+
+## 8. Catálogo de temas
+
+Os parceiros escolhem um tema de um conjunto fixo, nunca cores livres. O catálogo mora no projeto central, `themes/{id}`, para a MonAmieNet poder ajustar um tom sem nova versão do app:
+
+| id | nome | primary | dark | light |
+| :--- | :--- | :--- | :--- | :--- |
+| `oceano` | Oceano | `#315399` | `#131A34` | `#D4DBE9` |
+| `turquesa` | Turquesa | `#0B7F7B` | `#093A3E` | `#CDF0EF` |
+| `floresta` | Floresta | `#2F7347` | `#163123` | `#D6E7DC` |
+| `oliva` | Oliva | `#5E6B1F` | `#2B3512` | `#E6EAD3` |
+| `ambar` | Âmbar | `#9A5B00` | `#433104` | `#F3E2CA` |
+| `petroleo` | Petróleo | `#1F6A85` | `#102837` | `#D2E5EB` |
+| `ameixa` | Ameixa | `#74408F` | `#2A1730` | `#E1D7E6` |
+| `grafite` | Grafite | `#3F4754` | `#1F2128` | `#DCDEE2` |
+
+- Cada documento também tem `onPrimary` e `onDark` (branco nos oito: todo tema passa no WCAG AA para texto branco sobre `primary` e `dark`, e para texto `dark` sobre `light`), `order` (posição no seletor) e `active`.
+- **Carga** repetível: `dart run tool/partner.dart themes` (com `--dry-run` só imprime). Os tons ficam em `tool/src/themes_command.dart`; mude lá e rode de novo.
+- **Aposentar** um tema: `active: false` (na ferramenta também, senão a próxima carga o reativa). Ele some do seletor, mas continua valendo para os parceiros que o usam; nunca apague o documento de um tema.
+- **`themeId` desconhecido ou ausente**: o app usa o Grafite e nunca trava. As cores resolvidas ficam guardadas com a ligação, então a primeira tela já sai com a marca mesmo sem rede e sem conseguir ler o catálogo.
+- **Leitura** pública (só nomes e cores): o app lê, e as funções do parceiro que gravam um `themeId` o conferem contra os temas ativos, porque as regras do projeto do parceiro não leem o banco central.
