@@ -775,7 +775,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     ),
   );
 
-  bool _acceptedTerms = true;
+  bool _acceptedTerms = false;
 
   /// *Tudo certo?* (`CriarRevisao.dc.html`): what the team will see, the
   /// choices with a link back to each, who becomes the owner, the terms and
