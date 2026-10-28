@@ -23,7 +23,7 @@ class TrackingSettingsEditController extends GetxController {
   final Rx<TrackingSettings> draft;
   final Rx<TrackingPreset> preset;
 
-  /// The plan's minimum interval (Community: 15 min); presets below it are
+  /// The plan's minimum period (Community: 15 min); presets below it are
   /// not offered.
   final RxInt minPeriodMinutes = 0.obs;
   final RxBool isSaving = false.obs;
@@ -46,10 +46,16 @@ class TrackingSettingsEditController extends GetxController {
 
   bool get hasChanges => draft.value != savedSettings.value;
 
-  /// Whether [option] is allowed by the plan.
+  /// The presets that can be picked for now. The others stay on screen,
+  /// greyed out, until they are opened to partners.
+  static const offered = {TrackingPreset.economia};
+
+  /// Whether [option] can be picked: offered for now and allowed by the
+  /// plan's minimum period.
   bool allows(TrackingPreset option) =>
-      option.periodMinutes == null ||
-      option.periodMinutes! >= minPeriodMinutes.value;
+      offered.contains(option) &&
+      (option.periodMinutes == null ||
+          option.periodMinutes! >= minPeriodMinutes.value);
 
   void pickPreset(TrackingPreset option) {
     if (isSaving.value || !allows(option)) return;
@@ -59,8 +65,12 @@ class TrackingSettingsEditController extends GetxController {
     if (settings != null) draft.value = settings;
   }
 
-  void setInterval(int minutes) {
-    if (isSaving.value || minutes < minPeriodMinutes.value) return;
+  void setPeriod(int minutes) {
+    if (isSaving.value ||
+        !allows(TrackingPreset.personalizado) ||
+        minutes < minPeriodMinutes.value) {
+      return;
+    }
     justSaved.value = false;
     draft.value = TrackingSettings(
       periodMinutes: minutes,
@@ -68,8 +78,8 @@ class TrackingSettingsEditController extends GetxController {
     );
   }
 
-  void setDistance(int meters) {
-    if (isSaving.value) return;
+  void setRadius(int meters) {
+    if (isSaving.value || !allows(TrackingPreset.personalizado)) return;
     justSaved.value = false;
     draft.value = TrackingSettings(
       periodMinutes: draft.value.periodMinutes,

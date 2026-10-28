@@ -82,7 +82,7 @@ class TrackingSettingsView extends StatelessWidget {
                       values: trackingPeriods,
                       value: draft.periodMinutes,
                       color: palette.primary,
-                      onChanged: saving ? null : controller.setInterval,
+                      onChanged: saving ? null : controller.setPeriod,
                     ),
                     _Slider(
                       label: 'Distância mínima',
@@ -90,7 +90,7 @@ class TrackingSettingsView extends StatelessWidget {
                       values: trackingRadii,
                       value: draft.radiusMeters,
                       color: palette.primary,
-                      onChanged: saving ? null : controller.setDistance,
+                      onChanged: saving ? null : controller.setRadius,
                     ),
                   ],
                   const SizedBox(height: 16),

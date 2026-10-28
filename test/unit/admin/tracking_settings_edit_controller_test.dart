@@ -8,7 +8,7 @@ import 'package:monamie_app/app/modules/admin/tracking_settings_edit_controller.
 
 const equilibrio = TrackingSettings(periodMinutes: 5, radiusMeters: 10);
 const economia = TrackingSettings(periodMinutes: 15, radiusMeters: 100);
-const precisao = TrackingSettings(periodMinutes: 1, radiusMeters: 5);
+const custom = TrackingSettings(periodMinutes: 10, radiusMeters: 20);
 
 /// [TrackingSettingsRepository] that records every save, with the plan's
 /// minimum [minimum], optionally waiting on [gate] or failing with
@@ -51,6 +51,21 @@ Future<TrackingSettingsEditController> controllerFor(
   return controller;
 }
 
+/// A controller saved on Equilíbrio with Economia picked: a draft with
+/// changes, ready to save.
+Future<TrackingSettingsEditController> changedController() async {
+  final controller = await controllerFor(equilibrio);
+  controller.pickPreset(TrackingPreset.economia);
+  return controller;
+}
+
+/// The presets shown on screen that cannot be picked for now.
+const notOffered = [
+  TrackingPreset.equilibrio,
+  TrackingPreset.precisao,
+  TrackingPreset.personalizado,
+];
+
 void main() {
   setUp(() {
     Get.testMode = true;
@@ -92,7 +107,7 @@ void main() {
       // 1. Arrange
       final controller = TrackingSettingsEditController(
         repository: repository,
-        saved: const TrackingSettings(periodMinutes: 10, radiusMeters: 20),
+        saved: custom,
       );
 
       // 2. Act
@@ -120,110 +135,79 @@ void main() {
     });
   });
 
-  group('TrackingSettingsEditController.pickPreset - Unit Test Suite', () {
-    test('Happy Path: Precisão sets the draft to 1 min and 5 m', () async {
+  group('TrackingSettingsEditController.allows - Unit Test Suite', () {
+    test('Happy Path: without a plan minimum Economia is allowed', () async {
       // 1. Arrange
       final controller = await controllerFor(equilibrio);
 
       // 2. Act
-      controller.pickPreset(TrackingPreset.precisao);
+      final allowed = controller.allows(TrackingPreset.economia);
 
       // 3. Assert
-      expect(
-        [
-          controller.draft.value,
-          controller.preset.value,
-          controller.hasChanges,
-        ],
-        [precisao, TrackingPreset.precisao, true],
-      );
+      expect(allowed, isTrue);
     });
 
-    test('Edge Case: Personalizado keeps the draft values', () async {
-      // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-
-      // 2. Act
-      controller.pickPreset(TrackingPreset.personalizado);
-
-      // 3. Assert
-      expect(
-        [controller.draft.value, controller.preset.value],
-        [equilibrio, TrackingPreset.personalizado],
-      );
-    });
-
-    test('Sad Path: with the plan minimum 15, Precisão does nothing', () async {
+    test('Edge Case: with the plan minimum 15, Economia (15 min) is '
+        'allowed', () async {
       // 1. Arrange
       repository = FakeTrackingSettingsRepository(minimum: 15);
       final controller = await controllerFor(economia);
 
       // 2. Act
-      controller.pickPreset(TrackingPreset.precisao);
+      final allowed = controller.allows(TrackingPreset.economia);
 
       // 3. Assert
-      expect(
-        [
-          controller.draft.value,
-          controller.preset.value,
-          controller.hasChanges,
-        ],
-        [economia, TrackingPreset.economia, false],
-      );
+      expect(allowed, isTrue);
     });
-  });
 
-  group('TrackingSettingsEditController.allows - Unit Test Suite', () {
-    final cases = [
-      ('Happy Path', TrackingPreset.economia, true),
-      ('Edge Case', TrackingPreset.personalizado, true),
-      ('Sad Path', TrackingPreset.precisao, false),
-      ('Sad Path', TrackingPreset.equilibrio, false),
-    ];
-    for (final (label, option, expected) in cases) {
-      test('$label: with the plan minimum 15, ${option.name} is '
-          '${expected ? 'allowed' : 'not allowed'}', () async {
+    test('Sad Path: with the plan minimum 20, Economia (15 min) is not '
+        'allowed', () async {
+      // 1. Arrange
+      repository = FakeTrackingSettingsRepository(minimum: 20);
+      final controller = await controllerFor(economia);
+
+      // 2. Act
+      final allowed = controller.allows(TrackingPreset.economia);
+
+      // 3. Assert
+      expect(allowed, isFalse);
+    });
+
+    for (final option in notOffered) {
+      test('Sad Path: without a plan minimum ${option.name} is not '
+          'allowed', () async {
         // 1. Arrange
-        repository = FakeTrackingSettingsRepository(minimum: 15);
-        final controller = await controllerFor(economia);
+        final controller = await controllerFor(equilibrio);
 
         // 2. Act
         final allowed = controller.allows(option);
 
         // 3. Assert
-        expect(allowed, expected);
+        expect(allowed, isFalse);
       });
     }
+  });
 
-    test('Edge Case: without a plan minimum Precisão is allowed', () async {
+  group('TrackingSettingsEditController.pickPreset - Unit Test Suite', () {
+    test('Happy Path: Economia sets the draft to 15 min and 100 m', () async {
       // 1. Arrange
       final controller = await controllerFor(equilibrio);
 
       // 2. Act
-      final allowed = controller.allows(TrackingPreset.precisao);
-
-      // 3. Assert
-      expect(allowed, isTrue);
-    });
-  });
-
-  group('TrackingSettingsEditController.setInterval - Unit Test Suite', () {
-    test('Happy Path: with the plan minimum 15, 20 minutes is set', () async {
-      // 1. Arrange
-      repository = FakeTrackingSettingsRepository(minimum: 15);
-      final controller = await controllerFor(economia);
-
-      // 2. Act
-      controller.setInterval(20);
+      controller.pickPreset(TrackingPreset.economia);
 
       // 3. Assert
       expect(
-        controller.draft.value,
-        const TrackingSettings(periodMinutes: 20, radiusMeters: 100),
+        [
+          controller.draft.value,
+          controller.preset.value,
+          controller.hasChanges,
+        ],
+        [economia, TrackingPreset.economia, true],
       );
     });
 
-    test('Edge Case: with the plan minimum 15, 15 minutes is set', () async {
+    test('Edge Case: with the plan minimum 15, Economia is picked', () async {
       // 1. Arrange
       repository = FakeTrackingSettingsRepository(minimum: 15);
       final controller = await controllerFor(
@@ -231,64 +215,101 @@ void main() {
       );
 
       // 2. Act
-      controller.setInterval(15);
+      controller.pickPreset(TrackingPreset.economia);
 
       // 3. Assert
-      expect(controller.draft.value, economia);
+      expect(
+        [controller.draft.value, controller.preset.value],
+        [economia, TrackingPreset.economia],
+      );
     });
 
-    test(
-      'Sad Path: with the plan minimum 15, 5 minutes does nothing',
-      () async {
+    for (final option in notOffered) {
+      test('Sad Path: ${option.name} changes nothing', () async {
         // 1. Arrange
-        repository = FakeTrackingSettingsRepository(minimum: 15);
         final controller = await controllerFor(economia);
 
         // 2. Act
-        controller.setInterval(5);
+        controller.pickPreset(option);
+
+        // 3. Assert
+        expect(
+          [
+            controller.draft.value,
+            controller.preset.value,
+            controller.hasChanges,
+          ],
+          [economia, TrackingPreset.economia, false],
+        );
+      });
+    }
+  });
+
+  group('TrackingSettingsEditController.setPeriod - Unit Test Suite', () {
+    test('Sad Path: 20 minutes changes nothing', () async {
+      // 1. Arrange
+      final controller = await controllerFor(economia);
+
+      // 2. Act
+      controller.setPeriod(20);
+
+      // 3. Assert
+      expect(
+        [controller.draft.value, controller.hasChanges],
+        [economia, false],
+      );
+    });
+
+    test('Edge Case: starting on Personalizado, 20 minutes changes '
+        'nothing', () async {
+      // 1. Arrange
+      final controller = await controllerFor(custom);
+
+      // 2. Act
+      controller.setPeriod(20);
+
+      // 3. Assert
+      expect([controller.draft.value, controller.hasChanges], [custom, false]);
+    });
+  });
+
+  group('TrackingSettingsEditController.setRadius - Unit Test Suite', () {
+    test('Sad Path: 50 m changes nothing', () async {
+      // 1. Arrange
+      final controller = await controllerFor(economia);
+
+      // 2. Act
+      controller.setRadius(50);
+
+      // 3. Assert
+      expect(
+        [controller.draft.value, controller.hasChanges],
+        [economia, false],
+      );
+    });
+
+    test(
+      'Edge Case: starting on Personalizado, 50 m changes nothing',
+      () async {
+        // 1. Arrange
+        final controller = await controllerFor(custom);
+
+        // 2. Act
+        controller.setRadius(50);
 
         // 3. Assert
         expect(
           [controller.draft.value, controller.hasChanges],
-          [economia, false],
+          [custom, false],
         );
       },
     );
   });
 
-  group('TrackingSettingsEditController.setDistance - Unit Test Suite', () {
-    test('Happy Path: 100 m changes only the distance', () async {
-      // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-
-      // 2. Act
-      controller.setDistance(100);
-
-      // 3. Assert
-      expect(
-        [controller.draft.value, controller.hasChanges],
-        [const TrackingSettings(periodMinutes: 5, radiusMeters: 100), true],
-      );
-    });
-
-    test('Edge Case: setting the saved distance back is no change', () async {
-      // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-      controller.setDistance(100);
-
-      // 2. Act
-      controller.setDistance(10);
-
-      // 3. Assert
-      expect(controller.hasChanges, isFalse);
-    });
-  });
-
   group('TrackingSettingsEditController.save - Unit Test Suite', () {
     test('Happy Path: a change is saved once through the repository', () async {
       // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-      controller.pickPreset(TrackingPreset.economia);
+      final controller = await changedController();
 
       // 2. Act
       await controller.save();
@@ -300,8 +321,7 @@ void main() {
     test('Happy Path: after a save the draft is the saved settings, '
         'justSaved is true and it returns true', () async {
       // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-      controller.pickPreset(TrackingPreset.economia);
+      final controller = await changedController();
 
       // 2. Act
       final ok = await controller.save();
@@ -315,8 +335,7 @@ void main() {
 
     test('Happy Path: isSaving is false after the save', () async {
       // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-      controller.setDistance(50);
+      final controller = await changedController();
 
       // 2. Act
       await controller.save();
@@ -339,8 +358,7 @@ void main() {
     test('Sad Path: a failing repository sets errorMessage and save '
         'returns false', () async {
       // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-      controller.setDistance(50);
+      final controller = await changedController();
       repository.failure = Exception('offline');
 
       // 2. Act
@@ -355,8 +373,7 @@ void main() {
 
     test('Sad Path: isSaving is false after the repository throws', () async {
       // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-      controller.setDistance(50);
+      final controller = await changedController();
       repository.failure = Exception('offline');
 
       // 2. Act
@@ -370,8 +387,7 @@ void main() {
   group('TrackingSettingsEditController.save reentrancy - Unit Test Suite', () {
     test('Happy Path: isSaving is true while the save is in flight', () async {
       // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-      controller.setDistance(50);
+      final controller = await changedController();
       repository.gate = Completer<void>();
 
       // 2. Act
@@ -386,8 +402,7 @@ void main() {
     test('Edge Case: a second save while the first is in flight returns '
         'false and does not call the repository again', () async {
       // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-      controller.setDistance(50);
+      final controller = await changedController();
       repository.gate = Completer<void>();
       final first = controller.save();
       await pumpEventQueue();
@@ -401,31 +416,22 @@ void main() {
       expect([second, repository.saved.length], [false, 1]);
     });
 
-    final whileSaving =
-        <(String, void Function(TrackingSettingsEditController))>[
-          ('pickPreset', (c) => c.pickPreset(TrackingPreset.precisao)),
-          ('setInterval', (c) => c.setInterval(30)),
-          ('setDistance', (c) => c.setDistance(500)),
-        ];
-    for (final (name, change) in whileSaving) {
-      test('Sad Path: $name does nothing while saving', () async {
-        // 1. Arrange
-        final controller = await controllerFor(equilibrio);
-        controller.setDistance(50);
-        repository.gate = Completer<void>();
-        final pending = controller.save();
+    test('Sad Path: picking Economia does nothing while saving', () async {
+      // 1. Arrange
+      final controller = await controllerFor(equilibrio);
+      // A draft only Economia would change, set directly since no other
+      // preset can be picked.
+      controller.draft.value = custom;
+      repository.gate = Completer<void>();
+      final pending = controller.save();
 
-        // 2. Act
-        change(controller);
+      // 2. Act
+      controller.pickPreset(TrackingPreset.economia);
 
-        // 3. Assert
-        expect(
-          controller.draft.value,
-          const TrackingSettings(periodMinutes: 5, radiusMeters: 50),
-        );
-        repository.gate!.complete();
-        await pending;
-      });
-    }
+      // 3. Assert
+      expect(controller.draft.value, custom);
+      repository.gate!.complete();
+      await pending;
+    });
   });
 }
