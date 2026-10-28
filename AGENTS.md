@@ -98,6 +98,15 @@ Follow `docs/en-us/run-web-locally.md`. Serve `build/web` on `http://localhost:5
     - **"MonAmie Docs" (#3)** for documentation issues: those whose fix changes only documentation (`docs/`, READMEs, `AGENTS.md`, rule files);
     - **"MonAmie App" (#2)** for everything else, including issues whose fix changes both code and its documentation.
 
+## Communicating with the Human
+
+Every output to the human must be didactic: the goal is that they understand what happened and why, not only that the task is done.
+- **Start from what they know**: define each technical term the first time it appears and do not assume prior knowledge of CI, Firebase, IAM, isolates or the plugins' internals.
+- **Explain the why**: say the cause behind a result or a decision, pointing to the file and line that show it.
+- **One analogy at most**, and only when it helps; replace it with another if the human does not understand it.
+- **Show, do not only tell**: when a flow or lifecycle is hard to follow, offer a diagram in a standard notation (e.g. UML) instead of an invented one.
+- **Be honest about limits**: say what was not checked or could not be verified.
+
 ## Language Conventions
 
 - Commit messages must be written in English (subject and body), regardless of the language used in the conversation.
