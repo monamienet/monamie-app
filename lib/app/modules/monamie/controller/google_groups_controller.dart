@@ -251,6 +251,48 @@ class GoogleGroupsController extends GetxController {
 
   /// Atualiza os membros observados com base no grupo selecionado.
   /// Busca os participantes do grupo via API e filtra apenas usuários (type == USER).
+  /// People in the field per team e-mail, for the team menu; filled by
+  /// [loadTeamSizes].
+  final RxMap<String, int> teamSizes = <String, int>{}.obs;
+
+  /// Whether the map is loading a team the person just picked.
+  final RxBool switchingTeam = false.obs;
+
+  /// Counts the people in the field of every team in [googleGroups], from
+  /// each share leaf (cached like the observed team's). A team that fails
+  /// keeps no count, so the menu shows only its name.
+  Future<void> loadTeamSizes() async {
+    final token = await _auth.currentUser?.getIdToken();
+    if (token == null) return;
+    for (final team in googleGroups.toList()) {
+      try {
+        final entities = await _repository.getGroupEntities(
+          token,
+          shareLeafEmail(team.email),
+        );
+        teamSizes[team.email] = entities
+            .where((e) => e['type'] == 'USER')
+            .length;
+      } catch (e) {
+        debugPrint('Could not count the people of ${team.email}: $e');
+      }
+    }
+  }
+
+  /// Switches the map to [team] from the team menu, with [switchingTeam] on
+  /// while its people load. Picking the observed team again does nothing.
+  Future<void> pickTeam(GoogleGroupModel team) async {
+    if (switchingTeam.value || team.email == selectedGroup.value?.email) {
+      return;
+    }
+    switchingTeam.value = true;
+    try {
+      await updateObservedUsers(team);
+    } finally {
+      switchingTeam.value = false;
+    }
+  }
+
   Future<void> updateObservedUsers(
     GoogleGroupModel selectedGroup, {
     bool forceRefresh = false,
@@ -275,6 +317,7 @@ class GoogleGroupsController extends GetxController {
       final users = entities.where((e) => e['type'] == 'USER').toList();
 
       // Filtrar apenas usuários e mapear para GoogleGroupMember
+      teamSizes[selectedGroup.email] = users.length;
       observedMembers.value = users.where((m) => m['type'] == 'USER').map((m) {
         final email = (m['email'] as String?)?.trim() ?? '';
         final rawName = (m['name'] as String?)?.trim();

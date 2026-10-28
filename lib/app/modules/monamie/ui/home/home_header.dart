@@ -99,11 +99,7 @@ class HomeHeader extends StatelessWidget {
       shareTeams: [for (final team in _groups.shareTeams) team.name],
     );
     if (canWatch) return TeamMenuButton(label: label);
-    return HomeChip(
-      label: label,
-      icon: Icons.groups_outlined,
-      semanticsLabel: 'Equipe: $label',
-    );
+    return HomeChip(label: label, semanticsLabel: 'Equipe: $label');
   }
 
   List<Widget> _dayChips() {

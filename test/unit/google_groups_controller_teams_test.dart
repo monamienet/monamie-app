@@ -1,4 +1,18 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
+import 'package:hive/hive.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
+import 'package:monamie_app/app/data/firebase/partner_firebase.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 
@@ -24,6 +38,88 @@ GoogleGroupModel team(String email) => GoogleGroupModel(
   members: [],
   subgroups: [],
 );
+
+/// [PartnerFirebase] whose signed-in user always has an ID token.
+class FakePartnerFirebase implements PartnerFirebase {
+  @override
+  FirebaseAuth get auth => FakeFirebaseAuth();
+
+  @override
+  FirebaseFirestore get firestore => throw UnimplementedError();
+
+  @override
+  FirebaseFunctions get functions => throw UnimplementedError();
+
+  @override
+  FirebaseStorage get storage => throw UnimplementedError();
+
+  @override
+  DocumentReference<Map<String, dynamic>> get partnerData =>
+      throw UnimplementedError();
+}
+
+class FakeFirebaseAuth implements FirebaseAuth {
+  @override
+  User? get currentUser => FakeUser();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakeUser implements User {
+  @override
+  Future<String?> getIdToken([bool forceRefresh = false]) async => 'token';
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// The groups gateway: `/members?email=` answers [members] for the leaf
+/// (500 when the leaf is in [failing] or unknown), optionally waiting on
+/// [gate] first. Every asked e-mail goes to [asked].
+class FakeGateway {
+  final members = <String, List<Map<String, dynamic>>>{};
+  final failing = <String>{};
+  final asked = <String>[];
+  Completer<void>? gate;
+
+  late final client = MockClient((request) async {
+    final email = request.url.queryParameters['email'] ?? '';
+    asked.add(email);
+    await gate?.future;
+    final entities = members[email];
+    if (failing.contains(email) || entities == null) {
+      return http.Response('boom', 500);
+    }
+    return http.Response(jsonEncode({'members': entities}), 200);
+  });
+
+  /// Runs [body] with the controller's HTTP calls going to this gateway.
+  R run<R>(R Function() body) => http.runWithClient(body, () => client);
+}
+
+/// A controller that is not started (no group load), with [teams] listed.
+GoogleGroupsController controllerWith(List<GoogleGroupModel> teams) {
+  final controller = GoogleGroupsController(onAccessLost: () async {});
+  controller.googleGroups.addAll(teams);
+  return controller;
+}
+
+/// Points Hive (the groups cache) at an empty temporary directory, so each
+/// test starts with nothing cached. Returns a teardown.
+Future<Future<void> Function()> freshGroupsCache() async {
+  await Hive.close();
+  final dir = Directory.systemTemp.createTempSync('groups_cache_');
+  Hive.init(dir.path);
+  return () async {
+    await Hive.close();
+    dir.deleteSync(recursive: true);
+  };
+}
+
+const centro = 'rotasul01@monamienet.org';
+const norte = 'rotasul02@monamienet.org';
+const sul = 'rotasul03@monamienet.org';
 
 void main() {
   group('GoogleGroupsController.teamKeysOf - Unit Test Suite', () {
@@ -281,6 +377,183 @@ void main() {
 
       // 3. Assert
       expect(next, isNull);
+    });
+  });
+
+  group('GoogleGroupsController.pickTeam - Unit Test Suite', () {
+    late FakeGateway gateway;
+
+    late Future<void> Function() closeCache;
+
+    setUp(() async {
+      Get.testMode = true;
+      closeCache = await freshGroupsCache();
+      CurrentPartnerFirebase.set(FakePartnerFirebase());
+      gateway = FakeGateway()
+        ..members['rotasul01w@monamienet.org'] = [userEntity('a@x.org')]
+        ..members['rotasul02w@monamienet.org'] = [userEntity('b@x.org')];
+    });
+
+    tearDown(() async {
+      CurrentPartnerFirebase.debugReset();
+      await closeCache();
+    });
+
+    test('Happy Path: the picked team becomes the observed one', () async {
+      // 1. Arrange
+      final picked = team(norte);
+      final controller = controllerWith([team(centro), picked]);
+      controller.selectedGroup.value = team(centro);
+
+      // 2. Act
+      await gateway.run(() => controller.pickTeam(picked));
+
+      // 3. Assert
+      expect(controller.selectedGroup.value?.email, norte);
+    });
+
+    test('Happy Path: switchingTeam is true while the people load', () async {
+      // 1. Arrange
+      gateway.gate = Completer<void>();
+      final controller = controllerWith([team(centro), team(norte)]);
+
+      // 2. Act
+      final pending = gateway.run(() => controller.pickTeam(team(norte)));
+
+      // 3. Assert
+      expect(controller.switchingTeam.value, isTrue);
+      gateway.gate!.complete();
+      await pending;
+    });
+
+    test('Happy Path: switchingTeam is false once the people load', () async {
+      // 1. Arrange
+      final controller = controllerWith([team(centro), team(norte)]);
+
+      // 2. Act
+      await gateway.run(() => controller.pickTeam(team(norte)));
+
+      // 3. Assert
+      expect(controller.switchingTeam.value, isFalse);
+    });
+
+    test('Sad Path: switchingTeam is false after loading fails', () async {
+      // 1. Arrange
+      gateway.failing.add('rotasul02w@monamienet.org');
+      final controller = controllerWith([team(centro), team(norte)]);
+
+      // 2. Act
+      await gateway.run(() => controller.pickTeam(team(norte)));
+
+      // 3. Assert
+      expect(controller.switchingTeam.value, isFalse);
+    });
+
+    test('Edge Case: picking the observed team does nothing', () async {
+      // 1. Arrange
+      final controller = controllerWith([team(centro), team(norte)]);
+      final observed = team(centro);
+      controller.selectedGroup.value = observed;
+
+      // 2. Act
+      await gateway.run(() => controller.pickTeam(team(centro)));
+
+      // 3. Assert
+      expect(
+        [controller.selectedGroup.value, gateway.asked],
+        [same(observed), isEmpty],
+      );
+    });
+
+    test('Edge Case: a pick while another is in flight is ignored', () async {
+      // 1. Arrange
+      gateway.gate = Completer<void>();
+      final controller = controllerWith([team(centro), team(norte)]);
+      final first = gateway.run(() => controller.pickTeam(team(norte)));
+
+      // 2. Act
+      final second = gateway.run(() => controller.pickTeam(team(centro)));
+
+      // 3. Assert
+      gateway.gate!.complete();
+      await Future.wait([first, second]);
+      expect(
+        [controller.selectedGroup.value?.email, gateway.asked],
+        [
+          norte,
+          ['rotasul02w@monamienet.org'],
+        ],
+      );
+    });
+  });
+
+  group('GoogleGroupsController.loadTeamSizes - Unit Test Suite', () {
+    late FakeGateway gateway;
+
+    late Future<void> Function() closeCache;
+
+    setUp(() async {
+      Get.testMode = true;
+      closeCache = await freshGroupsCache();
+      CurrentPartnerFirebase.set(FakePartnerFirebase());
+      gateway = FakeGateway();
+    });
+
+    tearDown(() async {
+      CurrentPartnerFirebase.debugReset();
+      await closeCache();
+    });
+
+    test('Happy Path: each team counts the USER entries of its share '
+        'leaf', () async {
+      // 1. Arrange
+      gateway
+        ..members['rotasul01w@monamienet.org'] = [
+          userEntity('a@x.org'),
+          userEntity('b@x.org'),
+          groupEntity('rotasul09@monamienet.org'),
+        ]
+        ..members['rotasul02w@monamienet.org'] = [userEntity('c@x.org')];
+      final controller = controllerWith([team(centro), team(norte)]);
+
+      // 2. Act
+      await gateway.run(controller.loadTeamSizes);
+
+      // 3. Assert
+      expect(controller.teamSizes, {centro: 2, norte: 1});
+    });
+
+    test('Edge Case: a share leaf with no people counts 0', () async {
+      // 1. Arrange
+      gateway.members['rotasul01w@monamienet.org'] = [
+        groupEntity('rotasul09@monamienet.org'),
+      ];
+      final controller = controllerWith([team(centro)]);
+
+      // 2. Act
+      await gateway.run(controller.loadTeamSizes);
+
+      // 3. Assert
+      expect(controller.teamSizes, {centro: 0});
+    });
+
+    test('Sad Path: a team whose lookup fails gets no entry while the '
+        'others do', () async {
+      // 1. Arrange
+      gateway
+        ..members['rotasul01w@monamienet.org'] = [userEntity('a@x.org')]
+        ..failing.add('rotasul02w@monamienet.org')
+        ..members['rotasul03w@monamienet.org'] = [
+          userEntity('b@x.org'),
+          userEntity('c@x.org'),
+        ];
+      final controller = controllerWith([team(centro), team(norte), team(sul)]);
+
+      // 2. Act
+      await gateway.run(controller.loadTeamSizes);
+
+      // 3. Assert
+      expect(controller.teamSizes, {centro: 1, sul: 2});
     });
   });
 }

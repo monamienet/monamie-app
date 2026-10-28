@@ -132,8 +132,84 @@ class MonamiePage extends StatelessWidget {
             _centralizeButton(),
           ],
         ),
+        _switchingTeamPill(),
       ],
     );
+  }
+
+  /// "Carregando `equipe`…" over the map while a team picked in the team
+  /// menu loads, as on the design canvas.
+  Widget _switchingTeamPill() {
+    return Obx(() {
+      if (!googleGroupsController.switchingTeam.value) {
+        return const SizedBox.shrink();
+      }
+      final team = googleGroupsController.selectedGroup.value?.name ?? '';
+      return Positioned(
+        top: 14,
+        left: 0,
+        right: 0,
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 220),
+            curve: const Cubic(0.2, 0.8, 0.2, 1),
+            builder: (context, t, child) => Opacity(
+              opacity: t,
+              child: Transform.translate(
+                offset: Offset(0, -10 * (1 - t)),
+                child: child,
+              ),
+            ),
+            child: Semantics(
+              liveRegion: true,
+              child: Container(
+                width: 220,
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryDark,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x47091416),
+                      blurRadius: 14,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.8,
+                        color: AppColors.onPrimaryDark,
+                        backgroundColor: Colors.white.withAlpha(77),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        'Carregando $team…',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 
   /// Desenha as trajetórias dos usuários destacados (highlightedObservedUsers).
