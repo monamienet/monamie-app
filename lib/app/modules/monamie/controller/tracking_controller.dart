@@ -76,6 +76,11 @@ class TrackingController extends GetxController
   /// Timer para animar a transição dos marcadores.
   Timer? _markerAnimationTimer;
 
+  /// How often the map re-checks who is still sharing (see
+  /// [_dropUsersNoLongerLive]).
+  static const _liveUsersRecheck = Duration(seconds: 30);
+  Timer? _liveUsersTimer;
+
   /// Progresso da animação (0.0 a 1.0).
   double _animationProgress = 1.0;
 
@@ -299,6 +304,20 @@ class TrackingController extends GetxController
     }
   }
 
+  /// Re-applies [liveUsers] to the last team snapshot, so a person whose
+  /// position went stale leaves the map even when no document changed.
+  void _dropUsersNoLongerLive() {
+    final stillLive = liveUsers(
+      teamUsers.toList(),
+      now: DateTime.now(),
+      staleAfter: Get.find<TrackingSettingsController>().staleAfter,
+    );
+    // Assigning always notifies; do it only when someone actually left.
+    if (stillLive.length != firebaseUsers.length) {
+      firebaseUsers.value = stillLive;
+    }
+  }
+
   void _subscribeToGroupUsers(String groupEmail) {
     _groupUsersSubscription?.cancel();
     _groupUsersSubscription = FirebaseProvider()
@@ -361,6 +380,14 @@ class TrackingController extends GetxController
 
     // Escuta mudanças na lista de usuários para atualizar as animações
     ever(firebaseUsers, _onFirebaseUsersUpdated);
+
+    // O stream só emite quando um documento muda. Quem parou sem conseguir
+    // gravar `isTracked = false` (sem rede, app encerrado) não gera emissão:
+    // sem este relógio o marcador ficaria no mapa até alguém mudar.
+    _liveUsersTimer = Timer.periodic(
+      _liveUsersRecheck,
+      (_) => _dropUsersNoLongerLive(),
+    );
 
     //try {
     //  _compassSubscription = FlutterCompass.events?.listen((event) {
@@ -796,6 +823,7 @@ class TrackingController extends GetxController
     _readySubscription?.cancel();
     _locationSubscription?.cancel();
     _markerAnimationTimer?.cancel();
+    _liveUsersTimer?.cancel();
     mapController.dispose();
     super.onClose();
   }

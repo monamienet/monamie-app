@@ -184,5 +184,26 @@ void main() {
       // 3. Assert
       expect(result, isEmpty);
     });
+
+    test('Regression: the same snapshot drops the person once time passes', () {
+      // 1. Arrange: sharing, 2 min old now, nobody writes again afterwards
+      final ana = user(
+        'ana',
+        isTracked: true,
+        timestamp: now.subtract(const Duration(minutes: 2)),
+      );
+      final stillThere = live([ana]);
+
+      // 2. Act: 9 minutes later, with the limit at 10
+      final later = liveUsers(
+        [ana],
+        now: now.add(const Duration(minutes: 9)),
+        staleAfter: staleAfter,
+      );
+
+      // 3. Assert
+      expect(emails(stillThere), ['ana@x.org']);
+      expect(later, isEmpty);
+    });
   });
 }
