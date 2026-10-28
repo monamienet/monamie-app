@@ -299,14 +299,19 @@ class MonamiePage extends StatelessWidget {
     );
   }
 
-  /// The person's own place on the map, for whoever shares: the team's
+  /// The person's own place on the map while they share: the team's
   /// documents only draw them when they also watch the team they share with.
+  /// Hidden while sharing is off, so the map never suggests the team sees
+  /// someone it does not.
   Widget _ownMarker() {
     const markerSize = 50.0;
     return Obx(() {
       final point = trackingCtrl.ownPosition.value;
       final me = userCtrl.user?.email;
-      if (point == null || me == null || !userCtrl.isTrackable()) {
+      if (point == null ||
+          me == null ||
+          !userCtrl.isTrackable() ||
+          !trackingCtrl.isTrackingEnabled.value) {
         return const SizedBox.shrink();
       }
       final drawnWithTheTeam =
