@@ -20,6 +20,10 @@ class MonamieBindings implements Bindings {
     Get.lazyPut(() => GoogleGroupsController());
     Get.lazyPut(() => CalendarController());
     Get.lazyPut(() => CallController());
-    Get.lazyPut(() => TrackingSettingsController());
+    // Created with the home screen, not on first use: it must already hold
+    // the saved settings when *Ajustes de acompanhamento* opens, and a lazy
+    // instance first built inside that route would be deleted, factory and
+    // all, when the route closes.
+    Get.put(TrackingSettingsController());
   }
 }
