@@ -2,24 +2,21 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/calendar.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/group_selector.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_users_list.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/home_header.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/home_menu.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/home_sheet.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/logout_progress_overlay.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/monamie_app_bar.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/highlighted_user_panel.dart';
-import 'package:monamie_app/app/modules/monamie/ui/widgets/tracking_toggle_button.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart' hide Path;
-import 'package:monamie_app/app/data/services/foreground_service.dart'
-    as foreground_service;
+import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 
 class MonamiePage extends StatelessWidget {
   const MonamiePage({super.key});
@@ -34,19 +31,31 @@ class MonamiePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const MonAmieAppBar(),
-      drawer: GroupSelector(),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          _body(context),
-          Obx(
-            () => authCtrl.isLoggingOut.value
-                ? const LogoutProgressOverlay()
-                : const SizedBox.shrink(),
-          ),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // The header is dark, so the status bar icons are light.
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        drawer: const HomeMenu(),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Column(
+              children: [
+                const HomeHeader(),
+                Expanded(child: _body(context)),
+              ],
+            ),
+            Obx(
+              () => authCtrl.isLoggingOut.value
+                  ? LogoutProgressOverlay(
+                      message: authCtrl.isSwitchingOrganization.value
+                          ? 'Trocando de organização…'
+                          : 'Encerrando sessão…',
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -80,7 +89,12 @@ class MonamiePage extends StatelessWidget {
         return _permissionScreen();
       }
 
-      return mapa(context);
+      return Column(
+        children: [
+          Expanded(child: mapa(context)),
+          const HomeSheet(),
+        ],
+      );
     });
   }
 
@@ -97,28 +111,105 @@ class MonamiePage extends StatelessWidget {
               trackingCtrl.position.latitude,
               trackingCtrl.position.longitude,
             ),
+            // A person who only shares has no team on the map: start on them.
+            onMapReady: () {
+              if (!googleGroupsController.canWatch) {
+                trackingCtrl.centerMapOnCurrentLocation();
+              }
+            },
+            onTap: (_, _) => googleGroupsController.clearSelected(),
             minZoom: 3.0,
             maxZoom: 19.0,
             cameraConstraint: CameraConstraint.contain(
               bounds: LatLngBounds(LatLng(-90, -180), LatLng(90, 180)),
             ),
-            onTap: (tapPosition, latLng) {
-              trackingCtrl.closeFirebaseUserDetails();
-            },
           ),
           children: [
             _tile(),
             _highlightedTrajectories(),
             _firebaseMarkers(),
-            userCtrl.isTrackable() & !kIsWeb ? _toggleButton() : Container(),
+            _ownMarker(),
             _centralizeButton(),
           ],
         ),
-        Calendar(),
-        HighlightedObservedUsersList(),
-        HighlightedUserPanel(),
+        _switchingTeamPill(),
       ],
     );
+  }
+
+  /// "Carregando `equipe`…" over the map while a team picked in the team
+  /// menu loads, as on the design canvas.
+  Widget _switchingTeamPill() {
+    return Obx(() {
+      if (!googleGroupsController.switchingTeam.value) {
+        return const SizedBox.shrink();
+      }
+      final team = googleGroupsController.selectedGroup.value?.name ?? '';
+      return Positioned(
+        top: 14,
+        left: 0,
+        right: 0,
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 220),
+            curve: const Cubic(0.2, 0.8, 0.2, 1),
+            builder: (context, t, child) => Opacity(
+              opacity: t,
+              child: Transform.translate(
+                offset: Offset(0, -10 * (1 - t)),
+                child: child,
+              ),
+            ),
+            child: Semantics(
+              liveRegion: true,
+              child: Container(
+                width: 220,
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryDark,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x47091416),
+                      blurRadius: 14,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.8,
+                        color: AppColors.onPrimaryDark,
+                        backgroundColor: Colors.white.withAlpha(77),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        'Carregando $team…',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    });
   }
 
   /// Desenha as trajetórias dos usuários destacados (highlightedObservedUsers).
@@ -284,6 +375,52 @@ class MonamiePage extends StatelessWidget {
     );
   }
 
+  /// The person's own place on the map while they share: the team's
+  /// documents only draw them when they also watch the team they share with.
+  /// Hidden while sharing is off, so the map never suggests the team sees
+  /// someone it does not.
+  Widget _ownMarker() {
+    const markerSize = 50.0;
+    return Obx(() {
+      final point = trackingCtrl.ownPosition.value;
+      final me = userCtrl.user?.email;
+      if (point == null ||
+          me == null ||
+          !userCtrl.isTrackable() ||
+          !trackingCtrl.isTrackingEnabled.value) {
+        return const SizedBox.shrink();
+      }
+      final drawnWithTheTeam =
+          googleGroupsController.observedMembers.any((m) => m.email == me) &&
+          trackingCtrl.firebaseUsers.any((u) => u.email == me);
+      if (drawnWithTheTeam) return const SizedBox.shrink();
+      return MarkerLayer(
+        markers: [
+          Marker(
+            point: point,
+            width: markerSize,
+            height: markerSize,
+            child: Container(
+              margin: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.indigo,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    });
+  }
+
   Widget _firebaseMarkers() {
     const double markerSize = 50.0;
 
@@ -325,30 +462,30 @@ class MonamiePage extends StatelessWidget {
                 width: isCurrentUser ? markerSize * 3 : markerSize,
                 height: isCurrentUser ? markerSize * 3 : markerSize,
                 alignment: Alignment.center,
-                child: Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none,
-                  children: [
-                    if (isCurrentUser)
-                      Obx(() {
-                        final heading = trackingCtrl.heading.value;
-                        if (heading == null) return const SizedBox.shrink();
+                child: GestureDetector(
+                  onTap: () =>
+                      googleGroupsController.toggleSelected(user.email),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      if (isCurrentUser)
+                        Obx(() {
+                          final heading = trackingCtrl.heading.value;
+                          if (heading == null) return const SizedBox.shrink();
 
-                        return Transform.rotate(
-                          angle: heading * (math.pi / 180),
-                          child: SizedBox(
-                            width: markerSize * 3,
-                            height: markerSize * 3,
-                            child: CustomPaint(painter: _BeamPainter()),
-                          ),
-                        );
-                      }),
-                    SizedBox(
-                      width: markerSize,
-                      height: markerSize,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => trackingCtrl.openFirebaseUserDetails(user),
+                          return Transform.rotate(
+                            angle: heading * (math.pi / 180),
+                            child: SizedBox(
+                              width: markerSize * 3,
+                              height: markerSize * 3,
+                              child: CustomPaint(painter: _BeamPainter()),
+                            ),
+                          );
+                        }),
+                      SizedBox(
+                        width: markerSize,
+                        height: markerSize,
                         child: Container(
                           decoration: BoxDecoration(
                             color:
@@ -356,9 +493,7 @@ class MonamiePage extends StatelessWidget {
                                     DateTime.now().difference(
                                           user.timestamp!,
                                         ) >=
-                                        Duration(
-                                          minutes: foreground_service.interval,
-                                        )
+                                        validity
                                 ? trackingCtrl
                                       .setMarkerColor(user)
                                       .withAlpha(100)
@@ -376,18 +511,14 @@ class MonamiePage extends StatelessWidget {
                           margin: const EdgeInsets.all(10),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             })
             .toList(),
       ),
     );
-  }
-
-  Widget _toggleButton() {
-    return const Positioned(top: 16, right: 16, child: TrackingToggleButton());
   }
 }
 

@@ -64,3 +64,6 @@ web/partner/
 # src/*/ entry covers copies left by the old per-partner flavors.
 android/app/google-services.json
 android/app/src/*/google-services.json
+
+# Emulator logs of the security rules tests
+test/rules/*-debug.log

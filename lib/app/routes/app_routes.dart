@@ -7,7 +7,13 @@ abstract class Routes {
   static const LOGIN = _Paths.LOGIN;
   static const MONAMIE = _Paths.MONAMIE;
   static const PARTNER_PICKER = _Paths.PARTNER_PICKER;
-  static const NOT_LINKED = _Paths.NOT_LINKED;
+  static const NO_ORGANIZATION = _Paths.NO_ORGANIZATION;
+  static const WELCOME = _Paths.WELCOME;
+  static const APPEARANCE = _Paths.APPEARANCE;
+  static const TEAMS = _Paths.TEAMS;
+  static const TRACKING_SETTINGS = _Paths.TRACKING_SETTINGS;
+  static const MY_ACCOUNT = _Paths.MY_ACCOUNT;
+  static const DELETION_PENDING = _Paths.DELETION_PENDING;
 }
 
 abstract class _Paths {
@@ -15,5 +21,11 @@ abstract class _Paths {
   static const LOGIN = '/login';
   static const MONAMIE = '/monamie';
   static const PARTNER_PICKER = '/partner';
-  static const NOT_LINKED = '/not-linked';
+  static const NO_ORGANIZATION = '/sem-organizacao';
+  static const WELCOME = '/boas-vindas';
+  static const APPEARANCE = '/admin/appearance';
+  static const TEAMS = '/admin/teams';
+  static const TRACKING_SETTINGS = '/admin/tracking';
+  static const MY_ACCOUNT = '/minha-conta';
+  static const DELETION_PENDING = '/em-exclusao';
 }

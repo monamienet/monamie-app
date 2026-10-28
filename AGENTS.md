@@ -6,18 +6,22 @@ This application is maintained by the company MonAmieNet and provides clients (p
 
 ## Business Architecture
 
-MonAmie publishes a **single app** on its Google Developer Account: `org.monamienet.app`, named "MonAmie" (launcher, Play listing and native splash are the same for everyone). Each partner (client) keeps:
-- its own Firebase project `monamienet-<id>`, associated to the partner's billing account, where all its data lives;
-- its own branding (name, colors, logo, icon) in that project's Firestore, `config/branding`, publicly readable.
+MonAmie publishes a **single app** on its Google Developer Account: `org.monamienet.app`, named "MonAmie" (launcher, Play listing and native splash are the same for everyone). Each partner (client) is on one of two **plans** (`plan` in the central registry `partners/{id}`):
+- **Standard**: its own Firebase project `monamienet-<id>`, on the partner's own billing account;
+- **Community** (free): the shared project `monamienet-community`, owned and paid by MonAmieNet, restricted to the *Economia* tracking preset (one position every 15 minutes at most, enforced by the rules through `partners/{id}/config/plan.minIntervalMinutes`). The central project and the Community project stay separate projects (Auth, claims, IAM and quotas are per project).
+
+On both plans **every partner's data lives under `partners/{partnerId}/…`** of its project: `config/branding` (publicly readable), `config/plan`, `config/tracking` (the owner's period and radius, followed live by the background service; the map's one freshness threshold, the validity, is fixed at 12 minutes, see `docs/pt-br/compartilhamento.md`), `usuarios/{email}` with `historico_posicoes` and `dias/{yyyy-mm-dd}` (a per-day summary written in the same batch as each position, so the history calendar reads at most one document per person and day), `users/{uid}`. A Standard project is simply a project holding one partner, so code, rules and tests are the same for both plans; no path is ever read at the root. The rules scope every match by partner (the `partners` claim) and test cross-partner access. Partners created before this layout are copied with `dart run tool/partner.dart migrate-layout <id>` (prints counts; `--apply` writes; the old root documents stay until deleted by hand).
 
 The app binds the partner **at runtime**, after Google sign-in, never at build time:
 1. Google sign-in goes through the central MonAmie project `monamienet-app` (the `[DEFAULT]` Firebase app). Only one OAuth client may exist per package + SHA-1, so it lives there, and every partner project allows the central web client under "Allowed client IDs".
-2. The central `resolvePartners` function (`central/functions/`) reads the user's groups and derives their partners from the group names (see below), keeping only those active in the central registry `partners/{id}`.
+2. The central `resolvePartners` function (`central/functions/`) reads the user's groups and derives their partners from the group names (see below), keeping those whose entry in the central registry `partners/{id}` has a `status` the app shows. The status follows a fixed lifecycle (`reserved` → `awaiting_billing`/`provisioning` → `active`, plus `failed`, `migrating` and `deleting`) written only by the central functions; its timed exits delete the partner's project and registry entry and retire the id forever in `retiredPartnerIds/{id}` (see `docs/en-us/white-label.md`, *Partner status*). Organizations are created in the app (`createPartner`; the creator becomes the owner) and an account is deleted in the app with 30 days to cancel (`accountDeletions/{email}`; an owner's organization goes to `deleting` with it); see the guide's sections 11 and 12.
 3. The app binds the chosen partner (`PartnerSession`): its Firebase project (a named app `partner-<id>`), its root group and its branding, all together, and remembers the binding on the device (`SharedPreferences`) until sign-out or removal from the partner's groups.
 
 Where each value lives:
-- **Partner's choice** (name required; colors, logo, icon optional with fallbacks): `config/branding` in the partner project, written by `dart run tool/partner.dart publish <id>`.
-- **Derived by rule**, never stored: project `monamienet-<id>`, root group `<id>00@monamienet.org`, partner id from a group name, display name `MonAmie <name>`.
+- **Partner's choice**: name (required) and a catalog `themeId` in `partners/<id>/config/branding`, plus an optional logo, one square 512 px PNG at `partners/<id>/logo.png` in the partner's Cloud Storage (converted on the owner's device from any format; never an SVG). The owner changes them in the app (*Aparência*, through the `setBranding` function, which validates the theme against the central catalog); `dart run tool/partner.dart publish <id> --name … --theme …` sets name and theme for partners onboarded by hand.
+- **MonAmie's choice**: the partner's `status` in `partners/{id}` and the **theme catalog** `themes/{id}` (`name`, `primary`, `dark`, `light`, `onPrimary`, `onDark`, `order`, `active`), both in the central project. Partners pick a theme, never free colors; an unknown or missing `themeId` falls back to Grafite, and a retired theme (`active: false`) still resolves. The catalog is seeded with `dart run tool/partner.dart themes` and is publicly readable.
+- **Derived by rule**, never stored: project `monamienet-<id>` (Standard) or `monamienet-community` (Community, from `plan`), root group `<id>00@monamienet.org`, partner id from a group name.
+- **Names never side by side**: "MonAmie" appears alone on MonAmie's own screens (launcher, Play listing, splash, sign-in, organization picker, organization creation); once a partner is bound, the app shows only the partner's name. `publish` refuses a partner name starting with "MonAmie ".
 - **Owned by another system**, fetched, never versioned: the central `google-services.json` (build time, `tool/partner.dart firebase`) and each partner's Firebase options (runtime, `resolvePartners`).
 
 Rules that come from the plugins' source code: never `delete()` a partner `FirebaseApp` (cloud_firestore caches instances per app name forever); the partner app is created natively in `MonAmieApplication.kt` so the UI and the tracking service engines never race to create it; the binding lives in `SharedPreferences`, not Hive, because two isolates read it.
@@ -26,11 +30,20 @@ Onboarding a partner needs no app release: see `docs/en-us/white-label.md`. CI o
 
 ### Partners, Groups and Users
 
-- Each partner (client) has exactly one **root group** in the monamienet.org Google Workspace: `<id>00@monamienet.org` (e.g. `aquariustur00@monamienet.org`).
-- The root group can be the parent of many **subgroups**, named after the partner id with a two-digit suffix from `01` to `99`: `<id>01@monamienet.org`, `<id>02@monamienet.org`, … (e.g. `aquariustur01@monamienet.org`). The suffix is always exactly two digits, so a group's partner id is its local part without the last two characters.
-- Each partner has potentially many **users**: the people who sign in to the app. Their role in each group comes from Google Groups membership; the `syncClaims` Cloud Function turns it into the `group_roles` custom claim that `firestore.rules` checks:
-    - **observables**: `MEMBER` or `MANAGER`; they share their own location;
-    - **observers**: `OWNER`, or `METAUSER` (a member of an ancestor group); they only view the observables' locations.
+Groups in the monamienet.org Google Workspace have **three levels**, and **everyone is a plain `MEMBER`**: what a person can do comes from *which* group they are in, never from the `MANAGER`/`OWNER` roles (those carry admin powers in groups.google.com, so nobody outside MonAmieNet gets them).
+
+```
+rotasul00@      level 0: root group; its only member is the owner (responsável)
+├─ rotasul01@   level 1: a team (01–99); holds the team's display name, no direct members
+│  ├─ rotasul01r@   level 2: watch the team's map
+│  └─ rotasul01w@   level 2: share their own location in the team
+└─ rotasul13@ …
+```
+
+- **Parsing**: a group address is split by `^([a-z]+)(\d{2})([rw])?$` (before `@monamienet.org`) into partner id, team number and leaf. This works because **partner ids are lowercase letters only** (at least three); `app` and `community` are reserved. `<id>00r`, `<id>00w`, single-digit teams and `rw` leaves never exist. The parser has twins in `functions/group_address.js`, `central/functions/group_address.js` and `lib/app/config/partner/group_address.dart` (also used by `tool/`).
+- **Capabilities** (custom claims set by the partner's `syncClaims` from the person's **direct** groups, one gateway call, no tree walk): `share: [teamKey]` from `<id>NNw`, `watch: [teamKey]` from `<id>NNr`, `owns: [partnerId]` from `<id>00`, where a team key is `<id>NN`. Owners watch every team of their partner. "Both" means being in both leaves. A direct member of a level-1 group gets nothing (logged as a configuration error). `firestore.rules` checks these claims: reading positions needs `watch` in the team (or owning the partner), writing one's own position needs `share` in it, and a field-only person reads only their own document.
+- **The owner** (*responsável*) is the person who created the organization, alone, and cannot leave (for now). They are the only member of the root group, recorded as `ownerEmail` in the central registry `partners/{id}`, and deleting their account deletes the organization.
+- **Changing a role** = joining or leaving a leaf; **removing someone from a team** = leaving both leaves. Partners created before this model are moved with `dart run tool/partner.dart migrate-groups <id>` (prints the plan; `--apply` runs it).
 
 ### Client Onboarding Data (Google Drive via `rclone`)
 
@@ -70,6 +83,8 @@ Clients submit their instance identity through an onboarding Google Form. The an
 ## Testing
 
 Follow `.agents/rules/AI_UNIT_TESTING_GUIDELINES.md`: test only code that makes decisions, never configuration files read with regex, and keep `flutter test test/unit -j 2` under two minutes on an 8 GB laptop. Remove a feature's tests in the same commit that removes the feature.
+
+Security rules are tested for real against the emulators in `test/rules/` (Node, `@firebase/rules-unit-testing`): `cd test/rules && npm ci && nice -n 10 npm test`. Each test file uses its own `demo-*` project id so they share one emulator run.
 
 ## Resource Limits on Dev Machines
 

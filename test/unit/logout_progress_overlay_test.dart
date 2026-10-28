@@ -67,9 +67,63 @@ void main() {
       expect(find.text(_kOverlayMessage), findsOneWidget);
     });
 
+    testWidgets(
+      "Happy Path: Deve exibir a mensagem informada e não a padrão ('Trocando de organização…')",
+      (WidgetTester tester) async {
+        // 1. Arrange
+        const overlay = LogoutProgressOverlay(
+          message: 'Trocando de organização…',
+        );
+
+        // 2. Act
+        await tester.pumpWidget(
+          const MaterialApp(home: Scaffold(body: overlay)),
+        );
+
+        // 3. Assert
+        expect(find.text('Trocando de organização…'), findsOneWidget);
+        expect(find.text(_kOverlayMessage), findsNothing);
+      },
+    );
+
     // ---------------------------------------------------------------------
     // Edge Case
     // ---------------------------------------------------------------------
+    testWidgets(
+      'Edge Case: Deve bloquear toques sob a camada também com mensagem personalizada',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final counter = _TapCounter();
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: counter.increment,
+                      child: const Text('botão-sob-a-camada'),
+                    ),
+                  ),
+                  const LogoutProgressOverlay(
+                    message: 'Trocando de organização…',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+        // 2. Act
+        await tester.tap(find.byType(ElevatedButton), warnIfMissed: false);
+        await tester.pump();
+
+        // 3. Assert
+        expect(counter.taps, 0);
+      },
+    );
+
     testWidgets(
       'Edge Case: Deve exibir o indicador de progresso em modo indeterminado (sem valor fixo)',
       (WidgetTester tester) async {

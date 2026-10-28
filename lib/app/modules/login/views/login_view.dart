@@ -1,88 +1,96 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/app/config/partner/monamie_brand.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_logo.dart';
+import 'package:monamie_app/app/config/partner/monamie_mark.dart';
+import 'package:monamie_app/app/config/partner/monamie_wordmark.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/login/controllers/login_controller.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/utils/color_pallete.dart';
 
 import 'widgets/google_button.dart';
 
+/// *Login*: MonAmie's own screen, never in a partner's brand (the partner
+/// is only known after sign-in).
 class LoginView extends GetView<LoginController> {
   const LoginView({super.key});
 
-  AppBar _appBar() {
-    return AppBar(
-      title: Text(
-        Partner.current?.displayName ?? MonAmieBrand.name,
-        style: TextStyle(
-          color: AppColors.onPrimaryDark,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      centerTitle: true,
-      backgroundColor: AppColors.darkBlue(),
-      elevation: 0,
-    );
-  }
-
-  Widget _body() {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: MonAmieBrand.navy,
+    body: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const PartnerLogo(width: 220, height: 220),
-            const SizedBox(height: 48),
-            _loginButton(),
+            const Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  MonAmieMark(width: 150, color: MonAmieBrand.cream),
+                  SizedBox(height: 28),
+                  MonAmieWordmark(color: MonAmieBrand.cream),
+                  SizedBox(height: 28),
+                  SizedBox(
+                    width: 280,
+                    child: Text(
+                      MonAmieBrand.tagline,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 17,
+                        height: 1.5,
+                        color: MonAmieBrand.mutedCream,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _action(),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
 
-  Widget _loginButton() {
-    final authController = Get.find<AuthGoogleController>();
-
+  Widget _action() {
+    final auth = Get.find<AuthGoogleController>();
     return Obx(() {
-      if (controller.isRestoringSession.value ||
-          !authController.googleReady.value) {
-        return CircularProgressIndicator(color: AppColors.primary);
-      }
-      if (authController.isLoading.value) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: AppColors.primary),
-            const SizedBox(height: 16),
-            Text(
-              authController.enteringPartnerName.value == null
-                  ? "Procurando sua organização..."
-                  : "Entrando em ${authController.enteringPartnerName.value}...",
-              style: TextStyle(color: AppColors.darkBlue(), fontSize: 14),
-            ),
-          ],
+      if (controller.isRestoringSession.value || !auth.googleReady.value) {
+        return const Center(
+          child: CircularProgressIndicator(color: MonAmieBrand.cream),
         );
       }
-      return buildGoogleButton(() => controller.loginGoogle());
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final authController = Get.find<AuthGoogleController>();
-    // Rebuilds in the partner's brand once it is bound ("Entrando em ...").
-    return Obx(() {
-      authController.enteringPartnerName.value;
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: _appBar(),
-        body: _body(),
-      );
+      if (auth.isLoading.value) {
+        final name = auth.enteringPartnerName.value;
+        return SizedBox(
+          height: 56,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.6,
+                  color: MonAmieBrand.cream,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                name == null
+                    ? 'Procurando sua organização…'
+                    : 'Entrando em $name…',
+                style: const TextStyle(
+                  color: MonAmieBrand.cream,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return buildGoogleButton(controller.loginGoogle);
     });
   }
 }

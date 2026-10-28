@@ -1,10 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/config/partner/group_address.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/data/partner/partner_membership.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/data/repository/google_groups_repository.dart';
+import 'package:monamie_app/app/data/services/capabilities.dart';
 import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
@@ -34,21 +36,29 @@ class GoogleGroupsController extends GetxController {
   RxList<GoogleGroupMember> get highlightedObservedUsers =>
       _highlightedObservedUsers;
 
-  /// Retorna a lista de grupos onde o usuário logado é observável
-  /// (ou seja, possui papel de MEMBER ou MANAGER nos claims).
-  Future<List<GoogleGroupModel>> getObservableGroupsForUser() async {
-    final claims = await MonAmieClaimsService.readClaims();
-    if (claims == null || claims.isEmpty) return [];
+  /// What the person may do in the bound partner (from the claims).
+  final Rx<Capabilities> capabilities = const Capabilities().obs;
 
-    final allowedEmails = claims.entries
-        .where((e) => e.value == 'MEMBER' || e.value == 'MANAGER')
-        .map((e) => e.key.toLowerCase().trim())
-        .toSet();
+  /// The teams where the person shares their location: the choices when
+  /// they start sharing.
+  final RxList<GoogleGroupModel> shareTeams = RxList<GoogleGroupModel>();
 
-    return _observableGoogleGroups
-        .where((g) => allowedEmails.contains(g.email.toLowerCase().trim()))
-        .toList();
+  /// Whether the person sees any team's map in the bound partner. A
+  /// field-only person sees just their own position.
+  bool get canWatch {
+    final partner = Partner.current;
+    return partner != null && capabilities.value.canWatchIn(partner.id);
   }
+
+  /// Whether the person owns (is the *responsável* of) the bound partner.
+  bool get isOwner {
+    final partner = Partner.current;
+    return partner != null && capabilities.value.isOwnerOf(partner.id);
+  }
+
+  /// The teams where the signed-in person shares their location.
+  Future<List<GoogleGroupModel>> getObservableGroupsForUser() async =>
+      shareTeams.toList();
 
   /// Root group of the bound partner: `<id>00@monamienet.org`.
   static String get rootGroupEmail {
@@ -59,8 +69,8 @@ class GoogleGroupsController extends GetxController {
     return partner.rootGroupEmail;
   }
 
-  /// Lista de grupos que o usuário logado pode observar.
-  /// Representa os subgrupos (type == GROUP) de [rootGroupEmail].
+  /// The teams whose map the signed-in person sees: the ones they watch,
+  /// or every team of the partner for its owner.
   final RxList<GoogleGroupModel> _observableGoogleGroups =
       RxList<GoogleGroupModel>();
   List<GoogleGroupModel> get googleGroups => _observableGoogleGroups;
@@ -74,43 +84,69 @@ class GoogleGroupsController extends GetxController {
     _loadGroups();
   }
 
-  /// Dadas as entidades do grupo raiz e os grupos do usuário (`/groups`),
-  /// retorna os grupos do usuário que são subgrupos diretos do grupo raiz.
+  /// The teams of [partnerId] as groups, for the keys in [teamKeys].
   ///
-  /// Subgrupos são entidades com `type == GROUP` cujo email não começa com
-  /// `space/`. Nome e descrição vêm de [userGroups].
+  /// [rootEntities] are the root group's members (`/members`): its subgroups
+  /// are the teams, with their display names. [userGroups] are the person's
+  /// own groups (`/groups`). A team's name comes from its entry in either
+  /// list, or is "Equipe NN" when neither names it.
   @visibleForTesting
-  static List<GoogleGroupModel> userSubgroups(
+  static List<GoogleGroupModel> teamsFor(
+    Iterable<String> teamKeys,
     List<Map<String, dynamic>> rootEntities,
     List<Map<String, dynamic>> userGroups,
   ) {
-    final subgroupEmails = rootEntities
-        .where(
-          (e) =>
-              e['type'] == 'GROUP' &&
-              (e['email'] as String?)?.startsWith('space/') != true,
-        )
-        .map((e) => (e['email'] as String?)?.trim().toLowerCase())
-        .whereType<String>()
-        .toSet();
-
-    return userGroups
-        .where(
-          (g) => subgroupEmails.contains(
-            (g['email'] as String?)?.trim().toLowerCase(),
-          ),
-        )
-        .map(
-          (g) => GoogleGroupModel(
-            name: g['name'] ?? 'Nome indisponível',
-            email: g['email'],
-            description: g['description'] ?? '',
-            members: [], // TODO
-            subgroups: [], // TODO
-          ),
-        )
-        .toList();
+    final names = <String, String>{};
+    for (final entry in [...userGroups, ...rootEntities]) {
+      final email = entry['email'];
+      final name = entry['name'];
+      if (email is! String || name is! String || name.trim().isEmpty) continue;
+      final address = parseGroupAddress(email);
+      if (address?.level == GroupLevel.team) {
+        names[address!.teamKey] = name.trim();
+      }
+    }
+    return [
+      for (final key in teamKeys)
+        GoogleGroupModel(
+          name: names[key] ?? 'Equipe ${key.substring(key.length - 2)}',
+          email: teamEmailForKey(key),
+          description: '',
+          members: [],
+          subgroups: [],
+        ),
+    ];
   }
+
+  /// The team to switch the map to once [teams] are known: the first one when
+  /// nothing is observed yet or the observed [current] is no longer among
+  /// them, `null` when the map should stay as it is.
+  @visibleForTesting
+  static GoogleGroupModel? teamToObserve(
+    List<GoogleGroupModel> teams,
+    GoogleGroupModel? current,
+  ) {
+    if (teams.isEmpty) return null;
+    if (current != null && teams.any((team) => team.email == current.email)) {
+      return null;
+    }
+    return teams.first;
+  }
+
+  /// The team keys of [partnerId] among [rootEntities]: the root group's
+  /// subgroups named `<id>NN@`.
+  @visibleForTesting
+  static List<String> teamKeysOf(
+    String partnerId,
+    List<Map<String, dynamic>> rootEntities,
+  ) => [
+    for (final entity in rootEntities)
+      if (entity['type'] == 'GROUP' && entity['email'] is String)
+        if (parseGroupAddress(entity['email'] as String) case final address?
+            when address.partnerId == partnerId &&
+                address.level == GroupLevel.team)
+          address.teamKey,
+  ];
 
   Future<void> _loadGroups({bool forceRefresh = false}) async {
     loadError.value = '';
@@ -154,21 +190,31 @@ class GoogleGroupsController extends GetxController {
 
       // Removed from every group of the partner: forget it.
       final partner = Partner.current;
-      if (partner != null && !belongsToPartner(partner.id, userGroups)) {
+      if (partner == null) return;
+      if (!belongsToPartner(partner.id, userGroups)) {
         await _onAccessLost();
         return;
       }
 
-      // 2. Interseção: subgrupos do raiz dos quais o usuário participa.
+      // 2. Capabilities decide which teams the person sees and shares in.
+      final caps =
+          await MonAmieClaimsService.readClaims() ?? const Capabilities();
+      capabilities.value = caps;
+      final partnerId = partner.id;
       _observableGoogleGroups.assignAll(
-        userSubgroups(rootEntities, userGroups),
+        teamsFor(
+          caps.watchTeamsIn(partnerId, teamKeysOf(partnerId, rootEntities)),
+          rootEntities,
+          userGroups,
+        ),
+      );
+      shareTeams.assignAll(
+        teamsFor(caps.shareTeamsIn(partnerId), rootEntities, userGroups),
       );
 
-      if (_observableGoogleGroups.isEmpty) {
-        _loadError.value =
-            'Você não participa de nenhum subgrupo de $rootGroupEmail.';
-        return;
-      }
+      // Someone who watches opens straight onto a team, not an empty panel.
+      final next = teamToObserve(_observableGoogleGroups, selectedGroup.value);
+      if (next != null) await updateObservedUsers(next);
     } catch (e, stack) {
       debugPrint('$e\n$stack');
       _loadError.value = '$e';
@@ -186,24 +232,67 @@ class GoogleGroupsController extends GetxController {
     }
   }
 
+  /// E-mail of the person whose map marker was pressed, or `null`. The list
+  /// row of that person is tinted; it is not the trail switch above.
+  final selectedMemberEmail = RxnString();
+
+  /// Pressing the selected marker again clears the selection.
+  void toggleSelected(String email) {
+    selectedMemberEmail.value = selectedMemberEmail.value == email
+        ? null
+        : email;
+  }
+
+  void clearSelected() => selectedMemberEmail.value = null;
+
   bool isHighlighted(GoogleGroupMember member) {
     return _highlightedObservedUsers.any((m) => m.email == member.email);
   }
 
-  /// Mapeia o role da API para [GoogleGroupRole].
-  GoogleGroupRole _parseRole(String role) {
-    switch (role.toUpperCase()) {
-      case 'OWNER':
-        return GoogleGroupRole.owner;
-      case 'MANAGER':
-        return GoogleGroupRole.manager;
-      default:
-        return GoogleGroupRole.member;
+  /// Atualiza os membros observados com base no grupo selecionado.
+  /// Busca os participantes do grupo via API e filtra apenas usuários (type == USER).
+  /// People in the field per team e-mail, for the team menu; filled by
+  /// [loadTeamSizes].
+  final RxMap<String, int> teamSizes = <String, int>{}.obs;
+
+  /// Whether the map is loading a team the person just picked.
+  final RxBool switchingTeam = false.obs;
+
+  /// Counts the people in the field of every team in [googleGroups], from
+  /// each share leaf (cached like the observed team's). A team that fails
+  /// keeps no count, so the menu shows only its name.
+  Future<void> loadTeamSizes() async {
+    final token = await _auth.currentUser?.getIdToken();
+    if (token == null) return;
+    for (final team in googleGroups.toList()) {
+      try {
+        final entities = await _repository.getGroupEntities(
+          token,
+          shareLeafEmail(team.email),
+        );
+        teamSizes[team.email] = entities
+            .where((e) => e['type'] == 'USER')
+            .length;
+      } catch (e) {
+        debugPrint('Could not count the people of ${team.email}: $e');
+      }
     }
   }
 
-  /// Atualiza os membros observados com base no grupo selecionado.
-  /// Busca os participantes do grupo via API e filtra apenas usuários (type == USER).
+  /// Switches the map to [team] from the team menu, with [switchingTeam] on
+  /// while its people load. Picking the observed team again does nothing.
+  Future<void> pickTeam(GoogleGroupModel team) async {
+    if (switchingTeam.value || team.email == selectedGroup.value?.email) {
+      return;
+    }
+    switchingTeam.value = true;
+    try {
+      await updateObservedUsers(team);
+    } finally {
+      switchingTeam.value = false;
+    }
+  }
+
   Future<void> updateObservedUsers(
     GoogleGroupModel selectedGroup, {
     bool forceRefresh = false,
@@ -218,34 +307,36 @@ class GoogleGroupsController extends GetxController {
       final token = await user.getIdToken(true);
       if (token == null) return;
 
-      // Busca usuários do grupo selecionado
+      // The people in the field are the members of the team's share leaf.
       final entities = await _repository.getGroupEntities(
         token,
-        selectedGroup.email,
+        shareLeafEmail(selectedGroup.email),
         forceRefresh: forceRefresh,
       );
 
       final users = entities.where((e) => e['type'] == 'USER').toList();
 
       // Filtrar apenas usuários e mapear para GoogleGroupMember
+      teamSizes[selectedGroup.email] = users.length;
       observedMembers.value = users.where((m) => m['type'] == 'USER').map((m) {
         final email = (m['email'] as String?)?.trim() ?? '';
         final rawName = (m['name'] as String?)?.trim();
         final name = (rawName != null && rawName.isNotEmpty)
             ? rawName
-            : (email.isNotEmpty ? email.split('@').first : 'Sem nome');
-        final roleStr = (m['role'] as String?)?.trim() ?? 'MEMBER';
-
-        return GoogleGroupMember(
-          name: name,
-          email: email,
-          role: _parseRole(roleStr),
-        );
+            : (email.isNotEmpty ? email : 'Sem nome');
+        return GoogleGroupMember(name: name, email: email);
       }).toList();
     } catch (e) {
       debugPrint("Erro ao buscar membros do grupo ${selectedGroup.email}: $e");
       observedMembers.clear();
     }
+  }
+
+  /// The share leaf of a team: `rotasul01@…` → `rotasul01w@…`.
+  @visibleForTesting
+  static String shareLeafEmail(String teamEmail) {
+    final address = parseGroupAddress(teamEmail);
+    return address == null ? teamEmail : '${address.teamKey}w@$groupDomain';
   }
 
   Future<void> refreshGroups() async {
@@ -278,8 +369,7 @@ class GoogleGroupsController extends GetxController {
     }
   }
 
-  /// Chama a Cloud Function `syncClaims` para re-sincronizar
-  /// os Custom Claims do usuário com seus papéis atuais nos grupos.
-  Future<Map<String, dynamic>?> _syncClaims() =>
-      MonAmieClaimsService.syncClaims();
+  /// Recomputes the person's capabilities (they may have been added to or
+  /// removed from a team since the last sign-in).
+  Future<Capabilities?> _syncClaims() => MonAmieClaimsService.syncClaims();
 }

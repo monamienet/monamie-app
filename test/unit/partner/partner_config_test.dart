@@ -1,27 +1,36 @@
+import 'dart:typed_data';
 import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
+import 'package:monamie_app/app/config/partner/partner_theme.dart';
 
-const logoSvg = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
-const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>';
+/// Bytes standing for a downloaded logo PNG.
+final logoBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 1, 2, 3]);
 
-/// A complete `config/branding` document, as the partner tool publishes it.
+const oceano = PartnerTheme(
+  id: 'oceano',
+  name: 'Oceano',
+  primary: Color(0xFF0B7F7B),
+  dark: Color(0xFF0A3D3B),
+  light: Color(0xFFD3EEEC),
+  onPrimary: Color(0xFFFFFFFF),
+  onDark: Color(0xFFFFFFFF),
+);
+
+/// A complete `config/branding` document, as the app and the tool write it.
 Map<String, Object?> fullBranding() => {
   'name': 'AquariusTur',
-  'colors': {'primary': '#0ABAB5', 'secondary': '#FFFFFF'},
-  'logoSvg': logoSvg,
-  'iconSvg': iconSvg,
+  'themeId': 'oceano',
+  'logoVersion': 1700000000000,
 };
 
-/// The fields of [config], so two configs can be compared by value.
+/// The branding fields of [config], so two configs can be compared by value.
 List<Object?> fieldsOf(PartnerConfig config) => [
   config.id,
   config.name,
-  config.primaryColor,
-  config.secondaryColor,
-  config.logoSvg,
-  config.iconSvg,
+  config.themeId,
+  config.logoVersion,
 ];
 
 void main() {
@@ -29,28 +38,6 @@ void main() {
     test('Happy Path: a lowercase id is valid', () {
       // 1. Arrange
       const id = 'aquariustur';
-
-      // 2. Act
-      final problem = partnerIdProblem(id);
-
-      // 3. Assert
-      expect(problem, isNull);
-    });
-
-    test('Happy Path: an id with digits after the first letter is valid', () {
-      // 1. Arrange
-      const id = 'tur2';
-
-      // 2. Act
-      final problem = partnerIdProblem(id);
-
-      // 3. Assert
-      expect(problem, isNull);
-    });
-
-    test('Edge Case: a single letter is a valid id', () {
-      // 1. Arrange
-      const id = 'x';
 
       // 2. Act
       final problem = partnerIdProblem(id);
@@ -118,8 +105,8 @@ void main() {
   group('partnerIdFromGroupEmail - Unit Test Suite', () {
     const cases = <({String label, String email, String? expected})>[
       (
-        label: 'Happy Path: a subgroup gives its partner id',
-        email: 'aquariustur01@monamienet.org',
+        label: 'Happy Path: a share leaf gives its partner id',
+        email: 'aquariustur01w@monamienet.org',
         expected: 'aquariustur',
       ),
       (
@@ -129,23 +116,13 @@ void main() {
       ),
       (
         label: 'Edge Case: upper case letters are normalized',
-        email: 'AquariusTur01@MonAmieNet.ORG',
+        email: 'AquariusTur01W@MonAmieNet.ORG',
         expected: 'aquariustur',
       ),
       (
         label: 'Edge Case: surrounding whitespace is ignored',
-        email: '  aquariustur01@monamienet.org \n',
+        email: '  aquariustur01r@monamienet.org \n',
         expected: 'aquariustur',
-      ),
-      (
-        label: 'Edge Case: only the last two digits are the suffix',
-        email: 'tur201@monamienet.org',
-        expected: 'tur2',
-      ),
-      (
-        label: 'Edge Case: the shortest valid local part (3 characters)',
-        email: 'x01@monamienet.org',
-        expected: 'x',
       ),
       (
         label: 'Sad Path: the reserved id "app" gives null',
@@ -223,13 +200,13 @@ void main() {
 
     test('Edge Case: the root group maps back to its partner id', () {
       // 1. Arrange
-      final email = rootGroupEmailFor('tur2');
+      final email = rootGroupEmailFor('rotasul');
 
       // 2. Act
       final id = partnerIdFromGroupEmail(email);
 
       // 3. Assert
-      expect(id, 'tur2');
+      expect(id, 'rotasul');
     });
 
     test('Happy Path: the Firebase project is monamienet-<id>', () {
@@ -291,14 +268,12 @@ void main() {
       expect(fieldsOf(config), [
         'aquariustur',
         'AquariusTur',
-        const Color(0xFF0ABAB5),
-        const Color(0xFFFFFFFF),
-        logoSvg,
-        iconSvg,
+        'oceano',
+        1700000000000,
       ]);
     });
 
-    test('Happy Path: derived names use the id and the MonAmie prefix', () {
+    test('Happy Path: derived names use the id', () {
       // 1. Arrange
       final data = fullBranding();
 
@@ -307,27 +282,35 @@ void main() {
 
       // 3. Assert
       expect(
-        [config.displayName, config.rootGroupEmail, config.firebaseProjectId],
-        [
-          'MonAmie AquariusTur',
-          'aquariustur00@monamienet.org',
-          'monamienet-aquariustur',
-        ],
+        [config.rootGroupEmail, config.firebaseProjectId],
+        ['aquariustur00@monamienet.org', 'monamienet-aquariustur'],
       );
     });
 
-    test('Edge Case: lower case hex colors are accepted', () {
+    test('Happy Path: keeps the given theme', () {
       // 1. Arrange
-      final data = {
-        'name': 'Acme',
-        'colors': {'primary': '#0abab5'},
-      };
+      final data = fullBranding();
 
       // 2. Act
-      final config = PartnerConfig.fromBranding('acme', data);
+      final config = PartnerConfig.fromBranding('acme', data, theme: oceano);
 
       // 3. Assert
-      expect(config.primaryColor, const Color(0xFF0ABAB5));
+      expect(config.theme, same(oceano));
+    });
+
+    test('Happy Path: keeps the logo bytes when logoVersion is an int', () {
+      // 1. Arrange
+      final data = fullBranding();
+
+      // 2. Act
+      final config = PartnerConfig.fromBranding(
+        'acme',
+        data,
+        logoPng: logoBytes,
+      );
+
+      // 3. Assert
+      expect(config.logoPng, logoBytes);
     });
 
     test('Edge Case: the name is trimmed', () {
@@ -341,11 +324,20 @@ void main() {
       expect(config.name, 'Acme Tours');
     });
 
+    test('Edge Case: themeId is trimmed', () {
+      // 1. Arrange
+      final data = {'name': 'Acme', 'themeId': '  oceano '};
+
+      // 2. Act
+      final config = PartnerConfig.fromBranding('acme', data);
+
+      // 3. Assert
+      expect(config.themeId, 'oceano');
+    });
+
     test('Edge Case: a missing name becomes the fallback name', () {
       // 1. Arrange
-      final data = {
-        'colors': {'primary': '#0ABAB5'},
-      };
+      final data = {'themeId': 'oceano'};
 
       // 2. Act
       final config = PartnerConfig.fromBranding('aquariustur', data);
@@ -365,116 +357,93 @@ void main() {
       expect(config.name, 'Acme');
     });
 
-    test(
-      'Edge Case: a name only document leaves every optional field null',
-      () {
-        // 1. Arrange
-        final data = {'name': 'Acme'};
-
-        // 2. Act
-        final config = PartnerConfig.fromBranding('acme', data);
-
-        // 3. Assert
-        expect([
-          config.primaryColor,
-          config.secondaryColor,
-          config.logoSvg,
-          config.iconSvg,
-        ], everyElement(isNull));
-      },
-    );
-
-    test('Edge Case: only the missing color is null', () {
+    test('Edge Case: a name only document leaves every optional field '
+        'null', () {
       // 1. Arrange
-      final data = {
-        'name': 'Acme',
-        'colors': {'secondary': '#000000'},
-      };
+      final data = {'name': 'Acme'};
 
       // 2. Act
       final config = PartnerConfig.fromBranding('acme', data);
 
       // 3. Assert
-      expect(
-        [config.primaryColor, config.secondaryColor],
-        [null, const Color(0xFF000000)],
+      expect([
+        config.themeId,
+        config.theme,
+        config.logoVersion,
+        config.logoPng,
+      ], everyElement(isNull));
+    });
+
+    test('Edge Case: logo bytes without a logoVersion give no logo', () {
+      // 1. Arrange
+      final data = {'name': 'Acme', 'themeId': 'oceano'};
+
+      // 2. Act
+      final config = PartnerConfig.fromBranding(
+        'acme',
+        data,
+        logoPng: logoBytes,
       );
+
+      // 3. Assert
+      expect(config.logoPng, isNull);
     });
 
-    test('Edge Case: a blank logo SVG becomes null', () {
+    test('Edge Case: a logoVersion without bytes keeps the version and no '
+        'logo', () {
       // 1. Arrange
-      final data = {'name': 'Acme', 'logoSvg': '  \n '};
+      final data = {'name': 'Acme', 'logoVersion': 3};
 
       // 2. Act
       final config = PartnerConfig.fromBranding('acme', data);
 
       // 3. Assert
-      expect(config.logoSvg, isNull);
+      expect([config.logoVersion, config.logoPng], [3, null]);
     });
 
-    test('Edge Case: a blank icon SVG becomes null', () {
+    test('Sad Path: a blank themeId is read as null', () {
       // 1. Arrange
-      final data = {'name': 'Acme', 'iconSvg': ''};
+      final data = {'name': 'Acme', 'themeId': '   '};
 
       // 2. Act
       final config = PartnerConfig.fromBranding('acme', data);
 
       // 3. Assert
-      expect(config.iconSvg, isNull);
+      expect(config.themeId, isNull);
     });
 
-    const malformedColors = <String, Object?>{
-      'a color name': 'teal',
-      'a hex color without #': '0ABAB5',
-      'a 3-digit hex color': '#0AB',
-      'an 8-digit hex color with alpha': '#FF0ABAB5',
-      'non-hex digits': '#GGGGGG',
-      'a number': 0xFF0ABAB5,
-      'surrounding spaces': ' #0ABAB5 ',
+    test('Sad Path: a themeId that is not a string is read as null', () {
+      // 1. Arrange
+      final data = {'name': 'Acme', 'themeId': 7};
+
+      // 2. Act
+      final config = PartnerConfig.fromBranding('acme', data);
+
+      // 3. Assert
+      expect(config.themeId, isNull);
+    });
+
+    const badVersions = <String, Object?>{
+      'a string': '1700000000000',
+      'a double': 1.5,
+      'a map': {'v': 1},
     };
-    for (final MapEntry(key: label, value: color) in malformedColors.entries) {
-      test('Sad Path: $label as colors.primary becomes null', () {
+    for (final MapEntry(key: label, value: version) in badVersions.entries) {
+      test('Sad Path: $label as logoVersion gives no version and no logo', () {
         // 1. Arrange
-        final data = {
-          'name': 'Acme',
-          'colors': {'primary': color},
-        };
+        final data = {'name': 'Acme', 'logoVersion': version};
 
         // 2. Act
-        final config = PartnerConfig.fromBranding('acme', data);
+        final config = PartnerConfig.fromBranding(
+          'acme',
+          data,
+          logoPng: logoBytes,
+        );
 
         // 3. Assert
-        expect(config.primaryColor, isNull);
+        expect([config.logoVersion, config.logoPng], [null, null]);
       });
     }
-
-    test('Sad Path: a malformed secondary color becomes null', () {
-      // 1. Arrange
-      final data = {
-        'name': 'Acme',
-        'colors': {'primary': '#0ABAB5', 'secondary': 'white'},
-      };
-
-      // 2. Act
-      final config = PartnerConfig.fromBranding('acme', data);
-
-      // 3. Assert
-      expect(config.secondaryColor, isNull);
-    });
-
-    test('Sad Path: colors that are not a map give null colors', () {
-      // 1. Arrange
-      final data = {
-        'name': 'Acme',
-        'colors': ['#0ABAB5', '#FFFFFF'],
-      };
-
-      // 2. Act
-      final config = PartnerConfig.fromBranding('acme', data);
-
-      // 3. Assert
-      expect([config.primaryColor, config.secondaryColor], [null, null]);
-    });
 
     test('Sad Path: a name that is not a string becomes the fallback', () {
       // 1. Arrange
@@ -487,20 +456,6 @@ void main() {
       expect(config.name, 'Acme');
     });
 
-    test('Sad Path: an SVG that is not a string becomes null', () {
-      // 1. Arrange
-      final data = {
-        'name': 'Acme',
-        'logoSvg': {'svg': logoSvg},
-      };
-
-      // 2. Act
-      final config = PartnerConfig.fromBranding('acme', data);
-
-      // 3. Assert
-      expect(config.logoSvg, isNull);
-    });
-
     test('Sad Path: null data gives a config with only id and fallback '
         'name', () {
       // 1. Arrange
@@ -510,30 +465,19 @@ void main() {
       final config = PartnerConfig.fromBranding('acme', data);
 
       // 3. Assert
-      expect(fieldsOf(config), ['acme', 'Acme', null, null, null, null]);
+      expect(fieldsOf(config), ['acme', 'Acme', null, null]);
     });
 
     test('Sad Path: a list as data gives a config with only id and fallback '
         'name', () {
       // 1. Arrange
-      final data = ['AquariusTur', '#0ABAB5'];
+      final data = ['AquariusTur', 'oceano'];
 
       // 2. Act
       final config = PartnerConfig.fromBranding('acme', data);
 
       // 3. Assert
-      expect(fieldsOf(config), ['acme', 'Acme', null, null, null, null]);
-    });
-
-    test('Sad Path: a string as data gives the fallback name', () {
-      // 1. Arrange
-      const data = 'AquariusTur';
-
-      // 2. Act
-      final config = PartnerConfig.fromBranding('acme', data);
-
-      // 3. Assert
-      expect(config.name, 'Acme');
+      expect(fieldsOf(config), ['acme', 'Acme', null, null]);
     });
 
     const invalidIds = ['', 'app', 'Acme', '2tur', 'aquarius-tur'];
@@ -551,7 +495,58 @@ void main() {
     }
   });
 
+  group('PartnerConfig.effectiveTheme - Unit Test Suite', () {
+    test('Happy Path: a resolved theme is the effective theme', () {
+      // 1. Arrange
+      const config = PartnerConfig(
+        id: 'acme',
+        name: 'Acme',
+        themeId: 'oceano',
+        theme: oceano,
+      );
+
+      // 2. Act
+      final theme = config.effectiveTheme;
+
+      // 3. Assert
+      expect(theme, same(oceano));
+    });
+
+    test('Edge Case: a themeId without a resolved theme uses Grafite', () {
+      // 1. Arrange
+      const config = PartnerConfig(id: 'acme', name: 'Acme', themeId: 'neon');
+
+      // 2. Act
+      final theme = config.effectiveTheme;
+
+      // 3. Assert
+      expect(theme.id, 'grafite');
+    });
+
+    test('Sad Path: no theme at all uses Grafite', () {
+      // 1. Arrange
+      const config = PartnerConfig(id: 'acme', name: 'Acme');
+
+      // 2. Act
+      final theme = config.effectiveTheme;
+
+      // 3. Assert
+      expect(theme, same(defaultPartnerTheme));
+    });
+  });
+
   group('PartnerConfig.toBranding - Unit Test Suite', () {
+    test('Happy Path: writes the document in the published format', () {
+      // 1. Arrange
+      final config = PartnerConfig.fromBranding('acme', fullBranding());
+
+      // 2. Act
+      final branding = config.toBranding();
+
+      // 3. Assert
+      expect(branding, fullBranding());
+    });
+
     test('Happy Path: a complete config survives a round trip through '
         'fromBranding', () {
       // 1. Arrange
@@ -564,36 +559,6 @@ void main() {
       expect(fieldsOf(copy), fieldsOf(original));
     });
 
-    test('Happy Path: writes the document in the published format', () {
-      // 1. Arrange
-      final config = PartnerConfig.fromBranding('acme', fullBranding());
-
-      // 2. Act
-      final branding = config.toBranding();
-
-      // 3. Assert
-      expect(branding, fullBranding());
-    });
-
-    test('Edge Case: colors are written as upper case #RRGGBB', () {
-      // 1. Arrange
-      const config = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        primaryColor: Color(0xFF0abab5),
-        secondaryColor: Color(0xFF000001),
-      );
-
-      // 2. Act
-      final branding = config.toBranding();
-
-      // 3. Assert
-      expect(branding['colors'], {
-        'primary': '#0ABAB5',
-        'secondary': '#000001',
-      });
-    });
-
     test('Edge Case: missing optional fields are left out', () {
       // 1. Arrange
       const config = PartnerConfig(id: 'acme', name: 'Acme');
@@ -602,33 +567,24 @@ void main() {
       final branding = config.toBranding();
 
       // 3. Assert
-      expect(branding, {'name': 'Acme', 'colors': <String, Object?>{}});
+      expect(branding, {'name': 'Acme'});
     });
 
-    test('Edge Case: a name only config survives a round trip', () {
+    test('Sad Path: the logo bytes and the resolved theme are not written', () {
       // 1. Arrange
-      const original = PartnerConfig(id: 'acme', name: 'Acme Tours');
-
-      // 2. Act
-      final copy = PartnerConfig.fromBranding('acme', original.toBranding());
-
-      // 3. Assert
-      expect(fieldsOf(copy), fieldsOf(original));
-    });
-
-    test('Sad Path: a translucent color loses its alpha in the round trip', () {
-      // 1. Arrange
-      const original = PartnerConfig(
+      final config = PartnerConfig(
         id: 'acme',
         name: 'Acme',
-        primaryColor: Color(0x800ABAB5),
+        theme: oceano,
+        logoVersion: 2,
+        logoPng: logoBytes,
       );
 
       // 2. Act
-      final copy = PartnerConfig.fromBranding('acme', original.toBranding());
+      final branding = config.toBranding();
 
       // 3. Assert
-      expect(copy.primaryColor, const Color(0xFF0ABAB5));
+      expect(branding, {'name': 'Acme', 'logoVersion': 2});
     });
   });
 }

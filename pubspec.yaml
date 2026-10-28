@@ -57,6 +57,8 @@ dependencies:
   intl: ^0.20.3
   shared_preferences: ^2.5.6
   shared_preferences_android: ^2.5.1
+  firebase_storage: ^13.6.1
+  file_picker: ^13.3.0
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +85,21 @@ flutter:
   uses-material-design: true
   assets:
     - assets/monamie/
+
+  # Manrope, the font of the design canvas (SIL Open Font License, see
+  # assets/fonts/Manrope-OFL.txt). One static file per weight, cut from the
+  # variable font because Flutter does not map FontWeight to its axis.
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-400.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-500.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-700.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-800.ttf
+          weight: 800
 
   # To add assets to your application, add an assets section, like this:
   # assets:

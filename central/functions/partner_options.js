@@ -1,14 +1,20 @@
 const APP_PACKAGE = "org.monamienet.app";
 const API = "https://firebase.googleapis.com/v1beta1";
 
+/** The shared Firebase project of every Community partner. */
+const COMMUNITY_PROJECT_ID = "monamienet-community";
+
 /**
- * The Firebase project of partner `id`.
+ * The Firebase project where partner `id`'s data lives: the shared
+ * Community project, or its own `monamienet-<id>` on the Standard plan
+ * (the default for entries written before plans existed).
  *
  * @param {string} id - Partner id
+ * @param {string} [plan] - "community" or "standard"
  * @returns {string} Project id
  */
-function projectIdFor(id) {
-  return `monamienet-${id}`;
+function projectIdFor(id, plan) {
+  return plan === "community" ? COMMUNITY_PROJECT_ID : `monamienet-${id}`;
 }
 
 /**
@@ -85,26 +91,29 @@ class PartnerOptionsReader {
   /**
    * @param {string} id - Partner id
    * @param {"android"|"web"} platform - Platform of the caller
+   * @param {string} [plan] - The partner's plan; Community partners share
+   *   one project, so they share its options
    * @returns {Promise<object>} FirebaseOptions fields
    */
-  async get(id, platform) {
-    const key = `${id}/${platform}`;
+  async get(id, platform, plan) {
+    const projectId = projectIdFor(id, plan);
+    const key = `${projectId}/${platform}`;
     const cached = this._cache.get(key);
     if (cached && cached.expires > this._now()) return cached.value;
     const value =
-      platform === "android" ? await this._android(id) : await this._web(id);
+      platform === "android"
+        ? await this._android(projectId)
+        : await this._web(projectId);
     this._cache.set(key, { value, expires: this._now() + this._ttlMs });
     return value;
   }
 
-  async _android(id) {
-    const list = await this._getJson(
-      `${API}/projects/${projectIdFor(id)}/androidApps`
-    );
+  async _android(projectId) {
+    const list = await this._getJson(`${API}/projects/${projectId}/androidApps`);
     const apps = (list.apps ?? []).filter((a) => a.packageName === APP_PACKAGE);
     if (apps.length !== 1) {
       throw new Error(
-        `${projectIdFor(id)} has ${apps.length} Android apps for ${APP_PACKAGE}.`
+        `${projectId} has ${apps.length} Android apps for ${APP_PACKAGE}.`
       );
     }
     const config = await this._getJson(
@@ -116,13 +125,11 @@ class PartnerOptionsReader {
     return androidOptionsFromGoogleServices(JSON.parse(json));
   }
 
-  async _web(id) {
-    const list = await this._getJson(
-      `${API}/projects/${projectIdFor(id)}/webApps`
-    );
+  async _web(projectId) {
+    const list = await this._getJson(`${API}/projects/${projectId}/webApps`);
     const apps = list.apps ?? [];
     if (apps.length !== 1) {
-      throw new Error(`${projectIdFor(id)} has ${apps.length} web apps.`);
+      throw new Error(`${projectId} has ${apps.length} web apps.`);
     }
     return webOptionsFromSdkConfig(
       await this._getJson(`${API}/projects/-/webApps/${apps[0].appId}/config`)
@@ -131,6 +138,7 @@ class PartnerOptionsReader {
 }
 
 module.exports = {
+  COMMUNITY_PROJECT_ID,
   PartnerOptionsReader,
   androidOptionsFromGoogleServices,
   webOptionsFromSdkConfig,

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Splash shown while the app starts: the MonAmie logo on white
-     (@color/splash_background, set by Gradle). Partners are bound later,
+<!-- Splash shown while the app starts: the MonAmie mark and name on ink
+     (@color/splash_background, set by Gradle), as in the design canvas. Partners are bound later,
      after sign-in, so the native splash is the same for everyone. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splash_background" />

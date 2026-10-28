@@ -22,7 +22,7 @@ const options = FirebaseOptions(
 );
 
 const binding = PartnerBinding(
-  partner: PartnerConfig(id: 'acme', name: 'Acme', logoSvg: '<svg/>'),
+  partner: PartnerConfig(id: 'acme', name: 'Acme', themeId: 'oceano'),
   options: options,
 );
 
@@ -51,10 +51,10 @@ void main() {
         [
           read?.partner.id,
           read?.partner.name,
-          read?.partner.logoSvg,
+          read?.partner.themeId,
           read?.options,
         ],
-        ['acme', 'Acme', '<svg/>', options],
+        ['acme', 'Acme', 'oceano', options],
       );
     });
 

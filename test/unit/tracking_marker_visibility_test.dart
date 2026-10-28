@@ -26,16 +26,8 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(
-            email: 'user1@monamienet.org',
-            name: 'User 1',
-            role: GoogleGroupRole.member,
-          ),
-          GoogleGroupMember(
-            email: 'user2@monamienet.org',
-            name: 'User 2',
-            role: GoogleGroupRole.member,
-          ),
+          GoogleGroupMember(email: 'user1@monamienet.org', name: 'User 1'),
+          GoogleGroupMember(email: 'user2@monamienet.org', name: 'User 2'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
@@ -66,11 +58,7 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(
-            email: 'user1@monamienet.org',
-            name: 'User 1',
-            role: GoogleGroupRole.member,
-          ),
+          GoogleGroupMember(email: 'user1@monamienet.org', name: 'User 1'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
@@ -101,11 +89,7 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(
-            email: 'user1@monamienet.org',
-            name: 'User 1',
-            role: GoogleGroupRole.member,
-          ),
+          GoogleGroupMember(email: 'user1@monamienet.org', name: 'User 1'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
@@ -133,11 +117,7 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(
-            email: 'user2@monamienet.org',
-            name: 'User 2',
-            role: GoogleGroupRole.member,
-          ),
+          GoogleGroupMember(email: 'user2@monamienet.org', name: 'User 2'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 

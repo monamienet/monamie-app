@@ -1,7 +1,58 @@
 const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { rootGroupEmailFor } = require("../root_group");
+const { partnerIdForProject, rootGroupEmailFor } = require("../root_group");
+
+/** Project ids that do not follow `monamienet-<valid id>`. */
+const invalidProjects = [
+  ["a project without the prefix", "aquariustur"],
+  ["another prefix", "other-aquariustur"],
+  ["the prefix in upper case", "MonAmieNet-aquariustur"],
+  ["the bare prefix", "monamienet-"],
+  ["an id with upper case letters", "monamienet-AquariusTur"],
+  ["an id with digits", "monamienet-tur2"],
+  ["an id starting with a digit", "monamienet-2tur"],
+  ["an id with a hyphen", "monamienet-aquarius-tur"],
+  ["an id shorter than 3 letters", "monamienet-ab"],
+  ["the reserved id community", "monamienet-community"],
+];
+
+describe("partnerIdForProject - Unit Test Suite", () => {
+  test("Happy Path: monamienet-<id> gives <id>", () => {
+    // 1. Arrange
+    const projectId = "monamienet-rotasul";
+
+    // 2. Act
+    const id = partnerIdForProject(projectId);
+
+    // 3. Assert
+    assert.equal(id, "rotasul");
+  });
+
+  test("Edge Case: a three-letter partner id is accepted", () => {
+    // 1. Arrange
+    const projectId = "monamienet-abc";
+
+    // 2. Act
+    const id = partnerIdForProject(projectId);
+
+    // 3. Assert
+    assert.equal(id, "abc");
+  });
+
+  for (const [label, projectId] of invalidProjects) {
+    test(`Sad Path: ${label} ("${projectId}") throws`, () => {
+      // 1. Arrange
+      const input = projectId;
+
+      // 2. Act
+      const action = () => partnerIdForProject(input);
+
+      // 3. Assert
+      assert.throws(action, Error);
+    });
+  }
+});
 
 describe("rootGroupEmailFor - Unit Test Suite", () => {
   // -------------------------------------------------------------
@@ -18,31 +69,9 @@ describe("rootGroupEmailFor - Unit Test Suite", () => {
     assert.equal(email, "aquariustur00@monamienet.org");
   });
 
-  test("Happy Path: keeps digits that are part of the partner id", () => {
-    // 1. Arrange
-    const projectId = "monamienet-tur2";
-
-    // 2. Act
-    const email = rootGroupEmailFor(projectId);
-
-    // 3. Assert
-    assert.equal(email, "tur200@monamienet.org");
-  });
-
   // -------------------------------------------------------------
   // EDGE CASES
   // -------------------------------------------------------------
-  test("Edge Case: a one-letter partner id is accepted", () => {
-    // 1. Arrange
-    const projectId = "monamienet-x";
-
-    // 2. Act
-    const email = rootGroupEmailFor(projectId);
-
-    // 3. Assert
-    assert.equal(email, "x00@monamienet.org");
-  });
-
   test("Edge Case: only the first prefix is removed", () => {
     // 1. Arrange
     const projectId = "monamienet-monamienet";
@@ -57,15 +86,19 @@ describe("rootGroupEmailFor - Unit Test Suite", () => {
   // -------------------------------------------------------------
   // SAD PATH
   // -------------------------------------------------------------
-  const invalidProjects = [
-    ["a project without the prefix", "aquariustur"],
-    ["another prefix", "other-aquariustur"],
-    ["the prefix in upper case", "MonAmieNet-aquariustur"],
-    ["the bare prefix", "monamienet-"],
-    ["an id with upper case letters", "monamienet-AquariusTur"],
-    ["an id starting with a digit", "monamienet-2tur"],
-    ["an id with a hyphen", "monamienet-aquarius-tur"],
-  ];
+  // Partner ids are letters only now: digits would make the team number
+  // ambiguous in a group address.
+  test("Sad Path: digits in the partner id throw", () => {
+    // 1. Arrange
+    const projectId = "monamienet-tur2";
+
+    // 2. Act
+    const action = () => rootGroupEmailFor(projectId);
+
+    // 3. Assert
+    assert.throws(action, /invalid partner id/);
+  });
+
   for (const [label, projectId] of invalidProjects) {
     test(`Sad Path: ${label} ("${projectId}") throws`, () => {
       // 1. Arrange

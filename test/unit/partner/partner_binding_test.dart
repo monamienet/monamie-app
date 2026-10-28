@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:ui' show Color;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
+import 'package:monamie_app/app/config/partner/partner_theme.dart';
 import 'package:monamie_app/app/data/partner/partner_binding.dart';
 
 const fullOptions = FirebaseOptions(
@@ -25,10 +27,38 @@ const requiredOnlyOptions = FirebaseOptions(
 const acme = PartnerConfig(
   id: 'acme',
   name: 'Acme',
-  primaryColor: Color(0xFF112233),
-  secondaryColor: Color(0xFFFFFFFF),
-  logoSvg: '<svg><rect/></svg>',
-  iconSvg: '<svg><circle/></svg>',
+  themeId: 'oceano',
+  logoVersion: 7,
+);
+
+/// Bytes standing for the partner's logo PNG.
+final logoBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0, 255, 128]);
+
+/// [acme] with its logo downloaded.
+final acmeWithLogo = PartnerConfig(
+  id: 'acme',
+  name: 'Acme',
+  themeId: 'oceano',
+  logoVersion: 7,
+  logoPng: logoBytes,
+);
+
+const oceano = PartnerTheme(
+  id: 'oceano',
+  name: 'Oceano',
+  primary: Color(0xFF0B7F7B),
+  dark: Color(0xFF0A3D3B),
+  light: Color(0xFFD3EEEC),
+  onPrimary: Color(0xFFFFFFFF),
+  onDark: Color(0xFFFFFFFF),
+);
+
+/// [acme] with the catalog theme it resolved to.
+const themedAcme = PartnerConfig(
+  id: 'acme',
+  name: 'Acme',
+  themeId: 'oceano',
+  theme: oceano,
 );
 
 /// A stored binding with [options] replaced, as decoded JSON.
@@ -73,19 +103,10 @@ void main() {
         [
           copy.partner.id,
           copy.partner.name,
-          copy.partner.primaryColor,
-          copy.partner.secondaryColor,
-          copy.partner.logoSvg,
-          copy.partner.iconSvg,
+          copy.partner.themeId,
+          copy.partner.logoVersion,
         ],
-        [
-          acme.id,
-          acme.name,
-          acme.primaryColor,
-          acme.secondaryColor,
-          acme.logoSvg,
-          acme.iconSvg,
-        ],
+        ['acme', 'Acme', 'oceano', 7],
       );
     });
 
@@ -313,6 +334,163 @@ void main() {
       // 3. Assert
       expect(action, throwsArgumentError);
     });
+  });
+
+  group('PartnerBinding theme - Unit Test Suite', () {
+    test('Happy Path: the resolved theme survives a JSON round trip', () {
+      // 1. Arrange
+      const binding = PartnerBinding(partner: themedAcme, options: fullOptions);
+      final json = jsonDecode(jsonEncode(binding.toJson()));
+
+      // 2. Act
+      final copy = PartnerBinding.fromJson(json);
+
+      // 3. Assert
+      expect(
+        [copy.partner.theme?.id, copy.partner.theme?.primary],
+        ['oceano', const Color(0xFF0B7F7B)],
+      );
+    });
+
+    test('Happy Path: toJson stores the theme under "theme" with its id', () {
+      // 1. Arrange
+      const binding = PartnerBinding(partner: themedAcme, options: fullOptions);
+
+      // 2. Act
+      final json = binding.toJson();
+
+      // 3. Assert
+      expect(
+        json['theme'],
+        isA<Map>()
+            .having((theme) => theme['id'], 'id', 'oceano')
+            .having((theme) => theme['primary'], 'primary', '#0B7F7B'),
+      );
+    });
+
+    test('Edge Case: a stored binding without "theme" restores no theme', () {
+      // 1. Arrange
+      final json = storedJson(options: requiredOptionsJson());
+
+      // 2. Act
+      final binding = PartnerBinding.fromJson(json);
+
+      // 3. Assert
+      expect(binding.partner.theme, isNull);
+    });
+
+    test('Sad Path: a stored theme with malformed colors restores no '
+        'theme', () {
+      // 1. Arrange
+      final json = {
+        ...storedJson(options: requiredOptionsJson()),
+        'theme': {
+          'id': 'oceano',
+          'name': 'Oceano',
+          'primary': 'teal',
+          'dark': '#0A3D3B',
+          'light': '#D3EEEC',
+        },
+      };
+
+      // 2. Act
+      final binding = PartnerBinding.fromJson(json);
+
+      // 3. Assert
+      expect(binding.partner.theme, isNull);
+    });
+  });
+
+  group('PartnerBinding logo - Unit Test Suite', () {
+    test('Happy Path: the logo bytes survive a JSON round trip', () {
+      // 1. Arrange
+      final binding = PartnerBinding(
+        partner: acmeWithLogo,
+        options: fullOptions,
+      );
+      final json = jsonDecode(jsonEncode(binding.toJson()));
+
+      // 2. Act
+      final copy = PartnerBinding.fromJson(json);
+
+      // 3. Assert
+      expect(copy.partner.logoPng, logoBytes);
+    });
+
+    test('Happy Path: toJson stores the logo as base64 under "logoPng"', () {
+      // 1. Arrange
+      final binding = PartnerBinding(
+        partner: acmeWithLogo,
+        options: fullOptions,
+      );
+
+      // 2. Act
+      final json = binding.toJson();
+
+      // 3. Assert
+      expect(json['logoPng'], 'iVBORwD/gA==');
+    });
+
+    test('Edge Case: a partner without a logo has no "logoPng" key', () {
+      // 1. Arrange
+      const binding = PartnerBinding(partner: acme, options: fullOptions);
+
+      // 2. Act
+      final json = binding.toJson();
+
+      // 3. Assert
+      expect(json.containsKey('logoPng'), isFalse);
+    });
+
+    test('Edge Case: a stored binding without "logoPng" restores no logo', () {
+      // 1. Arrange
+      final json = {
+        ...storedJson(options: requiredOptionsJson()),
+        'branding': {'name': 'Acme', 'logoVersion': 7},
+      };
+
+      // 2. Act
+      final binding = PartnerBinding.fromJson(json);
+
+      // 3. Assert
+      expect(binding.partner.logoPng, isNull);
+    });
+
+    test('Edge Case: stored logo bytes without a logoVersion restore no '
+        'logo', () {
+      // 1. Arrange
+      final json = {
+        ...storedJson(options: requiredOptionsJson()),
+        'logoPng': 'iVBORwD/gA==',
+      };
+
+      // 2. Act
+      final binding = PartnerBinding.fromJson(json);
+
+      // 3. Assert
+      expect(binding.partner.logoPng, isNull);
+    });
+
+    const malformed = <String, Object?>{
+      'malformed base64': 'not base64 at all!',
+      'a number': 42,
+    };
+    for (final MapEntry(key: label, value: stored) in malformed.entries) {
+      test('Sad Path: $label as "logoPng" restores no logo', () {
+        // 1. Arrange
+        final json = {
+          ...storedJson(options: requiredOptionsJson()),
+          'branding': {'name': 'Acme', 'logoVersion': 7},
+          'logoPng': stored,
+        };
+
+        // 2. Act
+        final binding = PartnerBinding.fromJson(json);
+
+        // 3. Assert
+        expect(binding.partner.logoPng, isNull);
+      });
+    }
   });
 
   group('firebaseAppNameFor - Unit Test Suite', () {

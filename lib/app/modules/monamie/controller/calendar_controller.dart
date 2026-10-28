@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/utils/color_pallete.dart';
+import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
+import 'package:monamie_app/app/modules/monamie/history/history_calendar_sheet.dart';
+import 'package:monamie_app/app/modules/monamie/history/history_month.dart';
 
 class CalendarController extends GetxController {
   final _observedDay = DateTime(
@@ -32,93 +35,55 @@ class CalendarController extends GetxController {
     _observedDay.value = DateTime(now.year, now.month, now.day);
   }
 
+  /// The month shown by the history calendar.
+  late final Rx<HistoryMonth> viewMonth = HistoryMonth(
+    year: _observedDay.value.year,
+    month: _observedDay.value.month,
+    today: DateTime.now(),
+  ).obs;
+
+  final RxBool isLoadingMonth = false.obs;
+
+  /// Opens *Histórico por data* on the observed day's month.
   Future<void> pickDay(BuildContext context) async {
-    final now = DateTime.now();
-    final initial = _observedDay.value;
-
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(initial.year, initial.month, initial.day),
-      firstDate: DateTime(now.year - 5, 1, 1),
-      lastDate: DateTime(now.year, now.month, now.day),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: AppColors.darkBlue(),
-              onPrimary: AppColors.onPrimaryDark,
-              onSurface: AppColors.darkBlue(),
-              secondary: AppColors.mediumBlue(),
-              onSecondary: AppColors.onPrimary,
-              surface: Colors.white,
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.mediumBlue(),
-              ),
-            ),
-            datePickerTheme: DatePickerThemeData(
-              backgroundColor: Colors.white,
-              headerBackgroundColor: AppColors.darkBlue(),
-              headerForegroundColor: AppColors.onPrimaryDark,
-              dayForegroundColor: WidgetStateColor.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return AppColors.onPrimary;
-                }
-                if (states.contains(WidgetState.disabled)) {
-                  return Colors.grey;
-                }
-                return AppColors.darkBlue();
-              }),
-              dayBackgroundColor: WidgetStateColor.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return AppColors.mediumBlue();
-                }
-                return Colors.transparent;
-              }),
-              todayForegroundColor: WidgetStateColor.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return AppColors.onPrimary;
-                }
-                return AppColors.mediumBlue();
-              }),
-              todayBackgroundColor: WidgetStateColor.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return AppColors.mediumBlue();
-                }
-                return Colors.transparent;
-              }),
-              todayBorder: BorderSide(color: AppColors.mediumBlue(), width: 1),
-              yearForegroundColor: WidgetStateColor.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return AppColors.onPrimary;
-                }
-                return AppColors.darkBlue();
-              }),
-              yearBackgroundColor: WidgetStateColor.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return AppColors.mediumBlue();
-                }
-                return Colors.transparent;
-              }),
-              yearOverlayColor: WidgetStateColor.resolveWith((_) {
-                return AppColors.lightBlue();
-              }),
-              dayOverlayColor: WidgetStateColor.resolveWith((_) {
-                return AppColors.lightBlue();
-              }),
-              rangeSelectionBackgroundColor: AppColors.lightBlue(),
-              dividerColor: AppColors.lightBlue(),
-              weekdayStyle: TextStyle(color: AppColors.alternativeMediumBlue()),
-            ),
-          ),
-          child: child!,
-        );
-      },
+    final day = _observedDay.value;
+    viewMonth.value = HistoryMonth(
+      year: day.year,
+      month: day.month,
+      today: DateTime.now(),
     );
+    _loadTrailDays();
+    await HistoryCalendarSheet.show();
+  }
 
-    if (picked == null) return;
+  /// Moves the calendar [months] back or forward.
+  void showMonth(int months) {
+    viewMonth.value = viewMonth.value.shift(months);
+    _loadTrailDays();
+  }
 
-    _observedDay.value = DateTime(picked.year, picked.month, picked.day);
+  /// Observes [day] (the map redraws that day's trails).
+  void selectDay(DateTime day) {
+    _observedDay.value = DateTime(day.year, day.month, day.day);
+  }
+
+  /// Marks the days of the shown month when someone of the observed team
+  /// shared their location (one summary read per person and day).
+  Future<void> _loadTrailDays() async {
+    final month = viewMonth.value;
+    isLoadingMonth.value = true;
+    try {
+      final emails = Get.find<GoogleGroupsController>().observedMembers.map(
+        (m) => m.email,
+      );
+      final days = await FirebaseProvider().trailDays(emails, month);
+      if (viewMonth.value.first == month.first) {
+        viewMonth.value = month.shift(0, trailDays: days);
+      }
+    } catch (e) {
+      debugPrint('[Calendar] Could not read the trail days: $e');
+    } finally {
+      isLoadingMonth.value = false;
+    }
   }
 }

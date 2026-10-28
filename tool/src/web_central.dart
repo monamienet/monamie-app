@@ -16,7 +16,12 @@ import 'partners.dart';
 final webCentralConfigPath = p.join('web', 'central', 'firebase.json');
 
 /// The FirebaseOptions fields the web app needs from the web SDK config.
-const _requiredWebFields = ['apiKey', 'appId', 'projectId', 'messagingSenderId'];
+const _requiredWebFields = [
+  'apiKey',
+  'appId',
+  'projectId',
+  'messagingSenderId',
+];
 const _optionalWebFields = ['authDomain', 'storageBucket'];
 
 /// Writes [webCentralConfigPath] with the central project's web Firebase

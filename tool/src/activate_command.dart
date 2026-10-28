@@ -13,13 +13,52 @@ import 'partners.dart';
 /// Path of partner `<id>`'s entry in the central registry.
 String registryDocumentPath(String id) => 'partners/$id';
 
-/// `activate <id>`: marks a partner active in the central registry, but only
-/// after `check` passes. `--deactivate` stops new sign-ins to it.
+/// Path of the marker that retires `<id>` forever.
+String retiredDocumentPath(String id) => 'retiredPartnerIds/$id';
+
+/// Statuses from which MonAmieNet may activate a partner by hand.
+///
+/// This is the manual onboarding path, outside the in-app flow: a partner
+/// set up from `docs/en-us/white-label.md` (no entry yet, or a legacy entry
+/// with `active: true` and no `status`), one whose provisioning stopped
+/// (`provisioning`, `failed`), or an `active` one being checked again.
+const manualActivationStatuses = {null, 'provisioning', 'failed', 'active'};
+
+/// Returns why partner `<id>` must not be activated by hand, or `null` when
+/// it may.
+///
+/// [registry] is its entry in the central registry (`null` when missing);
+/// [retired] is whether its id was retired.
+String? activationProblem(
+  String id,
+  Map<String, Object?>? registry, {
+  required bool retired,
+}) {
+  if (retired) {
+    return "Partner id '$id' is retired: its project and groups were "
+        'deleted, and the id can never be used again.';
+  }
+  final status = registry?['status'];
+  if (status != null && status is! String) {
+    return "Partner '$id' has a malformed status in the registry.";
+  }
+  if (!manualActivationStatuses.contains(status)) {
+    return "Partner '$id' is '$status'; only a partner with no status, or "
+        "in 'provisioning', 'failed' or 'active', can be activated by hand.";
+  }
+  return null;
+}
+
+/// `activate <id>`: sets a partner's status to `active` in the central
+/// registry, but only after `check` passes and only from the statuses in
+/// [manualActivationStatuses].
 class ActivateCommand extends Command<void> {
   ActivateCommand(this._cli, this._groups, this._firestore, this._tokens) {
-    argParser.addFlag(
-      'deactivate',
-      help: 'Mark the partner inactive instead (no check is run).',
+    argParser.addOption(
+      'owner',
+      help:
+          "E-mail of the partner's owner (responsável), the member of its "
+          'root group; the team and invite functions only accept them.',
     );
   }
 
@@ -45,30 +84,54 @@ class ActivateCommand extends Command<void> {
     if (rest.length != 1) usageException('Expected exactly one partner id.');
     final id = rest.single;
     checkPartnerId(id);
-    final active = !argResults!.flag('deactivate');
-    if (active) {
-      final results = await checkPartner(
-        id: id,
-        cli: _cli,
-        groups: _groups,
-        firestore: _firestore,
-      );
-      printCheckResults(results);
-      if (results.any((r) => !r.passed)) {
-        throw PartnerToolException(
-          "Not activating '$id': fix the failed checks first.",
-        );
-      }
-    }
-    await _firestore.set(
+    final accessToken = await _tokens.accessToken();
+    final registry = await _firestore.get(
       projectId: centralProjectId,
       path: registryDocumentPath(id),
-      data: {'active': active, 'updatedAt': DateTime.now()},
-      accessToken: await _tokens.accessToken(),
+      accessToken: accessToken,
     );
-    stdout.writeln(
-      "Partner '$id' is now ${active ? 'active' : 'inactive'} in "
-      '$centralProjectId.',
+    final retired = await _firestore.get(
+      projectId: centralProjectId,
+      path: retiredDocumentPath(id),
+      accessToken: accessToken,
     );
+    final problem = activationProblem(id, registry, retired: retired != null);
+    if (problem != null) throw PartnerToolException(problem);
+
+    final plan = registry?['plan'];
+    final results = await checkPartner(
+      id: id,
+      cli: _cli,
+      groups: _groups,
+      firestore: _firestore,
+      plan: plan is String ? plan : null,
+    );
+    printCheckResults(results);
+    if (results.any((r) => !r.passed)) {
+      throw PartnerToolException(
+        "Not activating '$id': fix the failed checks first.",
+      );
+    }
+    // The mask also removes the legacy `active` flag and any `deleteAt`,
+    // and keeps every other field (the creator, the plan…).
+    final owner = argResults!.option('owner')?.trim().toLowerCase();
+    await _firestore.update(
+      projectId: centralProjectId,
+      path: registryDocumentPath(id),
+      data: {
+        'status': 'active',
+        'updatedAt': DateTime.now(),
+        'ownerEmail': ?owner,
+      },
+      fieldPaths: [
+        'status',
+        'updatedAt',
+        'active',
+        'deleteAt',
+        if (owner != null) 'ownerEmail',
+      ],
+      accessToken: accessToken,
+    );
+    stdout.writeln("Partner '$id' is now active in $centralProjectId.");
   }
 }

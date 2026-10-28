@@ -1,11 +1,20 @@
 rules_version = '2';
 
-// Central MonAmie project. Its only collection, partners/{id} (the partner
-// registry), is read by the resolvePartners function through the Admin SDK
-// and written by `dart run tool/partner.dart activate`. No client reads or
-// writes Firestore here.
+// Central MonAmie project. The partner registry partners/{id} (its `status`
+// lifecycle) and retiredPartnerIds/{id} (ids that can never be used again)
+// are read and written only by the central functions through the Admin SDK,
+// and by `dart run tool/partner.dart activate` with maintainer credentials.
+// The theme catalog themes/{id} is public: names and colors only, read by
+// the app (even before a partner is bound) and by the partner projects'
+// functions that validate a themeId. It is written only by
+// `dart run tool/partner.dart themes`.
+// No client writes Firestore here.
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /themes/{themeId} {
+      allow read: if true;
+      allow write: if false;
+    }
     match /{document=**} {
       allow read, write: if false;
     }

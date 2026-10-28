@@ -65,6 +65,15 @@ class FakeFirestoreDocuments implements FirestoreDocuments {
     required Map<String, Object?> data,
     required String accessToken,
   }) => throw UnimplementedError('checkPartner must not write');
+
+  @override
+  Future<void> update({
+    required String projectId,
+    required String path,
+    required Map<String, Object?> data,
+    required List<String> fieldPaths,
+    required String accessToken,
+  }) => throw UnimplementedError('checkPartner must not write');
 }
 
 GroupMember subgroup(String email) => GroupMember(email: email, isGroup: true);
@@ -131,10 +140,47 @@ void main() {
         [
           {'monamienet-acme'},
           ['acme00@monamienet.org'],
-          [(projectId: 'monamienet-acme', path: 'config/branding')],
+          [
+            (
+              projectId: 'monamienet-acme',
+              path: 'partners/acme/config/branding',
+            ),
+          ],
         ],
       );
     });
+
+    test(
+      'Edge Case: a Community partner is checked in the shared project',
+      () async {
+        // 1. Arrange
+        final cli = readyCli();
+        final firestore = readyFirestore();
+
+        // 2. Act
+        await checkPartner(
+          id: 'acme',
+          cli: cli,
+          groups: readyGroups(),
+          firestore: firestore,
+          plan: 'community',
+        );
+
+        // 3. Assert
+        expect(
+          [cli.listedProjects.toSet(), firestore.reads],
+          [
+            {'monamienet-community'},
+            [
+              (
+                projectId: 'monamienet-community',
+                path: 'partners/acme/config/branding',
+              ),
+            ],
+          ],
+        );
+      },
+    );
 
     test('Edge Case: a root group with no subgroups passes', () async {
       // 1. Arrange

@@ -2,6 +2,7 @@ import 'package:flutter/painting.dart';
 
 import 'monamie_brand.dart';
 import 'partner_config.dart';
+import 'partner_theme.dart';
 
 /// How a shade is derived from the brand color in HSL.
 ///
@@ -89,16 +90,31 @@ class PartnerPalette {
     );
   }
 
-  /// The palette of [config]: `colors.primary` and `colors.secondary`.
-  ///
-  /// Each missing color falls back on its own: the primary to the MonAmie
-  /// blue, the background to white. No partner ([config] `null`) gives the
-  /// MonAmie palette.
-  factory PartnerPalette.fromConfig(PartnerConfig? config) =>
-      PartnerPalette.fromColors(
-        primary: config?.primaryColor ?? MonAmieBrand.primary,
-        background: config?.secondaryColor ?? MonAmieBrand.background,
-      );
+  /// The palette of [config]: its catalog theme, or Grafite when the theme
+  /// is missing or unknown. No partner ([config] `null`) gives the MonAmie
+  /// palette.
+  factory PartnerPalette.fromConfig(PartnerConfig? config) => config == null
+      ? PartnerPalette.fromColors(
+          primary: MonAmieBrand.primary,
+          background: MonAmieBrand.background,
+        )
+      : PartnerPalette.fromTheme(config.effectiveTheme);
+
+  /// The palette of a catalog [theme]. Only the two accents are derived.
+  factory PartnerPalette.fromTheme(PartnerTheme theme) {
+    final derived = PartnerPalette.fromColors(
+      primary: theme.primary,
+      background: MonAmieBrand.background,
+    );
+    return PartnerPalette._(
+      primary: theme.primary,
+      dark: theme.dark,
+      light: theme.light,
+      accentDark: derived.accentDark,
+      accent: derived.accent,
+      background: MonAmieBrand.background,
+    );
+  }
 
   /// `colors.primary`: the brand color.
   final Color primary;

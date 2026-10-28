@@ -11,6 +11,7 @@ import 'package:monamie_app/app/modules/monamie/controller/permissions_controlle
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/data/live_users.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
 import 'package:monamie_app/app/modules/monamie/models/animated_user_marker.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
@@ -18,6 +19,7 @@ import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/data/services/foreground_service.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
 
@@ -38,7 +40,10 @@ class TrackingController extends GetxController
     speedAccuracy: 0,
   );
   RxList<UserModel> firebaseUsers = <UserModel>[].obs;
-  final Rxn<UserModel> selectedFirebaseUser = Rxn<UserModel>();
+
+  /// Every document of the observed team, sharing or not: the team list's
+  /// source. [firebaseUsers] is the live part of it.
+  final RxList<UserModel> teamUsers = <UserModel>[].obs;
   late final MapController mapController;
   @override
   final isTrackingEnabled = false.obs;
@@ -48,6 +53,11 @@ class TrackingController extends GetxController
   final PermissionsController permissionsCtrl =
       Get.find<PermissionsController>();
   final Rx<double?> heading = Rx<double?>(null);
+
+  /// Where this device is, once a fix is known. It is the person's own
+  /// marker on the map, which a person who only shares cannot get from the
+  /// team's documents (they observe no team).
+  final Rxn<LatLng> ownPosition = Rxn<LatLng>();
   //StreamSubscription<CompassEvent>? _compassSubscription;
 
   /// Indica se o dia observado no calendário é o dia atual.
@@ -65,6 +75,9 @@ class TrackingController extends GetxController
 
   /// Timer para animar a transição dos marcadores.
   Timer? _markerAnimationTimer;
+
+  /// Re-applies the validity every [recheck] (see [_dropUsersNoLongerLive]).
+  Timer? _recheckTimer;
 
   /// Progresso da animação (0.0 a 1.0).
   double _animationProgress = 1.0;
@@ -289,13 +302,32 @@ class TrackingController extends GetxController
     }
   }
 
+  /// Re-applies [liveUsers] to the last team snapshot, so a person whose
+  /// position went stale leaves the map even when no document changed.
+  void _dropUsersNoLongerLive() {
+    final stillLive = liveUsers(
+      teamUsers.toList(),
+      now: DateTime.now(),
+      validity: validity,
+    );
+    // Assigning always notifies; do it only when someone actually left.
+    if (stillLive.length != firebaseUsers.length) {
+      firebaseUsers.value = stillLive;
+    }
+  }
+
   void _subscribeToGroupUsers(String groupEmail) {
     _groupUsersSubscription?.cancel();
     _groupUsersSubscription = FirebaseProvider()
-        .streamUsersByGroup(groupEmail)
+        .streamUsersOfGroup(groupEmail)
         .listen(
           (users) {
-            firebaseUsers.value = users;
+            teamUsers.value = users;
+            firebaseUsers.value = liveUsers(
+              users,
+              now: DateTime.now(),
+              validity: validity,
+            );
           },
           onError: (e) {
             debugPrint(
@@ -318,6 +350,7 @@ class TrackingController extends GetxController
         _groupUsersSubscription?.cancel();
         _groupUsersSubscription = null;
         firebaseUsers.clear();
+        teamUsers.clear();
       }
     });
 
@@ -346,6 +379,11 @@ class TrackingController extends GetxController
     // Escuta mudanças na lista de usuários para atualizar as animações
     ever(firebaseUsers, _onFirebaseUsersUpdated);
 
+    // O stream só emite quando um documento muda. Quem parou sem conseguir
+    // gravar `isTracked = false` (sem rede, app encerrado) não gera emissão:
+    // sem este relógio o marcador ficaria no mapa até alguém mudar.
+    _recheckTimer = Timer.periodic(recheck, (_) => _dropUsersNoLongerLive());
+
     //try {
     //  _compassSubscription = FlutterCompass.events?.listen((event) {
     //    heading.value = event.heading;
@@ -369,21 +407,43 @@ class TrackingController extends GetxController
     });
 
     _initPosition();
+    // The person's capabilities and the location permission arrive after this
+    // controller starts: look for the device again when they do.
+    ever(Get.find<GoogleGroupsController>().capabilities, (_) {
+      _initPosition();
+    });
+    ever(permissionsCtrl.hasWhenInUseLocationPermission, (granted) {
+      if (granted) _initPosition();
+    });
 
     isTrackingEnabled.value = await _service.isRunning();
   }
 
+  void _setPosition(Position value) {
+    position = value;
+    ownPosition.value = LatLng(value.latitude, value.longitude);
+  }
+
+  bool _locating = false;
+
   Future<void> _initPosition() async {
-    if (userCtrl.isTrackable()) {
-      try {
-        position = await Geolocator.getCurrentPosition().timeout(
+    // One look at a time; only for people who can share.
+    if (_locating || !userCtrl.isTrackable()) return;
+    _locating = true;
+    try {
+      _setPosition(
+        await Geolocator.getCurrentPosition().timeout(
           const Duration(seconds: 5),
-        );
-      } catch (e) {
-        debugPrint(
-          '[TrackingController] Erro ao obter posição inicial no onInit: $e',
-        );
+        ),
+      );
+      // A person who only shares has no team on the map: show them.
+      if (!Get.find<GoogleGroupsController>().canWatch) {
+        await centerMapOnCurrentLocation();
       }
+    } catch (e) {
+      debugPrint('[TrackingController] Erro ao obter posição inicial: $e');
+    } finally {
+      _locating = false;
     }
   }
 
@@ -484,14 +544,6 @@ class TrackingController extends GetxController
         : Colors.lightBlue;
   }
 
-  void openFirebaseUserDetails(UserModel user) {
-    selectedFirebaseUser.value = user;
-  }
-
-  void closeFirebaseUserDetails() {
-    selectedFirebaseUser.value = null;
-  }
-
   @override
   Future<void> toggleService() async {
     if (isTrackingLoading.value) return;
@@ -551,9 +603,8 @@ class TrackingController extends GetxController
       return; // Interrompe a execução para não iniciar o serviço sem GPS
     }
 
-    // Garante que os custom claims (group_roles) estejam presentes
-    // e contenham MEMBER ou MANAGER antes de escrever no Firestore.
-    final hasClaims = await MonAmieClaimsService.ensureClaims();
+    // The rules only accept positions from people who share in a team.
+    final hasClaims = await MonAmieClaimsService.ensureCanShare();
     if (!hasClaims) {
       debugPrint(
         '[TrackingController] Claims inválidos — tracking não iniciado.',
@@ -575,12 +626,11 @@ class TrackingController extends GetxController
         .getObservableGroupsForUser();
 
     if (observableGroups.isEmpty) {
-      debugPrint(
-        '[TrackingController] Usuário não é MEMBER ou MANAGER em nenhum grupo.',
-      );
+      debugPrint('[TrackingController] The user shares in no team.');
       Get.snackbar(
-        'Rastreamento não autorizado',
-        'Você não possui papel de participante (MEMBER ou MANAGER) em nenhum grupo.',
+        'Compartilhamento não autorizado',
+        'Você não está em campo em nenhuma equipe. Peça ao responsável para '
+            'liberar o compartilhamento da sua localização.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade100,
         duration: const Duration(seconds: 5),
@@ -616,7 +666,7 @@ class TrackingController extends GetxController
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Iniciar Rastreamento de Jornada',
+                  'Compartilhar sua localização',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -625,7 +675,7 @@ class TrackingController extends GetxController
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Selecione o grupo operacional em que você atuará neste turno:',
+                  'Escolha a equipe com quem você vai compartilhar neste turno:',
                   style: TextStyle(fontSize: 14, color: Colors.black54),
                 ),
                 const SizedBox(height: 16),
@@ -671,8 +721,10 @@ class TrackingController extends GetxController
 
     // Tenta obter a posição GPS atual para sincronizar imediatamente
     try {
-      position = await Geolocator.getCurrentPosition().timeout(
-        const Duration(seconds: 5),
+      _setPosition(
+        await Geolocator.getCurrentPosition().timeout(
+          const Duration(seconds: 5),
+        ),
       );
     } catch (e) {
       debugPrint(
@@ -710,7 +762,7 @@ class TrackingController extends GetxController
       event,
     ) {
       if (event != null) {
-        position = Position.fromMap(event['position']);
+        _setPosition(Position.fromMap(event['position']));
       }
     });
 
@@ -766,6 +818,7 @@ class TrackingController extends GetxController
     _readySubscription?.cancel();
     _locationSubscription?.cancel();
     _markerAnimationTimer?.cancel();
+    _recheckTimer?.cancel();
     mapController.dispose();
     super.onClose();
   }

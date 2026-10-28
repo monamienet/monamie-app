@@ -87,7 +87,7 @@ void main() {
       final palette = PartnerPalette.fromConfig(config);
 
       // 3. Assert
-      expect(palette.primary, MonAmieBrand.primary);
+      expect(palette.primary, const Color(0xFF315399));
     });
 
     test('Happy Path: no partner gives the MonAmie background', () {
@@ -98,7 +98,7 @@ void main() {
       final palette = PartnerPalette.fromConfig(config);
 
       // 3. Assert
-      expect(palette.background, MonAmieBrand.background);
+      expect(palette.background, white);
     });
 
     test('Happy Path: no partner gives the same shades as the MonAmie '
@@ -119,43 +119,9 @@ void main() {
       );
     });
 
-    test('Edge Case: a missing primary falls back to MonAmie blue', () {
+    test('Edge Case: a partner without a theme gets white as background', () {
       // 1. Arrange
-      const config = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        secondaryColor: Color(0xFF101010),
-      );
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect(palette.primary, MonAmieBrand.primary);
-    });
-
-    test('Edge Case: a missing primary keeps the partner background', () {
-      // 1. Arrange
-      const config = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        secondaryColor: Color(0xFF101010),
-      );
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect(palette.background, const Color(0xFF101010));
-    });
-
-    test('Edge Case: a missing background falls back to white', () {
-      // 1. Arrange
-      const config = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        primaryColor: Color(0xFF0ABAB5),
-      );
+      const config = PartnerConfig(id: 'acme', name: 'Acme');
 
       // 2. Act
       final palette = PartnerPalette.fromConfig(config);
@@ -164,22 +130,8 @@ void main() {
       expect(palette.background, white);
     });
 
-    test('Edge Case: a missing background keeps the partner primary', () {
-      // 1. Arrange
-      const config = PartnerConfig(
-        id: 'acme',
-        name: 'Acme',
-        primaryColor: Color(0xFF0ABAB5),
-      );
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect(palette.primary, const Color(0xFF0ABAB5));
-    });
-
-    test('Sad Path: a partner with no colors at all looks like MonAmie', () {
+    test('Sad Path: a partner without a theme does not look like MonAmie: it '
+        'gets Grafite', () {
       // 1. Arrange
       const config = PartnerConfig(id: 'acme', name: 'Acme');
 
@@ -188,8 +140,12 @@ void main() {
 
       // 3. Assert
       expect(
-        [palette.primary, palette.background],
-        [MonAmieBrand.primary, MonAmieBrand.background],
+        [palette.primary, palette.dark, palette.light],
+        [
+          const Color(0xFF3F4754),
+          const Color(0xFF1F2128),
+          const Color(0xFFDCDEE2),
+        ],
       );
     });
   });

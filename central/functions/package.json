@@ -1,6 +1,6 @@
 {
   "name": "monamie-central-functions",
-  "description": "Central MonAmie functions: find the partners a user belongs to",
+  "description": "Central MonAmie functions: find the partners a user belongs to and run their status lifecycle",
   "engines": {
     "node": "22"
   },

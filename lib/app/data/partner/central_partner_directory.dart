@@ -16,19 +16,26 @@ class CentralPartnerDirectory implements PartnerDirectory {
   final String _platform;
 
   @override
-  Future<List<PartnerCandidate>> partnersOfSignedInUser() async {
+  Future<List<PartnerCandidate>> partnersOfSignedInUser({
+    bool fresh = false,
+  }) async {
     final functions = this.functions ?? CentralFirebase.functions;
     final result = await functions
         .httpsCallable(
           'resolvePartners',
           options: HttpsCallableOptions(timeout: const Duration(seconds: 30)),
         )
-        .call<Object?>({'platform': _platform});
+        .call<Object?>({
+          'platform': _platform,
+          'fresh': ?(fresh ? true : null),
+        });
     return parsePartnerCandidates(result.data);
   }
 }
 
-/// Reads the `resolvePartners` response. Entries with an invalid id or
+/// Reads the `resolvePartners` response. Only partners whose `status` is
+/// `active` are kept: the screens for the other statuses come with the
+/// in-app creation, plans and deletion flows. Entries with an invalid id or
 /// incomplete options are skipped, so one bad partner cannot block the
 /// others.
 List<PartnerCandidate> parsePartnerCandidates(Object? data) {
@@ -38,6 +45,7 @@ List<PartnerCandidate> parsePartnerCandidates(Object? data) {
   for (final entry in partners) {
     if (entry case {
       'id': final String id,
+      'status': 'active',
       'options': final Map<Object?, Object?> options,
     } when partnerIdProblem(id) == null) {
       String? text(String key) {

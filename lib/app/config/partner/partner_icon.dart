@@ -5,10 +5,12 @@ import 'monamie_brand.dart';
 import 'partner_config.dart';
 import 'partner_palette.dart';
 
-/// The logo without text, for the partner picker and small spaces.
+/// The partner's square logo, for the organization picker, the app bar and
+/// small spaces.
 ///
-/// [partner] `null` shows the MonAmie mark. A partner without a usable icon
-/// gets the first letter of its name in a circle of its primary color.
+/// [partner] `null` shows the MonAmie mark. A partner without a logo (or
+/// whose PNG does not decode) gets the first letter of its name in a
+/// rounded tile of its primary color.
 class PartnerIcon extends StatelessWidget {
   const PartnerIcon({super.key, required this.partner, this.size = 40});
 
@@ -26,32 +28,42 @@ class PartnerIcon extends StatelessWidget {
         semanticsLabel: MonAmieBrand.name,
       );
     }
+    final radius = BorderRadius.circular(size * 0.28);
 
     Widget initial(BuildContext context, [Object? error, StackTrace? _]) {
-      if (error != null) debugPrint('Could not load the partner icon: $error');
+      if (error != null) {
+        debugPrint('Could not decode the partner logo: $error');
+      }
       final palette = PartnerPalette.fromConfig(partner);
-      return CircleAvatar(
-        radius: size / 2,
-        backgroundColor: palette.primary,
+      return Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: palette.primary, borderRadius: radius),
         child: Text(
           partner.name.characters.first.toUpperCase(),
+          semanticsLabel: partner.name,
           style: TextStyle(
             color: palette.onPrimary,
             fontSize: size * 0.45,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w800,
           ),
         ),
       );
     }
 
-    final svg = partner.iconSvg;
-    if (svg == null) return initial(context);
-    return SvgPicture.string(
-      svg,
-      width: size,
-      height: size,
-      semanticsLabel: partner.name,
-      errorBuilder: initial,
+    final png = partner.logoPng;
+    if (png == null) return initial(context);
+    return ClipRRect(
+      borderRadius: radius,
+      child: Image.memory(
+        png,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        semanticLabel: partner.name,
+        errorBuilder: initial,
+      ),
     );
   }
 }

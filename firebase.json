@@ -3,10 +3,17 @@
     {
       "source": "functions",
       "codebase": "default",
-      "ignore": ["node_modules", ".git", "test"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "test"
+      ]
     }
   ],
   "firestore": {
     "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

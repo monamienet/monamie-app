@@ -92,6 +92,22 @@ class AuthGoogleService {
     return _signInCentral(account);
   }
 
+  /// A fresh Google ID token for the account that is already signed in,
+  /// without showing the account chooser. `null` when it cannot be had
+  /// silently (on the web, when Google asks the person to choose again, or
+  /// when the attempt fails).
+  Future<String?> refreshGoogleIdToken() async {
+    await _init;
+    if (kIsWeb) return null;
+    try {
+      final account = await _googleSignIn.attemptLightweightAuthentication();
+      return account?.authentication.idToken;
+    } catch (e) {
+      debugPrint('AuthGoogleService: silent sign-in failed: $e');
+      return null;
+    }
+  }
+
   Future<String> _signInCentral(GoogleSignInAccount account) async {
     final idToken = account.authentication.idToken;
     if (idToken == null) {
@@ -105,22 +121,31 @@ class AuthGoogleService {
 
   /// Signs in to the bound partner's project with the Google [idToken] from
   /// [signInGoogle], and creates or refreshes the user's profile there.
-  Future<UserGoogleModel?> signInToPartner(String idToken) async {
-    final userCredential = await _partnerAuth.signInWithCredential(
+  /// Signs in to the bound partner's project with the central Google ID
+  /// token. The profile is saved later by [savePartnerProfile], once the
+  /// claims let the rules accept it.
+  Future<void> signInToPartner(String idToken) async {
+    await _partnerAuth.signInWithCredential(
       fb.GoogleAuthProvider.credential(idToken: idToken),
     );
-    return _createUserDoc(userCredential);
   }
 
-  Future<UserGoogleModel?> _createUserDoc(
-    fb.UserCredential userCredential,
-  ) async {
-    final photoUrl = userCredential.user?.photoURL;
+  /// Saves the signed-in person's profile in the bound partner
+  /// (`partners/{id}/users/{uid}`). Needs synced claims: the rules only let
+  /// the partner's members write there.
+  Future<UserGoogleModel?> savePartnerProfile() async {
+    final user = _partnerAuth.currentUser;
+    if (user == null) return null;
+    return _createUserDoc(user);
+  }
+
+  Future<UserGoogleModel?> _createUserDoc(fb.User user) async {
+    final photoUrl = user.photoURL;
     final avatarBase64 = await _downloadAvatarBase64(photoUrl);
     final userDoc = await _userRepository.createUserDoc(
-      userCredential.user!.email ?? '',
-      userCredential.user!.displayName ?? '',
-      userCredential.user!.uid,
+      user.email ?? '',
+      user.displayName ?? '',
+      user.uid,
       photoUrl ?? '',
       avatarBase64: avatarBase64,
     );
@@ -144,6 +169,16 @@ class AuthGoogleService {
       debugPrint('AuthGoogleService: avatar download failed: $e');
       return null;
     }
+  }
+
+  /// E-mail of the account signed in to the central project, or `null`.
+  Future<String?> centralEmail() async =>
+      CentralFirebase.auth.currentUser?.email;
+
+  /// Signs out of the bound partner's project only; the MonAmie (central)
+  /// session stays.
+  Future<void> signOutOfPartner() async {
+    if (CurrentPartnerFirebase.isSet) await _partnerAuth.signOut();
   }
 
   /// Signs out of Google, the central project and the bound partner.

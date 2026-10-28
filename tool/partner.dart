@@ -8,9 +8,12 @@ import 'src/check_command.dart';
 import 'src/firebase_command.dart';
 import 'src/gcloud.dart';
 import 'src/http_firestore_documents.dart';
+import 'src/migrate_groups_command.dart';
+import 'src/migrate_layout_command.dart';
 import 'src/partners.dart';
 import 'src/process_firebase_cli.dart';
 import 'src/publish_command.dart';
+import 'src/themes_command.dart';
 import 'src/web_command.dart';
 
 /// Partner tooling for the white-label app. Run from anywhere in the repo:
@@ -33,7 +36,10 @@ Future<void> main(List<String> args) async {
         ..addCommand(WebCommand(repoRoot, cli))
         ..addCommand(PublishCommand(firestore, tokens))
         ..addCommand(CheckCommand(cli, groups, firestore))
-        ..addCommand(ActivateCommand(cli, groups, firestore, tokens));
+        ..addCommand(ActivateCommand(cli, groups, firestore, tokens))
+        ..addCommand(ThemesCommand(firestore, tokens))
+        ..addCommand(MigrateGroupsCommand(groups, runGcloudIdentity))
+        ..addCommand(MigrateLayoutCommand(tokens));
 
   try {
     await runner.run(args);

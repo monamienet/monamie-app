@@ -7,7 +7,8 @@ import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 enum UserRole { user }
 
 class UserGoogleProvider {
-  FirebaseFirestore get _firestore => CurrentPartnerFirebase.instance.firestore;
+  DocumentReference<Map<String, dynamic>> get _partnerData =>
+      CurrentPartnerFirebase.instance.partnerData;
   final String _hiveBox = 'user_google_data';
   final String _hiveKey = 'current_user';
 
@@ -18,7 +19,7 @@ class UserGoogleProvider {
     String urlImage, {
     String? avatarBase64,
   }) async {
-    final docRef = _firestore.collection('users').doc(uid);
+    final docRef = _partnerData.collection('users').doc(uid);
     final docSnapshot = await docRef.get();
 
     UserGoogleModel user;
@@ -51,7 +52,7 @@ class UserGoogleProvider {
   }
 
   Future<void> createUserDocInFirebase(UserGoogleModel user) async {
-    await _firestore.collection('users').doc(user.id).set({
+    await _partnerData.collection('users').doc(user.id).set({
       'name': user.name,
       'email': user.email,
       'urlImage': user.urlImage,

@@ -18,4 +18,15 @@ abstract interface class FirestoreDocuments {
     required Map<String, Object?> data,
     required String accessToken,
   });
+
+  /// Writes only the [fieldPaths] of the document at [path], creating it
+  /// when missing. A path in [fieldPaths] that [data] leaves out (or sets to
+  /// `null`) is deleted; every other field is kept.
+  Future<void> update({
+    required String projectId,
+    required String path,
+    required Map<String, Object?> data,
+    required List<String> fieldPaths,
+    required String accessToken,
+  });
 }

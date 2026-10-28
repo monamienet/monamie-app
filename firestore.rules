@@ -1,192 +1,242 @@
 rules_version = '2';
 
+// Partner project rules. Every partner's data lives under
+// partners/{partnerId}, the same layout for a Standard project (one
+// partner) and the shared Community project (many partners), so no rule
+// depends on the plan except the location interval below.
+//
+// What a person may do comes from the custom claims set by `syncClaims`
+// (functions/index.js) from *which* Google Groups they are in:
+//   share:    ["rotasul01"]  team keys where they share their own location
+//                            (member of rotasul01w@monamienet.org)
+//   watch:    ["rotasul01"]  team keys whose map they see
+//                            (member of rotasul01r@monamienet.org)
+//   owns:     ["rotasul"]    partners they own (member of rotasul00@), which
+//                            means watching every team of that partner
+//   partners: ["rotasul"]    partners where they have any of the above
+// A team key is the local part of the team group, `<partner id><NN>`.
+// Location documents name their team by the team group's e-mail
+// (`grupo_ativo`, e.g. "rotasul01@monamienet.org").
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ╔══════════════════════════════════════════════════════════════════════╗
-    // ║  FUNÇÕES AUXILIARES                                                 ║
-    // ╚══════════════════════════════════════════════════════════════════════╝
-
-    /// Autenticado com email disponível.
     function isAuthenticated() {
-      return request.auth != null
-        && request.auth.token.email != null;
+      return request.auth != null && request.auth.token.email != null;
     }
 
-    /// AUTORIZADO: tem role em pelo menos um grupo MonAmie.
-    /// Isto é: o mapa group_roles existe e não é vazio.
-    /// Cobre: participantes, administradores, proprietários e metausuários.
-    function isAutorizado() {
-      return isAuthenticated()
-        && request.auth.token.group_roles is map
-        && request.auth.token.group_roles.size() > 0;
+    function claimList(name) {
+      return isAuthenticated() && name in request.auth.token
+        && request.auth.token[name] is list
+        ? request.auth.token[name]
+        : [];
     }
 
-    /// OBSERVÁVEL: é MEMBER ou MANAGER em pelo menos um grupo.
-    /// Pode escrever sua própria localização.
-    ///
-    /// Nota: proprietários (OWNER) e metausuários (METAUSER) NÃO são
-    /// observáveis — coerente com as propriedades (a) e (b) da especificação.
-    ///
-    /// A verificação é system-wide (não per-group) porque a coleção
-    /// `usuarios` é flat e não está particionada por grupo.
-    function isObservavel() {
-      return isAuthenticated()
-        && request.auth.token.group_roles is map
-        && request.auth.token.group_roles.values().hasAny(["MEMBER", "MANAGER"]);
+    /// `rotasul01@monamienet.org` → `rotasul01`.
+    function teamKeyOf(groupEmail) {
+      return groupEmail.lower().split('@')[0];
     }
 
-    /// O email do token corresponde ao ID do documento (coleção `usuarios`).
     function isDocOwner(docEmail) {
-      return request.auth.token.email == docEmail;
+      return isAuthenticated() && request.auth.token.email == docEmail;
     }
 
-    /// Verifica se o usuário autenticado tem papel em um grupo específico.
-    function hasRoleInGroup(groupEmail) {
-      return isAutorizado()
-        && groupEmail is string
-        && request.auth.token.group_roles[groupEmail] != null;
-    }
+    match /partners/{partnerId} {
 
-    /// Verifica se o usuário autenticado é observável (MEMBER ou MANAGER) em um grupo específico.
-    function isObservavelInGroup(groupEmail) {
-      return isAuthenticated()
-        && groupEmail is string
-        && request.auth.token.group_roles is map
-        && request.auth.token.group_roles[groupEmail] in ["MEMBER", "MANAGER"];
-    }
+      /// The caller has some capability in this partner.
+      function isMember() {
+        return claimList('partners').hasAny([partnerId]);
+      }
 
-    // ╔══════════════════════════════════════════════════════════════════════╗
-    // ║  COLEÇÃO: usuarios/{email}                                          ║
-    // ║                                                                     ║
-    // ║  Localização em tempo real. DocId = email do usuário.                ║
-    // ║  Campos: email, nome, lat, lng, timestamp, isTracked, grupo_ativo    ║
-    // ╚══════════════════════════════════════════════════════════════════════╝
+      /// [groupEmail] is a team of this partner (never another's).
+      function isTeamHere(groupEmail) {
+        return groupEmail is string
+          && teamKeyOf(groupEmail).matches(partnerId + '[0-9]{2}');
+      }
 
-    match /usuarios/{usuarioEmail} {
+      /// The caller shares their location in this team.
+      function canShareIn(groupEmail) {
+        return isTeamHere(groupEmail)
+          && claimList('share').hasAny([teamKeyOf(groupEmail)]);
+      }
 
-      // ── LEITURA ─────────────────────────────────────────────────────────
-      // O próprio usuário pode ler seu documento OU
-      // qualquer usuário autenticado com permissão no grupo_ativo associado.
-      allow read: if isDocOwner(usuarioEmail) || (
-        isAuthenticated()
-        && resource.data.grupo_ativo != null
-        && hasRoleInGroup(resource.data.grupo_ativo)
-      );
+      /// The caller sees this team's map: they watch it, or own the partner.
+      function canWatch(groupEmail) {
+        return isTeamHere(groupEmail)
+          && (claimList('watch').hasAny([teamKeyOf(groupEmail)])
+            || claimList('owns').hasAny([partnerId]));
+      }
 
-      // ── CRIAÇÃO ─────────────────────────────────────────────────────────
-      // Apenas OBSERVÁVEIS podem criar seu próprio documento.
-      // A coleção `usuarios` existe exclusivamente para armazenar
-      // coordenadas de usuários observáveis.
-      allow create: if isObservavel()
-        && isDocOwner(usuarioEmail)
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.keys().hasOnly(
-             ['email', 'nome', 'lat', 'lng', 'timestamp', 'isTracked', 'grupo_ativo']
-           )
-        && (
-          !('grupo_ativo' in request.resource.data)
-          || request.resource.data.grupo_ativo == null
-          || isObservavelInGroup(request.resource.data.grupo_ativo)
-        );
+      /// Minimum minutes between two positions: the plan's limit on
+      /// Community (config/plan, written only by MonAmieNet), none on
+      /// Standard. Enforced here because hiding presets in the app would
+      /// not stop a modified app.
+      function minIntervalMinutes() {
+        let plan = /databases/$(database)/documents/partners/$(partnerId)/config/plan;
+        return exists(plan) ? get(plan).data.minIntervalMinutes : 0;
+      }
 
-      // ── ATUALIZAÇÃO ─────────────────────────────────────────────────────
-      // Um OBSERVÁVEL pode atualizar APENAS seu próprio documento.
-      // Se grupo_ativo for fornecido, deve pertencer a um grupo onde é MEMBER ou MANAGER.
-      allow update: if isObservavel()
-        && isDocOwner(usuarioEmail)
-        && request.resource.data.email == resource.data.email
-        && request.resource.data.keys().hasOnly(
-             ['email', 'nome', 'lat', 'lng', 'timestamp', 'isTracked', 'grupo_ativo']
-           )
-        && (
-          !('grupo_ativo' in request.resource.data)
-          || request.resource.data.grupo_ativo == null
-          || isObservavelInGroup(request.resource.data.grupo_ativo)
-        );
+      /// Whether the write sets or moves the position. Creating the
+      /// document without coordinates (at sign-in) is not a position.
+      function positionChanged() {
+        return resource == null
+          ? 'lat' in request.resource.data || 'lng' in request.resource.data
+          : request.resource.data.get('lat', null) != resource.data.get('lat', null)
+            || request.resource.data.get('lng', null) != resource.data.get('lng', null);
+      }
 
-      // ── EXCLUSÃO ────────────────────────────────────────────────────────
-      // Exclusão de documentos em `usuarios` é proibida.
-      // Dados de localização devem ser preservados.
-      allow delete: if false;
+      /// A new position must carry `positionAt` = the server's time, at
+      /// least the plan's interval after the previous one. Heartbeats and
+      /// other updates leave `positionAt` alone.
+      function positionTimingOk() {
+        return positionChanged()
+          ? request.resource.data.get('positionAt', null) == request.time
+            && (resource == null
+              || resource.data.get('positionAt', null) == null
+              || request.time > resource.data.positionAt
+                   + duration.value(minIntervalMinutes(), 'm'))
+          : request.resource.data.get('positionAt', null)
+              == (resource == null ? null : resource.data.get('positionAt', null));
+      }
 
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // SUBCOLEÇÃO: historico_posicoes/{pontoId}
-      //
-      // Pontos GPS históricos (append-only). Escritos pelo foreground
-      // service em updateLocationAndTimestamp().
-      // Campos: lat, lng, timestamp, grupo_ativo
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // ── usuarios/{email}: the live position of a person in the field ──
+      // Fields: email, nome, lat, lng, timestamp, positionAt, isTracked,
+      // grupo_ativo (the team they share with)
+      match /usuarios/{usuarioEmail} {
 
-      match /historico_posicoes/{pontoId} {
+        // Their own document (as a member of this partner), or the people
+        // who watch the team it is shared with. A field-only person reads
+        // only their own.
+        allow read: if (isMember() && isDocOwner(usuarioEmail))
+          || canWatch(resource.data.grupo_ativo);
 
-        // Leitura permitida ao dono OU a quem possuir papel no grupo_ativo do usuário
-        allow read: if isDocOwner(usuarioEmail) || (
-          isAuthenticated()
-          && hasRoleInGroup(
-               get(/databases/$(database)/documents/usuarios/$(usuarioEmail)).data.grupo_ativo
-             )
-        );
-
-        // Apenas o próprio observável pode criar pontos no SEU histórico.
-        allow create: if isObservavel()
+        // Only members who share somewhere write, only their own document,
+        // and only towards a team of this partner where they share.
+        allow create, update: if isMember()
+          && claimList('share').size() > 0
           && isDocOwner(usuarioEmail)
-          && request.resource.data.keys().hasOnly(['lat', 'lng', 'timestamp', 'grupo_ativo'])
-          && request.resource.data.lat is number
-          && request.resource.data.lng is number
-          && request.resource.data.timestamp is timestamp;
+          && request.resource.data.email == request.auth.token.email
+          && (resource == null || request.resource.data.email == resource.data.email)
+          && request.resource.data.keys().hasOnly(
+               ['email', 'nome', 'lat', 'lng', 'timestamp', 'positionAt',
+                'isTracked', 'grupo_ativo']
+             )
+          && (
+            !('grupo_ativo' in request.resource.data)
+            || request.resource.data.grupo_ativo == null
+            || canShareIn(request.resource.data.grupo_ativo)
+          )
+          && positionTimingOk();
 
-        // Histórico é imutável (append-only): não permite update nem delete.
-        allow update, delete: if false;
+        // Location data is kept.
+        allow delete: if false;
+
+        // ── dias/{yyyy-mm-dd}: one summary per day with trails ──────────
+        // Fields: lastAt, points, grupo_ativo. Written in the same batch as
+        // a position, so it follows the same interval; read like the trail.
+        // The history calendar reads a month of these, not every point.
+        match /dias/{day} {
+          allow read: if (isMember() && isDocOwner(usuarioEmail))
+            || canWatch(
+                 get(/databases/$(database)/documents/partners/$(partnerId)/usuarios/$(usuarioEmail)).data.grupo_ativo
+               );
+
+          allow create, update: if isMember()
+            && claimList('share').size() > 0
+            && isDocOwner(usuarioEmail)
+            && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+            && request.resource.data.keys().hasOnly(['lastAt', 'points', 'grupo_ativo'])
+            && request.resource.data.lastAt == request.time
+            && request.resource.data.points is int
+            && getAfter(/databases/$(database)/documents/partners/$(partnerId)/usuarios/$(usuarioEmail)).data.positionAt == request.time
+            && (
+              !('grupo_ativo' in request.resource.data)
+              || request.resource.data.grupo_ativo == null
+              || canShareIn(request.resource.data.grupo_ativo)
+            );
+
+          allow delete: if false;
+        }
+
+        // ── historico_posicoes/{pontoId}: append-only trail points ──────
+        // Fields: lat, lng, timestamp, grupo_ativo
+        match /historico_posicoes/{pontoId} {
+
+          // Read by the owner, or by whoever watches the team the person
+          // currently shares with (a rule that does not depend on each
+          // point, so a time-range query over the trail is allowed).
+          allow read: if (isMember() && isDocOwner(usuarioEmail))
+            || canWatch(
+                 get(/databases/$(database)/documents/partners/$(partnerId)/usuarios/$(usuarioEmail)).data.grupo_ativo
+               );
+
+          // A point is written in the same batch as the position update it
+          // records, so the interval above also limits the trail.
+          allow create: if isMember()
+            && isDocOwner(usuarioEmail)
+            && request.resource.data.keys().hasOnly(['lat', 'lng', 'timestamp', 'grupo_ativo'])
+            && request.resource.data.lat is number
+            && request.resource.data.lng is number
+            && request.resource.data.timestamp == request.time
+            && getAfter(/databases/$(database)/documents/partners/$(partnerId)/usuarios/$(usuarioEmail)).data.positionAt == request.time
+            && (
+              !('grupo_ativo' in request.resource.data)
+              || request.resource.data.grupo_ativo == null
+              || canShareIn(request.resource.data.grupo_ativo)
+            );
+
+          allow update, delete: if false;
+        }
+      }
+
+      // ── users/{uid}: the Google profile written at sign-in ─────────────
+      // Fields: name, email, urlImage, createdAt, avatarBase64
+      match /users/{userId} {
+
+        // Names and avatars of the people on the map, for this partner's
+        // members only.
+        allow read: if isMember();
+
+        allow create, update: if isMember()
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(
+               ['name', 'email', 'urlImage', 'createdAt', 'avatarBase64']
+             );
+
+        allow delete: if false;
+      }
+
+      // ── config/branding: the partner's name and look ───────────────────
+      // Public: the app shows the brand in the organization picker and
+      // while entering, before signing in to this project.
+      match /config/branding {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      // ── config/tracking: how often people in the field send positions ──
+      // Fields: intervalMinutes, distanceMeters, updatedAt, updatedBy.
+      // Members read it (the background service applies it); only the owner
+      // writes it, with the values the app offers and never below the
+      // plan's minimum interval.
+      match /config/tracking {
+        allow read: if isMember();
+        allow write: if claimList('owns').hasAny([partnerId])
+          && request.resource.data.keys().hasOnly(
+               ['intervalMinutes', 'distanceMeters', 'updatedAt', 'updatedBy'])
+          && request.resource.data.intervalMinutes in [1, 2, 3, 5, 10, 15, 20, 30]
+          && request.resource.data.distanceMeters in [5, 10, 20, 50, 100, 200, 300, 500]
+          && request.resource.data.intervalMinutes >= minIntervalMinutes()
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.updatedBy == request.auth.token.email;
+      }
+
+      // ── config/plan: the plan's limits (Community: minIntervalMinutes) ─
+      match /config/plan {
+        allow read: if isMember();
+        allow write: if false;
       }
     }
 
-    // ╔══════════════════════════════════════════════════════════════════════╗
-    // ║  COLEÇÃO: users/{uid}                                               ║
-    // ║                                                                     ║
-    // ║  Perfil Google do usuário (criado no login).                         ║
-    // ║  DocId = Firebase Auth UID.                                         ║
-    // ║  Campos: name, email, urlImage, createdAt, avatarBase64             ║
-    // ╚══════════════════════════════════════════════════════════════════════╝
-
-    match /users/{userId} {
-
-      // Qualquer autenticado pode ler perfis (necessário para exibir
-      // nomes e avatares de outros usuários no mapa).
-      allow read: if isAuthenticated();
-
-      // O usuário pode criar/atualizar apenas seu próprio perfil.
-      allow create, update: if isAuthenticated()
-        && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly(
-             ['name', 'email', 'urlImage', 'createdAt', 'avatarBase64']
-           );
-
-      // Exclusão de perfis é proibida.
-      allow delete: if false;
-    }
-
-    // ╔══════════════════════════════════════════════════════════════════════╗
-    // ║  DOCUMENTO: config/branding                                         ║
-    // ║                                                                     ║
-    // ║  Marca do parceiro: name (obrigatório), colors.primary,             ║
-    // ║  colors.secondary, logoSvg, iconSvg (opcionais).                    ║
-    // ╚══════════════════════════════════════════════════════════════════════╝
-
-    // Leitura pública: o app mostra a marca no seletor de parceiro e na
-    // transição "Entrando em…", antes do login neste projeto. São dados que
-    // já eram públicos (repositório e ficha da Play). Só a ferramenta do
-    // mantenedor (tool/partner.dart publish), com credenciais
-    // administrativas, grava o documento.
-    match /config/branding {
-      allow read: if true;
-      allow write: if false;
-    }
-
-    // ╔══════════════════════════════════════════════════════════════════════╗
-    // ║  DEFAULT: negar tudo que não foi explicitamente permitido            ║
-    // ║                                                                     ║
-    // ║  NÃO HÁ match /{document=**}. O Firestore nega por padrão.          ║
-    // ╚══════════════════════════════════════════════════════════════════════╝
+    // Everything else is denied: Firestore denies by default.
   }
 }

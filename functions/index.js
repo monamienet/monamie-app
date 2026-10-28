@@ -1,172 +1,170 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAuth } = require("firebase-admin/auth");
+const { FieldValue } = require("firebase-admin/firestore");
 const { defineString, projectID } = require("firebase-functions/params");
+const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
-const { normalizeGroupEmail } = require("./group_email");
-const { rootGroupEmailFor } = require("./root_group");
+const {
+  BrandingError,
+  THEMES_URL,
+  activeThemeIdsFrom,
+  validateBranding,
+} = require("./branding");
+const { capabilitiesFromGroups } = require("./capabilities");
+const { parseGroupAddress } = require("./group_address");
+const { COMMUNITY_PROJECT_ID, partnerIdForProject } = require("./root_group");
 admin.initializeApp();
 
 // Host of the workspace-groups-gateway, shared by every partner (functions/.env).
 const BACKEND_HOST = defineString("GROUPS_GATEWAY_HOST");
 
+const GATEWAY_TIMEOUT_MS = 10000;
+
 /**
- * Callable Cloud Function que sincroniza os Custom Claims do Firebase Auth
- * com os papéis do usuário nos subgrupos do grupo raiz do cliente
- * (via workspace-groups-gateway / Google Workspace).
+ * Sets the caller's custom claims from their Google Groups membership.
  *
- * Os claims resultantes contêm um mapa `group_roles` que associa cada
- * grupo a um role efetivo (MEMBER, MANAGER, OWNER ou METAUSER).
+ * What a person may do comes from *which* groups they are in (everyone is
+ * a plain MEMBER): `<id>NNw` shares in team `<id>NN`, `<id>NNr` watches it,
+ * and `<id>00` (the owner) watches every team. Only the person's direct
+ * groups are needed: one gateway call, no walk of the group tree.
  *
- * Invocada pelo app Flutter após o login e ao atualizar grupos.
+ * Claims: `{share: [teamKey], watch: [teamKey], owns: [partnerId],
+ * partners: [partnerId]}`, where a team key is the team group's local part
+ * (`rotasul01`) and `partners` lists the partners where the person has any
+ * capability. Only the partners hosted by this project are kept: the one
+ * named by a Standard project's id, or, in the shared Community project,
+ * every partner whose `partners/{id}/config/branding` exists here.
+ *
+ * Request: `{idToken}` (forwarded to the gateway).
+ * Response: the claims set.
  */
 // The region is explicit so deploys never have to guess it, and must match the
 // app's FirebaseFunctions instance (default region, us-central1).
 exports.syncClaims = onCall({ invoker: "public", region: "us-central1" }, async (request) => {
-  console.log(
-    `[syncClaims] Invocado. Auth: ${JSON.stringify(request.auth)}`
-  );
-  // 1. Validar autenticação (Callable já faz isso, mas é boa prática checar)
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Autenticação necessária.");
   }
-
-  const uid = request.auth.uid;
+  const { uid } = request.auth;
   const email = request.auth.token.email;
   if (!email) {
-    throw new HttpsError(
-      "failed-precondition",
-      "Email não disponível no token."
-    );
+    throw new HttpsError("failed-precondition", "Email não disponível no token.");
   }
-
-  // 2. O idToken bruto é passado como parâmetro pelo app para que a CF
-  //    possa repassá-lo ao backend intermediário (que espera Bearer token).
-  const idToken = request.data.idToken;
+  // The raw ID token goes to the gateway, which expects a Bearer token.
+  const idToken = request.data?.idToken;
   if (!idToken) {
     throw new HttpsError("invalid-argument", "idToken é obrigatório.");
   }
 
-  // 3. Computar roles efetivos via travessia recursiva da árvore de grupos
-  const rootGroup = rootGroupEmailFor(projectID.value());
-  const roles = {};
-  await computeRoles(
-    idToken,
-    email,
-    rootGroup,
-    rootGroup,
-    roles,
-    /* isAncestorMember= */ false
+  const groups = await fetchUserGroups(idToken, email);
+  const hosted = await hostedPartners(projectID.value(), groups);
+  const { ignored, ...claims } = capabilitiesFromGroups(groups, (partnerId) =>
+    hosted.has(partnerId)
   );
-
-  // 4. Definir Custom Claims
-  const claims = { group_roles: roles };
+  if (ignored.length > 0) {
+    logger.warn(
+      `[syncClaims] ${email} is a direct member of team groups, which grant ` +
+        `nothing: ${ignored.join(", ")}`
+    );
+  }
   await getAuth().setCustomUserClaims(uid, claims);
-
-  return { group_roles: roles };
+  return claims;
 });
 
 /**
- * Percorre recursivamente a árvore de grupos a partir de `groupEmail`,
- * preenchendo o mapa `roles` com o role efetivo do usuário `userEmail`
- * em cada grupo encontrado.
+ * The partners of `groups` whose data lives in this project.
  *
- * Os grupos formam uma árvore n-ária onde:
- * - O grupo raiz é a raiz da árvore.
- * - Os subgrupos (entidades com type=GROUP) são os filhos de cada nó.
- *
- * Metausuário de um grupo G é um usuário de qualquer ancestral de G na árvore.
- *
- * Regra de precedência: role direto (MEMBER/MANAGER/OWNER) prevalece sobre
- * status de METAUSER herdado de um ancestral.
- *
- * @param {string}  idToken           - Firebase ID Token para autenticar com o backend
- * @param {string}  userEmail         - Email do usuário cujos roles estão sendo computados
- * @param {string}  rootGroup         - Email do grupo raiz do parceiro
- * @param {string}  groupEmail        - Email do grupo atual sendo processado
- * @param {Object}  roles             - Mapa acumulador {groupEmail → role} (mutado in-place)
- * @param {boolean} isAncestorMember  - true se o usuário é membro de algum ancestral
- *                                      deste nó na árvore (determina status de METAUSER)
+ * @param {string} projectId - This Firebase project
+ * @param {Array<{email?: unknown}>} groups - The person's groups
+ * @returns {Promise<Set<string>>}
  */
-async function computeRoles(
-  idToken,
-  userEmail,
-  rootGroup,
-  groupEmail,
-  roles,
-  isAncestorMember
-) {
-  const entities = await fetchGroupEntities(idToken, groupEmail);
-
-  // 1. Verificar se o usuário é membro DIRETO deste grupo
-  const directMember = entities.find(
-    (e) =>
-      e.type === "USER" &&
-      e.email.toLowerCase() === userEmail.toLowerCase()
-  );
-
-  // 2. Determinar o role efetivo NESTE grupo
-  //    - Role direto (MEMBER/MANAGER/OWNER) tem precedência
-  //    - Se não há role direto mas é ancestorMember, é METAUSER
-  //    - O grupo raiz em si NÃO é registrado nos claims (é estrutural)
-  //    - Key is normalized: Firestore Rules map lookups are case-sensitive
-  const groupKey = normalizeGroupEmail(groupEmail);
-  if (groupKey !== normalizeGroupEmail(rootGroup)) {
-    if (directMember) {
-      roles[groupKey] = directMember.role; // "MEMBER", "MANAGER", ou "OWNER"
-    } else if (isAncestorMember) {
-      roles[groupKey] = "METAUSER";
-    }
+async function hostedPartners(projectId, groups) {
+  if (projectId !== COMMUNITY_PROJECT_ID) {
+    return new Set([partnerIdForProject(projectId)]);
   }
-
-  // 3. Para os filhos (subgrupos), propagar a flag isAncestorMember
-  //    Se o usuário é membro direto DESTE nó, seus descendentes o terão
-  //    como metausuário.
-  const userIsMemberOfThisNode = !!directMember;
-  const propagateAncestor = isAncestorMember || userIsMemberOfThisNode;
-
-  const subgroups = entities.filter(
-    (e) =>
-      e.type === "GROUP" &&
-      !e.email.startsWith("space/")
-  );
-
-  for (const sg of subgroups) {
-    await computeRoles(
-      idToken,
-      userEmail,
-      rootGroup,
-      sg.email,
-      roles,
-      propagateAncestor
-    );
+  const ids = new Set();
+  for (const group of groups) {
+    const address = parseGroupAddress(group?.email);
+    if (address) ids.add(address.partnerId);
   }
+  const db = admin.firestore();
+  const refs = [...ids].map((id) => db.doc(`partners/${id}/config/branding`));
+  if (refs.length === 0) return new Set();
+  const docs = await db.getAll(...refs);
+  return new Set(docs.filter((doc) => doc.exists).map((doc) => doc.ref.parent.parent.id));
 }
 
 /**
- * Busca as entidades (membros + subgrupos) de um grupo via backend intermediário.
+ * The person's direct groups from the gateway's `/groups?email=`.
  *
- * @param {string} idToken    - Firebase ID Token para autenticação
- * @param {string} groupEmail - Email do grupo a consultar
- * @returns {Array<{type: string, email: string, role: string, name?: string}>}
+ * @param {string} idToken - Firebase ID token of the caller
+ * @param {string} email - The caller's e-mail
+ * @returns {Promise<Array<{email: string}>>}
  */
-async function fetchGroupEntities(idToken, groupEmail) {
-  const url = `https://${BACKEND_HOST.value()}/members?email=${encodeURIComponent(
-    groupEmail
+async function fetchUserGroups(idToken, email) {
+  const url = `https://${BACKEND_HOST.value()}/groups?email=${encodeURIComponent(
+    email
   )}`;
   const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-    },
+    headers: { Authorization: `Bearer ${idToken}` },
+    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
   });
-
   if (!response.ok) {
-    throw new HttpsError(
-      "internal",
-      `Erro ao buscar membros de ${groupEmail}: ${response.status}`
-    );
+    logger.error(`[syncClaims] Gateway answered ${response.status}.`);
+    throw new HttpsError("unavailable", "Não foi possível ler seus grupos.");
   }
+  const body = await response.json();
+  return Array.isArray(body?.groups) ? body.groups : [];
+}
 
-  const data = await response.json();
-  return data.members || [];
+/**
+ * Changes the bound partner's name, theme or logo flag. Owner only.
+ *
+ * The partner project's rules cannot read the central theme catalog, so
+ * the theme is checked here, against the active themes (public REST read).
+ * The logo itself is uploaded by the owner's app to
+ * `partners/{id}/logo.png` (storage.rules); `logo: "set"` then bumps
+ * `logoVersion` so every device fetches the new file, and `"removed"`
+ * drops it.
+ *
+ * Request: `{partnerId, name?, themeId?, logo?: "set" | "removed"}`.
+ * Response: the fields written.
+ */
+exports.setBranding = onCall({ invoker: "public", region: "us-central1" }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Autenticação necessária.");
+  }
+  const partnerId = request.data?.partnerId;
+  const owns = request.auth.token.owns;
+  if (typeof partnerId !== "string" || !Array.isArray(owns) || !owns.includes(partnerId)) {
+    throw new HttpsError("permission-denied", "Só o responsável muda a aparência.");
+  }
+  let change;
+  try {
+    const needsThemes = request.data?.themeId !== undefined;
+    const themes = needsThemes ? await fetchActiveThemeIds() : new Set();
+    change = validateBranding(request.data, themes);
+  } catch (error) {
+    if (error instanceof BrandingError) {
+      throw new HttpsError("invalid-argument", error.message, { field: error.code });
+    }
+    throw error;
+  }
+  const { logo, ...fields } = change;
+  const data = { ...fields, updatedAt: new Date() };
+  if (logo === "set") data.logoVersion = Date.now();
+  if (logo === "removed") data.logoVersion = FieldValue.delete();
+  await admin
+    .firestore()
+    .doc(`partners/${partnerId}/config/branding`)
+    .set(data, { merge: true });
+  return { ...fields, ...(logo ? { logo } : {}) };
+});
+
+async function fetchActiveThemeIds() {
+  const response = await fetch(THEMES_URL, { signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS) });
+  if (!response.ok) {
+    logger.error(`[setBranding] Theme catalog answered ${response.status}.`);
+    throw new HttpsError("unavailable", "Não foi possível ler os temas.");
+  }
+  return activeThemeIdsFrom(await response.json());
 }

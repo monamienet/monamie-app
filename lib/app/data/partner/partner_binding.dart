@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:monamie_app/app/config/partner/partner_config.dart';
+import 'package:monamie_app/app/config/partner/partner_theme.dart';
 
 /// Everything the app remembers about the partner a user is bound to: the
 /// partner and its branding, and the options of its Firebase project.
@@ -34,7 +38,12 @@ class PartnerBinding {
     }
 
     return PartnerBinding(
-      partner: PartnerConfig.fromBranding(id, json['branding']),
+      partner: PartnerConfig.fromBranding(
+        id,
+        json['branding'],
+        theme: _storedTheme(json['theme']),
+        logoPng: _storedLogo(json['logoPng']),
+      ),
       options: FirebaseOptions(
         apiKey: required('apiKey'),
         appId: required('appId'),
@@ -66,8 +75,25 @@ class PartnerBinding {
       'authDomain': ?options.authDomain,
     },
     'branding': partner.toBranding(),
+    if (partner.theme case final theme?)
+      'theme': {'id': theme.id, ...theme.toJson()},
+    if (partner.logoPng case final png?) 'logoPng': base64Encode(png),
   };
 }
+
+Uint8List? _storedLogo(Object? value) {
+  if (value is! String) return null;
+  try {
+    return base64Decode(value);
+  } on FormatException {
+    return null;
+  }
+}
+
+PartnerTheme? _storedTheme(Object? json) => switch (json) {
+  {'id': final String id} => PartnerTheme.fromJson(id, json),
+  _ => null,
+};
 
 /// `partner-<id>`: the [FirebaseApp] name of partner [id].
 String firebaseAppNameFor(String id) => 'partner-$id';

@@ -10,6 +10,10 @@ class PartnerCandidate {
 
 /// Finds the partners of the user signed in to the central project.
 abstract interface class PartnerDirectory {
-  /// The user's active partners, sorted by id; empty when none.
-  Future<List<PartnerCandidate>> partnersOfSignedInUser();
+  /// The user's partners whose status is `active`, sorted by id; empty
+  /// when none.
+  ///
+  /// [fresh] skips the server's short groups cache (right after accepting
+  /// an invite, when the new membership must show at once).
+  Future<List<PartnerCandidate>> partnersOfSignedInUser({bool fresh = false});
 }

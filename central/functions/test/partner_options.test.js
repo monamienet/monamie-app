@@ -106,6 +106,25 @@ describe("projectIdFor - Unit Test Suite", () => {
     // 3. Assert
     assert.equal(projectId, "monamienet-aquariustur");
   });
+
+  const cases = [
+    ["Happy Path: a Community partner lives in the shared project", "rotasul", "community", "monamienet-community"],
+    ["Happy Path: a Standard partner has its own project", "rotasul", "standard", "monamienet-rotasul"],
+    ["Edge Case: no plan means Standard", "rotasul", undefined, "monamienet-rotasul"],
+    ["Sad Path: an unknown plan is not Community", "rotasul", "Community", "monamienet-rotasul"],
+  ];
+  for (const [label, id, plan, expected] of cases) {
+    test(`${label} (${id}, ${plan})`, () => {
+      // 1. Arrange
+      const input = [id, plan];
+
+      // 2. Act
+      const projectId = projectIdFor(...input);
+
+      // 3. Assert
+      assert.equal(projectId, expected);
+    });
+  }
 });
 
 describe("androidOptionsFromGoogleServices - Unit Test Suite", () => {
@@ -387,6 +406,59 @@ describe("PartnerOptionsReader - Unit Test Suite", () => {
 
     // 3. Assert
     assert.equal(options.projectId, "monamienet-beta");
+  });
+
+  test("Happy Path: a Community partner reads the options of the shared project", async () => {
+    // 1. Arrange
+    const api = fakeApi(partnerResponses("community"));
+    const reader = new PartnerOptionsReader(api.getJson, {
+      now: fakeClock().now,
+    });
+
+    // 2. Act
+    const options = await reader.get("rotasul", "android", "community");
+
+    // 3. Assert
+    assert.deepEqual(
+      [options.projectId, api.calls],
+      [
+        "monamienet-community",
+        [
+          `${API}/projects/monamienet-community/androidApps`,
+          `${API}/projects/-/androidApps/1:111:android:community/config`,
+        ],
+      ]
+    );
+  });
+
+  test("Edge Case: two Community partners share one cache entry per platform", async () => {
+    // 1. Arrange
+    const api = fakeApi(partnerResponses("community"));
+    const reader = new PartnerOptionsReader(api.getJson, {
+      now: fakeClock().now,
+    });
+    const first = await reader.get("rotasul", "web", "community");
+    const callsBefore = api.calls.length;
+
+    // 2. Act
+    const second = await reader.get("outro", "web", "community");
+
+    // 3. Assert
+    assert.deepEqual([second, api.calls.length], [first, callsBefore]);
+  });
+
+  test("Sad Path: a Standard partner never reads the shared project", async () => {
+    // 1. Arrange
+    const api = fakeApi(partnerResponses("rotasul"));
+    const reader = new PartnerOptionsReader(api.getJson, {
+      now: fakeClock().now,
+    });
+
+    // 2. Act
+    const options = await reader.get("rotasul", "web", "standard");
+
+    // 3. Assert
+    assert.equal(options.projectId, "monamienet-rotasul");
   });
 
   test("Sad Path: no MonAmie Android app throws", async () => {

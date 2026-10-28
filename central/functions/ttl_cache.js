@@ -20,6 +20,11 @@ class TtlCache {
     this._entries.set(key, { value, expires: this._now() + this._ttlMs });
     return value;
   }
+
+  /** Forgets `key`, so the next read computes it again. */
+  delete(key) {
+    this._entries.delete(key);
+  }
 }
 
 module.exports = { TtlCache };

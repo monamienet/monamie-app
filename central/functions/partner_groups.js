@@ -1,29 +1,20 @@
-const GROUP_DOMAIN = "monamienet.org";
-const PARTNER_ID = /^[a-z][a-z0-9]*$/;
-const SUFFIX = /^[0-9]{2}$/;
+const { parseGroupAddress } = require("./group_address");
 
 /**
- * The partner a MonAmie group belongs to, or null when `email` does not
- * follow the convention.
+ * The partner a MonAmie group points to, or null.
  *
- * Every group of partner `<id>` is `<id>NN@monamienet.org`, where `NN` is
- * always two digits (`00` is the root group), so the id is the part before
- * the `@` without its last two characters. `app` is reserved for the central
- * project. Twin of `partnerIdFromGroupEmail` in
- * `lib/app/config/partner/partner_config.dart`.
+ * Any level counts: the root `<id>00`, a team `<id>NN` and its leaves
+ * `<id>NNr` / `<id>NNw`. The group name only says where to go; it grants
+ * nothing. What the person may do there is decided by the partner's
+ * syncClaims, which ignores direct members of a team group. Counting team
+ * groups here keeps partners made before the three-level model (people
+ * directly in `<id>NN`) reachable until they are migrated.
  *
  * @param {unknown} email - Group email
  * @returns {string|null} Partner id
  */
 function partnerIdFromGroupEmail(email) {
-  if (typeof email !== "string") return null;
-  const normalized = email.trim().toLowerCase();
-  const at = normalized.lastIndexOf("@");
-  if (at < 0 || normalized.slice(at + 1) !== GROUP_DOMAIN) return null;
-  const local = normalized.slice(0, at);
-  if (local.length < 3 || !SUFFIX.test(local.slice(-2))) return null;
-  const id = local.slice(0, -2);
-  return PARTNER_ID.test(id) && id !== "app" ? id : null;
+  return parseGroupAddress(email)?.partnerId ?? null;
 }
 
 /**

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:monamie_app/app/modules/monamie/history/history_month.dart';
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:monamie_app/app/utils/group_email.dart';
@@ -7,15 +8,11 @@ import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 class FirebaseProvider {
   CollectionReference get collectionRef =>
-      CurrentPartnerFirebase.instance.firestore.collection('usuarios');
+      CurrentPartnerFirebase.instance.partnerData.collection('usuarios');
 
   Future<void> adicionarDados(UserModel userLocation) async {
-    // 1. Instanciar o Firestore com o app específico e banco de dados
-    FirebaseFirestore firestore = CurrentPartnerFirebase.instance.firestore;
-
-    // 2. Referenciar a coleção e adicionar dados
     try {
-      await firestore.collection('usuarios').doc(userLocation.email).set({
+      await collectionRef.doc(userLocation.email).set({
         'email': userLocation.email,
         'lat': userLocation.lat,
         'lng': userLocation.lng,
@@ -32,10 +29,8 @@ class FirebaseProvider {
   }
 
   Future<void> setUser(UserModel user) async {
-    FirebaseFirestore firestore = CurrentPartnerFirebase.instance.firestore;
-
     try {
-      await firestore.collection('usuarios').doc(user.email).set(user.toMap());
+      await collectionRef.doc(user.email).set(user.toMap());
       debugPrint("Usuário criado com sucesso!");
     } catch (e) {
       throw Exception("Erro ao criar usuário!");
@@ -50,47 +45,22 @@ class FirebaseProvider {
     });
   }
 
-  Stream<List<UserModel>> streamUsersByGroup(String groupEmail) {
+  /// Every person's live document that points at [groupEmail], sharing or
+  /// not, so the team list can say who turned the location off. The map keeps
+  /// only the live ones (see `liveUsers`).
+  Stream<List<UserModel>> streamUsersOfGroup(String groupEmail) {
     try {
       return collectionRef
           .where('grupo_ativo', isEqualTo: normalizeGroupEmail(groupEmail))
-          .where('isTracked', isEqualTo: true)
           .snapshots()
-          .map((QuerySnapshot query) {
-            List<UserModel> users = [];
-            final limit = DateTime.now().subtract(const Duration(minutes: 5));
-            for (var doc in query.docs) {
-              final user = UserModel.fromMap(
-                doc.data() as Map<String, dynamic>,
-              );
-              if (user.timestamp != null && user.timestamp!.isAfter(limit)) {
-                users.add(user);
-              }
-            }
-            return users;
-          });
+          .map(
+            (QuerySnapshot query) => [
+              for (final doc in query.docs)
+                UserModel.fromMap(doc.data() as Map<String, dynamic>),
+            ],
+          );
     } catch (e) {
       throw Exception("Erro ao buscar usuários do grupo: $e");
-    }
-  }
-
-  Stream<List<UserModel>> getAllTrackedUsers() {
-    try {
-      return collectionRef.where('isTracked', isEqualTo: true).snapshots().map((
-        QuerySnapshot query,
-      ) {
-        List<UserModel> users = [];
-        final limit = DateTime.now().subtract(const Duration(minutes: 2));
-        for (var doc in query.docs) {
-          final user = UserModel.fromMap(doc.data() as Map<String, dynamic>);
-          if (user.timestamp != null && user.timestamp!.isAfter(limit)) {
-            users.add(user);
-          }
-        }
-        return users;
-      });
-    } catch (e) {
-      throw Exception("Erro ao buscar usuários: $e");
     }
   }
 
@@ -162,39 +132,75 @@ class FirebaseProvider {
     String? grupoAtivo,
   }) async {
     try {
+      // The position and its trail point go in one batch, both stamped
+      // with the server's time: the rules limit how often a position may
+      // change (Community plan) and only accept a point written together
+      // with the position it records.
+      final userDoc = collectionRef.doc(email);
       final Map<String, dynamic> userUpdates = {
         'email': email,
         'nome': nome,
         'lat': lat,
         'lng': lng,
         'timestamp': timestamp,
+        'positionAt': FieldValue.serverTimestamp(),
       };
-      if (grupoAtivo != null) {
-        userUpdates['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
-      }
-
-      await collectionRef.doc(email).update(userUpdates);
-
-      // Salva o ponto na subcoleção permanente de histórico de posições.
       final Map<String, dynamic> pointData = {
         'lat': lat,
         'lng': lng,
-        'timestamp': timestamp,
+        'timestamp': FieldValue.serverTimestamp(),
       };
       if (grupoAtivo != null) {
+        userUpdates['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
         pointData['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
       }
 
-      await collectionRef
-          .doc(email)
-          .collection('historico_posicoes')
-          .add(pointData);
+      // The day summary marks the day in the history calendar, so a month
+      // costs one read per person and day instead of every point.
+      final daySummary = <String, dynamic>{
+        'lastAt': FieldValue.serverTimestamp(),
+        'points': FieldValue.increment(1),
+        'grupo_ativo': ?pointData['grupo_ativo'],
+      };
+      final batch = CurrentPartnerFirebase.instance.firestore.batch()
+        ..update(userDoc, userUpdates)
+        ..set(userDoc.collection('historico_posicoes').doc(), pointData)
+        ..set(
+          userDoc.collection('dias').doc(dayKey(DateTime.now())),
+          daySummary,
+          SetOptions(merge: true),
+        );
+      await batch.commit();
 
       if (kDebugMode) print("Dados atualizados no firestore com sucesso!");
     } catch (e) {
       debugPrint("Erro ao atualizar coordenadas e timestamp: $e");
       rethrow;
     }
+  }
+
+  /// The days of [month] when any of [emails] shared their location, read
+  /// from the day summaries (at most one read per person and day).
+  Future<Set<String>> trailDays(
+    Iterable<String> emails,
+    HistoryMonth month,
+  ) async {
+    final (first, last) = month.keyRange;
+    final days = <String>{};
+    await Future.wait([
+      for (final email in emails)
+        collectionRef
+            .doc(email)
+            .collection('dias')
+            .where(FieldPath.documentId, isGreaterThanOrEqualTo: first)
+            .where(FieldPath.documentId, isLessThanOrEqualTo: last)
+            .get()
+            .then((snapshot) => days.addAll(snapshot.docs.map((d) => d.id)))
+            .catchError((Object e) {
+              debugPrint('Could not read the days of $email: $e');
+            }),
+    ]);
+    return days;
   }
 
   /// Retorna um Stream com os últimos [limit] pontos da trajetória de um

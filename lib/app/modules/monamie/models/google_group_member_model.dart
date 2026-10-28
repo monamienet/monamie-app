@@ -1,13 +1,7 @@
-enum GoogleGroupRole { owner, manager, member }
-
+/// A person in a team (a member of the team's share leaf).
 class GoogleGroupMember {
   String name;
   String email;
-  GoogleGroupRole role;
 
-  GoogleGroupMember({
-    required this.name,
-    required this.email,
-    required this.role,
-  });
+  GoogleGroupMember({required this.name, required this.email});
 }

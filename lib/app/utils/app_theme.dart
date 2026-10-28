@@ -19,6 +19,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: 'Manrope',
       colorScheme: colorScheme,
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: Colors.white,
@@ -71,6 +72,7 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: 'Manrope',
       colorScheme: colorScheme,
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.alternativeDarkBlue(),

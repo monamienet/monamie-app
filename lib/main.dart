@@ -34,7 +34,7 @@ Future<void> main() async {
   if (binding != null) {
     // Picks up branding changes for the next launch, without changing the
     // look of this one.
-    const PartnerBrandingLoader()
+    PartnerBrandingLoader()
         .readBranding(binding)
         .then(session.storeBranding)
         .ignore();
@@ -43,7 +43,7 @@ Future<void> main() async {
   runApp(
     GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: Partner.current?.displayName ?? MonAmieBrand.name,
+      title: Partner.current?.name ?? MonAmieBrand.name,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light,

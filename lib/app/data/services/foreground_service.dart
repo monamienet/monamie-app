@@ -8,15 +8,53 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 import 'package:monamie_app/app/data/partner/partner_session.dart';
+import 'package:monamie_app/app/data/tracking/firestore_tracking_settings_repository.dart';
+import 'package:monamie_app/app/data/tracking/sharing_times.dart';
+import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
 
 Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;
 StreamSubscription<User?>? _authSubscription;
-int interval = 5;
-int distance = 10;
-int heartbeatInterval = 5;
+
+/// The owner's tracking settings (`config/tracking`), applied to the
+/// position stream; a change restarts the stream with the new values.
+TrackingSettings _settings = TrackingSettings.defaults;
+StreamSubscription<TrackingSettings>? _settingsSubscription;
 Position? _lastRecordedPosition;
+
+/// The plan's minimum period (*período mínimo*: the least time between two
+/// positions, Community), read from
+/// `partners/{id}/config/plan` at start. The rules refuse a sooner write.
+Duration _minPeriod = Duration.zero;
+DateTime? _lastPositionWriteAt;
+
+/// Reads the plan's minimum period; none when the document is missing
+/// (Standard) or cannot be read.
+Future<Duration> _readMinPeriod() async {
+  try {
+    final plan = await CurrentPartnerFirebase.instance.partnerData
+        .collection('config')
+        .doc('plan')
+        .get()
+        .timeout(const Duration(seconds: 5));
+    final minutes = plan.data()?['minIntervalMinutes'];
+    return minutes is int && minutes > 0
+        ? Duration(minutes: minutes)
+        : Duration.zero;
+  } catch (e) {
+    debugPrint('[ForegroundService] Could not read the plan: $e');
+    return Duration.zero;
+  }
+}
+
+/// Whether enough time passed since the last position write, with a few
+/// seconds of slack for the difference between device and server clocks.
+bool _minPeriodElapsed(DateTime now) {
+  final last = _lastPositionWriteAt;
+  if (last == null || _minPeriod == Duration.zero) return true;
+  return now.difference(last) >= _minPeriod + const Duration(seconds: 10);
+}
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
@@ -34,7 +72,7 @@ void onStart(ServiceInstance service) async {
   // No Android, o Firebase Auth persiste credenciais via SharedPreferences
   // no nível nativo, que são compartilhadas entre Flutter engines no
   // mesmo processo. Forçamos um refresh do token para garantir que os
-  // custom claims (group_roles) estejam presentes.
+  // custom claims (share, watch, owns) estejam presentes.
   final currentUser = CurrentPartnerFirebase.instance.auth.currentUser;
   if (currentUser != null) {
     try {
@@ -95,6 +133,8 @@ void onStart(ServiceInstance service) async {
 void _stopTracking(ServiceInstance service) {
   _authSubscription?.cancel();
   _authSubscription = null;
+  _settingsSubscription?.cancel();
+  _settingsSubscription = null;
   _heartbeatTimer?.cancel();
   _heartbeatTimer = null;
   _positionSubscription?.cancel();
@@ -123,34 +163,61 @@ Future<void> updateLocation(
 ]) async {
   _lastRecordedPosition = null;
 
+  // Follow the owner's settings: the first value applies now, later ones
+  // restart this function with the new period and radius.
+  if (_settingsSubscription == null) {
+    final first = Completer<void>();
+    _settingsSubscription = const FirestoreTrackingSettingsRepository()
+        .watch()
+        .listen(
+          (settings) {
+            final changed = first.isCompleted && settings != _settings;
+            _settings = settings;
+            if (!first.isCompleted) first.complete();
+            if (changed) {
+              debugPrint(
+                '[ForegroundService] New settings: every '
+                '${settings.periodMinutes} min, ${settings.radiusMeters} m.',
+              );
+              updateLocation(service, email, name, grupoAtivo);
+            }
+          },
+          onError: (Object e) {
+            debugPrint('[ForegroundService] Could not read the settings: $e');
+            if (!first.isCompleted) first.complete();
+          },
+        );
+    await first.future.timeout(const Duration(seconds: 5), onTimeout: () {});
+  }
+  final period = _settings.periodMinutes;
+  final radius = _settings.radiusMeters;
+
   // Configuração do GPS
   late LocationSettings locationSettings;
 
   if (Platform.isAndroid) {
     locationSettings = AndroidSettings(
       accuracy: LocationAccuracy.high, // TODO: testar outros valores aqui
-      distanceFilter: distance, // Só atualiza se mover mais de 10 metros
-      intervalDuration: Duration(minutes: interval),
+      distanceFilter: radius,
+      intervalDuration: Duration(minutes: period),
     );
   } else if (Platform.isIOS) {
     locationSettings = AppleSettings(
       accuracy: LocationAccuracy.high,
       activityType: ActivityType.other,
-      distanceFilter: distance,
+      distanceFilter: radius,
       pauseLocationUpdatesAutomatically: true,
       showBackgroundLocationIndicator: true,
     );
   } else {
     locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: distance,
+      distanceFilter: radius,
     );
   }
 
   _heartbeatTimer?.cancel();
-  _heartbeatTimer = Timer.periodic(Duration(minutes: heartbeatInterval), (
-    timer,
-  ) async {
+  _heartbeatTimer = Timer.periodic(heartbeat, (timer) async {
     if (await FirebaseProvider().doesDocumentExist(email)) {
       try {
         await FirebaseProvider().updateHeartbeat(email);
@@ -160,12 +227,15 @@ Future<void> updateLocation(
     }
   });
 
+  _minPeriod = await _readMinPeriod();
+
   // Tenta obter e sincronizar a localização inicial imediatamente
   try {
     final initialPosition = await Geolocator.getCurrentPosition(
       locationSettings: locationSettings,
     );
-    if (await FirebaseProvider().doesDocumentExist(email)) {
+    if (_minPeriodElapsed(DateTime.now()) &&
+        await FirebaseProvider().doesDocumentExist(email)) {
       try {
         await FirebaseProvider().updateLocationAndTimestamp(
           email: email,
@@ -176,6 +246,7 @@ Future<void> updateLocation(
           grupoAtivo: grupoAtivo,
         );
         _lastRecordedPosition = initialPosition;
+        _lastPositionWriteAt = DateTime.now();
         _consecutivePermissionErrors = 0;
       } catch (e) {
         debugPrint(
@@ -217,10 +288,16 @@ Future<void> updateLocation(
             position.latitude,
             position.longitude,
           );
-          if (distanceMoved < distance) {
+          if (distanceMoved < radius) {
             service.invoke('updateLocationLocally', {'position': position});
             return;
           }
+        }
+
+        // The plan limits how often a position may be written.
+        if (!_minPeriodElapsed(DateTime.now())) {
+          service.invoke('updateLocationLocally', {'position': position});
+          return;
         }
 
         // Atualiza firebase
@@ -235,6 +312,7 @@ Future<void> updateLocation(
               grupoAtivo: grupoAtivo,
             );
             _lastRecordedPosition = position;
+            _lastPositionWriteAt = DateTime.now();
             // Reset do contador em caso de sucesso
             _consecutivePermissionErrors = 0;
           } catch (e) {
@@ -243,7 +321,7 @@ Future<void> updateLocation(
               debugPrint(
                 '[ForegroundService] PERMISSION_DENIED ao atualizar localização '
                 '(tentativa $_consecutivePermissionErrors/$_maxConsecutivePermissionErrors). '
-                'Claims group_roles podem estar ausentes no token.',
+                'O claim share pode estar ausente no token.',
               );
               // Tentar refresh do token para recuperar claims
               try {

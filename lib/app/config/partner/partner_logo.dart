@@ -4,13 +4,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'monamie_brand.dart';
 import 'partner.dart';
 import 'partner_config.dart';
-import 'partner_palette.dart';
+import 'partner_icon.dart';
 
-/// The logo with the name: the bound partner's, or MonAmie's when no
-/// partner is bound.
-///
-/// A partner without a usable logo (missing, or an SVG that does not parse)
-/// gets its name written in its own colors instead.
+/// The big brand mark: the bound partner's square logo (or its initial
+/// tile), or MonAmie's logo when no partner is bound.
 class PartnerLogo extends StatelessWidget {
   const PartnerLogo({
     super.key,
@@ -41,33 +38,13 @@ class PartnerLogo extends StatelessWidget {
         semanticsLabel: MonAmieBrand.name,
       );
     }
-
-    Widget nameAsText(BuildContext context, [Object? error, StackTrace? _]) {
-      if (error != null) debugPrint('Could not load the partner logo: $error');
-      return SizedBox(
-        width: width,
-        height: height,
-        child: Center(
-          child: Text(
-            partner.name,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: PartnerPalette.fromConfig(partner).primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      );
-    }
-
-    final svg = partner.logoSvg;
-    if (svg == null) return nameAsText(context);
-    return SvgPicture.string(
-      svg,
+    final side = width < height ? width : height;
+    return SizedBox(
       width: width,
       height: height,
-      semanticsLabel: partner.name,
-      errorBuilder: nameAsText,
+      child: Center(
+        child: PartnerIcon(partner: partner, size: side * 0.7),
+      ),
     );
   }
 }
