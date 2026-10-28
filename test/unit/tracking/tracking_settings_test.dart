@@ -6,16 +6,19 @@ TrackingSettings settingsOf(int minutes, int meters) =>
 
 void main() {
   group('TrackingSettings.defaults - Unit Test Suite', () {
-    test('Happy Path: the defaults are 5 minutes and 10 meters', () {
-      // 1. Arrange
-      const defaults = TrackingSettings.defaults;
+    test(
+      'Happy Path: the defaults are Economia, 15 minutes and 100 meters',
+      () {
+        // 1. Arrange
+        const defaults = TrackingSettings.defaults;
 
-      // 2. Act
-      final values = [defaults.periodMinutes, defaults.radiusMeters];
+        // 2. Act
+        final values = [defaults.periodMinutes, defaults.radiusMeters];
 
-      // 3. Assert
-      expect(values, [5, 10]);
-    });
+        // 3. Assert
+        expect(values, [15, 100]);
+      },
+    );
   });
 
   group('TrackingSettings.fromMap - Unit Test Suite', () {
@@ -33,7 +36,7 @@ void main() {
       expect(settings, settingsOf(20, 300));
     });
 
-    test('Edge Case: a null map is the defaults', () {
+    test('Edge Case: a null map is 15 minutes and 100 meters', () {
       // 1. Arrange
       const Map<String, Object?>? data = null;
 
@@ -41,32 +44,32 @@ void main() {
       final settings = TrackingSettings.fromMap(data);
 
       // 3. Assert
-      expect(settings, settingsOf(5, 10));
+      expect(settings, settingsOf(15, 100));
     });
 
-    test('Edge Case: a missing interval falls back alone', () {
+    test('Edge Case: a missing interval alone falls back to 15', () {
       // 1. Arrange
-      final data = <String, Object?>{'distanceMeters': 500};
+      final data = <String, Object?>{'distanceMeters': 10};
 
       // 2. Act
       final settings = TrackingSettings.fromMap(data);
 
       // 3. Assert
-      expect(settings, settingsOf(5, 500));
+      expect(settings, settingsOf(15, 10));
     });
 
-    test('Edge Case: a missing distance falls back alone', () {
+    test('Edge Case: a missing distance alone falls back to 100', () {
       // 1. Arrange
-      final data = <String, Object?>{'intervalMinutes': 1};
+      final data = <String, Object?>{'intervalMinutes': 5};
 
       // 2. Act
       final settings = TrackingSettings.fromMap(data);
 
       // 3. Assert
-      expect(settings, settingsOf(1, 10));
+      expect(settings, settingsOf(5, 100));
     });
 
-    test('Sad Path: interval 4 is not allowed and falls back to 5', () {
+    test('Sad Path: interval 4 is not allowed and falls back to 15', () {
       // 1. Arrange
       final data = <String, Object?>{
         'intervalMinutes': 4,
@@ -77,10 +80,10 @@ void main() {
       final settings = TrackingSettings.fromMap(data);
 
       // 3. Assert
-      expect(settings, settingsOf(5, 200));
+      expect(settings, settingsOf(15, 200));
     });
 
-    test('Sad Path: distance 15 is not allowed and falls back to 10', () {
+    test('Sad Path: distance 15 is not allowed and falls back to 100', () {
       // 1. Arrange
       final data = <String, Object?>{
         'intervalMinutes': 30,
@@ -91,10 +94,10 @@ void main() {
       final settings = TrackingSettings.fromMap(data);
 
       // 3. Assert
-      expect(settings, settingsOf(30, 10));
+      expect(settings, settingsOf(30, 100));
     });
 
-    test('Sad Path: values that are strings fall back to the defaults', () {
+    test('Sad Path: values that are strings fall back to 15 and 100', () {
       // 1. Arrange
       final data = <String, Object?>{
         'intervalMinutes': '20',
@@ -105,11 +108,11 @@ void main() {
       final settings = TrackingSettings.fromMap(data);
 
       // 3. Assert
-      expect(settings, settingsOf(5, 10));
+      expect(settings, settingsOf(15, 100));
     });
 
     // Firestore may hand back a number as a double; it is not an int.
-    test('Sad Path: values that are doubles fall back to the defaults', () {
+    test('Sad Path: values that are doubles fall back to 15 and 100', () {
       // 1. Arrange
       final data = <String, Object?>{
         'intervalMinutes': 20.0,
@@ -120,7 +123,7 @@ void main() {
       final settings = TrackingSettings.fromMap(data);
 
       // 3. Assert
-      expect(settings, settingsOf(5, 10));
+      expect(settings, settingsOf(15, 100));
     });
   });
 
@@ -147,8 +150,8 @@ void main() {
       });
     }
 
-    test('Sad Path: a not-allowed interval falls back to 5, then is raised '
-        'to the minimum 15', () {
+    test('Sad Path: a not-allowed interval falls back to 15, then is raised '
+        'to the minimum 20', () {
       // 1. Arrange
       final data = <String, Object?>{
         'intervalMinutes': 4,
@@ -156,10 +159,10 @@ void main() {
       };
 
       // 2. Act
-      final settings = TrackingSettings.fromMap(data, minPeriodMinutes: 15);
+      final settings = TrackingSettings.fromMap(data, minPeriodMinutes: 20);
 
       // 3. Assert
-      expect(settings, settingsOf(15, 50));
+      expect(settings, settingsOf(20, 50));
     });
   });
 

@@ -200,7 +200,7 @@ Os parceiros escolhem um tema de um conjunto fixo, nunca cores livres. O catálo
 ```
 partners/{partnerId}/config/branding      público: nome e aparência
 partners/{partnerId}/config/plan          só Community: {minIntervalMinutes: 15}
-partners/{partnerId}/config/tracking      escolha do responsável: {intervalMinutes, distanceMeters}; padrão 5 min, 10 m
+partners/{partnerId}/config/tracking      escolha do responsável: {intervalMinutes, distanceMeters}; padrão 15 min, 100 m (Economia)
 partners/{partnerId}/usuarios/{email}     posição atual (positionAt = hora do servidor da última posição)
 partners/{partnerId}/usuarios/{email}/historico_posicoes/{pontoId}
 partners/{partnerId}/usuarios/{email}/dias/{yyyy-mm-dd}  um resumo por dia com trajetos (pontos do calendário do histórico)

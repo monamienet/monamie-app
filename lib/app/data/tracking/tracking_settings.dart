@@ -62,8 +62,13 @@ class TrackingSettings {
     return settings.withinPlan(minPeriodMinutes);
   }
 
-  /// The values before any owner choice: *Equilíbrio* (5 min, 10 m).
-  static const defaults = TrackingSettings(periodMinutes: 5, radiusMeters: 10);
+  /// The values before any owner choice, and for any stored value that is
+  /// not allowed: *Economia* (15 min, 100 m), the only preset offered for now
+  /// and the one every plan accepts.
+  static const defaults = TrackingSettings(
+    periodMinutes: 15,
+    radiusMeters: 100,
+  );
 
   final int periodMinutes;
   final int radiusMeters;
