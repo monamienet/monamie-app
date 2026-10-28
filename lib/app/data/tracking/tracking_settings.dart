@@ -7,6 +7,11 @@ const trackingPeriods = [1, 2, 3, 5, 10, 15, 20, 30];
 /// `firestore.rules` accepts the same values.
 const trackingRadii = [5, 10, 20, 50, 100, 200, 300, 500];
 
+/// The presets partners may use for now. Settings saved with any other
+/// preset are applied as [TrackingPreset.economia] (see
+/// [TrackingSettings.withinOffered]); the stored document is left as it is.
+const offeredPresets = {TrackingPreset.economia};
+
 /// A named choice on *Ajustes de acompanhamento*.
 enum TrackingPreset {
   economia('Economia', 15, 100),
@@ -82,6 +87,12 @@ class TrackingSettings {
     );
     return TrackingSettings(periodMinutes: allowed, radiusMeters: radiusMeters);
   }
+
+  /// These settings, or *Economia* when they match no preset in
+  /// [offeredPresets] (custom values count as *Personalizado*).
+  TrackingSettings withinOffered() => offeredPresets.contains(preset)
+      ? this
+      : TrackingPreset.economia.settings!;
 
   Duration get period => Duration(minutes: periodMinutes);
 

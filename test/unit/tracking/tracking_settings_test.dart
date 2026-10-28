@@ -265,6 +265,40 @@ void main() {
     }
   });
 
+  group('TrackingSettings.withinOffered - Unit Test Suite', () {
+    final cases = [
+      ('Happy Path', 'Economia is kept', 15, 100, settingsOf(15, 100)),
+      ('Sad Path', 'Equilíbrio becomes Economia', 5, 10, settingsOf(15, 100)),
+      ('Sad Path', 'Precisão becomes Economia', 1, 5, settingsOf(15, 100)),
+      (
+        'Edge Case',
+        'custom values (Personalizado) become Economia',
+        20,
+        50,
+        settingsOf(15, 100),
+      ),
+      (
+        'Edge Case',
+        'Economia period with another radius becomes Economia',
+        15,
+        10,
+        settingsOf(15, 100),
+      ),
+    ];
+    for (final (label, name, interval, distance, expected) in cases) {
+      test('$label: $name ($interval min, $distance m)', () {
+        // 1. Arrange
+        final settings = settingsOf(interval, distance);
+
+        // 2. Act
+        final within = settings.withinOffered();
+
+        // 3. Assert
+        expect(within, expected);
+      });
+    }
+  });
+
   group('TrackingPreset.settings - Unit Test Suite', () {
     final cases = [
       ('Happy Path', TrackingPreset.economia, settingsOf(15, 100)),

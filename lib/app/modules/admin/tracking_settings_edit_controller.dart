@@ -46,14 +46,10 @@ class TrackingSettingsEditController extends GetxController {
 
   bool get hasChanges => draft.value != savedSettings.value;
 
-  /// The presets that can be picked for now. The others stay on screen,
-  /// greyed out, until they are opened to partners.
-  static const offered = {TrackingPreset.economia};
-
-  /// Whether [option] can be picked: offered for now and allowed by the
+  /// Whether [option] can be picked: in [offeredPresets] and allowed by the
   /// plan's minimum period.
   bool allows(TrackingPreset option) =>
-      offered.contains(option) &&
+      offeredPresets.contains(option) &&
       (option.periodMinutes == null ||
           option.periodMinutes! >= minPeriodMinutes.value);
 

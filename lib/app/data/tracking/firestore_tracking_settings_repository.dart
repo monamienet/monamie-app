@@ -31,7 +31,10 @@ class FirestoreTrackingSettingsRepository
         .doc('tracking')
         .snapshots()
         .map(
-          (doc) => TrackingSettings.fromMap(doc.data(), minPeriodMinutes: min),
+          (doc) => TrackingSettings.fromMap(
+            doc.data(),
+            minPeriodMinutes: min,
+          ).withinOffered(),
         );
   }
 
