@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 
 TrackingSettings settingsOf(int minutes, int meters) =>
-    TrackingSettings(intervalMinutes: minutes, distanceMeters: meters);
+    TrackingSettings(periodMinutes: minutes, radiusMeters: meters);
 
 void main() {
   group('TrackingSettings.defaults - Unit Test Suite', () {
@@ -11,7 +11,7 @@ void main() {
       const defaults = TrackingSettings.defaults;
 
       // 2. Act
-      final values = [defaults.intervalMinutes, defaults.distanceMeters];
+      final values = [defaults.periodMinutes, defaults.radiusMeters];
 
       // 3. Assert
       expect(values, [5, 10]);
@@ -140,10 +140,7 @@ void main() {
         };
 
         // 2. Act
-        final settings = TrackingSettings.fromMap(
-          data,
-          minIntervalMinutes: min,
-        );
+        final settings = TrackingSettings.fromMap(data, minPeriodMinutes: min);
 
         // 3. Assert
         expect(settings, settingsOf(expected, 50));
@@ -159,7 +156,7 @@ void main() {
       };
 
       // 2. Act
-      final settings = TrackingSettings.fromMap(data, minIntervalMinutes: 15);
+      final settings = TrackingSettings.fromMap(data, minPeriodMinutes: 15);
 
       // 3. Assert
       expect(settings, settingsOf(15, 50));
@@ -184,26 +181,6 @@ void main() {
 
         // 3. Assert
         expect(within, settingsOf(expected, 100));
-      });
-    }
-  });
-
-  group('TrackingSettings.staleAfter - Unit Test Suite', () {
-    final cases = [
-      ('Happy Path', 5, const Duration(minutes: 10)),
-      ('Edge Case', 1, const Duration(minutes: 2)),
-      ('Edge Case', 30, const Duration(minutes: 60)),
-    ];
-    for (final (label, interval, expected) in cases) {
-      test('$label: interval $interval min is stale after $expected', () {
-        // 1. Arrange
-        final settings = settingsOf(interval, 10);
-
-        // 2. Act
-        final stale = settings.staleAfter;
-
-        // 3. Assert
-        expect(stale, expected);
       });
     }
   });

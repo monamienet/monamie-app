@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart';
+import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/call_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
@@ -19,7 +19,7 @@ List<TeamRow> observedTeamRows() {
     usersWithPoints: tracking.usersWithPointsOnObservedDay.toSet(),
     observingToday: Get.find<CalendarController>().isObservingToday,
     now: DateTime.now(),
-    staleAfter: Get.find<TrackingSettingsController>().staleAfter,
+    validity: validity,
   );
 }
 

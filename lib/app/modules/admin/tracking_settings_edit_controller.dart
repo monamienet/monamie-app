@@ -25,7 +25,7 @@ class TrackingSettingsEditController extends GetxController {
 
   /// The plan's minimum interval (Community: 15 min); presets below it are
   /// not offered.
-  final RxInt minIntervalMinutes = 0.obs;
+  final RxInt minPeriodMinutes = 0.obs;
   final RxBool isSaving = false.obs;
   final RxBool justSaved = false.obs;
   final RxString errorMessage = ''.obs;
@@ -38,7 +38,7 @@ class TrackingSettingsEditController extends GetxController {
 
   Future<void> _loadPlan() async {
     try {
-      minIntervalMinutes.value = await _repository.minIntervalMinutes();
+      minPeriodMinutes.value = await _repository.minPeriodMinutes();
     } catch (e) {
       debugPrint('[TrackingSettings] Could not read the plan: $e');
     }
@@ -48,8 +48,8 @@ class TrackingSettingsEditController extends GetxController {
 
   /// Whether [option] is allowed by the plan.
   bool allows(TrackingPreset option) =>
-      option.intervalMinutes == null ||
-      option.intervalMinutes! >= minIntervalMinutes.value;
+      option.periodMinutes == null ||
+      option.periodMinutes! >= minPeriodMinutes.value;
 
   void pickPreset(TrackingPreset option) {
     if (isSaving.value || !allows(option)) return;
@@ -60,11 +60,11 @@ class TrackingSettingsEditController extends GetxController {
   }
 
   void setInterval(int minutes) {
-    if (isSaving.value || minutes < minIntervalMinutes.value) return;
+    if (isSaving.value || minutes < minPeriodMinutes.value) return;
     justSaved.value = false;
     draft.value = TrackingSettings(
-      intervalMinutes: minutes,
-      distanceMeters: draft.value.distanceMeters,
+      periodMinutes: minutes,
+      radiusMeters: draft.value.radiusMeters,
     );
   }
 
@@ -72,8 +72,8 @@ class TrackingSettingsEditController extends GetxController {
     if (isSaving.value) return;
     justSaved.value = false;
     draft.value = TrackingSettings(
-      intervalMinutes: draft.value.intervalMinutes,
-      distanceMeters: meters,
+      periodMinutes: draft.value.periodMinutes,
+      radiusMeters: meters,
     );
   }
 

@@ -27,7 +27,7 @@ List<TeamRow> teamRows({
   required Set<String> usersWithPoints,
   required bool observingToday,
   required DateTime now,
-  required Duration staleAfter,
+  required Duration validity,
 }) {
   final byEmail = {for (final user in users) user.email: user};
   final rows = [
@@ -41,7 +41,7 @@ List<TeamRow> teamRows({
                 isTracked: byEmail[member.email]?.isTracked,
                 lastSeen: byEmail[member.email]?.timestamp,
                 now: now,
-                staleAfter: staleAfter,
+                validity: validity,
               )
             : dayPresence(hasPoints: usersWithPoints.contains(member.email)),
       ),

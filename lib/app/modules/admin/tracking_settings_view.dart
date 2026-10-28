@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
 import 'package:monamie_app/app/config/partner/partner_palette.dart';
+import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 
 import 'tracking_settings_edit_controller.dart';
@@ -53,11 +54,11 @@ class TrackingSettingsView extends StatelessWidget {
                     'Vale para todos da $name que estão em campo.',
                     style: const TextStyle(fontSize: 15, color: _muted),
                   ),
-                  if (controller.minIntervalMinutes.value > 0) ...[
+                  if (controller.minPeriodMinutes.value > 0) ...[
                     const SizedBox(height: 12),
                     Text(
                       'No plano Community, a localização é enviada no máximo a '
-                      'cada ${controller.minIntervalMinutes.value} min.',
+                      'cada ${controller.minPeriodMinutes.value} min.',
                       style: const TextStyle(fontSize: 13, color: _muted),
                     ),
                   ],
@@ -77,17 +78,17 @@ class TrackingSettingsView extends StatelessWidget {
                     const SizedBox(height: 8),
                     _Slider(
                       label: 'Intervalo',
-                      valueLabel: 'a cada ${minutes(draft.intervalMinutes)}',
-                      values: trackingIntervals,
-                      value: draft.intervalMinutes,
+                      valueLabel: 'a cada ${minutes(draft.periodMinutes)}',
+                      values: trackingPeriods,
+                      value: draft.periodMinutes,
                       color: palette.primary,
                       onChanged: saving ? null : controller.setInterval,
                     ),
                     _Slider(
                       label: 'Distância mínima',
-                      valueLabel: '${draft.distanceMeters} m',
-                      values: trackingDistances,
-                      value: draft.distanceMeters,
+                      valueLabel: '${draft.radiusMeters} m',
+                      values: trackingRadii,
+                      value: draft.radiusMeters,
                       color: palette.primary,
                       onChanged: saving ? null : controller.setDistance,
                     ),
@@ -99,14 +100,14 @@ class TrackingSettingsView extends StatelessWidget {
                         'Até ${draft.positionsPerHour} '
                         '${draft.positionsPerHour == 1 ? 'posição' : 'posições'} '
                         'por hora, só quando a pessoa se mover '
-                        '${draft.distanceMeters} m ou mais.',
+                        '${draft.radiusMeters} m ou mais.',
                   ),
                   _Fact(
                     icon: Icons.schedule,
                     text:
-                        'Quem não atualizar em '
-                        '${minutes(draft.staleAfter.inMinutes)} aparece '
-                        'apagado no mapa.',
+                        'Quem ficar '
+                        '${minutes(validity.inMinutes)} sem dar notícia '
+                        'sai do mapa.',
                   ),
                   _Fact(
                     icon: Icons.battery_std,
@@ -216,7 +217,7 @@ class _PresetTile extends StatelessWidget {
   String get _description => switch (option) {
     TrackingPreset.personalizado => 'Você escolhe intervalo e distância',
     _ =>
-      'A cada ${option.intervalMinutes} min, se andar ${option.distanceMeters} m',
+      'A cada ${option.periodMinutes} min, se andar ${option.radiusMeters} m',
   };
 
   @override

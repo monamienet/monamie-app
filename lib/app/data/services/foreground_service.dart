@@ -9,13 +9,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 import 'package:monamie_app/app/data/partner/partner_session.dart';
 import 'package:monamie_app/app/data/tracking/firestore_tracking_settings_repository.dart';
+import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
 
 Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;
 StreamSubscription<User?>? _authSubscription;
-int heartbeatInterval = 5;
 
 /// The owner's tracking settings (`config/tracking`), applied to the
 /// position stream; a change restarts the stream with the new values.
@@ -23,14 +23,15 @@ TrackingSettings _settings = TrackingSettings.defaults;
 StreamSubscription<TrackingSettings>? _settingsSubscription;
 Position? _lastRecordedPosition;
 
-/// The plan's minimum time between two positions (Community), read from
+/// The plan's minimum period (*período mínimo*: the least time between two
+/// positions, Community), read from
 /// `partners/{id}/config/plan` at start. The rules refuse a sooner write.
-Duration _minPositionInterval = Duration.zero;
+Duration _minPeriod = Duration.zero;
 DateTime? _lastPositionWriteAt;
 
-/// Reads the plan's minimum interval; none when the document is missing
+/// Reads the plan's minimum period; none when the document is missing
 /// (Standard) or cannot be read.
-Future<Duration> _readMinPositionInterval() async {
+Future<Duration> _readMinPeriod() async {
   try {
     final plan = await CurrentPartnerFirebase.instance.partnerData
         .collection('config')
@@ -49,11 +50,10 @@ Future<Duration> _readMinPositionInterval() async {
 
 /// Whether enough time passed since the last position write, with a few
 /// seconds of slack for the difference between device and server clocks.
-bool _positionIntervalElapsed(DateTime now) {
+bool _minPeriodElapsed(DateTime now) {
   final last = _lastPositionWriteAt;
-  if (last == null || _minPositionInterval == Duration.zero) return true;
-  return now.difference(last) >=
-      _minPositionInterval + const Duration(seconds: 10);
+  if (last == null || _minPeriod == Duration.zero) return true;
+  return now.difference(last) >= _minPeriod + const Duration(seconds: 10);
 }
 
 @pragma('vm:entry-point')
@@ -164,7 +164,7 @@ Future<void> updateLocation(
   _lastRecordedPosition = null;
 
   // Follow the owner's settings: the first value applies now, later ones
-  // restart this function with the new interval and distance.
+  // restart this function with the new period and radius.
   if (_settingsSubscription == null) {
     final first = Completer<void>();
     _settingsSubscription = const FirestoreTrackingSettingsRepository()
@@ -177,7 +177,7 @@ Future<void> updateLocation(
             if (changed) {
               debugPrint(
                 '[ForegroundService] New settings: every '
-                '${settings.intervalMinutes} min, ${settings.distanceMeters} m.',
+                '${settings.periodMinutes} min, ${settings.radiusMeters} m.',
               );
               updateLocation(service, email, name, grupoAtivo);
             }
@@ -189,8 +189,8 @@ Future<void> updateLocation(
         );
     await first.future.timeout(const Duration(seconds: 5), onTimeout: () {});
   }
-  final interval = _settings.intervalMinutes;
-  final distance = _settings.distanceMeters;
+  final period = _settings.periodMinutes;
+  final radius = _settings.radiusMeters;
 
   // Configuração do GPS
   late LocationSettings locationSettings;
@@ -198,28 +198,26 @@ Future<void> updateLocation(
   if (Platform.isAndroid) {
     locationSettings = AndroidSettings(
       accuracy: LocationAccuracy.high, // TODO: testar outros valores aqui
-      distanceFilter: distance,
-      intervalDuration: Duration(minutes: interval),
+      distanceFilter: radius,
+      intervalDuration: Duration(minutes: period),
     );
   } else if (Platform.isIOS) {
     locationSettings = AppleSettings(
       accuracy: LocationAccuracy.high,
       activityType: ActivityType.other,
-      distanceFilter: distance,
+      distanceFilter: radius,
       pauseLocationUpdatesAutomatically: true,
       showBackgroundLocationIndicator: true,
     );
   } else {
     locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: distance,
+      distanceFilter: radius,
     );
   }
 
   _heartbeatTimer?.cancel();
-  _heartbeatTimer = Timer.periodic(Duration(minutes: heartbeatInterval), (
-    timer,
-  ) async {
+  _heartbeatTimer = Timer.periodic(heartbeat, (timer) async {
     if (await FirebaseProvider().doesDocumentExist(email)) {
       try {
         await FirebaseProvider().updateHeartbeat(email);
@@ -229,14 +227,14 @@ Future<void> updateLocation(
     }
   });
 
-  _minPositionInterval = await _readMinPositionInterval();
+  _minPeriod = await _readMinPeriod();
 
   // Tenta obter e sincronizar a localização inicial imediatamente
   try {
     final initialPosition = await Geolocator.getCurrentPosition(
       locationSettings: locationSettings,
     );
-    if (_positionIntervalElapsed(DateTime.now()) &&
+    if (_minPeriodElapsed(DateTime.now()) &&
         await FirebaseProvider().doesDocumentExist(email)) {
       try {
         await FirebaseProvider().updateLocationAndTimestamp(
@@ -290,14 +288,14 @@ Future<void> updateLocation(
             position.latitude,
             position.longitude,
           );
-          if (distanceMoved < distance) {
+          if (distanceMoved < radius) {
             service.invoke('updateLocationLocally', {'position': position});
             return;
           }
         }
 
         // The plan limits how often a position may be written.
-        if (!_positionIntervalElapsed(DateTime.now())) {
+        if (!_minPeriodElapsed(DateTime.now())) {
           service.invoke('updateLocationLocally', {'position': position});
           return;
         }

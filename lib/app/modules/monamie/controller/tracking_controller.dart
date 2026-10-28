@@ -19,7 +19,7 @@ import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart';
+import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/data/services/foreground_service.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
 
@@ -76,10 +76,8 @@ class TrackingController extends GetxController
   /// Timer para animar a transição dos marcadores.
   Timer? _markerAnimationTimer;
 
-  /// How often the map re-checks who is still sharing (see
-  /// [_dropUsersNoLongerLive]).
-  static const _liveUsersRecheck = Duration(seconds: 30);
-  Timer? _liveUsersTimer;
+  /// Re-applies the validity every [recheck] (see [_dropUsersNoLongerLive]).
+  Timer? _recheckTimer;
 
   /// Progresso da animação (0.0 a 1.0).
   double _animationProgress = 1.0;
@@ -310,7 +308,7 @@ class TrackingController extends GetxController
     final stillLive = liveUsers(
       teamUsers.toList(),
       now: DateTime.now(),
-      staleAfter: Get.find<TrackingSettingsController>().staleAfter,
+      validity: validity,
     );
     // Assigning always notifies; do it only when someone actually left.
     if (stillLive.length != firebaseUsers.length) {
@@ -328,7 +326,7 @@ class TrackingController extends GetxController
             firebaseUsers.value = liveUsers(
               users,
               now: DateTime.now(),
-              staleAfter: Get.find<TrackingSettingsController>().staleAfter,
+              validity: validity,
             );
           },
           onError: (e) {
@@ -384,10 +382,7 @@ class TrackingController extends GetxController
     // O stream só emite quando um documento muda. Quem parou sem conseguir
     // gravar `isTracked = false` (sem rede, app encerrado) não gera emissão:
     // sem este relógio o marcador ficaria no mapa até alguém mudar.
-    _liveUsersTimer = Timer.periodic(
-      _liveUsersRecheck,
-      (_) => _dropUsersNoLongerLive(),
-    );
+    _recheckTimer = Timer.periodic(recheck, (_) => _dropUsersNoLongerLive());
 
     //try {
     //  _compassSubscription = FlutterCompass.events?.listen((event) {
@@ -823,7 +818,7 @@ class TrackingController extends GetxController
     _readySubscription?.cancel();
     _locationSubscription?.cancel();
     _markerAnimationTimer?.cancel();
-    _liveUsersTimer?.cancel();
+    _recheckTimer?.cancel();
     mapController.dispose();
     super.onClose();
   }

@@ -14,7 +14,7 @@ class FirestoreTrackingSettingsRepository
       CurrentPartnerFirebase.instance.partnerData.collection('config');
 
   @override
-  Future<int> minIntervalMinutes() async {
+  Future<int> minPeriodMinutes() async {
     try {
       final plan = await _config.doc('plan').get();
       final minutes = plan.data()?['minIntervalMinutes'];
@@ -26,13 +26,12 @@ class FirestoreTrackingSettingsRepository
 
   @override
   Stream<TrackingSettings> watch() async* {
-    final min = await minIntervalMinutes();
+    final min = await minPeriodMinutes();
     yield* _config
         .doc('tracking')
         .snapshots()
         .map(
-          (doc) =>
-              TrackingSettings.fromMap(doc.data(), minIntervalMinutes: min),
+          (doc) => TrackingSettings.fromMap(doc.data(), minPeriodMinutes: min),
         );
   }
 

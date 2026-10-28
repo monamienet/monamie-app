@@ -6,8 +6,8 @@ import 'firestore_tracking_settings_repository.dart';
 import 'tracking_settings.dart';
 import 'tracking_settings_repository.dart';
 
-/// The bound partner's tracking settings in the UI isolate, kept current, so
-/// every freshness threshold on the map follows the owner's choice.
+/// The bound partner's tracking settings in the UI isolate, kept current for
+/// the *Ajustes de acompanhamento* screen.
 class TrackingSettingsController extends GetxController {
   TrackingSettingsController({TrackingSettingsRepository? repository})
     : _repository = repository ?? const FirestoreTrackingSettingsRepository();
@@ -16,9 +16,6 @@ class TrackingSettingsController extends GetxController {
   StreamSubscription<TrackingSettings>? _subscription;
 
   final Rx<TrackingSettings> settings = TrackingSettings.defaults.obs;
-
-  /// After this long without an update a person fades on the map.
-  Duration get staleAfter => settings.value.staleAfter;
 
   @override
   void onInit() {

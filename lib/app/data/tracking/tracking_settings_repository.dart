@@ -7,7 +7,7 @@ abstract interface class TrackingSettingsRepository {
   Stream<TrackingSettings> watch();
 
   /// The plan's minimum interval in minutes (Community: 15; Standard: 0).
-  Future<int> minIntervalMinutes();
+  Future<int> minPeriodMinutes();
 
   /// Saves [settings] (owner only, enforced by the rules).
   Future<void> save(TrackingSettings settings);

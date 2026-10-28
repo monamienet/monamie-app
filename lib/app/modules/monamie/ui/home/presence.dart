@@ -35,13 +35,13 @@ class Presence {
 ///
 /// [hasRecord] is false when the person has no document yet; [isTracked] and
 /// [lastSeen] are the document's `isTracked` and `timestamp`. A person is
-/// "live" until [staleAfter] has passed since [lastSeen].
+/// "live" until [validity] has passed since [lastSeen].
 Presence presenceOf({
   required bool hasRecord,
   required bool? isTracked,
   required DateTime? lastSeen,
   required DateTime now,
-  required Duration staleAfter,
+  required Duration validity,
 }) {
   const never = Presence(PresenceKind.never, 'Ainda não ativou a localização');
   if (!hasRecord) return never;
@@ -53,7 +53,7 @@ Presence presenceOf({
 
   if (lastSeen == null) return never;
 
-  if (now.difference(lastSeen) >= staleAfter) {
+  if (now.difference(lastSeen) >= validity) {
     final ago = agoLabel(lastSeen, now);
     return Presence(
       PresenceKind.stale,

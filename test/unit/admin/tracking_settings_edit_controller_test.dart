@@ -6,9 +6,9 @@ import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings_repository.dart';
 import 'package:monamie_app/app/modules/admin/tracking_settings_edit_controller.dart';
 
-const equilibrio = TrackingSettings(intervalMinutes: 5, distanceMeters: 10);
-const economia = TrackingSettings(intervalMinutes: 15, distanceMeters: 100);
-const precisao = TrackingSettings(intervalMinutes: 1, distanceMeters: 5);
+const equilibrio = TrackingSettings(periodMinutes: 5, radiusMeters: 10);
+const economia = TrackingSettings(periodMinutes: 15, radiusMeters: 100);
+const precisao = TrackingSettings(periodMinutes: 1, radiusMeters: 5);
 
 /// [TrackingSettingsRepository] that records every save, with the plan's
 /// minimum [minimum], optionally waiting on [gate] or failing with
@@ -22,7 +22,7 @@ class FakeTrackingSettingsRepository implements TrackingSettingsRepository {
   Object? failure;
 
   @override
-  Future<int> minIntervalMinutes() async => minimum;
+  Future<int> minPeriodMinutes() async => minimum;
 
   @override
   Stream<TrackingSettings> watch() => const Stream.empty();
@@ -92,7 +92,7 @@ void main() {
       // 1. Arrange
       final controller = TrackingSettingsEditController(
         repository: repository,
-        saved: const TrackingSettings(intervalMinutes: 10, distanceMeters: 20),
+        saved: const TrackingSettings(periodMinutes: 10, radiusMeters: 20),
       );
 
       // 2. Act
@@ -116,7 +116,7 @@ void main() {
       await pumpEventQueue();
 
       // 3. Assert
-      expect(controller.minIntervalMinutes.value, 15);
+      expect(controller.minPeriodMinutes.value, 15);
     });
   });
 
@@ -219,7 +219,7 @@ void main() {
       // 3. Assert
       expect(
         controller.draft.value,
-        const TrackingSettings(intervalMinutes: 20, distanceMeters: 100),
+        const TrackingSettings(periodMinutes: 20, radiusMeters: 100),
       );
     });
 
@@ -227,7 +227,7 @@ void main() {
       // 1. Arrange
       repository = FakeTrackingSettingsRepository(minimum: 15);
       final controller = await controllerFor(
-        const TrackingSettings(intervalMinutes: 30, distanceMeters: 100),
+        const TrackingSettings(periodMinutes: 30, radiusMeters: 100),
       );
 
       // 2. Act
@@ -267,7 +267,7 @@ void main() {
       // 3. Assert
       expect(
         [controller.draft.value, controller.hasChanges],
-        [const TrackingSettings(intervalMinutes: 5, distanceMeters: 100), true],
+        [const TrackingSettings(periodMinutes: 5, radiusMeters: 100), true],
       );
     });
 
@@ -421,7 +421,7 @@ void main() {
         // 3. Assert
         expect(
           controller.draft.value,
-          const TrackingSettings(intervalMinutes: 5, distanceMeters: 50),
+          const TrackingSettings(periodMinutes: 5, radiusMeters: 50),
         );
         repository.gate!.complete();
         await pending;

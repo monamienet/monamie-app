@@ -3,7 +3,7 @@ import 'package:monamie_app/app/modules/monamie/data/live_users.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 
 final now = DateTime(2026, 10, 27, 12, 0);
-const staleAfter = Duration(minutes: 10);
+const validity = Duration(minutes: 10);
 
 UserModel user(String name, {bool? isTracked, DateTime? timestamp}) =>
     UserModel(email: '$name@x.org', isTracked: isTracked, timestamp: timestamp);
@@ -13,7 +13,7 @@ List<String> emails(List<UserModel> users) => [
 ];
 
 List<UserModel> live(List<UserModel> users) =>
-    liveUsers(users, now: now, staleAfter: staleAfter);
+    liveUsers(users, now: now, validity: validity);
 
 void main() {
   group('liveUsers - Unit Test Suite', () {
@@ -64,7 +64,7 @@ void main() {
       final ana = user(
         'ana',
         isTracked: true,
-        timestamp: now.subtract(staleAfter),
+        timestamp: now.subtract(validity),
       );
 
       // 2. Act
@@ -79,7 +79,7 @@ void main() {
       final ana = user(
         'ana',
         isTracked: true,
-        timestamp: now.subtract(staleAfter - const Duration(seconds: 1)),
+        timestamp: now.subtract(validity - const Duration(seconds: 1)),
       );
 
       // 2. Act
@@ -118,12 +118,12 @@ void main() {
       expect(emails(result), ['carla@x.org', 'ana@x.org', 'bia@x.org']);
     });
 
-    test('Edge Case: a zero staleAfter keeps nobody', () {
+    test('Edge Case: a zero validity keeps nobody', () {
       // 1. Arrange
       final ana = user('ana', isTracked: true, timestamp: now);
 
       // 2. Act
-      final result = liveUsers([ana], now: now, staleAfter: Duration.zero);
+      final result = liveUsers([ana], now: now, validity: Duration.zero);
 
       // 3. Assert
       expect(result, isEmpty);
@@ -198,7 +198,7 @@ void main() {
       final later = liveUsers(
         [ana],
         now: now.add(const Duration(minutes: 9)),
-        staleAfter: staleAfter,
+        validity: validity,
       );
 
       // 3. Assert

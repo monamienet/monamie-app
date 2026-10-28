@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/presence.dart';
 
 final now = DateTime(2026, 10, 27, 12, 0);
-const staleAfter = Duration(minutes: 10);
+const validity = Duration(minutes: 10);
 
 Presence presence({
   bool hasRecord = true,
@@ -13,7 +13,7 @@ Presence presence({
   isTracked: isTracked,
   lastSeen: lastSeen,
   now: now,
-  staleAfter: staleAfter,
+  validity: validity,
 );
 
 void main() {
@@ -57,9 +57,9 @@ void main() {
       );
     });
 
-    test('Edge Case: exactly staleAfter of silence is already stale', () {
+    test('Edge Case: exactly validity of silence is already stale', () {
       // 1. Arrange
-      final lastSeen = now.subtract(staleAfter);
+      final lastSeen = now.subtract(validity);
 
       // 2. Act
       final result = presence(lastSeen: lastSeen);
@@ -68,9 +68,9 @@ void main() {
       expect(result, const Presence(PresenceKind.stale, 'Há 10 min'));
     });
 
-    test('Edge Case: one second under staleAfter is still live', () {
+    test('Edge Case: one second under validity is still live', () {
       // 1. Arrange
-      final lastSeen = now.subtract(staleAfter - const Duration(seconds: 1));
+      final lastSeen = now.subtract(validity - const Duration(seconds: 1));
 
       // 2. Act
       final result = presence(lastSeen: lastSeen);

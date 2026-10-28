@@ -5,7 +5,7 @@ import 'package:monamie_app/app/modules/monamie/ui/home/presence.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/team_rows.dart';
 
 final now = DateTime(2026, 10, 27, 12, 0);
-const staleAfter = Duration(minutes: 10);
+const validity = Duration(minutes: 10);
 
 GoogleGroupMember member(String name) =>
     GoogleGroupMember(name: name, email: '$name@x.org');
@@ -29,7 +29,7 @@ List<TeamRow> rows({
   usersWithPoints: usersWithPoints,
   observingToday: observingToday,
   now: now,
-  staleAfter: staleAfter,
+  validity: validity,
 );
 
 List<String> names(List<TeamRow> list) => [
