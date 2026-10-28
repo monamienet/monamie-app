@@ -92,6 +92,16 @@ class CreateOrganizationController extends GetxController {
   final RxString themeId = defaultPartnerTheme.id.obs;
   final RxString plan = 'community'.obs;
 
+  /// The plans that can be picked for now. Standard stays on screen, greyed
+  /// out, until it is opened to partners.
+  static const offeredPlans = {'community'};
+
+  /// Picks [id] when it is offered and nothing is being created.
+  void pickPlan(String id) {
+    if (isCreating.value || !offeredPlans.contains(id)) return;
+    plan.value = id;
+  }
+
   final RxBool isCreating = false.obs;
   final RxString errorMessage = ''.obs;
 

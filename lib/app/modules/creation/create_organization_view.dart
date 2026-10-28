@@ -1206,114 +1206,119 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     List<(bool, String)> points,
   ) {
     final selected = c.plan.value == id;
+    final offered = CreateOrganizationController.offeredPlans.contains(id);
     return Semantics(
       inMutuallyExclusiveGroup: true,
       checked: selected,
       button: true,
+      enabled: offered,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: c.isCreating.value ? null : () => c.plan.value = id,
-        child: Container(
-          // The canvas draws the border inside the card (an inset shadow), so
-          // picking a plan must not move its content: the thinner border
-          // gets the difference as padding.
-          padding: EdgeInsets.all(selected ? 15.5 : 17),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected ? _navy : _line,
-              width: selected ? 2.5 : 1,
+        onTap: c.isCreating.value || !offered ? null : () => c.pickPlan(id),
+        child: Opacity(
+          opacity: offered ? 1 : 0.45,
+          child: Container(
+            // The canvas draws the border inside the card (an inset shadow), so
+            // picking a plan must not move its content: the thinner border
+            // gets the difference as padding.
+            padding: EdgeInsets.all(selected ? 15.5 : 17),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected ? _navy : _line,
+                width: selected ? 2.5 : 1,
+              ),
             ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      border: Border.all(
-                        color: selected ? _navy : _ring,
-                        width: selected ? 7 : 2,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.02 * 20,
-                        color: _navy,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    height: 26,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: id == 'community' ? _navy : _note,
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Text(
-                      price,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: id == 'community' ? MonAmieBrand.cream : _navy,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                tagline,
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 20 / 14,
-                  fontWeight: FontWeight.w500,
-                  color: _muted,
-                ),
-              ),
-              const SizedBox(height: 12),
-              for (var i = 0; i < points.length; i++) ...[
-                if (i > 0) const SizedBox(height: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 1),
-                      child: Icon(
-                        points[i].$1 ? Icons.check : Icons.schedule,
-                        size: 18,
-                        color: points[i].$1 ? _navy : _muted,
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        border: Border.all(
+                          color: selected ? _navy : _ring,
+                          width: selected ? 7 : 2,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        points[i].$2,
+                        title,
                         style: const TextStyle(
-                          fontSize: 14,
-                          height: 20 / 14,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.02 * 20,
                           color: _navy,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      height: 26,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: id == 'community' ? _navy : _note,
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: Text(
+                        price,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: id == 'community' ? MonAmieBrand.cream : _navy,
                         ),
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Text(
+                  tagline,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 20 / 14,
+                    fontWeight: FontWeight.w500,
+                    color: _muted,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                for (var i = 0; i < points.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Icon(
+                          points[i].$1 ? Icons.check : Icons.schedule,
+                          size: 18,
+                          color: points[i].$1 ? _navy : _muted,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          points[i].$2,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            height: 20 / 14,
+                            fontWeight: FontWeight.w500,
+                            color: _navy,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

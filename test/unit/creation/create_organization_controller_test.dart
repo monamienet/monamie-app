@@ -491,6 +491,71 @@ void main() {
     );
   });
 
+  group('CreateOrganizationController.offeredPlans - Unit Test Suite', () {
+    test('Happy Path: only community is offered for now', () {
+      // 1. Arrange
+      const expected = {'community'};
+
+      // 2. Act
+      final offered = CreateOrganizationController.offeredPlans;
+
+      // 3. Assert
+      expect(offered, expected);
+    });
+  });
+
+  group('CreateOrganizationController.pickPlan - Unit Test Suite', () {
+    test('Happy Path: community is picked', () {
+      // 1. Arrange
+      final controller = startedController();
+      controller.plan.value = 'standard';
+
+      // 2. Act
+      controller.pickPlan('community');
+
+      // 3. Assert
+      expect(controller.plan.value, 'community');
+    });
+
+    test('Sad Path: standard leaves the plan unchanged', () {
+      // 1. Arrange
+      final controller = startedController();
+
+      // 2. Act
+      controller.pickPlan('standard');
+
+      // 3. Assert
+      expect(controller.plan.value, 'community');
+    });
+
+    test('Sad Path: an unknown plan leaves the plan unchanged', () {
+      // 1. Arrange
+      final controller = startedController();
+
+      // 2. Act
+      controller.pickPlan('premium');
+
+      // 3. Assert
+      expect(controller.plan.value, 'community');
+    });
+
+    test('Edge Case: nothing is picked while creating', () async {
+      // 1. Arrange
+      backend.gate = Completer<void>();
+      final controller = await readyController();
+      controller.plan.value = 'standard';
+      final pending = controller.create();
+
+      // 2. Act
+      controller.pickPlan('community');
+
+      // 3. Assert
+      expect(controller.plan.value, 'standard');
+      backend.gate!.complete();
+      await pending;
+    });
+  });
+
   group('CreateOrganizationController (themes) - Unit Test Suite', () {
     test('Happy Path: loads the active themes sorted by order', () async {
       // 1. Arrange
