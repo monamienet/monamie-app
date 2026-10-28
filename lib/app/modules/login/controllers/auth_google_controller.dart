@@ -172,7 +172,7 @@ class AuthGoogleController extends GetxController {
     if (isLoading.value) return;
     isLoading.value = true;
     try {
-      await _continueWithPartners(idToken);
+      await _continueWithPartners(idToken, alwaysPick: true);
     } catch (e) {
       _showLoginError("Ocorreu um erro ao carregar seus dados: $e");
     } finally {
@@ -180,7 +180,10 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// Finds the user's partners and enters the only one, or offers a choice.
+  /// Finds the user's partners and offers a choice. [alwaysPick] (a sign-in
+  /// the person just made) shows the choice even for a single partner, so
+  /// they see where they are entering; otherwise the only partner is entered
+  /// directly (an invite just accepted).
   ///
   /// With no partner the user lands on *Sem organização* still signed in to
   /// MonAmie, so they can check again (after accepting an invite) or create
@@ -188,6 +191,7 @@ class AuthGoogleController extends GetxController {
   Future<void> _continueWithPartners(
     String idToken, {
     bool fresh = false,
+    bool alwaysPick = false,
   }) async {
     _pendingIdToken = idToken;
     signedInEmail.value = await _authGoogle.centralEmail();
@@ -210,7 +214,7 @@ class AuthGoogleController extends GetxController {
       return;
     }
     final bindings = await Future.wait(candidates.map(_brandingLoader.load));
-    if (bindings.length == 1) {
+    if (bindings.length == 1 && !alwaysPick) {
       await _enterPartner(bindings.single, idToken);
       return;
     }
@@ -340,7 +344,9 @@ class AuthGoogleController extends GetxController {
     noAccessReason.value = null;
     try {
       final idToken = _pendingIdToken ?? await _authGoogle.signInGoogle();
-      if (idToken != null) await _continueWithPartners(idToken);
+      if (idToken != null) {
+        await _continueWithPartners(idToken, alwaysPick: true);
+      }
     } catch (e) {
       _showLoginError("Não foi possível verificar agora: $e");
     } finally {
@@ -568,7 +574,9 @@ class AuthGoogleController extends GetxController {
       final idToken = await _authGoogle.signInGoogle();
       // Na web o login retorna null propositalmente (o resultado chega via
       // stream), portanto não exibimos erro quando idToken é null.
-      if (idToken != null) await _continueWithPartners(idToken);
+      if (idToken != null) {
+        await _continueWithPartners(idToken, alwaysPick: true);
+      }
     } catch (e) {
       _showLoginError("Ocorreu um erro inesperado: $e");
     } finally {

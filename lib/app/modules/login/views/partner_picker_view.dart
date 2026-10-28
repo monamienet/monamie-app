@@ -44,8 +44,10 @@ class PartnerPickerView extends GetView<AuthGoogleController> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Você participa de ${choices.length}. Dá para trocar depois '
-                  'pelo menu.',
+                  choices.length == 1
+                      ? 'Você participa de 1 organização.'
+                      : 'Você participa de ${choices.length}. Dá para trocar '
+                            'depois pelo menu.',
                   style: const TextStyle(
                     fontSize: 15,
                     color: MonAmieBrand.mutedInk,

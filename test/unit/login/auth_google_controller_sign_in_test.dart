@@ -44,6 +44,16 @@ const _kOptions = FirebaseOptions(
 const _kRotaSul = PartnerCandidate(id: 'rotasul', options: _kOptions);
 const _kRotaSulName = 'Rota Sul';
 
+const _kVerdeMar = PartnerCandidate(
+  id: 'verdemar',
+  options: FirebaseOptions(
+    apiKey: 'api-key',
+    appId: '1:222:android:def',
+    projectId: 'monamienet-verdemar',
+    messagingSenderId: '222',
+  ),
+);
+
 /// Claims `syncClaims` returns for a person with no capability left.
 const Map<String, Object?> _kNoClaims = {
   'share': <String>[],
@@ -544,13 +554,16 @@ void main() {
   );
 
   group(
-    'AuthGoogleController.loginGoogle (parceiro sem acesso) - Suíte de Testes Unitários',
+    'AuthGoogleController.loginGoogle (seletor de organizações) - Suíte de Testes Unitários',
     () {
       testWidgets(
-        'Happy Path: Deve explicar em noAccessReason que a conta não tem mais acesso ao parceiro',
+        'Happy Path: Deve abrir o seletor com a única organização da pessoa',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
+          final harness = _Harness(
+            partners: [_kRotaSul],
+            claims: _kShareClaims,
+          );
           await _pumpApp(tester);
 
           // 2. Act
@@ -558,6 +571,137 @@ void main() {
             tester,
             harness.controller,
             harness.controller.loginGoogle,
+          );
+
+          // 3. Assert
+          expect(Get.currentRoute, Routes.PARTNER_PICKER);
+          expect(harness.controller.partnerChoices.map((b) => b.partner.id), [
+            'rotasul',
+          ]);
+        },
+      );
+
+      testWidgets(
+        'Happy Path: Deve abrir o seletor com as duas organizações da pessoa',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(
+            partners: [_kRotaSul, _kVerdeMar],
+            claims: _kShareClaims,
+          );
+          await _pumpApp(tester);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 3. Assert
+          expect(Get.currentRoute, Routes.PARTNER_PICKER);
+          expect(harness.controller.partnerChoices.map((b) => b.partner.id), [
+            'rotasul',
+            'verdemar',
+          ]);
+        },
+      );
+
+      testWidgets(
+        'Edge Case: Não deve vincular nem entrar na única organização antes da escolha',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(
+            partners: [_kRotaSul],
+            claims: _kShareClaims,
+          );
+          await _pumpApp(tester);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 3. Assert
+          expect(harness.log, isNot(contains('bind')));
+          expect(harness.log, isNot(contains('signInToPartner')));
+          expect(harness.session.forgetCalls, 0);
+        },
+      );
+
+      testWidgets(
+        'Edge Case: Deve abrir o seletor com a única organização ao verificar de novo em Sem organização',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(
+            partners: [_kRotaSul],
+            claims: _kShareClaims,
+          );
+          await _pumpApp(tester);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.recheckPartners,
+          );
+
+          // 3. Assert
+          expect(Get.currentRoute, Routes.PARTNER_PICKER);
+          expect(harness.controller.partnerChoices.map((b) => b.partner.id), [
+            'rotasul',
+          ]);
+          expect(harness.log, isNot(contains('bind')));
+        },
+      );
+
+      testWidgets(
+        'Sad Path: Não deve abrir o seletor quando o login do Google não devolver token',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(partners: [_kRotaSul], idToken: null);
+          await _pumpApp(tester);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 3. Assert
+          expect(Get.currentRoute, _kHomeRoute);
+          expect(harness.controller.partnerChoices, isEmpty);
+          expect(harness.directory.calls, 0);
+        },
+      );
+    },
+  );
+
+  group(
+    'AuthGoogleController.choosePartner (parceiro sem acesso) - Suíte de Testes Unitários',
+    () {
+      testWidgets(
+        'Happy Path: Deve explicar em noAccessReason que a conta não tem mais acesso ao parceiro',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
+          await _pumpApp(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            () => harness.controller.choosePartner(
+              harness.controller.partnerChoices.single,
+            ),
           );
 
           // 3. Assert
@@ -574,12 +718,19 @@ void main() {
           // 1. Arrange
           final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
           await _pumpApp(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
 
           // 2. Act
           await _run(
             tester,
             harness.controller,
-            harness.controller.loginGoogle,
+            () => harness.controller.choosePartner(
+              harness.controller.partnerChoices.single,
+            ),
           );
 
           // 3. Assert
@@ -593,12 +744,19 @@ void main() {
           // 1. Arrange
           final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
           await _pumpApp(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
 
           // 2. Act
           await _run(
             tester,
             harness.controller,
-            harness.controller.loginGoogle,
+            () => harness.controller.choosePartner(
+              harness.controller.partnerChoices.single,
+            ),
           );
 
           // 3. Assert
@@ -613,12 +771,19 @@ void main() {
           // 1. Arrange
           final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
           await _pumpApp(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
 
           // 2. Act
           await _run(
             tester,
             harness.controller,
-            harness.controller.loginGoogle,
+            () => harness.controller.choosePartner(
+              harness.controller.partnerChoices.single,
+            ),
           );
 
           // 3. Assert
@@ -632,12 +797,19 @@ void main() {
           // 1. Arrange
           final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
           await _pumpApp(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
 
           // 2. Act
           final titles = await _run(
             tester,
             harness.controller,
-            harness.controller.loginGoogle,
+            () => harness.controller.choosePartner(
+              harness.controller.partnerChoices.single,
+            ),
           );
 
           // 3. Assert
@@ -651,12 +823,19 @@ void main() {
           // 1. Arrange
           final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
           await _pumpApp(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
 
           // 2. Act
           await _run(
             tester,
             harness.controller,
-            harness.controller.loginGoogle,
+            () => harness.controller.choosePartner(
+              harness.controller.partnerChoices.single,
+            ),
           );
 
           // 3. Assert
@@ -676,12 +855,19 @@ void main() {
             claims: _kShareClaims,
           );
           await _pumpApp(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
 
           // 2. Act
           await _run(
             tester,
             harness.controller,
-            harness.controller.loginGoogle,
+            () => harness.controller.choosePartner(
+              harness.controller.partnerChoices.single,
+            ),
           );
 
           // 3. Assert
@@ -699,12 +885,19 @@ void main() {
             syncError: Exception('functions indisponível'),
           );
           await _pumpApp(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
 
           // 2. Act
           await _run(
             tester,
             harness.controller,
-            harness.controller.loginGoogle,
+            () => harness.controller.choosePartner(
+              harness.controller.partnerChoices.single,
+            ),
           );
 
           // 3. Assert
@@ -1296,9 +1489,7 @@ void main() {
         final harness = _Harness(partners: [_kRotaSul]);
         await _pumpApp(tester);
         final seen = <bool>[];
-        final sub = harness.controller.isSwitchingOrganization.listen(
-          seen.add,
-        );
+        final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
 
         // 2. Act
         await _run(
@@ -1321,9 +1512,7 @@ void main() {
         final harness = _Harness(directoryError: Exception('sem rede'));
         await _pumpApp(tester);
         final seen = <bool>[];
-        final sub = harness.controller.isSwitchingOrganization.listen(
-          seen.add,
-        );
+        final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
 
         // 2. Act
         await _run(
@@ -1346,9 +1535,7 @@ void main() {
         final harness = _Harness();
         await _pumpApp(tester);
         final seen = <bool>[];
-        final sub = harness.controller.isSwitchingOrganization.listen(
-          seen.add,
-        );
+        final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
 
         // 2. Act
         await _run(tester, harness.controller, harness.controller.logout);
@@ -1367,9 +1554,7 @@ void main() {
         final harness = _Harness(partners: [_kRotaSul]);
         harness.controller.isLoggingOut.value = true;
         final seen = <bool>[];
-        final sub = harness.controller.isSwitchingOrganization.listen(
-          seen.add,
-        );
+        final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
 
         // 2. Act
         await harness.controller.switchOrganization();
@@ -1388,9 +1573,7 @@ void main() {
         final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
         await _pumpApp(tester);
         final seen = <bool>[];
-        final sub = harness.controller.isSwitchingOrganization.listen(
-          seen.add,
-        );
+        final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
 
         // 2. Act
         await _run(
