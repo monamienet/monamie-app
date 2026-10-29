@@ -1,6 +1,8 @@
 # Promotes the build on the Play internal testing track to a closed testing
 # track, copying its versionCode and its release notes. Nothing is rebuilt:
 # closed testers get exactly the bundle internal testers already have.
+# Then it moves the play-closed tag to the promoted version's commit: the
+# release notes cover everything since that tag (AGENTS.md, "Releases").
 #
 # Runs only by hand: Actions > Promote to Play (closed) > Run workflow.
 # Walkthrough: docs/pt-br/publicar-teste-interno.md
@@ -29,8 +31,9 @@ jobs:
     # The publisher service account trusts only jobs in this environment
     # (docs/pt-br/publicar-teste-interno.md, step C10), which only main can use.
     environment: play-internal
+    # contents: write moves the play-closed tag.
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       # Keyless auth as the publisher service account, as in the deploy, but
@@ -46,6 +49,7 @@ jobs:
       # Play Developer API: open an edit (a draft of changes), read the internal
       # release, write it to the closed track, commit the edit.
       - name: Promote internal release
+        id: promote
         env:
           TOKEN: ${{ steps.auth.outputs.access_token }}
           TRACK: ${{ inputs.track }}
@@ -77,3 +81,25 @@ jobs:
           call -X POST "$API/edits/$edit:commit" > /dev/null
 
           echo "Promoted versionCode(s) $(jq -r '.versionCodes | join(", ")' <<<"$release") to $TRACK."
+          # The deploy names each release after its versionName.
+          echo "version=$(jq -r '.name // empty' <<<"$release")" >> "$GITHUB_OUTPUT"
+
+      # Points play-closed at the commit tagged with the promoted version, so
+      # the next release notes start from what closed testers now have.
+      - name: Mark the promoted version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.promote.outputs.version }}
+        run: |
+          set -euo pipefail
+          repo="repos/$GITHUB_REPOSITORY/git"
+          if ! sha=$(gh api "$repo/ref/tags/v$VERSION" --jq .object.sha 2>/dev/null); then
+            echo "::warning::No tag v$VERSION; play-closed was not moved. Update it by hand."
+            exit 0
+          fi
+          if gh api "$repo/ref/tags/play-closed" > /dev/null 2>&1; then
+            gh api -X PATCH "$repo/refs/tags/play-closed" -f sha="$sha" -F force=true > /dev/null
+          else
+            gh api "$repo/refs" -f ref=refs/tags/play-closed -f sha="$sha" > /dev/null
+          fi
+          echo "play-closed now points at v$VERSION ($sha)."

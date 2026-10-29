@@ -49,7 +49,8 @@ PR aberta ──► PR aprovada ──► "Merge" no GitHub
                                     │
    ┌────────────────────────────────┴─────────────────────────────────┐
    │ 1. baixa o código (com histórico e tags)                          │
-   │ 1b. confere as notas da versão   2. instala Java 17               │
+   │ 1b. confere as notas   1c. calcula o versionName                  │
+   │ 2. instala Java 17                                                │
    │ 3. instala Flutter       4. ajusta a memória do Gradle            │
    │ 5. recria a keystore e o key.properties                           │
    │ 6. baixa dependências    7. roda os testes unitários              │
@@ -59,6 +60,7 @@ PR aberta ──► PR aprovada ──► "Merge" no GitHub
    │     assina, versionCode novo)                                     │
    │ 11. autentica no Google: conta que publica (WIF, sem chave)       │
    │ 12. envia ao Play (faixa internal, com as notas)                  │
+   │ 13. (job separado) cria a tag vX.Y.Z                              │
    └────────────────────────────────┬─────────────────────────────────┘
                                     ▼
          Testadores internos recebem a atualização pela Play Store
@@ -201,8 +203,9 @@ a `main` mais nova já contém as mudanças da do meio.
 
 | # | Passo | O que faz e por quê |
 | :--- | :--- | :--- |
-| 1 | `actions/checkout` | O runner começa vazio; este passo baixa o código do commit que disparou o workflow. Com `fetch-depth: 0`, baixa também o histórico e as tags, que o passo 1b usa. |
+| 1 | `actions/checkout` | O runner começa vazio; este passo baixa o código do commit que disparou o workflow. Com `fetch-depth: 0`, baixa também o histórico e as tags, que os passos 1b e 1c usam. |
 | 1b | `Check release notes` | Confere as notas da versão em `distribution/whatsnew/` (seção 5.1). Roda antes de tudo para falhar rápido: sem notas válidas, nada é compilado nem enviado. |
+| 1c | `Compute versionName` | Calcula o versionName a partir dos commits desde a última tag `v…` (seção 5.1). |
 | 2 | `actions/setup-java` | O Gradle do Android precisa de Java. O projeto compila para JVM 17 ([build.gradle.kts](../../android/app/build.gradle.kts)). |
 | 3 | `subosito/flutter-action` | Instala a **mesma** versão do Flutter usada no desenvolvimento, para o CI não gerar um app diferente. Com `cache: true`, o SDK é reaproveitado e as próximas execuções ficam mais rápidas. |
 | 4 | `Raise Gradle memory` | O [android/gradle.properties](../../android/gradle.properties) limita o heap do Gradle a 2 GB (`-Xmx2g`), pensando nos notebooks de 8 GB. O runner tem mais RAM, então o CI aumenta para 4 GB; o `~/.gradle/gradle.properties` tem prioridade sobre o arquivo do projeto, então a mudança vale só no CI. |
@@ -211,9 +214,10 @@ a `main` mais nova já contém as mudanças da do meio.
 | 7 | `flutter test test/unit` | Roda os testes unitários. Se algum falhar, o deploy para aqui. Os testes de integração ficam de fora porque dependem dos emuladores do Firebase. |
 | 8 | `Install Firebase CLI` | Instala o `firebase-tools` numa versão fixa. O build usa o CLI para buscar a config do Firebase do projeto central. |
 | 9 | `google-github-actions/auth` (`auth-config`) | Troca o token OIDC do GitHub por credenciais temporárias de uma service account que **só lê** a config dos apps do Firebase (seção 6). |
-| 10 | `flutter build appbundle` | Gera o `.aab` de release do app único `org.monamienet.app`, assinado com a keystore do passo 5 e com um versionCode novo (seção 5). Antes de compilar, o Gradle busca o `google-services.json` do projeto central com as credenciais do passo 9. Os parceiros são ligados em tempo de execução, então nenhum parceiro é escolhido aqui. |
+| 10 | `flutter build appbundle` | Gera o `.aab` de release do app único `org.monamienet.app`, assinado com a keystore do passo 5, com o versionName do passo 1c e com um versionCode novo (seção 5). Antes de compilar, o Gradle busca o `google-services.json` do projeto central com as credenciais do passo 9. Os parceiros são ligados em tempo de execução, então nenhum parceiro é escolhido aqui. |
 | 11 | `google-github-actions/auth` (`auth`) | Troca o token OIDC do GitHub por credenciais temporárias da service account que publica, sem chave (seção 6). |
-| 12 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal` com as credenciais do passo 11. `status: completed` lança o release direto para os testadores. `whatsNewDirectory` envia as notas da versão. |
+| 12 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal` com as credenciais do passo 11. `status: completed` lança o release direto para os testadores. `whatsNewDirectory` envia as notas da versão, e `releaseName` dá à versão o nome do versionName, que a promoção lê de volta. |
+| 13 | job `tag` | Só quando o versionName é novo: cria a tag `vX.Y.Z` no commit. Fica num job separado, o único com permissão de escrever no repositório, para que o código de terceiros que roda no build (Gradle, pacotes pub) nunca tenha essa permissão. |
 
 ## 4. Como a keystore chega ao runner (por que base64)
 
@@ -262,8 +266,8 @@ cresce**. O flag `--build-number` do `flutter build` substitui o número depois 
 pubspec. Assim, a 1ª execução gera versionCode **101**, a 2ª gera **102**, e assim por diante. O `+100`
 reserva os números abaixo de 101 para envios manuais, como o primeiro envio de um app.
 
-- O **versionName** (`1.0.0`, o que o usuário vê na loja) vem do `pubspec.yaml` e é mudado pela PR de
-  release (seção 5.1). O release-please também soma 1 ao número depois do `+`, mas o CI o ignora.
+- O **versionName** (`1.0.0`, o que o usuário vê na loja) também é substituído, por `--build-name`
+  (seção 5.1). O `version:` do `pubspec.yaml` só vale para builds locais.
 - Execuções que falham também consomem um número. Isso cria "buracos" (101, 103...), o que é normal:
   o Play só exige que o número cresça.
 - Pushes barrados pelo filtro `paths` (seção 2) **não** consomem número: o workflow nem chega a rodar.
@@ -272,48 +276,48 @@ reserva os números abaixo de 101 para envios manuais, como o primeiro envio de 
 
 ### 5.1 versionName, notas da versão e teste fechado
 
-O **versionName** (`1.0.0`, o que o usuário vê na loja) vem do `version:` do `pubspec.yaml`, mas
-ninguém o edita à mão. Quem o muda é o **release-please**, uma ferramenta do Google que roda no workflow
-[release-please.yml](../../.github/workflows/release-please.yml). Ela lê os commits desde a última
-versão, que seguem o padrão *Conventional Commits*: `feat:` sobe o número do meio (`1.1.0`) e `fix:`
-sobe o último (`1.0.1`). Com isso, mantém aberta uma PR "chore: release X.Y.Z". O primeiro número só
-muda por decisão humana, com o rodapé `Release-As: X.0.0` num commit. A configuração está em
-[release-please-config.json](../../release-please-config.json), e a versão atual em
-[.release-please-manifest.json](../../.release-please-manifest.json).
+O **versionName** (`1.0.0`, o que o usuário vê na loja) é calculado pelo próprio deploy, no passo 1c
+([next-version.sh](../../.github/scripts/next-version.sh)), e entra no build com `--build-name`. O
+script lê os commits desde a última tag `v…` que mexem no app, que seguem o padrão *Conventional
+Commits*:
+- `feat:` sobe o número do meio (`1.1.0`);
+- `fix:` sobe o último (`1.0.1`);
+- o rodapé `Release-As: X.Y.Z` num commit força um número, e é assim que uma pessoa decide uma versão
+  maior;
+- sem nenhum deles, o nome continua igual.
+
+Depois do envio, o job `tag` marca o commit com `vX.Y.Z`, e essa tag é o ponto de partida do próximo
+cálculo. Cada build com novidade vira uma versão, então nome e notas sempre batem.
 
 As **notas da versão** (`distribution/whatsnew/whatsnew-pt-BR` e `whatsnew-en-US`) são escritas pelos
-agentes de IA em cada PR com mudança visível (regra em `AGENTS.md`, *Releases*). O passo 1b do deploy
+agentes de IA em cada PR com mudança visível (regra em `AGENTS.md`, *Releases*). Elas cobrem tudo
+desde a tag `play-closed`, a última versão promovida ao teste fechado. O passo 1b
 ([check-release-notes.sh](../../.github/scripts/check-release-notes.sh)) confere que elas existem, que
 têm até 500 caracteres e que foram atualizadas desde a última tag `v…` se o app mudou. O passo 12 as
 envia junto com o `.aab`.
 
 O workflow [promote-play-closed.yml](../../.github/workflows/promote-play-closed.yml) roda só pelo botão
-*Run workflow*. Ele copia a versão do teste interno, com o versionCode e as notas, para o teste fechado,
-sem recompilar.
+*Run workflow*. Ele copia a versão do teste interno (build, nome e notas) para o teste fechado, sem
+recompilar, e move a tag `play-closed` para ela.
 
 ```mermaid
 sequenceDiagram
-    actor Dev as Pessoa
     participant IA as Agente de IA
+    actor Dev as Pessoa
     participant GH as GitHub (main)
-    participant RP as release-please
     participant Dep as deploy-play-internal
     participant Pro as promote-play-closed
     participant Play as Google Play
 
-    IA->>GH: PR feat:/fix: com código + notas (pt-BR/en-US)
+    IA->>GH: PR feat: com código + notas (pt-BR/en-US)
     Dev->>GH: revisa e faz o merge
     GH->>Dep: push na main
-    Dep->>Dep: 1b. confere as notas
-    Dep->>Play: .aab + notas para o teste interno (versionName ainda 1.0.0)
-    GH->>RP: push na main
-    RP->>GH: abre/atualiza a PR "chore: release 1.1.0"
-    Dev->>GH: quando quiser lançar, faz o merge da PR de release
-    RP->>GH: tag v1.1.0 + GitHub Release
-    GH->>Dep: o merge mudou o pubspec.yaml
-    Dep->>Play: .aab 1.1.0 + as mesmas notas para o teste interno
-    Dev->>Pro: Run workflow
-    Pro->>Play: copia a versão interna (build + notas) para o teste fechado
+    Dep->>Dep: 1b confere as notas · 1c calcula 1.1.0
+    Dep->>Play: .aab 1.1.0 + notas para o teste interno
+    Dep->>GH: job tag: cria v1.1.0
+    Dev->>Pro: Run workflow (quando quiser)
+    Pro->>Play: copia a versão interna (build + nome + notas) para o teste fechado
+    Pro->>GH: move play-closed para v1.1.0
 ```
 
 ## 6. Como o GitHub ganha permissão para publicar no Play (sem chave)
