@@ -106,12 +106,12 @@ Follow `docs/en-us/run-web-locally.md`. Serve `build/web` on `http://localhost:5
 
 ## Releases
 
-Every merge to `main` that touches the app is uploaded to the Play internal track, and a human promotes it to closed testing with the `promote-play-closed.yml` workflow (walkthrough: `docs/en-us/publish-internal-testing.md`, section D).
-- **versionName**: changed only by release-please's "chore: release X.Y.Z" PR, never by hand in `pubspec.yaml`. Commit types drive it: `feat:` bumps the minor, `fix:` the patch. **Never** use `!` or a `BREAKING CHANGE:` footer; the major version changes only when the human asks, through a commit with the footer `Release-As: X.0.0`.
+Every merge to `main` that touches the app is a release on the Play internal track; a human promotes chosen ones to closed testing with `promote-play-closed.yml` (walkthrough: `docs/en-us/publish-internal-testing.md`, section D).
+- **versionName**: computed by the deploy from the Conventional Commits that touch the app since the last `v*` tag (`.github/scripts/next-version.sh`): `feat:` bumps the minor, `fix:` the patch; the deploy then tags the commit. Never edit `version:` in `pubspec.yaml`. **Never** use `!` or a `BREAKING CHANGE:` footer; the major version changes only when the human asks, through a commit with the footer `Release-As: X.0.0`.
 - **Release notes**: every PR with a change visible to people using the app (`feat:` or `fix:` touching `lib/`, `android/` or `assets/`) rewrites `distribution/whatsnew/whatsnew-pt-BR` and `whatsnew-en-US`, the same text in both languages:
-    - they cover **everything** visible since the last release tag (`git describe --tags --abbrev=0 --match 'v*'`; with no tag yet, the whole app), merging the new change into what is already there; if the files were last changed before that tag, they describe the previous version, so start over;
-    - write for end users: no technical terms, commit types, screen code names or issue numbers; at most 500 characters per file (`wc -m`), Play's limit;
-    - the deploy fails before uploading if the files are missing, too long, or not updated since the last tag while the app changed (`.github/scripts/check-release-notes.sh`).
+    - they cover **everything** visible since the `play-closed` tag, the last version promoted to closed testing (`git log play-closed..HEAD`; with no such tag, the whole app), because closed testers may skip versions; merge the new change into what is already there and drop what `play-closed` already contains;
+    - write for end users: no technical terms, commit types, screen code names or issue numbers; at most 500 characters per file (`wc -m`), Play's limit; when space runs out, keep the most important changes;
+    - the deploy fails before uploading if the files are missing, too long, or not updated since the last `v*` tag while the app changed (`.github/scripts/check-release-notes.sh`).
 
 ## Tracking Work in Issues
 

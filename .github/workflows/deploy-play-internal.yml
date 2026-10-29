@@ -1,6 +1,8 @@
 # Builds a signed app bundle and publishes it to the Google Play internal
 # testing track on every push to main (i.e. every merged pull request) that
-# changes an input of the Android app bundle.
+# changes an input of the Android app bundle. The versionName comes from the
+# commits since the last v* tag (.github/scripts/next-version.sh), and a new
+# version is tagged once it is on Play.
 #
 # Line-by-line walkthrough: docs/pt-br/entendendo-o-ci.md
 #
@@ -21,7 +23,7 @@ on:
       - 'pubspec.yaml'
       - 'pubspec.lock'
       - 'distribution/**'
-      - '.github/scripts/check-release-notes.sh'
+      - '.github/scripts/**'
       - '.github/workflows/deploy-play-internal.yml'
   workflow_dispatch:
 
@@ -35,14 +37,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: play-internal
+    outputs:
+      version: ${{ steps.version.outputs.name }}
+      new-version: ${{ steps.version.outputs.new }}
     # id-token: write lets the job request the GitHub OIDC token exchanged
     # for short-lived Google credentials (Workload Identity Federation).
     permissions:
       contents: read
       id-token: write
     steps:
-      # Full history and tags: the release notes check compares with the last
-      # v* tag.
+      # Full history and tags: the version and the release notes check are
+      # computed from the commits since the last v* tag.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -51,6 +56,11 @@ jobs:
       # too long, or not updated since the last release.
       - name: Check release notes
         run: .github/scripts/check-release-notes.sh
+
+      # feat: bumps the minor, fix: the patch, a Release-As footer sets it.
+      - name: Compute versionName
+        id: version
+        run: .github/scripts/next-version.sh
 
       - uses: actions/setup-java@v6
         with:
@@ -113,8 +123,12 @@ jobs:
           service_account: wlif-monamie-app-config@ci-cd-management.iam.gserviceaccount.com
 
       # versionCode = run number + 100: CI uses 101 and up; manual uploads (such as
-      # the first one of a new app) use 100 or less.
-      - run: flutter build appbundle --release --build-number=$((GITHUB_RUN_NUMBER + 100))
+      # the first one of a new app) use 100 or less. The versionName in
+      # pubspec.yaml is ignored.
+      - run: >-
+          flutter build appbundle --release
+          --build-name=${{ steps.version.outputs.name }}
+          --build-number=$((GITHUB_RUN_NUMBER + 100))
 
       # Keyless auth: impersonates the dedicated publisher service account.
       # Setup: docs/pt-br/publicar-teste-interno.md (steps A2-A4, C9-C12)
@@ -131,6 +145,26 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
+          # promote-play-closed.yml reads the versionName back from the name.
+          releaseName: ${{ steps.version.outputs.name }}
           # whatsnew-pt-BR and whatsnew-en-US, written in each PR (AGENTS.md,
           # "Releases"). Promotion to closed testing copies them along.
           whatsNewDirectory: distribution/whatsnew
+
+  # Tags the commit vX.Y.Z once its version is on Play, in a job of its own so
+  # that the build, which runs third-party Gradle and pub code, never holds a
+  # token that can write to the repository.
+  tag:
+    needs: deploy
+    if: needs.deploy.outputs.new-version == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.deploy.outputs.version }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/v$VERSION" -f sha="$GITHUB_SHA" > /dev/null
+          echo "Tagged $GITHUB_SHA as v$VERSION."

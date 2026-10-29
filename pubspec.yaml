@@ -16,6 +16,9 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
+# MonAmie: CI overrides both (--build-name from the commits since the last v*
+# tag, --build-number from the run number); this value only serves local
+# builds and the first CI version. Do not edit it (AGENTS.md, "Releases").
 version: 1.0.0+3
 
 environment:

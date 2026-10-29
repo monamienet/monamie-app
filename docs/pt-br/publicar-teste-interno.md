@@ -14,11 +14,11 @@ Os passos são identificados por grupo, de acordo com a frequência com que são
 | **A** | Uma única vez para a empresa | A1 keystore · A2 a A6 base do CI no Google Cloud |
 | **B** | Uma vez por máquina ou clone | B1 `key.properties` · B2 login no Firebase CLI |
 | **C** | Uma vez para o app (`org.monamienet.app`) | C1 a C4 Firebase · C5 a C7 primeiro envio, manual · C8 SHAs do Play · C9 a C12 CI do app |
-| **D** | A cada nova versão | D1 merge da PR · D2 publicação automática ⚙️ · D3 lançar uma versão · D4 promover ao teste fechado |
+| **D** | A cada nova versão | D1 merge da PR · D2 publicação automática ⚙️ · D3 promover ao teste fechado |
 
 | A cada nova versão | Antes do CI | Com o CI |
 | :--- | :--- | :--- |
-| Passos manuais | 5: atualizar o versionCode, gerar o bundle, enviar, preencher as notas e lançar | 1: fazer o merge da PR (e, para mudar o versionName ou chegar ao teste fechado, um merge ou um clique) |
+| Passos manuais | 5: atualizar o versionCode, gerar o bundle, enviar, preencher as notas e lançar | 1: fazer o merge da PR (e um clique para chegar ao teste fechado) |
 
 ### Dependências entre os passos
 
@@ -65,7 +65,7 @@ flowchart LR
     nK -->|C12| nCI
     nCI -->|D1| nM
     nM -->|D2 ⚙️| nE
-    nE -->|D4| nCl
+    nE -->|D3| nCl
 
     %% uma vez para a empresa (roxo)
     linkStyle 0,1,2,3,4,5 stroke:#7b2d8e,stroke-width:3px
@@ -92,7 +92,7 @@ flowchart LR
   - 🟣 uma vez para a empresa;
   - 🟠 uma vez por máquina;
   - 🔵 uma vez para o app;
-  - 🟢 a cada versão. A aresta **tracejada** (D2) é executada automaticamente pelo CI. D1 e D2 se repetem a cada build. D3 é um D1 especial (o merge da PR de release), e D4 só acontece quando você quer levar um build ao teste fechado.
+  - 🟢 a cada versão. A aresta **tracejada** (D2) é executada automaticamente pelo CI. D1 e D2 se repetem a cada build. D3 só acontece quando você quer levar um build ao teste fechado.
 
 ## Valores usados
 
@@ -467,59 +467,59 @@ texto "O que há de novo" que aparece no Play:
 - Ficam em `distribution/whatsnew/whatsnew-pt-BR` e `whatsnew-en-US`, com até 500 caracteres cada,
   o limite do Play por idioma.
 - Quem as escreve são os agentes de IA, na mesma PR da mudança (regra em `AGENTS.md`, seção
-  *Releases*). Elas resumem, em linguagem de quem usa o app, tudo o que mudou desde a última versão
-  lançada (a última tag `v…`).
-- O versionCode é automático, e o versionName muda só em D3.
+  *Releases*). Elas resumem, em linguagem de quem usa o app, tudo o que mudou desde a **última versão
+  promovida ao teste fechado** (a tag `play-closed`). Assim quem está no teste fechado lê todas as
+  novidades, mesmo que tenha pulado versões.
 
 ### D2. Publicação automática ⚙️
 
-O merge dispara o workflow. Ele confere as notas, roda os testes, gera e assina o bundle, envia-o ao
-Play **com as notas** e lança a versão para os testadores. Nada precisa ser feito, mas vale saber:
+O merge dispara o workflow. Ele confere as notas, **calcula o versionName**, roda os testes, gera e
+assina o bundle, envia-o ao Play **com as notas** e lança a versão para os testadores. Por fim, marca o
+commit com a tag da versão (`v1.1.0`, por exemplo).
 
-- **Acompanhar:** em *Actions → Deploy to Play (internal)*, cada execução mostra os logs de cada passo.
-  Se algo falhar, nada é enviado e quem fez o push recebe um e-mail.
-- **Publicar de novo sem merge**, por exemplo depois de corrigir uma permissão: use *Run workflow* na `main`.
-- ⚠️ **Não renomeie o arquivo do workflow.** O número da execução, usado como versionCode, é contado por
-  arquivo. Renomeá-lo reinicia a contagem em 1, e o Play recusa versionCodes repetidos.
-
-### D3. Lançar uma versão (mudar o versionName)
-
-O workflow *Release PR* (`release-please.yml`) usa o **release-please**, uma ferramenta do Google, para
-manter aberta uma PR chamada **"chore: release X.Y.Z"**. Ela lê os commits que entraram desde a última
-versão, que seguem o padrão *Conventional Commits*, e calcula o próximo número:
+O versionName sai das mensagens dos commits desde a última tag `v…`, que seguem o padrão
+*Conventional Commits*. Só contam os commits que mexem no app (`lib/`, `android/`, `assets/`):
 
 | Commits desde a última versão | Próxima versão |
 | :--- | :--- |
 | algum `feat:` (funcionalidade nova) | sobe o do meio: `1.0.0` → `1.1.0` |
 | só `fix:` (correções) | sobe o último: `1.0.0` → `1.0.1` |
+| nenhum dos dois (ex.: só `chore:`) | continua igual; o build sai com o mesmo nome e um versionCode novo |
 | um commit com o rodapé `Release-As: 2.0.0` | exatamente `2.0.0` |
 
 O primeiro número (`1.x.x` → `2.0.0`) **só muda quando você decide**: peça a um agente um commit com o
-rodapé `Release-As: 2.0.0`. Os agentes nunca usam `feat!:` nem `BREAKING CHANGE:`, que fariam esse
-número subir sozinho.
+rodapé `Release-As: 2.0.0`. Os agentes nunca usam `feat!:` nem `BREAKING CHANGE:`. O `version:` do
+`pubspec.yaml` não é mais editado: o CI o substitui.
 
-Quando quiser lançar, faça o merge dessa PR. O merge:
-1. muda o `version:` do `pubspec.yaml` e escreve o `CHANGELOG.md`, um histórico técnico em inglês;
-2. cria a tag `vX.Y.Z` e um *GitHub Release*;
-3. dispara D2, que envia ao teste interno o build com o versionName novo e as notas que já estavam lá.
+Nada precisa ser feito, mas vale saber:
 
-Depois da tag, as notas da versão seguinte começam do zero na próxima PR com mudança visível.
+- **Acompanhar:** em *Actions → Deploy to Play (internal)*, cada execução mostra os logs de cada passo.
+  Se algo falhar, nada é enviado, nenhuma tag é criada e quem fez o push recebe um e-mail.
+- **Publicar de novo sem merge**, por exemplo depois de corrigir uma permissão: use *Run workflow* na `main`.
+- ⚠️ **Não renomeie o arquivo do workflow.** O número da execução, usado como versionCode, é contado por
+  arquivo. Renomeá-lo reinicia a contagem em 1, e o Play recusa versionCodes repetidos.
 
-**Configuração única:** em *Settings → Actions → General*, marque *Allow GitHub Actions to create and
-approve pull requests*. Sem ela o release-please não consegue abrir a PR.
-
-### D4. Promover ao teste fechado
+### D3. Promover ao teste fechado
 
 Em *Actions → Promote to Play (closed) → Run workflow*, com a `main` selecionada:
 
 - **track:** o nome da faixa de teste fechado no Play. O padrão `alpha` é o nome interno da faixa
-  fechada que o Play cria. Se você criou outra faixa fechada, use o nome dela.
+  fechada que o Play cria ("Teste fechado - Alpha" no Console). Se você criou outra faixa fechada, use o
+  nome dela.
 - **version_code:** deixe vazio para promover o build que está no teste interno.
 
-O workflow não recompila nada. Pela API do Google Play, ele copia o versionCode **e as notas** da
-versão interna para a faixa fechada, que é revisada pelo Google antes de chegar aos testadores. Ele roda
-no environment `play-internal`, porque é nele que a service account de C10 confia. A permissão de C11
-(lançar em faixas de teste) já cobre o teste fechado.
+O workflow não recompila nada. Pela API do Google Play, ele copia o versionCode, o versionName **e as
+notas** da versão interna para a faixa fechada, que é revisada pelo Google antes de chegar aos
+testadores. Depois, move a tag `play-closed` para a versão promovida: as notas seguintes começam dali.
+
+Ele roda no environment `play-internal`, porque é nele que a service account de C10 confia. A permissão
+de C11 (lançar em faixas de teste) já cobre o teste fechado.
+
+O teste fechado pode **pular números** (de `1.0.0` direto para `1.3.0`, por exemplo). Isso é normal: o
+Play só exige que o versionCode cresça, e as notas cobrem tudo desde a última promoção.
+
+⚠️ A promoção **substitui** as versões da faixa fechada. Um rascunho que alguém tenha começado no
+Console nessa faixa é descartado.
 
 **Sem o CI:** se o workflow estiver indisponível, repita C6 e C7 com um versionCode maior que o da última
 versão enviada, que aparece no Play Console.
@@ -537,8 +537,8 @@ versão enviada, que aparece no Play Console.
 | `The caller does not have permission` | A service account ainda não tem permissão no Play Console, ou a permissão ainda não propagou (C11). |
 | `Release notes missing or empty` / `... has N characters` | Faltam as notas em `distribution/whatsnew/`, ou uma passa de 500 caracteres (D1). Corrija numa PR; nada foi enviado. |
 | `App changes since vX.Y.Z but distribution/whatsnew was not updated` | Entraram commits `feat:`/`fix:` no app sem atualizar as notas (D1). Uma PR que as atualize libera o próximo deploy. |
-| `No matching release on the internal track` (promoção) | O teste interno não tem versão concluída, ou o `version_code` informado não está nele (D4). |
-| release-please: `GitHub Actions is not permitted to create or approve pull requests` | Falta a configuração única de D3. |
+| `No matching release on the internal track` (promoção) | O teste interno não tem versão concluída, ou o `version_code` informado não está nele (D3). |
+| `No tag vX.Y.Z; play-closed was not moved` (promoção) | A versão promovida foi enviada antes deste fluxo e não tem tag. A promoção valeu; aponte a tag à mão: `git tag -f play-closed <commit> && git push -f origin play-closed`. |
 | `Version code ... has already been used` | O versionCode já foi usado. Normalmente o arquivo do workflow foi renomeado. Aumente o `+ 100` no workflow. |
 | `Only releases with status draft may be created on draft app` | O app ainda está em rascunho no Play. Conclua o primeiro lançamento (C7). |
 | O app instala, mas o login com Google falha | Faltam SHAs no Firebase: da chave de upload (C3) ou da assinatura do Google Play (C8). Localmente, busque a config de novo (B2). |
