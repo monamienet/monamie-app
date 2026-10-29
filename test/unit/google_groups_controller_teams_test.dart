@@ -16,10 +16,9 @@ import 'package:monamie_app/app/data/firebase/partner_firebase.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 
-Map<String, dynamic> groupEntity(String email, {String? name}) => {
+Map<String, dynamic> groupEntity(String email) => {
   'type': 'GROUP',
   'email': email,
-  'name': ?name,
 };
 
 Map<String, dynamic> userEntity(String email) => {
@@ -173,19 +172,15 @@ void main() {
   });
 
   group('GoogleGroupsController.teamsFor - Unit Test Suite', () {
-    test('Happy Path: one team per key, in order, named from the entries', () {
+    test('Happy Path: one team per key, in order, named from the names', () {
       // 1. Arrange
-      final rootEntities = [
-        groupEntity('rotasul02@monamienet.org', name: 'Zona Norte'),
-        groupEntity('rotasul01@monamienet.org', name: 'Centro'),
-      ];
+      final names = {'rotasul02': 'Zona Norte', 'rotasul01': 'Centro'};
 
       // 2. Act
-      final teams = GoogleGroupsController.teamsFor(
-        ['rotasul01', 'rotasul02'],
-        rootEntities,
-        const [],
-      );
+      final teams = GoogleGroupsController.teamsFor([
+        'rotasul01',
+        'rotasul02',
+      ], names);
 
       // 3. Assert
       expect(namesAndEmails(teams), [
@@ -194,77 +189,59 @@ void main() {
       ]);
     });
 
-    test('Happy Path: a name from the user\'s groups is used', () {
+    test('Edge Case: no keys give no teams, whatever the names', () {
       // 1. Arrange
-      final userGroups = [
-        groupEntity('rotasul01@monamienet.org', name: 'Centro'),
-      ];
+      final names = {'rotasul01': 'Centro'};
 
       // 2. Act
-      final teams = GoogleGroupsController.teamsFor(
-        ['rotasul01'],
-        const [],
-        userGroups,
-      );
-
-      // 3. Assert
-      expect(namesAndEmails(teams), [('Centro', 'rotasul01@monamienet.org')]);
-    });
-
-    test('Edge Case: the root entities win when both name the team', () {
-      // 1. Arrange
-      final rootEntities = [
-        groupEntity('rotasul01@monamienet.org', name: 'Centro (raiz)'),
-      ];
-      final userGroups = [
-        groupEntity('rotasul01@monamienet.org', name: 'Centro (usuario)'),
-      ];
-
-      // 2. Act
-      final teams = GoogleGroupsController.teamsFor(
-        ['rotasul01'],
-        rootEntities,
-        userGroups,
-      );
-
-      // 3. Assert
-      expect(teams.single.name, 'Centro (raiz)');
-    });
-
-    test('Edge Case: no keys give no teams', () {
-      // 1. Arrange
-      final rootEntities = [
-        groupEntity('rotasul01@monamienet.org', name: 'Centro'),
-      ];
-
-      // 2. Act
-      final teams = GoogleGroupsController.teamsFor(
-        const [],
-        rootEntities,
-        const [],
-      );
+      final teams = GoogleGroupsController.teamsFor(const [], names);
 
       // 3. Assert
       expect(teams, isEmpty);
     });
 
-    test('Sad Path: a team nobody names falls back to "Equipe NN"', () {
+    test('Edge Case: a name for a key not asked for adds no team', () {
       // 1. Arrange
-      // A leaf's name is not the team's name.
-      final userGroups = [
-        groupEntity('rotasul07w@monamienet.org', name: 'Centro · em campo'),
-      ];
+      final names = {'rotasul01': 'Centro', 'rotasul09': 'Outra'};
 
       // 2. Act
-      final teams = GoogleGroupsController.teamsFor(
-        ['rotasul07'],
-        const [],
-        userGroups,
-      );
+      final teams = GoogleGroupsController.teamsFor(['rotasul01'], names);
+
+      // 3. Assert
+      expect(namesAndEmails(teams), [('Centro', 'rotasul01@monamienet.org')]);
+    });
+
+    test('Sad Path: a team with no name falls back to "Equipe NN"', () {
+      // 1. Arrange
+      final names = {'rotasul01': 'Centro'};
+
+      // 2. Act
+      final teams = GoogleGroupsController.teamsFor([
+        'rotasul01',
+        'rotasul07',
+      ], names);
 
       // 3. Assert
       expect(namesAndEmails(teams), [
+        ('Centro', 'rotasul01@monamienet.org'),
         ('Equipe 07', 'rotasul07@monamienet.org'),
+      ]);
+    });
+
+    test('Sad Path: no names at all name every team "Equipe NN"', () {
+      // 1. Arrange
+      const names = <String, String>{};
+
+      // 2. Act
+      final teams = GoogleGroupsController.teamsFor([
+        'rotasul12',
+        'rotasul03',
+      ], names);
+
+      // 3. Assert
+      expect(namesAndEmails(teams), [
+        ('Equipe 12', 'rotasul12@monamienet.org'),
+        ('Equipe 03', 'rotasul03@monamienet.org'),
       ]);
     });
   });
