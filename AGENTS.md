@@ -99,16 +99,17 @@ Follow `docs/en-us/run-web-locally.md`. Serve `build/web` on `http://localhost:5
 ## Git Workflow
 
 - **Keep local `main` in sync**: Local `main` is a mirror of `origin/main` and must never receive direct commits. Before starting a task, fast-forward it: `git fetch origin main:main` from any other branch, or `git pull --ff-only` when `main` is checked out. If the fast-forward fails, local `main` has diverged; stop and report it instead of merging or resetting.
-- **One branch per task**: Whenever a new task is assigned, create a new branch from the freshly synced `main` before making any changes (`git switch -c <type>/<short-description> main`). Never work directly on `main` or reuse a branch from a previous task.
+- **One branch per task**: Whenever a new task is assigned, create its issue first (see *Tracking Work in Issues*), then a new branch from the freshly synced `main` before making any changes (`git switch -c <type>/<short-description> main`). Never work directly on `main` or reuse a branch from a previous task.
 - **Branch naming**: Prefix the branch with the change type, matching the commit convention (e.g. `feat/`, `fix/`, `chore/`, `docs/`, `build/`).
-- **Pull request after human approval**: When the task is finished, wait for explicit human approval before opening a pull request to merge the branch into `main`. Do not open the PR, or merge it, without that approval.
+- **Pull request after human approval**: When the task is finished, wait for explicit human approval before opening a pull request to merge the branch into `main`. Do not open the PR, or merge it, without that approval. The PR description closes the task's issue (`Closes #<n>`).
 - **GitHub interactions via MCP**: Interact with GitHub (pull requests, issues, reviews, projects, comments, etc.) preferably through the GitHub MCP server tools. Fall back to the `gh` CLI only when the GitHub MCP server is unavailable in the session or does not support the required operation.
 
-## Tracking Findings
+## Tracking Work in Issues
 
+- **One issue per request, before starting**: Whenever the human asks for anything that changes the repository (code, tests, docs, configuration, rule files, this file), create its GitHub issue **before** making any change, then do the work. Two exceptions, where no new issue is created: a follow-up of a task that already has an issue (adjusting its open PR, answering review comments, fixing its CI) uses that issue; and a request already covered by an open issue reuses it (add the request as a comment). Requests that change nothing in the repository (questions, investigations, running the app) need no issue; whatever they find follows the next rule.
 - **One issue per finding**: Whenever you find something that needs fixing (a bug, a regression, a misconfiguration, a security or data risk, an outdated doc), create a GitHub issue for it, unless the current task already fixes it. This includes findings outside the task's scope and problems in third-party code that affect this app; out-of-scope findings are not fixed in the current branch.
-- **Before creating**: search the open issues to avoid duplicates; if one exists, add what you found as a comment instead.
-- **Content**: write it in English. Say what is wrong, how it was observed or reproduced, its impact, and a "Done when" checklist; link related issues and PRs.
+- **Before creating**: search the open issues to avoid duplicates; if one exists, add the request or what you found as a comment instead.
+- **Content**: write it in English. For a finding, say what is wrong, how it was observed or reproduced, and its impact; for a request, say what was asked and why, with any decisions agreed with the human. Always end with a "Done when" checklist and link related issues and PRs.
 - **Tracking**: add the issue to an organization project with Status `Todo`, and list the issues you created in the PR description and in your report to the human:
     - **"MonAmie Docs" (#3)** for documentation issues: those whose fix changes only documentation (`docs/`, READMEs, `AGENTS.md`, rule files);
     - **"MonAmie App" (#2)** for everything else, including issues whose fix changes both code and its documentation.
