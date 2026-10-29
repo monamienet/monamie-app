@@ -11,7 +11,7 @@ void main() {
       final claims = <String, Object?>{
         'share': ['rotasul01'],
         'watch': ['rotasul01', 'rotasul02'],
-        'owns': ['rotasul'],
+        'admin': ['rotasul'],
         'email': 'ana@example.com',
       };
 
@@ -20,7 +20,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [caps.share, caps.watch, caps.owns],
+        [caps.share, caps.watch, caps.admin],
         [
           {'rotasul01'},
           {'rotasul01', 'rotasul02'},
@@ -51,7 +51,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [caps.share, caps.watch, caps.owns],
+        [caps.share, caps.watch, caps.admin],
         [<String>{}, <String>{}, <String>{}],
       );
     });
@@ -69,12 +69,25 @@ void main() {
       expect(caps.share, {'rotasul01'});
     });
 
+    test('Sad Path: the former owns claim grants no administration', () {
+      // 1. Arrange
+      final claims = <String, Object?>{
+        'owns': ['rotasul'],
+      };
+
+      // 2. Act
+      final caps = Capabilities.fromClaims(claims);
+
+      // 3. Assert
+      expect(caps.isAdminOf('rotasul'), isFalse);
+    });
+
     test('Sad Path: a claim that is not a list is an empty set', () {
       // 1. Arrange
       final claims = <String, Object?>{
         'share': 'rotasul01',
         'watch': {'rotasul01': true},
-        'owns': 7,
+        'admin': 7,
       };
 
       // 2. Act
@@ -82,7 +95,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [caps.share, caps.watch, caps.owns],
+        [caps.share, caps.watch, caps.admin],
         [<String>{}, <String>{}, <String>{}],
       );
     });
@@ -103,7 +116,7 @@ void main() {
     final nonEmpty = <(String, Capabilities)>[
       ('share alone', const Capabilities(share: {'rotasul01'})),
       ('watch alone', const Capabilities(watch: {'rotasul01'})),
-      ('owns alone', const Capabilities(owns: {'rotasul'})),
+      ('admin alone', const Capabilities(admin: {'rotasul'})),
     ];
     for (final (label, caps) in nonEmpty) {
       test('Edge Case: $label is not empty', () {
@@ -129,35 +142,38 @@ void main() {
       expect(canShare, isTrue);
     });
 
-    test('Sad Path: watching and owning do not let the person share', () {
-      // 1. Arrange
-      const caps = Capabilities(watch: {'rotasul01'}, owns: {'rotasul'});
+    test(
+      'Sad Path: watching and administering do not let the person share',
+      () {
+        // 1. Arrange
+        const caps = Capabilities(watch: {'rotasul01'}, admin: {'rotasul'});
 
-      // 2. Act
-      final canShare = caps.canShare;
+        // 2. Act
+        final canShare = caps.canShare;
 
-      // 3. Assert
-      expect(canShare, isFalse);
-    });
+        // 3. Assert
+        expect(canShare, isFalse);
+      },
+    );
   });
 
-  group('Capabilities.isOwnerOf - Unit Test Suite', () {
+  group('Capabilities.isAdminOf - Unit Test Suite', () {
     final cases = <(String, Capabilities, String, bool)>[
       (
-        'Happy Path: owns lists the partner',
-        const Capabilities(owns: {'rotasul'}),
+        'Happy Path: admin lists the partner',
+        const Capabilities(admin: {'rotasul'}),
         'rotasul',
         true,
       ),
       (
-        'Edge Case: watching every team is not owning',
+        'Edge Case: watching every team is not administering',
         const Capabilities(watch: {'rotasul01', 'rotasul02'}),
         'rotasul',
         false,
       ),
       (
-        'Sad Path: owning another partner is not owning this one',
-        const Capabilities(owns: {'outro'}),
+        'Sad Path: administering another partner is not administering this one',
+        const Capabilities(admin: {'outro'}),
         'rotasul',
         false,
       ),
@@ -168,10 +184,10 @@ void main() {
         final input = caps;
 
         // 2. Act
-        final owner = input.isOwnerOf(partnerId);
+        final admin = input.isAdminOf(partnerId);
 
         // 3. Assert
-        expect(owner, expected);
+        expect(admin, expected);
       });
     }
   });
@@ -179,8 +195,8 @@ void main() {
   group('Capabilities.canWatchIn - Unit Test Suite', () {
     final cases = <(String, Capabilities, bool)>[
       (
-        'Happy Path: the owner watches in the partner',
-        const Capabilities(owns: {'rotasul'}),
+        'Happy Path: an administrator watches in the partner',
+        const Capabilities(admin: {'rotasul'}),
         true,
       ),
       (
@@ -195,7 +211,7 @@ void main() {
       ),
       (
         'Sad Path: watching a team of another partner is not enough',
-        const Capabilities(watch: {'outro01'}, owns: {'outro'}),
+        const Capabilities(watch: {'outro01'}, admin: {'outro'}),
         false,
       ),
     ];
@@ -221,8 +237,8 @@ void main() {
         true,
       ),
       (
-        'Happy Path: owning the team\'s partner',
-        const Capabilities(owns: {'rotasul'}),
+        'Happy Path: administering the team\'s partner',
+        const Capabilities(admin: {'rotasul'}),
         true,
       ),
       (
@@ -236,8 +252,8 @@ void main() {
         false,
       ),
       (
-        'Sad Path: owning another partner',
-        const Capabilities(owns: {'outro'}),
+        'Sad Path: administering another partner',
+        const Capabilities(admin: {'outro'}),
         false,
       ),
     ];
@@ -278,9 +294,9 @@ void main() {
       expect(teams, ['rotasul02']);
     });
 
-    test('Sad Path: owning the partner gives no share teams', () {
+    test('Sad Path: administering the partner gives no share teams', () {
       // 1. Arrange
-      const caps = Capabilities(owns: {'rotasul'}, watch: {'rotasul01'});
+      const caps = Capabilities(admin: {'rotasul'}, watch: {'rotasul01'});
 
       // 2. Act
       final teams = caps.shareTeamsIn('rotasul');
@@ -291,16 +307,19 @@ void main() {
   });
 
   group('Capabilities.watchTeamsIn - Unit Test Suite', () {
-    test('Happy Path: the owner sees every team of the partner, sorted', () {
-      // 1. Arrange
-      const caps = Capabilities(owns: {'rotasul'});
+    test(
+      'Happy Path: an administrator sees every team of the partner, sorted',
+      () {
+        // 1. Arrange
+        const caps = Capabilities(admin: {'rotasul'});
 
-      // 2. Act
-      final teams = caps.watchTeamsIn('rotasul', rotasulTeams);
+        // 2. Act
+        final teams = caps.watchTeamsIn('rotasul', rotasulTeams);
 
-      // 3. Assert
-      expect(teams, ['rotasul01', 'rotasul02', 'rotasul03']);
-    });
+        // 3. Assert
+        expect(teams, ['rotasul01', 'rotasul02', 'rotasul03']);
+      },
+    );
 
     test('Happy Path: a watcher sees only the teams they watch, sorted', () {
       // 1. Arrange
@@ -313,16 +332,19 @@ void main() {
       expect(teams, ['rotasul01', 'rotasul03']);
     });
 
-    test('Edge Case: an owner with no team groups listed sees none', () {
-      // 1. Arrange
-      const caps = Capabilities(owns: {'rotasul'});
+    test(
+      'Edge Case: an administrator with no team groups listed sees none',
+      () {
+        // 1. Arrange
+        const caps = Capabilities(admin: {'rotasul'});
 
-      // 2. Act
-      final teams = caps.watchTeamsIn('rotasul', const []);
+        // 2. Act
+        final teams = caps.watchTeamsIn('rotasul', const []);
 
-      // 3. Assert
-      expect(teams, isEmpty);
-    });
+        // 3. Assert
+        expect(teams, isEmpty);
+      },
+    );
 
     test('Sad Path: sharing alone sees no team', () {
       // 1. Arrange

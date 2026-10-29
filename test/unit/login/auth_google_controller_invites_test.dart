@@ -58,7 +58,7 @@ const Map<String, String> _kPartnerNames = {
 const Map<String, Object?> _kShareClaims = {
   'share': ['rotasul01'],
   'watch': <String>[],
-  'owns': <String>[],
+  'admin': <String>[],
 };
 
 // ---------------------------------------------------------------------------

@@ -182,7 +182,7 @@ class _HomeSheetState extends State<HomeSheet> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          if (_groups.isOwner) ...[
+          if (_groups.isAdmin) ...[
             const SizedBox(height: 12),
             FilledButton(
               style: FilledButton.styleFrom(

@@ -25,7 +25,7 @@ String? partnerIdProblem(String id) {
 
 /// The level of a MonAmie group in a partner's tree.
 enum GroupLevel {
-  /// `<id>00@`: the root group, whose only member is the owner.
+  /// `<id>00@`: the root group, whose members are the administrators.
   root,
 
   /// `<id>NN@` (01–99): a team. It has no direct members.

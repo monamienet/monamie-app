@@ -1,8 +1,8 @@
-/// Periods the owner may pick (*período*: the time asked between two
+/// Periods an administrator may pick (*período*: the time asked between two
 /// positions), in minutes. `firestore.rules` accepts the same values.
 const trackingPeriods = [1, 2, 3, 5, 10, 15, 20, 30];
 
-/// Radii the owner may pick (*raio*: how far a person must move from the
+/// Radii an administrator may pick (*raio*: how far a person must move from the
 /// last recorded position before another is recorded), in meters.
 /// `firestore.rules` accepts the same values.
 const trackingRadii = [5, 10, 20, 50, 100, 200, 300, 500];
@@ -35,7 +35,7 @@ enum TrackingPreset {
 }
 
 /// How often people in the field send their location: the partner's
-/// `config/tracking`, chosen by the owner.
+/// `config/tracking`, chosen by an administrator.
 class TrackingSettings {
   const TrackingSettings({
     required this.periodMinutes,
@@ -67,7 +67,7 @@ class TrackingSettings {
     return settings.withinPlan(minPeriodMinutes);
   }
 
-  /// The values before any owner choice, and for any stored value that is
+  /// The values before any administrator choice, and for any stored value that is
   /// not allowed: *Economia* (15 min, 100 m), the only preset offered for now
   /// and the one every plan accepts.
   static const defaults = TrackingSettings(

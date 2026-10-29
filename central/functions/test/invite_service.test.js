@@ -93,7 +93,7 @@ const g = (local) => `${local}@monamienet.org`;
 /** Rota Sul with team 01 "Equipe Norte" (ana: share; bia: share + watch). */
 function rotaSul() {
   return fakeGroupsApi({
-    [g("rotasul00")]: { displayName: "Rota Sul", members: [user("dono@x.com"), group(g("rotasul01"))] },
+    [g("rotasul00")]: { displayName: "Rota Sul", members: [user("admin@x.com"), group(g("rotasul01"))] },
     [g("rotasul01")]: {
       displayName: "Equipe Norte",
       members: [group(g("rotasul01r")), group(g("rotasul01w"))],
@@ -109,7 +109,7 @@ function rotaSul() {
 /** Rota Sul with no team yet. */
 function rotaSulWithoutTeams() {
   return fakeGroupsApi({
-    [g("rotasul00")]: { displayName: "Rota Sul", members: [user("dono@x.com")] },
+    [g("rotasul00")]: { displayName: "Rota Sul", members: [user("admin@x.com")] },
   });
 }
 
@@ -216,13 +216,13 @@ function fakeMailer() {
   };
 }
 
-const owner = { email: "dono@x.com", name: "Rita Lima" };
+const inviter = { email: "admin@x.com", name: "Rita Lima" };
 
 function sendRequest(overrides = {}) {
   return {
     partnerId: "rotasul",
     partnerName: "Rota Sul",
-    owner,
+    inviter,
     team: "01",
     invites: [{ email: "davi@x.com", roles: ["share"] }],
     now: NOW,
@@ -240,7 +240,7 @@ function storedInvite(overrides = {}) {
     email: "davi@x.com",
     roles: ["share", "watch"],
     invitedByName: "Rita Lima",
-    invitedByEmail: "dono@x.com",
+    invitedByEmail: "admin@x.com",
     createdAt: EARLIER,
     expiresAt: LATER,
     status: "pending",

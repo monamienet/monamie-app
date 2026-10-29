@@ -15,7 +15,7 @@ This guide explains how that works, what MonAmie sets up once, and how to onboar
 
 A Google account says nothing about a partner. The bridge is the **groups**, in three levels, with everyone a plain `MEMBER`:
 
-- `<id>00@monamienet.org`, the **root group**: only the owner, who watches every team;
+- `<id>00@monamienet.org`, the **root group**: its members are the partner's **administrators**, who watch every team and manage the partner (the owner, who created it, is the first);
 - `<id>01@` … `<id>99@`, one per **team**: holds the team's name, no direct members;
 - `<id>NNr@` (**watch** the team's map) and `<id>NNw@` (**share** one's own location in the team), the two leaves of each team. Being in both is "both".
 
@@ -44,7 +44,7 @@ The launcher icon, the app name on the home screen, the Play listing and the nat
 | Fetched at build time | central `google-services.json` | `android/app/google-services.json` (gitignored) |
 | Fetched at runtime | partner's Firebase options | `resolvePartners`, then the device |
 
-Branding is a **name**, a **theme** from the catalog (section 8) and, optionally, **one logo**: a square 512 px PNG at `partners/<id>/logo.png` in the partner's Cloud Storage (public read; written only by the owner, `image/png` up to 1 MB). The owner changes all three in the app, *Aparência*: the device converts any picked file (SVG, PNG, JPEG, WebP, HEIC where Android decodes it) to that PNG, so an SVG is never stored; the `setBranding` function checks the theme against the active catalog and bumps `logoVersion`, which tells devices to fetch the new logo. Fallbacks: no or unknown theme → Grafite; no logo, or one that does not decode → the name's initial in a tile of the theme's color; no name → the id capitalized. The resolved colors and the logo are stored with the binding, so the first screen is branded without network; changes reach each device on its next launch.
+Branding is a **name**, a **theme** from the catalog (section 8) and, optionally, **one logo**: a square 512 px PNG at `partners/<id>/logo.png` in the partner's Cloud Storage (public read; written only by an administrator, `image/png` up to 1 MB). Administrators change all three in the app, *Aparência*: the device converts any picked file (SVG, PNG, JPEG, WebP, HEIC where Android decodes it) to that PNG, so an SVG is never stored; the `setBranding` function checks the theme against the active catalog and bumps `logoVersion`, which tells devices to fetch the new logo. Fallbacks: no or unknown theme → Grafite; no logo, or one that does not decode → the name's initial in a tile of the theme's color; no name → the id capitalized. The resolved colors and the logo are stored with the binding, so the first screen is branded without network; changes reach each device on its next launch.
 
 ## 4. One-time setup of the central project (maintainer)
 
@@ -96,18 +96,18 @@ Steps 1–9 cover the three required things: project, root group and name. Step 
 5. Deploy the rules and `syncClaims` from the repository root (first deploy: answer **1** day to the cleanup question):
    ```sh
    (cd functions && npm ci)
-   firebase deploy --project monamienet-<id> --only firestore:rules,functions
+   firebase deploy --project monamienet-<id> --only firestore:rules,storage,functions
    ```
 
 **Groups and access**
 
-6. Create the root group `<id>00@monamienet.org` with the owner, and for each team `<id>NN@` (inside the root) its leaves `<id>NNr@` and `<id>NNw@` (inside the team), with the people in the leaves. Everyone is a `MEMBER`; allow members outside the organization on every group. A partner set up before the three-level model is moved with `dart run tool/partner.dart migrate-groups <id>` (prints the plan; `--apply` runs it).
+6. Create the root group `<id>00@monamienet.org` with the owner (its first administrator), and for each team `<id>NN@` (inside the root) its leaves `<id>NNr@` and `<id>NNw@` (inside the team), with the people in the leaves. Everyone is a `MEMBER`; allow members outside the organization on every group. A partner set up before the three-level model is moved with `dart run tool/partner.dart migrate-groups <id>` (prints the plan; `--apply` runs it).
 7. If the groups gateway keeps a list of accepted projects, add `monamienet-<id>`.
 8. Grant `firebaseAppConfigReader` to the central function's account on **this project only**.
 
 **Branding and activation**
 
-9. Publish the name and theme (the owner adds the logo later in the app):
+9. Publish the name and theme (an administrator adds the logo later in the app):
    ```sh
    dart run tool/partner.dart publish <id> --name "<Name>" --theme <themeId>
    ```
@@ -200,7 +200,7 @@ Partners pick one of a fixed set of themes, never free colors. The catalog lives
 ```
 partners/{partnerId}/config/branding      public: name and look
 partners/{partnerId}/config/plan          Community only: {minIntervalMinutes: 15}
-partners/{partnerId}/config/tracking      owner's choice: {intervalMinutes, distanceMeters}; default 15 min, 100 m (Economia)
+partners/{partnerId}/config/tracking      administrators' choice: {intervalMinutes, distanceMeters}; default 15 min, 100 m (Economia)
 partners/{partnerId}/usuarios/{email}     live position (positionAt = server time of the last position)
 partners/{partnerId}/usuarios/{email}/historico_posicoes/{pointId}
 partners/{partnerId}/usuarios/{email}/dias/{yyyy-mm-dd}  one summary per day with trails (history calendar dots)
@@ -225,19 +225,19 @@ The copy keeps every field and type. The old root documents stay; delete them by
 
 ## 10. Teams and invites (from the app)
 
-The owner (*responsável*) manages teams and invites in the app (*Equipes*, *Criar equipe*, *Equipe*, *Convidar pessoas*). The work happens in the central project's functions, never on the device:
+Administrators (*administradores*) manage teams and invites in the app (*Equipes*, *Criar equipe*, *Equipe*, *Convidar pessoas*). The work happens in the central project's functions, never on the device:
 
-- **Who may call them**: only the partner's owner, recorded as `ownerEmail` in its active registry entry `partners/{id}` (set by the in-app creation, or by `dart run tool/partner.dart activate <id> --owner <email>` for a partner onboarded by hand). Each call only touches that partner's groups.
+- **Who may call them**: only the partner's administrators, the direct members of its root group `<id>00@` (checked with a Cloud Identity membership lookup), while its registry entry `partners/{id}` is `active`. `ownerEmail` (the owner, *titular*) grants nothing here. Each call only touches that partner's groups.
 - **Identity**: `groups-admin@monamienet-app.iam.gserviceaccount.com`, with the Workspace admin role **Groups Administrator** assigned to the service account itself (admin.google.com → Account → Admin roles → Groups Administrator → Assign service accounts), **without** domain-wide delegation; `roles/datastore.user` on `monamienet-app` (it reads the registry and writes invites). That role can change every group of monamienet.org, which is why the functions refuse any group outside the caller's partner.
-- **Teams**: creating one picks the next free number (01–99), creates `<id>NN` (the team name is its display name) inside `<id>00`, then `<id>NNr` and `<id>NNw` inside it, each allowing external members and with member moderation off (Groups Settings API); if a step fails, what was created is deleted. Renaming changes only the display name. Deleting removes the two leaves and the team, after showing who loses access (people in no other team; never the owner), and then cancels the team's pending invites, because the next team created reuses the number. `acceptInvite` also refuses an invite sent before its team group's `createTime` (Cloud Identity), so an invite left over from a deleted team can never join the new one.
+- **Teams**: creating one picks the next free number (01–99), creates `<id>NN` (the team name is its display name) inside `<id>00`, then `<id>NNr` and `<id>NNw` inside it, each allowing external members and with member moderation off (Groups Settings API); if a step fails, what was created is deleted. Renaming changes only the display name. Deleting removes the two leaves and the team, after showing who loses access (people in no other team; never an administrator), and then cancels the team's pending invites, because the next team created reuses the number. `acceptInvite` also refuses an invite sent before its team group's `createTime` (Cloud Identity), so an invite left over from a deleted team can never join the new one.
 - **Invites**: `invites/{id}` in the central project (an invited person has no group yet, so their partner project cannot hold it): `{partnerId, team, email, roles, invitedBy, expiresAt, status}`. They expire after **14 days** (*Reenviar* starts 14 new days; *Cancelar* voids them). **Membership starts on acceptance**: the person signs in with the invited account, sees the invite on *Sem organização* or, when they already belong to an organization, at the top of *Escolher organização* (also after *Trocar de organização*), taps *Aceitar e entrar*, and only then joins the leaves of their roles; the app then asks `resolvePartners` again without its cache (and retries for a few seconds, since Google's group directory takes a moment to show the new membership), enters the invite's organization without the picker and shows *Boas-vindas* once. Someone already inside an organization only sees a new invite the next time they reach one of those screens.
-- **E-mail**: sent through the Gmail API of the Workspace as the mailbox `MAIL_SENDER_SUBJECT`, shown as `MAIL_FROM` (a "send mail as" alias of that mailbox) — both in `central/functions/.env`. The functions sign the delegation JWT through the IAM Credentials API as `mail-sender@monamienet-app.iam.gserviceaccount.com` (keyless; `groups-admin@` holds `roles/iam.serviceAccountTokenCreator` on it). In the Admin console, Security → Access and data control → API controls → Domain-wide delegation, the client id of `mail-sender@` must be allowed **only** `https://www.googleapis.com/auth/gmail.send`. Delegation is domain-wide in Workspace; the code only ever uses the configured mailbox. Without it the invite still works (the person sees it on sign-in) and the owner is told the e-mail did not go out.
+- **E-mail**: sent through the Gmail API of the Workspace as the mailbox `MAIL_SENDER_SUBJECT`, shown as `MAIL_FROM` (a "send mail as" alias of that mailbox) — both in `central/functions/.env`. The functions sign the delegation JWT through the IAM Credentials API as `mail-sender@monamienet-app.iam.gserviceaccount.com` (keyless; `groups-admin@` holds `roles/iam.serviceAccountTokenCreator` on it). In the Admin console, Security → Access and data control → API controls → Domain-wide delegation, the client id of `mail-sender@` must be allowed **only** `https://www.googleapis.com/auth/gmail.send`. Delegation is domain-wide in Workspace; the code only ever uses the configured mailbox. Without it the invite still works (the person sees it on sign-in) and the administrator is told the e-mail did not go out.
 
 ## 11. Creating an organization in the app
 
-Anyone signed in can create an organization from *Sem organização* or *Escolher organização*: *Nome* (with the identifier suggested from the name and checked as it is typed: letters only, 3 to 20, free and never retired), *Tema*, *Plano*, *Revisão*. The central function `createPartner` (running as `groups-admin@`) validates everything again, reserves the identifier in the registry (`null → reserved`, which refuses taken and retired ids) and records the creator as `ownerEmail`. The creator becomes the owner (*responsável*): the only member of the root group, and the only one who manages teams, invites and appearance.
+Anyone signed in can create an organization from *Sem organização* or *Escolher organização*: *Nome* (with the identifier suggested from the name and checked as it is typed: letters only, 3 to 20, free and never retired), *Tema*, *Plano*, *Revisão*. The central function `createPartner` (running as `groups-admin@`) validates everything again, reserves the identifier in the registry (`null → reserved`, which refuses taken and retired ids) and records the creator as `ownerEmail`. The creator becomes the owner (*titular*) and the first member of the root group, so its first administrator (*administrador*): administrators manage teams, invites and appearance. Owner and administrator are separate: powers come only from the root group (Google Groups), and being the owner only means that deleting their account deletes the organization.
 
-- **Community**: `provisioning`, then the root group `<id>00@` with the owner as a plain member, then `partners/<id>/config/branding` and `config/plan` (15-minute minimum) in `monamienet-community`, then `active`; the app enters the new organization at once. The function's account needs `roles/datastore.user` on `monamienet-community`.
+- **Community**: `provisioning`, then the root group `<id>00@` with the owner as a plain member (its first administrator), then `partners/<id>/config/branding` and `config/plan` (15-minute minimum) in `monamienet-community`, then `active`; the app enters the new organization at once. The function's account needs `roles/datastore.user` on `monamienet-community`.
 - **Standard**: not automated yet. Creating a project in the organization, granting the owner `roles/billing.projectManager`, waiting for billing (Cloud Workflows with the scheduled `getBillingInfo` check) and deploying rules and functions need a provisioning identity that MonAmieNet has not set up. Until then a Standard creation stops as `failed` (step `project`) with the identifier reserved, and MonAmieNet finishes it by hand with sections 5 and 7.
 - **Failure**: any failing step leaves `failed` with `failure: {step, message}` in the registry and the error in the function's log; the app shows *Falha na criação* ("MonAmieNet was alerted"), and the identifier stays reserved. Retrying (`failed → provisioning`) is a MonAmieNet action for now.
 
@@ -245,7 +245,7 @@ Anyone signed in can create an organization from *Sem organização* or *Escolhe
 
 Anyone can delete their account in the app (*Minha conta* → *Excluir conta*). Nothing is erased at once: there are **30 days** to cancel, and the app shows *Em exclusão* (with *Cancelar exclusão*) whenever the person signs in during that time. The central functions do the work:
 
-- **`requestAccountDeletion`** (as `groups-admin@`): removes the person from every team leaf (`<id>NNr`, `<id>NNw`) right away, so they leave the maps; records what to restore in `accountDeletions/{email}` (`deleteAt`, `memberships`, `ownedPartners`). An **owner** deletes their organization with the account (it cannot be left without an owner) and confirms by typing its identifier: the partner goes `active → deleting`, so nobody signs in to it any more, and `expirePartners` erases it when its own 30 days end (section 7).
+- **`requestAccountDeletion`** (as `groups-admin@`): removes the person from every team leaf (`<id>NNr`, `<id>NNw`), and from the root group of every partner they administer without owning it, right away, so they leave the maps; records what to restore in `accountDeletions/{email}` (`deleteAt`, `memberships`, `ownedPartners`). The **owner** (*titular*) deletes their organization with the account (it cannot be left without an owner) and confirms by typing its identifier: the partner goes `active → deleting`, so nobody signs in to it any more, and `expirePartners` erases it when its own 30 days end (section 7).
 - **`cancelAccountDeletion`**: within the 30 days, rejoins the recorded leaves, brings the owned organizations back to `active` and deletes the record.
 - **`eraseAccounts`** (daily, as `partner-expirer@`): for each record past `deleteAt`, deletes the person's data in every partner they belonged to (`partners/<id>/usuarios/<email>` with its trail and day summaries, their `users` profile and their sign-in in that project), then their central sign-in and the record. `partner-expirer@` needs `roles/datastore.user` and `roles/firebaseauth.admin` on each partner project and on `monamienet-community`, and `roles/firebaseauth.admin` on `monamienet-app`.
 

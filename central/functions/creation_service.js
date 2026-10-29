@@ -100,8 +100,8 @@ async function fail(db, id, step, error, now) {
   return { id, status: "failed" };
 }
 
-/** The root group `<id>00@` with `ownerEmail` as its only (plain) member;
- * idempotent. */
+/** The root group `<id>00@` with `ownerEmail` as its first administrator (a
+ * plain member); idempotent. */
 async function provisionRootGroup(groups, customer, id, name, ownerEmail) {
   const email = `${id}00@monamienet.org`;
   let root = await groups.lookup(email);

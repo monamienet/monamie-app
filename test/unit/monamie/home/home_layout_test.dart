@@ -163,23 +163,23 @@ void main() {
   });
 
   group('menuSubtitle - Unit Test Suite', () {
-    test('Happy Path: the owner is told they are responsible', () {
+    test('Happy Path: an administrator is told so', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
-        isOwner: true,
+        isAdmin: true,
         canWatch: true,
         canShare: false,
         shareTeams: const [],
       );
 
       // 3. Assert
-      expect(subtitle, 'Você é responsável');
+      expect(subtitle, 'Administra a organização');
     });
 
     test('Happy Path: share only names the team, in the field (#110)', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
-        isOwner: false,
+        isAdmin: false,
         canWatch: false,
         canShare: true,
         shareTeams: const ['Centro'],
@@ -192,7 +192,7 @@ void main() {
     test('Happy Path: watch only', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
-        isOwner: false,
+        isAdmin: false,
         canWatch: true,
         canShare: false,
         shareTeams: const [],
@@ -205,7 +205,7 @@ void main() {
     test('Happy Path: watch and share', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
-        isOwner: false,
+        isAdmin: false,
         canWatch: true,
         canShare: true,
         shareTeams: const ['Centro'],
@@ -215,23 +215,23 @@ void main() {
       expect(subtitle, 'Acompanha e compartilha');
     });
 
-    test('Edge Case: the owner wins even when they also share', () {
+    test('Edge Case: an administrator wins even when they also share', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
-        isOwner: true,
+        isAdmin: true,
         canWatch: true,
         canShare: true,
         shareTeams: const ['Centro'],
       );
 
       // 3. Assert
-      expect(subtitle, 'Você é responsável');
+      expect(subtitle, 'Administra a organização');
     });
 
     test('Edge Case: share only with several teams names the first +N', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
-        isOwner: false,
+        isAdmin: false,
         canWatch: false,
         canShare: true,
         shareTeams: const ['Centro', 'Zona Norte'],
@@ -244,7 +244,7 @@ void main() {
     test('Sad Path: no capability and no team still reads sensibly', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
-        isOwner: false,
+        isAdmin: false,
         canWatch: false,
         canShare: false,
         shareTeams: const [],

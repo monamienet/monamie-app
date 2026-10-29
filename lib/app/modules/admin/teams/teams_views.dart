@@ -116,7 +116,7 @@ Widget _initialTile(String name, {double size = 44, double? fontSize}) {
   );
 }
 
-/// *Equipes*: every team of the organization (owner only).
+/// *Equipes*: every team of the organization (administrators only).
 class TeamsView extends StatelessWidget {
   const TeamsView({super.key, required this.controller});
 
@@ -327,8 +327,9 @@ class _CreateTeamViewState extends State<CreateTeamView> {
             borderRadius: BorderRadius.circular(14),
           ),
           child: const Text(
-            'Como responsável, você já vê todas as equipes no mapa. A equipe '
-            'nasce vazia: depois de criar, convide quem vai fazer parte dela.',
+            'Você administra a organização, então já vê todas as equipes no '
+            'mapa. A equipe nasce vazia: depois de criar, convide quem vai '
+            'fazer parte dela.',
             style: TextStyle(fontSize: 13, height: 1.45, color: _muted),
           ),
         ),
@@ -1440,7 +1441,7 @@ class _TeamViewState extends State<TeamView> {
   }
 }
 
-/// Opens *Convidar pessoas* for the owner's teams (preselecting [team]);
+/// Opens *Convidar pessoas* for the organization's teams (preselecting [team]);
 /// completes after the teams are reloaded.
 Future<void> openInvite(TeamsController controller, {String? team}) async {
   await Get.to(

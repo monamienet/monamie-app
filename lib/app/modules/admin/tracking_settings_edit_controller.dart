@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings_repository.dart';
 
-/// State of *Ajustes de acompanhamento*: the owner picks a preset or custom
+/// State of *Ajustes de acompanhamento*: an administrator picks a preset or custom
 /// values and saves them for everyone in the field.
 class TrackingSettingsEditController extends GetxController {
   TrackingSettingsEditController({
@@ -19,7 +19,7 @@ class TrackingSettingsEditController extends GetxController {
   /// What is saved now.
   final Rx<TrackingSettings> savedSettings;
 
-  /// What the owner is choosing.
+  /// What an administrator is choosing.
   final Rx<TrackingSettings> draft;
   final Rx<TrackingPreset> preset;
 

@@ -6,7 +6,7 @@ const MAX_NAME = 40;
 
 /**
  * Error the team functions return as `invalid-argument` (or
- * `failed-precondition` for `full`), with a message for the owner.
+ * `failed-precondition` for `full`), with a message for the administrator.
  */
 class TeamError extends Error {
   constructor(code, message) {
@@ -135,7 +135,7 @@ function roleChanges(current, wanted) {
 
 /**
  * Who loses access to the partner if `teamKey` is deleted: the people of
- * that team who are in no other team of the partner and are not its owner.
+ * that team who are in no other team of the partner and do not administer it.
  *
  * @param {string} teamKey - e.g. "rotasul01"
  * @param {Map<string, string[]>} groupsByPerson - Each person's leaf (and

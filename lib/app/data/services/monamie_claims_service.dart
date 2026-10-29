@@ -3,7 +3,7 @@ import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 import 'capabilities.dart';
 
-/// Syncs and reads the MonAmie custom claims (`share`, `watch`, `owns`) of
+/// Syncs and reads the MonAmie custom claims (`share`, `watch`, `admin`) of
 /// the person signed in to the bound partner's project.
 class MonAmieClaimsService {
   MonAmieClaimsService._();
@@ -36,7 +36,7 @@ class MonAmieClaimsService {
       );
       debugPrint(
         '[MonAmieClaimsService] Synced: share=${capabilities.share} '
-        'watch=${capabilities.watch} owns=${capabilities.owns}',
+        'watch=${capabilities.watch} admin=${capabilities.admin}',
       );
       return capabilities;
     } catch (e) {

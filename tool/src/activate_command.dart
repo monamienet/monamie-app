@@ -57,8 +57,9 @@ class ActivateCommand extends Command<void> {
     argParser.addOption(
       'owner',
       help:
-          "E-mail of the partner's owner (responsável), the member of its "
-          'root group; the team and invite functions only accept them.',
+          "E-mail of the partner's owner (titular), who created it; "
+          'deleting their account deletes the partner. Administration powers '
+          'come from the root group, not from this.',
     );
   }
 

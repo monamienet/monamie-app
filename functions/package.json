@@ -1,6 +1,6 @@
 {
   "name": "monamie-functions",
-  "description": "MonAmie partner functions: custom claims (share, watch, owns) from Google Groups",
+  "description": "MonAmie partner functions: custom claims (share, watch, admin) from Google Groups",
   "engines": {
     "node": "22"
   },

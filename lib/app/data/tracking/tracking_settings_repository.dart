@@ -10,6 +10,6 @@ abstract interface class TrackingSettingsRepository {
   /// The plan's minimum interval in minutes (Community: 15; Standard: 0).
   Future<int> minPeriodMinutes();
 
-  /// Saves [settings] (owner only, enforced by the rules).
+  /// Saves [settings] (administrators only, enforced by the rules).
   Future<void> save(TrackingSettings settings);
 }

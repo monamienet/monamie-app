@@ -17,27 +17,31 @@ class DeletionError extends Error {
 }
 
 /**
- * Which of a person's direct groups are leaves they leave at once (all
- * `<id>NNr` / `<id>NNw`), grouped by partner. The root group of a partner
- * they own is kept: the organization itself goes to `deleting`.
+ * Which of a person's direct groups they leave at once, grouped by
+ * partner: every leaf (`<id>NNr` / `<id>NNw`) and the root group `<id>00`
+ * of a partner they administer without owning it. The root group of a
+ * partner they own is kept: the organization itself goes to `deleting`.
  *
  * @param {string[]} groupEmails - The person's direct groups
- * @returns {Map<string, string[]>} partnerId → leaf e-mails
+ * @param {string[]} [ownedPartners] - The partners they own
+ * @returns {Map<string, string[]>} partnerId → group e-mails
  */
-function leavesByPartner(groupEmails) {
+function leavesByPartner(groupEmails, ownedPartners = []) {
   const byPartner = new Map();
   for (const email of groupEmails) {
     const address = parseGroupAddress(email);
-    if (!address || address.level !== 2) continue;
-    const leaf = `${address.teamKey}${address.leaf}@monamienet.org`;
-    byPartner.set(address.partnerId, [...(byPartner.get(address.partnerId) ?? []), leaf]);
+    if (!address || address.level === 1) continue;
+    if (address.level === 0 && ownedPartners.includes(address.partnerId)) continue;
+    const group = `${address.teamKey}${address.leaf ?? ""}@monamienet.org`;
+    byPartner.set(address.partnerId, [...(byPartner.get(address.partnerId) ?? []), group]);
   }
   return byPartner;
 }
 
 /**
- * Schedules the deletion of `email`'s account: leaves every team now (so
- * they disappear from the maps), puts every organization they own in
+ * Schedules the deletion of `email`'s account: leaves every team, and the
+ * root group of every organization they administer without owning it, now
+ * (so they disappear from the maps), puts every organization they own in
  * `deleting` (nobody uses it meanwhile), and records what to restore if
  * they cancel within 30 days. An owner must confirm by typing the id of
  * each organization they own (`confirmIds`).
@@ -65,7 +69,7 @@ async function requestAccountDeletion(db, deps, { email, uid, confirmIds = [] },
       throw new DeletionError("confirm", `Para confirmar, digite ${id}.`);
     }
   }
-  const leaves = leavesByPartner(await deps.directGroups(email));
+  const leaves = leavesByPartner(await deps.directGroups(email), ownedPartners);
   const memberships = [];
   for (const [partnerId, groups] of leaves) {
     for (const leaf of groups) {
@@ -108,7 +112,8 @@ async function pendingDeletion(db, email) {
 
 /**
  * Cancels a pending deletion within its 30 days: rejoins the recorded
- * teams and brings the owned organizations back to `active`.
+ * groups (teams and administered root groups) and brings the owned
+ * organizations back to `active`.
  */
 async function cancelAccountDeletion(db, deps, email, now = new Date()) {
   email = email.toLowerCase();

@@ -15,7 +15,7 @@ Este guia explica como isso funciona, o que a MonAmie configura uma única vez e
 
 A conta Google não diz nada sobre o parceiro. A ponte são os **grupos**, em três níveis, com todo mundo como `MEMBER` simples:
 
-- `<id>00@monamienet.org`, o **grupo raiz**: só o responsável, que acompanha todas as equipes;
+- `<id>00@monamienet.org`, o **grupo raiz**: seus membros são os **administradores** do parceiro, que acompanham todas as equipes e gerenciam o parceiro (o titular, que o criou, é o primeiro);
 - `<id>01@` … `<id>99@`, um por **equipe**: guarda o nome da equipe, sem membros diretos;
 - `<id>NNr@` (**vê o mapa** da equipe) e `<id>NNw@` (**em campo**: compartilha a própria localização na equipe), as duas folhas de cada equipe. Estar nas duas é "os dois".
 
@@ -44,7 +44,7 @@ O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa 
 | Buscado no build | `google-services.json` central | `android/app/google-services.json` (ignorado pelo git) |
 | Buscado em tempo de execução | opções do Firebase do parceiro | `resolvePartners`, depois o aparelho |
 
-A marca é um **nome**, um **tema** do catálogo (seção 8) e, opcionalmente, **um logo**: um PNG quadrado de 512 px em `partners/<id>/logo.png` no Cloud Storage do parceiro (leitura pública; só o responsável grava, `image/png` de até 1 MB). O responsável muda os três no app, em *Aparência*: o aparelho converte qualquer arquivo escolhido (SVG, PNG, JPEG, WebP, HEIC quando o Android decodifica) nesse PNG, então um SVG nunca é guardado; a função `setBranding` confere o tema contra o catálogo ativo e avança o `logoVersion`, que avisa os aparelhos para buscar o logo novo. Planos B: sem tema ou tema desconhecido → Grafite; sem logo, ou logo que não abre → a inicial do nome num quadrado na cor do tema; sem nome → o id com a primeira letra maiúscula. As cores resolvidas e o logo ficam guardados com a ligação, então a primeira tela sai com a marca sem rede; as mudanças chegam a cada aparelho na próxima abertura.
+A marca é um **nome**, um **tema** do catálogo (seção 8) e, opcionalmente, **um logo**: um PNG quadrado de 512 px em `partners/<id>/logo.png` no Cloud Storage do parceiro (leitura pública; só um administrador grava, `image/png` de até 1 MB). Os administradores mudam os três no app, em *Aparência*: o aparelho converte qualquer arquivo escolhido (SVG, PNG, JPEG, WebP, HEIC quando o Android decodifica) nesse PNG, então um SVG nunca é guardado; a função `setBranding` confere o tema contra o catálogo ativo e avança o `logoVersion`, que avisa os aparelhos para buscar o logo novo. Planos B: sem tema ou tema desconhecido → Grafite; sem logo, ou logo que não abre → a inicial do nome num quadrado na cor do tema; sem nome → o id com a primeira letra maiúscula. As cores resolvidas e o logo ficam guardados com a ligação, então a primeira tela sai com a marca sem rede; as mudanças chegam a cada aparelho na próxima abertura.
 
 ## 4. Configuração única do projeto central (mantenedor)
 
@@ -96,18 +96,18 @@ Os passos 1 a 9 cuidam dos três obrigatórios: projeto, grupo raiz e nome. O pa
 5. Publique as regras e a `syncClaims` a partir da raiz do repositório (no primeiro deploy, responda **1** dia à pergunta de limpeza):
    ```sh
    (cd functions && npm ci)
-   firebase deploy --project monamienet-<id> --only firestore:rules,functions
+   firebase deploy --project monamienet-<id> --only firestore:rules,storage,functions
    ```
 
 **Grupos e acesso**
 
-6. Crie o grupo raiz `<id>00@monamienet.org` com o responsável e, para cada equipe `<id>NN@` (dentro da raiz), as folhas `<id>NNr@` e `<id>NNw@` (dentro da equipe), com as pessoas nas folhas. Todos como `MEMBER`; permita membros de fora da organização em todos os grupos. Um parceiro criado antes do modelo de três níveis é migrado com `dart run tool/partner.dart migrate-groups <id>` (mostra o plano; `--apply` executa).
+6. Crie o grupo raiz `<id>00@monamienet.org` com o titular (seu primeiro administrador) e, para cada equipe `<id>NN@` (dentro da raiz), as folhas `<id>NNr@` e `<id>NNw@` (dentro da equipe), com as pessoas nas folhas. Todos como `MEMBER`; permita membros de fora da organização em todos os grupos. Um parceiro criado antes do modelo de três níveis é migrado com `dart run tool/partner.dart migrate-groups <id>` (mostra o plano; `--apply` executa).
 7. Se o gateway de grupos mantiver uma lista de projetos aceitos, inclua `monamienet-<id>`.
 8. Conceda `firebaseAppConfigReader` à conta da função central **só neste projeto**.
 
 **Marca e ativação**
 
-9. Publique o nome e o tema (o responsável põe o logo depois, no app):
+9. Publique o nome e o tema (um administrador põe o logo depois, no app):
    ```sh
    dart run tool/partner.dart publish <id> --name "<Nome>" --theme <themeId>
    ```
@@ -156,7 +156,7 @@ stateDiagram-v2
 | `active` | funcionando | o mapa |
 | `migrating` | cópia de Community para Standard em andamento | o mapa, só leitura; compartilhamento pausado |
 | `failed` | uma etapa da criação falhou depois das novas tentativas; a MonAmieNet é avisada | *Falha na criação* |
-| `deleting` | o responsável excluiu a conta; `deleteAt` = pedido + 30 dias | *Em exclusão* |
+| `deleting` | o titular excluiu a conta; `deleteAt` = pedido + 30 dias | *Em exclusão* |
 
 **O fim é um documento apagado, não um status.** Entrar em `awaiting_billing` ou `deleting` grava `deleteAt` (7 ou 30 dias depois); sair deles remove o campo. Todo dia às 03:00 (São Paulo), a função agendada `expirePartners` pega os parceiros cujo `deleteAt` já passou, apaga o projeto do Google Cloud, apaga `partners/{id}` e grava `retiredPartnerIds/{id}` só com `retiredAt`. O id de um projeto apagado nunca pode ser reutilizado, então um identificador aposentado é recusado para sempre: a criação confere isso na etapa do nome, e o `activate` também recusa. O Google ainda deixa um projeto apagado recuperável por até 30 dias antes de apagá-lo de vez.
 
@@ -200,7 +200,7 @@ Os parceiros escolhem um tema de um conjunto fixo, nunca cores livres. O catálo
 ```
 partners/{partnerId}/config/branding      público: nome e aparência
 partners/{partnerId}/config/plan          só Community: {minIntervalMinutes: 15}
-partners/{partnerId}/config/tracking      escolha do responsável: {intervalMinutes, distanceMeters}; padrão 15 min, 100 m (Economia)
+partners/{partnerId}/config/tracking      escolha dos administradores: {intervalMinutes, distanceMeters}; padrão 15 min, 100 m (Economia)
 partners/{partnerId}/usuarios/{email}     posição atual (positionAt = hora do servidor da última posição)
 partners/{partnerId}/usuarios/{email}/historico_posicoes/{pontoId}
 partners/{partnerId}/usuarios/{email}/dias/{yyyy-mm-dd}  um resumo por dia com trajetos (pontos do calendário do histórico)
@@ -225,27 +225,27 @@ A cópia mantém todos os campos e tipos. Os documentos antigos na raiz continua
 
 ## 10. Equipes e convites (pelo app)
 
-O responsável gerencia equipes e convites no app (*Equipes*, *Criar equipe*, *Equipe*, *Convidar pessoas*). O trabalho acontece nas funções do projeto central, nunca no aparelho:
+Os administradores gerenciam equipes e convites no app (*Equipes*, *Criar equipe*, *Equipe*, *Convidar pessoas*). O trabalho acontece nas funções do projeto central, nunca no aparelho:
 
-- **Quem pode chamar**: só o responsável do parceiro, gravado como `ownerEmail` na entrada ativa do registro `partners/{id}` (posto pela criação no app, ou por `dart run tool/partner.dart activate <id> --owner <e-mail>` num parceiro cadastrado à mão). Cada chamada só mexe nos grupos daquele parceiro.
+- **Quem pode chamar**: só os administradores do parceiro, os membros diretos do grupo raiz `<id>00@` (conferido com uma consulta de associação no Cloud Identity), enquanto a entrada `partners/{id}` do registro estiver `active`. O `ownerEmail` (o titular) não dá poder nenhum aqui. Cada chamada só mexe nos grupos daquele parceiro.
 - **Identidade**: `groups-admin@monamienet-app.iam.gserviceaccount.com`, com o papel de administrador do Workspace **Administrador de grupos** atribuído à própria conta de serviço (admin.google.com → Conta → Funções de administrador → Administrador de grupos → Atribuir contas de serviço), **sem** delegação em todo o domínio; e `roles/datastore.user` no `monamienet-app` (lê o registro e grava convites). Esse papel muda qualquer grupo do monamienet.org, por isso as funções recusam qualquer grupo fora do parceiro de quem chama.
-- **Equipes**: criar uma escolhe o próximo número livre (01–99), cria `<id>NN` (o nome da equipe é o nome de exibição) dentro de `<id>00` e depois `<id>NNr` e `<id>NNw` dentro dela, cada um aceitando membros externos e com a moderação de membros desligada (API Groups Settings); se uma etapa falha, o que foi criado é apagado. Renomear muda só o nome de exibição. Excluir tira as duas folhas e a equipe, depois de mostrar quem perde o acesso (quem não está em outra equipe; nunca o responsável), e então cancela os convites pendentes da equipe, porque a próxima equipe criada reaproveita o número. O `acceptInvite` também recusa um convite enviado antes do `createTime` (Cloud Identity) do grupo da equipe, para que um convite que sobrou de uma equipe excluída nunca entre na nova.
+- **Equipes**: criar uma escolhe o próximo número livre (01–99), cria `<id>NN` (o nome da equipe é o nome de exibição) dentro de `<id>00` e depois `<id>NNr` e `<id>NNw` dentro dela, cada um aceitando membros externos e com a moderação de membros desligada (API Groups Settings); se uma etapa falha, o que foi criado é apagado. Renomear muda só o nome de exibição. Excluir tira as duas folhas e a equipe, depois de mostrar quem perde o acesso (quem não está em outra equipe; nunca um administrador), e então cancela os convites pendentes da equipe, porque a próxima equipe criada reaproveita o número. O `acceptInvite` também recusa um convite enviado antes do `createTime` (Cloud Identity) do grupo da equipe, para que um convite que sobrou de uma equipe excluída nunca entre na nova.
 - **Convites**: `invites/{id}` no projeto central (a pessoa convidada ainda não tem grupo, então o projeto do parceiro não pode guardá-lo): `{partnerId, team, email, roles, invitedBy, expiresAt, status}`. Valem **14 dias** (*Reenviar* recomeça os 14 dias; *Cancelar* anula). **A participação começa no aceite**: a pessoa entra com a conta convidada, vê o convite em *Sem organização* ou, se já participa de alguma organização, no alto de *Escolher organização* (também depois de *Trocar de organização*), toca em *Aceitar e entrar* e só então entra nas folhas dos seus papéis; o app pergunta de novo à `resolvePartners`, sem o cache dela (e tenta por alguns segundos, porque o diretório de grupos do Google demora um pouco para mostrar a participação nova), entra direto na organização do convite, sem passar pelo seletor, e mostra *Boas-vindas* uma vez. Quem já está dentro de uma organização só vê um convite novo na próxima vez que passar por uma dessas telas.
-- **E-mail**: enviado pela API do Gmail do Workspace como a caixa `MAIL_SENDER_SUBJECT`, aparecendo como `MAIL_FROM` (um alias "enviar e-mail como" dessa caixa), os dois em `central/functions/.env`. As funções assinam o JWT da delegação pela API IAM Credentials como `mail-sender@monamienet-app.iam.gserviceaccount.com` (sem chave; o `groups-admin@` tem `roles/iam.serviceAccountTokenCreator` nela). No Admin console, Segurança → Controle de acesso e dados → Controles de API → Delegação em todo o domínio, o ID do cliente do `mail-sender@` deve ter **só** `https://www.googleapis.com/auth/gmail.send`. A delegação vale para o domínio inteiro no Workspace; o código só usa a caixa configurada. Sem ela o convite funciona (a pessoa o vê ao entrar) e o responsável é avisado de que o e-mail não saiu.
+- **E-mail**: enviado pela API do Gmail do Workspace como a caixa `MAIL_SENDER_SUBJECT`, aparecendo como `MAIL_FROM` (um alias "enviar e-mail como" dessa caixa), os dois em `central/functions/.env`. As funções assinam o JWT da delegação pela API IAM Credentials como `mail-sender@monamienet-app.iam.gserviceaccount.com` (sem chave; o `groups-admin@` tem `roles/iam.serviceAccountTokenCreator` nela). No Admin console, Segurança → Controle de acesso e dados → Controles de API → Delegação em todo o domínio, o ID do cliente do `mail-sender@` deve ter **só** `https://www.googleapis.com/auth/gmail.send`. A delegação vale para o domínio inteiro no Workspace; o código só usa a caixa configurada. Sem ela o convite funciona (a pessoa o vê ao entrar) e o administrador é avisado de que o e-mail não saiu.
 
 ## 11. Criar uma organização pelo app
 
-Qualquer pessoa conectada pode criar uma organização a partir de *Sem organização* ou *Escolher organização*: *Nome* (com o identificador sugerido a partir do nome e conferido enquanto se digita: só letras, de 3 a 20, livre e nunca aposentado), *Tema*, *Plano*, *Revisão*. A função central `createPartner` (rodando como `groups-admin@`) confere tudo de novo, reserva o identificador no registro (`null → reserved`, que recusa identificadores em uso ou aposentados) e grava quem criou como `ownerEmail`. Quem cria vira o responsável: o único membro do grupo raiz e o único que gerencia equipes, convites e aparência.
+Qualquer pessoa conectada pode criar uma organização a partir de *Sem organização* ou *Escolher organização*: *Nome* (com o identificador sugerido a partir do nome e conferido enquanto se digita: só letras, de 3 a 20, livre e nunca aposentado), *Tema*, *Plano*, *Revisão*. A função central `createPartner` (rodando como `groups-admin@`) confere tudo de novo, reserva o identificador no registro (`null → reserved`, que recusa identificadores em uso ou aposentados) e grava quem criou como `ownerEmail`. Quem cria vira o titular e o primeiro membro do grupo raiz, ou seja, o primeiro administrador: os administradores gerenciam equipes, convites e aparência. Titular e administrador são papéis separados: os poderes vêm só do grupo raiz (Google Groups), e ser titular só quer dizer que excluir a própria conta exclui a organização.
 
-- **Community**: `provisioning`, depois o grupo raiz `<id>00@` com o responsável como membro simples, depois `partners/<id>/config/branding` e `config/plan` (mínimo de 15 minutos) no `monamienet-community`, e então `active`; o app entra na organização nova na hora. A conta da função precisa de `roles/datastore.user` no `monamienet-community`.
-- **Standard**: ainda não automatizado. Criar um projeto na organização, dar ao responsável `roles/billing.projectManager`, esperar o faturamento (Cloud Workflows com a verificação agendada de `getBillingInfo`) e publicar regras e funções exigem uma identidade de provisionamento que a MonAmieNet ainda não configurou. Até lá, uma criação Standard para em `failed` (etapa `project`) com o identificador reservado, e a MonAmieNet termina à mão com as seções 5 e 7.
+- **Community**: `provisioning`, depois o grupo raiz `<id>00@` com o titular como membro simples (seu primeiro administrador), depois `partners/<id>/config/branding` e `config/plan` (mínimo de 15 minutos) no `monamienet-community`, e então `active`; o app entra na organização nova na hora. A conta da função precisa de `roles/datastore.user` no `monamienet-community`.
+- **Standard**: ainda não automatizado. Criar um projeto na organização, dar ao titular `roles/billing.projectManager`, esperar o faturamento (Cloud Workflows com a verificação agendada de `getBillingInfo`) e publicar regras e funções exigem uma identidade de provisionamento que a MonAmieNet ainda não configurou. Até lá, uma criação Standard para em `failed` (etapa `project`) com o identificador reservado, e a MonAmieNet termina à mão com as seções 5 e 7.
 - **Falha**: qualquer etapa que falhe deixa `failed` com `failure: {step, message}` no registro e o erro no log da função; o app mostra *Falha na criação* ("a MonAmieNet foi avisada"), e o identificador continua reservado. Tentar de novo (`failed → provisioning`) é, por enquanto, uma ação da MonAmieNet.
 
 ## 12. Excluir uma conta
 
 Qualquer pessoa pode excluir a própria conta pelo app (*Minha conta* → *Excluir conta*). Nada é apagado na hora: há **30 dias** para cancelar, e o app mostra *Em exclusão* (com *Cancelar exclusão*) sempre que a pessoa entra nesse período. Quem faz o trabalho são as funções centrais:
 
-- **`requestAccountDeletion`** (como `groups-admin@`): tira a pessoa de todas as folhas de equipe (`<id>NNr`, `<id>NNw`) na hora, então ela sai dos mapas; guarda o que restaurar em `accountDeletions/{email}` (`deleteAt`, `memberships`, `ownedPartners`). Um **responsável** exclui a organização junto com a conta (ela não pode ficar sem responsável) e confirma digitando o identificador: o parceiro passa de `active` para `deleting`, ninguém mais entra nele, e o `expirePartners` o apaga quando terminam os 30 dias dele (seção 7).
+- **`requestAccountDeletion`** (como `groups-admin@`): tira a pessoa de todas as folhas de equipe (`<id>NNr`, `<id>NNw`), e do grupo raiz de todo parceiro que ela administra sem ser titular, na hora, então ela sai dos mapas; guarda o que restaurar em `accountDeletions/{email}` (`deleteAt`, `memberships`, `ownedPartners`). O **titular** exclui a organização junto com a conta (ela não pode ficar sem titular) e confirma digitando o identificador: o parceiro passa de `active` para `deleting`, ninguém mais entra nele, e o `expirePartners` o apaga quando terminam os 30 dias dele (seção 7).
 - **`cancelAccountDeletion`**: dentro dos 30 dias, devolve a pessoa às folhas guardadas, traz as organizações dela de volta a `active` e apaga o registro.
 - **`eraseAccounts`** (diário, como `partner-expirer@`): para cada registro com `deleteAt` vencido, apaga os dados da pessoa em cada parceiro de que fazia parte (`partners/<id>/usuarios/<email>` com a trilha e os resumos por dia, o perfil em `users` e o login naquele projeto), depois o login central e o próprio registro. O `partner-expirer@` precisa de `roles/datastore.user` e `roles/firebaseauth.admin` em cada projeto de parceiro e no `monamienet-community`, e de `roles/firebaseauth.admin` no `monamienet-app`.
 

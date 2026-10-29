@@ -629,8 +629,8 @@ class TrackingController extends GetxController
       debugPrint('[TrackingController] The user shares in no team.');
       Get.snackbar(
         'Compartilhamento não autorizado',
-        'Você não está em campo em nenhuma equipe. Peça ao responsável para '
-            'liberar o compartilhamento da sua localização.',
+        'Você não está em campo em nenhuma equipe. Peça a um administrador '
+            'para liberar o compartilhamento da sua localização.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade100,
         duration: const Duration(seconds: 5),

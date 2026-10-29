@@ -12,7 +12,7 @@ import 'logo_converter.dart';
 /// converted logo, or explaining why the file cannot be used.
 enum LogoSheet { closed, processing, preview, error }
 
-/// State and actions of the owner's *Aparência* screen: name, theme and
+/// State and actions of an administrator's *Aparência* screen: name, theme and
 /// logo, saved together.
 class AppearanceController extends GetxController {
   AppearanceController({

@@ -1,6 +1,6 @@
 // Security rules of a partner project (firestore.rules), against the
 // Firestore emulator. Every partner's data lives under partners/{partnerId}.
-// Capabilities come from the custom claims share, watch (team keys), owns
+// Capabilities come from the custom claims share, watch (team keys), admin
 // and partners (partner ids) that syncClaims sets.
 const { after, before, beforeEach, describe, test } = require("node:test");
 const fs = require("node:fs");
@@ -102,16 +102,16 @@ const people = {
     watch: ["rotasul01"],
     partners: ["rotasul"],
   },
-  // Owner of rotasul.
-  olga: { email: "olga@example.com", owns: ["rotasul"], partners: ["rotasul"] },
-  // Watcher and owner of another partner.
-  otto: { email: "otto@example.com", watch: ["outro01"], owns: ["outro"], partners: ["outro"] },
+  // Administrator of rotasul.
+  olga: { email: "olga@example.com", admin: ["rotasul"], partners: ["rotasul"] },
+  // Watcher and administrator of another partner.
+  otto: { email: "otto@example.com", watch: ["outro01"], admin: ["outro"], partners: ["outro"] },
   // Every capability in rotasul, none in outro.
   zack: {
     email: "zack@example.com",
     share: ["rotasul01"],
     watch: ["rotasul01"],
-    owns: ["rotasul"],
+    admin: ["rotasul"],
     partners: ["rotasul"],
   },
   // Shares in a team of each partner.
@@ -182,8 +182,8 @@ describe("partner rules: read usuarios/{email} - Rules Test Suite", () => {
   const allowed = [
     ["Happy Path: the person reads their own document", "ana", "ana@example.com"],
     ["Happy Path: a watcher of the team reads a member", "vera", "ana@example.com"],
-    ["Happy Path: the owner reads a member of team 01", "olga", "ana@example.com"],
-    ["Happy Path: the owner reads a member of team 02", "olga", "bia@example.com"],
+    ["Happy Path: an administrator reads a member of team 01", "olga", "ana@example.com"],
+    ["Happy Path: an administrator reads a member of team 02", "olga", "bia@example.com"],
     ["Edge Case: a person who shares and watches reads a teammate", "duda", "ana@example.com"],
   ];
   for (const [label, who, target] of allowed) {
@@ -204,8 +204,8 @@ describe("partner rules: read usuarios/{email} - Rules Test Suite", () => {
     ["a field-only person reading someone of another team", "ana", "bia@example.com"],
     ["a watcher of another team", "walter", "ana@example.com"],
     ["a watcher of another partner", "otto", "ana@example.com"],
-    ["the owner of another partner", "otto", "bia@example.com"],
-    ["the owner of rotasul reading a document naming another partner's team", "olga", "zeca@example.com"],
+    ["an administrator of another partner", "otto", "bia@example.com"],
+    ["an administrator of rotasul reading a document naming another partner's team", "olga", "zeca@example.com"],
     ["the watcher of outro01 reading a document of rotasul naming outro01", "otto", "zeca@example.com"],
   ];
   for (const [label, who, target] of denied) {
@@ -292,7 +292,7 @@ describe("partner rules: write usuarios/{email} - Rules Test Suite", () => {
 
   const denied = [
     ["a watch-only person writing their own document", "vera", "vera@example.com", () => position("vera@example.com", TEAM_01)],
-    ["the owner writing their own document", "olga", "olga@example.com", () => position("olga@example.com", TEAM_01)],
+    ["an administrator writing their own document", "olga", "olga@example.com", () => position("olga@example.com", TEAM_01)],
     ["a field person writing someone else's document", "duda", "ana@example.com", () => position("ana@example.com", TEAM_01)],
     ["a field person without the partners claim", "lia", "lia@example.com", () => position("lia@example.com", TEAM_01)],
     ["an e-mail field that is not their own", "duda", "duda@example.com", () => ({ ...position("duda@example.com", TEAM_01), email: "ana@example.com" })],
@@ -527,7 +527,7 @@ describe("partner rules: usuarios/{email}/historico_posicoes - Rules Test Suite"
   const allowedReads = [
     ["Happy Path: the person reads their own trail", "ana", "ana@example.com"],
     ["Happy Path: a watcher of the current team reads the trail", "vera", "ana@example.com"],
-    ["Happy Path: the owner reads the trail", "olga", "bia@example.com"],
+    ["Happy Path: an administrator reads the trail", "olga", "bia@example.com"],
   ];
   for (const [label, who, owner] of allowedReads) {
     test(`${label} (${who} → ${owner})`, async () => {
@@ -545,8 +545,8 @@ describe("partner rules: usuarios/{email}/historico_posicoes - Rules Test Suite"
   const deniedReads = [
     ["a field-only person reading someone else's trail", "duda", "bia@example.com"],
     ["a watcher of another team", "walter", "ana@example.com"],
-    ["the owner of another partner", "otto", "ana@example.com"],
-    ["the owner of rotasul reading a trail whose team is another partner's", "olga", "zeca@example.com"],
+    ["an administrator of another partner", "otto", "ana@example.com"],
+    ["an administrator of rotasul reading a trail whose team is another partner's", "olga", "zeca@example.com"],
   ];
   for (const [label, who, owner] of deniedReads) {
     test(`Sad Path: reading the trail is denied for ${label}`, async () => {
@@ -755,7 +755,7 @@ describe("partner rules: usuarios/{email}/dias/{day} - Rules Test Suite", () => 
   const allowedReads = [
     ["Happy Path: the person reads their own summaries", "ana", "ana@example.com"],
     ["Happy Path: a watcher of the current team reads the summaries", "vera", "ana@example.com"],
-    ["Happy Path: the owner reads the summaries", "olga", "bia@example.com"],
+    ["Happy Path: an administrator reads the summaries", "olga", "bia@example.com"],
   ];
   for (const [label, who, owner] of allowedReads) {
     test(`${label} (${who} → ${owner})`, async () => {
@@ -774,7 +774,7 @@ describe("partner rules: usuarios/{email}/dias/{day} - Rules Test Suite", () => 
     ["a field-only person reading someone else's", "ana", "caio@example.com"],
     ["a watcher of another team", "walter", "ana@example.com"],
     ["a member of another partner", "otto", "ana@example.com"],
-    ["the owner of rotasul reading a person whose team is another partner's", "olga", "zeca@example.com"],
+    ["an administrator of rotasul reading a person whose team is another partner's", "olga", "zeca@example.com"],
   ];
   for (const [label, who, owner] of deniedReads) {
     test(`Sad Path: reading day summaries is denied for ${label}`, async () => {
@@ -960,7 +960,7 @@ describe("partner rules: config/branding - Rules Test Suite", () => {
     await assertSucceeds(read);
   });
 
-  test("Sad Path: even the owner cannot write the branding", async () => {
+  test("Sad Path: even an administrator cannot write the branding", async () => {
     // 1. Arrange
     const db = dbOf("olga");
 
@@ -1006,7 +1006,7 @@ describe("partner rules: config/plan - Rules Test Suite", () => {
     await assertFails(read);
   });
 
-  test("Sad Path: even the owner cannot write the plan", async () => {
+  test("Sad Path: even an administrator cannot write the plan", async () => {
     // 1. Arrange
     const db = dbOf("otto");
 
@@ -1018,7 +1018,7 @@ describe("partner rules: config/plan - Rules Test Suite", () => {
   });
 });
 
-/** config/tracking as the owner's app writes it. */
+/** config/tracking as an administrator's app writes it. */
 function trackingBy(email, intervalMinutes = 5, distanceMeters = 10) {
   return { intervalMinutes, distanceMeters, updatedAt: serverTimestamp(), updatedBy: email };
 }
@@ -1059,7 +1059,7 @@ describe("partner rules: config/tracking - Rules Test Suite", () => {
     await assertFails(read);
   });
 
-  test("Happy Path: the owner writes allowed values (no plan: 1 min, 5 m)", async () => {
+  test("Happy Path: an administrator writes allowed values (no plan: 1 min, 5 m)", async () => {
     // 1. Arrange
     const db = dbOf("olga");
 
@@ -1071,8 +1071,8 @@ describe("partner rules: config/tracking - Rules Test Suite", () => {
   });
 
   const allowedOnCommunity = [
-    ["Edge Case: on a 15-minute plan the owner writes 15 minutes", 15],
-    ["Edge Case: on a 15-minute plan the owner writes 30 minutes", 30],
+    ["Edge Case: on a 15-minute plan an administrator writes 15 minutes", 15],
+    ["Edge Case: on a 15-minute plan an administrator writes 30 minutes", 30],
   ];
   for (const [label, minutes] of allowedOnCommunity) {
     test(label, async () => {
@@ -1088,8 +1088,8 @@ describe("partner rules: config/tracking - Rules Test Suite", () => {
   }
 
   const denied = [
-    ["a member who is not the owner", "ana", HERE, trackingBy("ana@example.com")],
-    ["the owner of another partner", "otto", HERE, trackingBy("otto@example.com")],
+    ["a member who is not an administrator", "ana", HERE, trackingBy("ana@example.com")],
+    ["an administrator of another partner", "otto", HERE, trackingBy("otto@example.com")],
     ["interval 4, not an allowed value", "olga", HERE, trackingBy("olga@example.com", 4, 10)],
     ["distance 15, not an allowed value", "olga", HERE, trackingBy("olga@example.com", 5, 15)],
     [
@@ -1116,7 +1116,7 @@ describe("partner rules: config/tracking - Rules Test Suite", () => {
   }
 });
 
-// zack has every capability in rotasul (share, watch, owns) and none in
+// zack has every capability in rotasul (share, watch, admin) and none in
 // outro; nothing under partners/outro is his, whatever his claims allow in
 // rotasul.
 describe("partner rules: cross-partner isolation - Rules Test Suite", () => {
@@ -1255,7 +1255,7 @@ describe("partner rules: root paths of the old layout - Rules Test Suite", () =>
   });
 
   const deniedReads = [
-    ["the owner reading usuarios", "olga", "usuarios/ana@example.com"],
+    ["an administrator reading usuarios", "olga", "usuarios/ana@example.com"],
     ["the person reading their own root document", "ana", "usuarios/ana@example.com"],
     ["a member reading users", "ana", "users/ana"],
     ["a member reading config/branding", "ana", "config/branding"],

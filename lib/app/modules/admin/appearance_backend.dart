@@ -5,7 +5,7 @@ import 'package:monamie_app/app/config/partner/partner_theme.dart';
 /// What the *Aparência* screen needs from the server, kept apart so the
 /// screen and its controller are tested with a fake.
 abstract interface class AppearanceBackend {
-  /// The catalog's themes the owner may pick, in picker order.
+  /// The catalog's themes an administrator may pick, in picker order.
   Future<List<PartnerTheme>> pickableThemes();
 
   /// Uploads the square logo PNG of [partnerId].
@@ -16,7 +16,7 @@ abstract interface class AppearanceBackend {
 
   /// Saves the changed fields (`setBranding`); `logo` is `set` after an
   /// upload and `removed` after a delete. Throws [AppearanceException]
-  /// with a message for the owner.
+  /// with a message for an administrator.
   Future<void> saveBranding(
     String partnerId, {
     String? name,
@@ -25,7 +25,7 @@ abstract interface class AppearanceBackend {
   });
 }
 
-/// A save that failed, in words for the owner.
+/// A save that failed, in words for an administrator.
 class AppearanceException implements Exception {
   const AppearanceException(this.message);
 

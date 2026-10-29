@@ -19,7 +19,6 @@ import 'package:monamie_app/app/modules/account/firebase_account_deletion_backen
 import 'package:monamie_app/app/modules/account/my_account_controller.dart';
 import 'package:monamie_app/app/modules/account/my_account_view.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
-import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 
 import '../modules/login/bindings/login_binding.dart';
@@ -54,7 +53,9 @@ class AppPages {
           MyAccountController(
             backend: const FirebaseAccountDeletionBackend(),
             partnerId: Partner.current!.id,
-            isOwner: Get.find<GoogleGroupsController>().isOwner,
+            checkOwner: () => Get.find<AuthGoogleController>().ownsPartner(
+              Partner.current!.id,
+            ),
             onDeleted: Get.find<AuthGoogleController>().accountDeleted,
           ),
         ),

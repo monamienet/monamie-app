@@ -7,7 +7,7 @@ library;
 const heartbeat = Duration(minutes: 5);
 
 /// How long a `timestamp` keeps a person on the map (*validade*): one lost
-/// [heartbeat] plus two minutes of slack, whatever the owner's period. A
+/// [heartbeat] plus two minutes of slack, whatever the period an administrator chose. A
 /// device alive and online never goes past one [heartbeat] without an update;
 /// a dead one leaves the map at most [validity] plus [recheck] after its last
 /// update. The one freshness threshold of the app.
