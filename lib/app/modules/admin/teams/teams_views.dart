@@ -689,36 +689,38 @@ class _TeamViewState extends State<TeamView> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _bar('Equipe'),
-      body: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-            sliver: SliverFillRemaining(
-              hasScrollBody: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _header(
-                    team,
-                    [
-                      team.peopleLabel,
-                      if (pending.isNotEmpty) pending,
-                    ].join(' · '),
-                  ),
-                  const SizedBox(height: 20),
-                  _tabs(team.people.length, invites?.length),
-                  const SizedBox(height: 20),
-                  _onInvites ? _invitesCard(invites) : _membersCard(team),
-                  const SizedBox(height: 20),
-                  _inviteButton(),
-                  const SizedBox(height: 20),
-                  const Spacer(),
-                  _deleteButton(team),
-                ],
+      // Only the list scrolls: header, tabs and the two buttons stay put.
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _header(
+                team,
+                [team.peopleLabel, if (pending.isNotEmpty) pending].join(' · '),
               ),
-            ),
+              const SizedBox(height: 20),
+              _tabs(team.people.length, invites?.length),
+              const SizedBox(height: 20),
+              // Loose height: a short list keeps its size, a long one
+              // scrolls inside the card.
+              Expanded(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: _onInvites
+                      ? _invitesCard(invites)
+                      : _membersCard(team),
+                ),
+              ),
+              const SizedBox(height: 20),
+              _inviteButton(),
+              const SizedBox(height: 12),
+              _deleteButton(team),
+            ],
           ),
-        ],
+        ),
       ),
     );
   });
@@ -853,7 +855,9 @@ class _TeamViewState extends State<TeamView> {
               ),
             ),
           )
-        : Column(
+        : ListView(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
             children: [
               for (final (i, row) in rows.indexed)
                 DecoratedBox(
