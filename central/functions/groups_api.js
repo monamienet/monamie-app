@@ -106,6 +106,19 @@ class GroupsApi {
     return members;
   }
 
+  /** Whether `email` is a direct member of group `name`. */
+  async isMember(name, email) {
+    try {
+      const membership = await this._request({
+        url: `${CLOUD_IDENTITY}/${name}/memberships:lookup?memberKey.id=${encodeURIComponent(email)}`,
+      });
+      return Boolean(membership?.name);
+    } catch (error) {
+      if (error?.response?.status === 404 || error?.code === 404) return false;
+      throw error;
+    }
+  }
+
   /** Adds `email` (a person or a group) to group `name` as a MEMBER. An
    * existing membership counts as done. */
   async addMember(name, email) {

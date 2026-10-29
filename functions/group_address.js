@@ -30,7 +30,7 @@ function isValidPartnerId(id) {
 /**
  * Parses a MonAmie group address into its three levels:
  *
- * - `<id>00@` — the root group, only the owner: `{level: 0}`;
+ * - `<id>00@` — the root group, its administrators: `{level: 0}`;
  * - `<id>NN@` (01–99) — a team, no direct members: `{level: 1}`;
  * - `<id>NNr@` / `<id>NNw@` — the team's watch / share leaf: `{level: 2}`.
  *

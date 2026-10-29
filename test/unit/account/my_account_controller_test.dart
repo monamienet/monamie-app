@@ -33,16 +33,40 @@ class FakeAccountDeletionBackend implements AccountDeletionBackend {
   Future<AccountDeletion?> pending() => throw UnimplementedError();
 }
 
+/// A `checkOwner` that counts its calls, optionally waits on [gate] and
+/// fails with [failure].
+class FakeOwnerCheck {
+  FakeOwnerCheck(this.owner);
+
+  final bool owner;
+  int calls = 0;
+  Completer<void>? gate;
+  Object? failure;
+
+  Future<bool> call() async {
+    calls++;
+    await gate?.future;
+    if (failure case final failure?) throw failure;
+    return owner;
+  }
+}
+
 late FakeAccountDeletionBackend backend;
 late List<AccountDeletion> deleted;
 
-MyAccountController controllerFor({required bool isOwner}) =>
-    MyAccountController(
-      backend: backend,
-      partnerId: 'rotasul',
-      isOwner: isOwner,
-      onDeleted: (deletion) async => deleted.add(deletion),
-    );
+MyAccountController newController(FakeOwnerCheck check) => MyAccountController(
+  backend: backend,
+  partnerId: 'rotasul',
+  checkOwner: check.call,
+  onDeleted: (deletion) async => deleted.add(deletion),
+);
+
+/// A controller whose ownership has already been read as [isOwner].
+Future<MyAccountController> controllerFor({required bool isOwner}) async {
+  final controller = newController(FakeOwnerCheck(isOwner));
+  await controller.loadOwnership();
+  return controller;
+}
 
 void main() {
   setUp(() {
@@ -51,10 +75,109 @@ void main() {
     deleted = [];
   });
 
-  group('MyAccountController.canDelete - Unit Test Suite', () {
-    test('Happy Path: a member can delete without typing anything', () {
+  group('MyAccountController.loadOwnership - Unit Test Suite', () {
+    for (final owner in [true, false]) {
+      test('Happy Path: the ownership read ($owner) is kept', () async {
+        // 1. Arrange
+        final controller = newController(FakeOwnerCheck(owner));
+
+        // 2. Act
+        await controller.loadOwnership();
+
+        // 3. Assert
+        expect(controller.isOwner.value, owner);
+        expect(controller.isCheckingOwner.value, isFalse);
+        expect(controller.errorMessage.value, isEmpty);
+      });
+    }
+
+    test('Happy Path: starting the controller reads the ownership', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: false);
+      final check = FakeOwnerCheck(true);
+      final controller = newController(check);
+
+      // 2. Act
+      controller.onStart();
+      await pumpEventQueue();
+
+      // 3. Assert
+      expect(check.calls, 1);
+      expect(controller.isOwner.value, isTrue);
+    });
+
+    test(
+      'Edge Case: the ownership is unknown while it is being read',
+      () async {
+        // 1. Arrange
+        final check = FakeOwnerCheck(true)..gate = Completer<void>();
+        final controller = newController(check);
+
+        // 2. Act
+        final pending = controller.loadOwnership();
+
+        // 3. Assert
+        expect(controller.isOwner.value, isNull);
+        expect(controller.isCheckingOwner.value, isTrue);
+        check.gate!.complete();
+        await pending;
+        expect(controller.isCheckingOwner.value, isFalse);
+      },
+    );
+
+    test(
+      'Edge Case: a second read while one is in flight asks nothing',
+      () async {
+        // 1. Arrange
+        final check = FakeOwnerCheck(true)..gate = Completer<void>();
+        final controller = newController(check);
+        final first = controller.loadOwnership();
+
+        // 2. Act
+        await controller.loadOwnership();
+
+        // 3. Assert
+        expect(check.calls, 1);
+        check.gate!.complete();
+        await first;
+      },
+    );
+
+    test('Edge Case: a retry after a failure clears the error', () async {
+      // 1. Arrange
+      final check = FakeOwnerCheck(false)..failure = StateError('offline');
+      final controller = newController(check);
+      await controller.loadOwnership();
+      check.failure = null;
+
+      // 2. Act
+      await controller.loadOwnership();
+
+      // 3. Assert
+      expect(controller.isOwner.value, isFalse);
+      expect(controller.errorMessage.value, isEmpty);
+    });
+
+    test('Sad Path: a failed read leaves the ownership unknown with a '
+        'message', () async {
+      // 1. Arrange
+      final check = FakeOwnerCheck(true)..failure = StateError('offline');
+      final controller = newController(check);
+
+      // 2. Act
+      await controller.loadOwnership();
+
+      // 3. Assert
+      expect(controller.isOwner.value, isNull);
+      expect(controller.errorMessage.value, isNotEmpty);
+      expect(controller.errorMessage.value, isNot(contains('offline')));
+      expect(controller.isCheckingOwner.value, isFalse);
+    });
+  });
+
+  group('MyAccountController.canDelete - Unit Test Suite', () {
+    test('Happy Path: a member can delete without typing anything', () async {
+      // 1. Arrange
+      final controller = await controllerFor(isOwner: false);
 
       // 2. Act
       final canDelete = controller.canDelete;
@@ -63,9 +186,9 @@ void main() {
       expect(canDelete, isTrue);
     });
 
-    test('Happy Path: an owner can delete once the id is typed', () {
+    test('Happy Path: an owner can delete once the id is typed', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: true);
+      final controller = await controllerFor(isOwner: true);
 
       // 2. Act
       controller.confirmation.value = ' RotaSul ';
@@ -74,20 +197,26 @@ void main() {
       expect(controller.canDelete, isTrue);
     });
 
-    test('Edge Case: nobody can delete while a deletion is in flight', () {
+    test(
+      'Edge Case: nobody can delete while a deletion is in flight',
+      () async {
+        // 1. Arrange
+        final controller = await controllerFor(isOwner: false);
+
+        // 2. Act
+        controller.isDeleting.value = true;
+
+        // 3. Assert
+        expect(controller.canDelete, isFalse);
+      },
+    );
+
+    test('Edge Case: nobody can delete while the ownership is being read', () {
       // 1. Arrange
-      final controller = controllerFor(isOwner: false);
-
-      // 2. Act
-      controller.isDeleting.value = true;
-
-      // 3. Assert
-      expect(controller.canDelete, isFalse);
-    });
-
-    test('Sad Path: an owner cannot delete before typing the id', () {
-      // 1. Arrange
-      final controller = controllerFor(isOwner: true);
+      final controller = newController(
+        FakeOwnerCheck(false)..gate = Completer<void>(),
+      );
+      unawaited(controller.loadOwnership());
 
       // 2. Act
       final canDelete = controller.canDelete;
@@ -96,9 +225,35 @@ void main() {
       expect(canDelete, isFalse);
     });
 
-    test('Sad Path: an owner who typed another id cannot delete', () {
+    test('Sad Path: nobody can delete when the ownership could not be '
+        'read', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: true);
+      final controller = newController(
+        FakeOwnerCheck(false)..failure = StateError('offline'),
+      );
+      await controller.loadOwnership();
+
+      // 2. Act
+      final canDelete = controller.canDelete;
+
+      // 3. Assert
+      expect(canDelete, isFalse);
+    });
+
+    test('Sad Path: an owner cannot delete before typing the id', () async {
+      // 1. Arrange
+      final controller = await controllerFor(isOwner: true);
+
+      // 2. Act
+      final canDelete = controller.canDelete;
+
+      // 3. Assert
+      expect(canDelete, isFalse);
+    });
+
+    test('Sad Path: an owner who typed another id cannot delete', () async {
+      // 1. Arrange
+      final controller = await controllerFor(isOwner: true);
 
       // 2. Act
       controller.confirmation.value = 'frota';
@@ -111,7 +266,7 @@ void main() {
   group('MyAccountController.deleteAccount - Unit Test Suite', () {
     test('Happy Path: a member deletes with no ids to confirm', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: false);
+      final controller = await controllerFor(isOwner: false);
 
       // 2. Act
       await controller.deleteAccount();
@@ -125,7 +280,7 @@ void main() {
 
     test('Happy Path: an owner confirms the bound organization', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: true)
+      final controller = await controllerFor(isOwner: true)
         ..confirmation.value = 'rotasul';
 
       // 2. Act
@@ -140,7 +295,7 @@ void main() {
 
     test('Edge Case: isDeleting is set while the request runs', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: false);
+      final controller = await controllerFor(isOwner: false);
       backend.gate = Completer<void>();
 
       // 2. Act
@@ -156,7 +311,7 @@ void main() {
 
     test('Edge Case: a second tap while in flight sends nothing', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: false);
+      final controller = await controllerFor(isOwner: false);
       backend.gate = Completer<void>();
       final first = controller.deleteAccount();
 
@@ -171,7 +326,22 @@ void main() {
 
     test('Edge Case: an owner without the id typed sends nothing', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: true);
+      final controller = await controllerFor(isOwner: true);
+
+      // 2. Act
+      await controller.deleteAccount();
+
+      // 3. Assert
+      expect(backend.requests, isEmpty);
+      expect(deleted, isEmpty);
+    });
+
+    test('Edge Case: with the ownership unknown nothing is sent', () async {
+      // 1. Arrange
+      final controller = newController(
+        FakeOwnerCheck(false)..failure = StateError('offline'),
+      );
+      await controller.loadOwnership();
 
       // 2. Act
       await controller.deleteAccount();
@@ -183,7 +353,7 @@ void main() {
 
     test('Sad Path: a backend refusal shows its own message', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: false);
+      final controller = await controllerFor(isOwner: false);
       backend.failure = const AccountDeletionException('Recusado.');
 
       // 2. Act
@@ -197,7 +367,7 @@ void main() {
 
     test('Sad Path: an unexpected error shows a generic message', () async {
       // 1. Arrange
-      final controller = controllerFor(isOwner: false);
+      final controller = await controllerFor(isOwner: false);
       backend.failure = StateError('offline');
 
       // 2. Act

@@ -50,10 +50,11 @@ class GoogleGroupsController extends GetxController {
     return partner != null && capabilities.value.canWatchIn(partner.id);
   }
 
-  /// Whether the person owns (is the *responsável* of) the bound partner.
-  bool get isOwner {
+  /// Whether the person administers (is an *administrador* of) the bound
+  /// partner: a member of its root group.
+  bool get isAdmin {
     final partner = Partner.current;
-    return partner != null && capabilities.value.isOwnerOf(partner.id);
+    return partner != null && capabilities.value.isAdminOf(partner.id);
   }
 
   /// The teams where the signed-in person shares their location.
@@ -70,7 +71,7 @@ class GoogleGroupsController extends GetxController {
   }
 
   /// The teams whose map the signed-in person sees: the ones they watch,
-  /// or every team of the partner for its owner.
+  /// or every team of the partner for its administrators.
   final RxList<GoogleGroupModel> _observableGoogleGroups =
       RxList<GoogleGroupModel>();
   List<GoogleGroupModel> get googleGroups => _observableGoogleGroups;
@@ -197,8 +198,13 @@ class GoogleGroupsController extends GetxController {
       }
 
       // 2. Capabilities decide which teams the person sees and shares in.
+      // Synced on every start, not only at sign-in: the binding stays on the
+      // device while groups (and the claims syncClaims derives from them)
+      // change on the server. The token's claims stand in when it fails.
       final caps =
-          await MonAmieClaimsService.readClaims() ?? const Capabilities();
+          await MonAmieClaimsService.syncClaims() ??
+          await MonAmieClaimsService.readClaims() ??
+          const Capabilities();
       capabilities.value = caps;
       final partnerId = partner.id;
       _observableGoogleGroups.assignAll(

@@ -7,10 +7,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 /// Side of the square logo PNG the app uploads.
 const logoSide = 512;
 
-/// Largest file the owner may pick (the canvas promises 10 MB).
+/// Largest file an administrator may pick (the canvas promises 10 MB).
 const maxLogoInputBytes = 10 * 1024 * 1024;
 
-/// Why a picked file cannot become the logo, in words for the owner.
+/// Why a picked file cannot become the logo, in words for an administrator.
 class LogoException implements Exception {
   const LogoException(this.message);
 

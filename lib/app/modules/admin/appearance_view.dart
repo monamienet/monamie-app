@@ -12,7 +12,7 @@ const _muted = Color(0xFF4A4858);
 const _line = Color(0xFFDDD9E4);
 const _soft = Color(0xFFF1F0F4);
 
-/// *Aparência da organização*: the owner changes the name, the theme and
+/// *Aparência da organização*: an administrator changes the name, the theme and
 /// the logo. Changes reach the team on their next launch.
 class AppearanceView extends StatelessWidget {
   const AppearanceView({super.key, required this.controller});
@@ -82,7 +82,7 @@ class AppearanceView extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Você é responsável por esta organização',
+              'Você administra esta organização',
               style: TextStyle(fontSize: 13, color: _muted),
             ),
           ],

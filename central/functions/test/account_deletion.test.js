@@ -243,8 +243,54 @@ describe("leavesByPartner - Unit Test Suite", () => {
     assert.equal(result.size, 0);
   });
 
+  test("Happy Path: the root group of an administered partner is left with its leaves", () => {
+    // 1. Arrange
+    const groups = ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"];
+
+    // 2. Act
+    const result = leavesByPartner(groups, ["frota"]);
+
+    // 3. Assert
+    assert.deepEqual(
+      result,
+      new Map([["rotasul", ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"]]])
+    );
+  });
+
+  test("Edge Case: the root group of an owned partner is kept", () => {
+    // 1. Arrange
+    const groups = ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"];
+
+    // 2. Act
+    const result = leavesByPartner(groups, ["rotasul"]);
+
+    // 3. Assert
+    assert.deepEqual(result, new Map([["rotasul", ["rotasul01w@monamienet.org"]]]));
+  });
+
+  test("Edge Case: owning one partner does not keep another partner's root group", () => {
+    // 1. Arrange
+    const groups = ["rotasul00@monamienet.org", "frota00@monamienet.org"];
+
+    // 2. Act
+    const result = leavesByPartner(groups, ["rotasul"]);
+
+    // 3. Assert
+    assert.deepEqual(result, new Map([["frota", ["frota00@monamienet.org"]]]));
+  });
+
+  test("Edge Case: without owned partners every root group is left", () => {
+    // 1. Arrange
+    const groups = ["RotaSul00@MonAmieNet.org"];
+
+    // 2. Act
+    const result = leavesByPartner(groups);
+
+    // 3. Assert
+    assert.deepEqual(result, new Map([["rotasul", ["rotasul00@monamienet.org"]]]));
+  });
+
   const ignored = [
-    ["a root group", "rotasul00@monamienet.org"],
     ["a team group", "rotasul01@monamienet.org"],
     ["a root leaf that never exists", "rotasul00r@monamienet.org"],
     ["another domain", "rotasul01r@gmail.com"],
@@ -334,6 +380,61 @@ describe("requestAccountDeletion - Unit Test Suite", () => {
       "frota",
       "rotasul",
     ]);
+  });
+
+  test("Happy Path: an administrator who does not own the partner leaves its root group", async () => {
+    // 1. Arrange
+    const db = fakeFirestore({ "partners/rotasul": activeOwned({ ownerEmail: "bia@x.com" }) });
+    const groups = fakeGroups(["rotasul00@monamienet.org", "rotasul01w@monamienet.org"]);
+    const deps = requestDeps({
+      groups,
+      direct: ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"],
+    });
+
+    // 2. Act
+    const result = await requestAccountDeletion(db, deps, { email: EMAIL, uid: "u1" }, NOW);
+
+    // 3. Assert
+    assert.deepEqual(result.ownedPartners, []);
+    assert.deepEqual(
+      groups.calls.filter(([op]) => op === "removeMember"),
+      [
+        ["removeMember", "groups/rotasul00@monamienet.org", EMAIL],
+        ["removeMember", "groups/rotasul01w@monamienet.org", EMAIL],
+      ]
+    );
+    assert.deepEqual(db.store.get(`accountDeletions/${EMAIL}`).memberships, [
+      {
+        partnerId: "rotasul",
+        groups: ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"],
+      },
+    ]);
+    assert.equal(db.store.get("partners/rotasul").status, "active");
+  });
+
+  test("Edge Case: an owner who administers the partner keeps its root group", async () => {
+    // 1. Arrange
+    const db = fakeFirestore({ "partners/rotasul": activeOwned() });
+    const groups = fakeGroups(["rotasul00@monamienet.org", "rotasul01w@monamienet.org"]);
+    const deps = requestDeps({
+      groups,
+      direct: ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"],
+    });
+
+    // 2. Act
+    await requestAccountDeletion(
+      db,
+      deps,
+      { email: EMAIL, uid: "u1", confirmIds: ["rotasul"] },
+      NOW
+    );
+
+    // 3. Assert
+    assert.deepEqual(
+      groups.calls.filter(([op]) => op === "removeMember"),
+      [["removeMember", "groups/rotasul01w@monamienet.org", EMAIL]]
+    );
+    assert.equal(db.store.get("partners/rotasul").status, "deleting");
   });
 
   test("Edge Case: the e-mail is lower-cased before matching and recording", async () => {
@@ -506,6 +607,33 @@ describe("cancelAccountDeletion - Unit Test Suite", () => {
     assert.equal(registry.status, "active");
     assert.equal("deleteAt" in registry, false);
     assert.equal(db.store.has(`accountDeletions/${EMAIL}`), false);
+  });
+
+  test("Happy Path: a recorded root group is rejoined like the leaves", async () => {
+    // 1. Arrange
+    const db = fakeFirestore({
+      [`accountDeletions/${EMAIL}`]: pendingRecord({
+        memberships: [
+          {
+            partnerId: "rotasul",
+            groups: ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"],
+          },
+        ],
+      }),
+    });
+    const groups = fakeGroups(["rotasul00@monamienet.org", "rotasul01w@monamienet.org"]);
+
+    // 2. Act
+    await cancelAccountDeletion(db, { groups }, EMAIL, NOW);
+
+    // 3. Assert
+    assert.deepEqual(
+      groups.calls.filter(([op]) => op === "addMember"),
+      [
+        ["addMember", "groups/rotasul00@monamienet.org", EMAIL],
+        ["addMember", "groups/rotasul01w@monamienet.org", EMAIL],
+      ]
+    );
   });
 
   test("Edge Case: a recorded leaf whose group is gone is skipped", async () => {

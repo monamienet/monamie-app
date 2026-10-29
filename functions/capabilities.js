@@ -6,7 +6,8 @@ const { parseGroupAddress } = require("./group_address");
  *
  * - `<id>NNw` gives `share` in team `<id>NN` (they share their location);
  * - `<id>NNr` gives `watch` in team `<id>NN` (they see the team's map);
- * - `<id>00` makes them the owner of `<id>`, who watches every team.
+ * - `<id>00` makes them an administrator of `<id>`, who watches every team
+ *   and manages the partner (a root group may have several).
  *
  * A direct member of a team group `<id>NN` (someone added by hand in the
  * Admin console) gets nothing: configuration errors are ignored, not
@@ -18,7 +19,7 @@ const { parseGroupAddress } = require("./group_address");
  * @param {Array<{email?: unknown}>} groups - The person's direct groups
  * @param {(partnerId: string) => boolean} isHostedHere - Whether a partner's
  *   data lives in this project; other partners' groups are left out
- * @returns {{share: string[], watch: string[], owns: string[],
+ * @returns {{share: string[], watch: string[], admin: string[],
  *   partners: string[], ignored: string[]}} Sorted, without duplicates.
  *   `partners` lists every partner where the person has any capability, so
  *   the rules can tell members of one partner from another's in a project
@@ -27,7 +28,7 @@ const { parseGroupAddress } = require("./group_address");
 function capabilitiesFromGroups(groups, isHostedHere) {
   const share = new Set();
   const watch = new Set();
-  const owns = new Set();
+  const admin = new Set();
   const partners = new Set();
   const ignored = new Set();
   for (const group of groups ?? []) {
@@ -37,7 +38,7 @@ function capabilitiesFromGroups(groups, isHostedHere) {
       ignored.add(String(group.email).trim().toLowerCase());
       continue;
     }
-    if (address.level === 0) owns.add(address.partnerId);
+    if (address.level === 0) admin.add(address.partnerId);
     else if (address.leaf === "w") share.add(address.teamKey);
     else watch.add(address.teamKey);
     partners.add(address.partnerId);
@@ -46,7 +47,7 @@ function capabilitiesFromGroups(groups, isHostedHere) {
   return {
     share: sorted(share),
     watch: sorted(watch),
-    owns: sorted(owns),
+    admin: sorted(admin),
     partners: sorted(partners),
     ignored: sorted(ignored),
   };
@@ -56,11 +57,11 @@ function capabilitiesFromGroups(groups, isHostedHere) {
  * Whether the capabilities give no access at all: the person was removed
  * from every group of the partner (or never had one).
  *
- * @param {{share: string[], watch: string[], owns: string[]}} caps
+ * @param {{share: string[], watch: string[], admin: string[]}} caps
  * @returns {boolean}
  */
 function hasNoAccess(caps) {
-  return caps.share.length + caps.watch.length + caps.owns.length === 0;
+  return caps.share.length + caps.watch.length + caps.admin.length === 0;
 }
 
 module.exports = { capabilitiesFromGroups, hasNoAccess };

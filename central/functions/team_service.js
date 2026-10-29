@@ -112,7 +112,7 @@ async function renameTeam(api, partnerId, team, requestedName) {
 async function deletionImpact(api, partnerId, team) {
   const teams = await listTeams(api, partnerId);
   const groupsByPerson = new Map();
-  // Members of the root group (the owner) watch every team: they never
+  // Members of the root group (the administrators) watch every team: they never
   // lose access by a team being deleted.
   const rootEmail = `${partnerId}00@monamienet.org`;
   const root = await api.lookup(rootEmail);

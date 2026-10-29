@@ -34,8 +34,9 @@ class CentralPartnerDirectory implements PartnerDirectory {
 }
 
 /// Reads the `resolvePartners` response. Only partners whose `status` is
-/// `active` are kept: the screens for the other statuses come with the
-/// in-app creation, plans and deletion flows. Entries with an invalid id or
+/// `active` are kept (the screens for the other statuses come with the
+/// in-app creation, plans and deletion flows), with `owner` true only when
+/// the server says so. Entries with an invalid id or
 /// incomplete options are skipped, so one bad partner cannot block the
 /// others.
 List<PartnerCandidate> parsePartnerCandidates(Object? data) {
@@ -67,6 +68,7 @@ List<PartnerCandidate> parsePartnerCandidates(Object? data) {
       candidates.add(
         PartnerCandidate(
           id: id,
+          owner: entry['owner'] == true,
           options: FirebaseOptions(
             apiKey: apiKey,
             appId: appId,

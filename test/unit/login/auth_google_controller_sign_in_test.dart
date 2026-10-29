@@ -58,14 +58,14 @@ const _kVerdeMar = PartnerCandidate(
 const Map<String, Object?> _kNoClaims = {
   'share': <String>[],
   'watch': <String>[],
-  'owns': <String>[],
+  'admin': <String>[],
 };
 
 /// Claims of a person who shares their location in one team.
 const Map<String, Object?> _kShareClaims = {
   'share': ['rotasul01'],
   'watch': <String>[],
-  'owns': <String>[],
+  'admin': <String>[],
 };
 
 // ---------------------------------------------------------------------------
@@ -1586,6 +1586,95 @@ void main() {
         await sub.cancel();
         expect(seen, isEmpty);
         expect(harness.controller.isSwitchingOrganization.value, isFalse);
+      },
+    );
+  });
+
+  group('AuthGoogleController.ownsPartner - Suíte de Testes Unitários', () {
+    test(
+      'Happy Path: Deve ser true quando o diretório marca o parceiro como do usuário',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(
+          partners: [
+            const PartnerCandidate(
+              id: 'rotasul',
+              options: _kOptions,
+              owner: true,
+            ),
+          ],
+        );
+
+        // 2. Act
+        final owns = await harness.controller.ownsPartner('rotasul');
+
+        // 3. Assert
+        expect(owns, isTrue);
+      },
+    );
+
+    test(
+      'Edge Case: Deve ser false quando o usuário é só membro do parceiro',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kRotaSul, _kVerdeMar]);
+
+        // 2. Act
+        final owns = await harness.controller.ownsPartner('rotasul');
+
+        // 3. Assert
+        expect(owns, isFalse);
+      },
+    );
+
+    test(
+      'Edge Case: Deve ser false quando o usuário é titular de outro parceiro',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(
+          partners: [
+            _kRotaSul,
+            PartnerCandidate(
+              id: _kVerdeMar.id,
+              options: _kVerdeMar.options,
+              owner: true,
+            ),
+          ],
+        );
+
+        // 2. Act
+        final owns = await harness.controller.ownsPartner('rotasul');
+
+        // 3. Assert
+        expect(owns, isFalse);
+      },
+    );
+
+    test(
+      'Sad Path: Deve ser false quando o parceiro não está na lista',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(partners: [_kVerdeMar]);
+
+        // 2. Act
+        final owns = await harness.controller.ownsPartner('rotasul');
+
+        // 3. Assert
+        expect(owns, isFalse);
+      },
+    );
+
+    test(
+      'Sad Path: Deve propagar a falha do diretório em vez de responder false',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(directoryError: StateError('offline'));
+
+        // 2. Act
+        final owns = harness.controller.ownsPartner('rotasul');
+
+        // 3. Assert
+        await expectLater(owns, throwsStateError);
       },
     );
   });

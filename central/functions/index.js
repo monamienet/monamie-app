@@ -13,6 +13,7 @@ const {
 const { TtlCache } = require("./ttl_cache");
 const { GROUPS_SCOPES, GroupsApi } = require("./groups_api");
 const { TeamError } = require("./teams");
+const { isPartnerAdmin } = require("./partner_admin");
 const { InviteError } = require("./invites");
 const { GmailMailer } = require("./mailer");
 const {
@@ -73,11 +74,13 @@ const groupsByEmail = new TtlCache(60 * 1000);
  * kept when their registry entry `partners/{id}` has a status the app shows
  * (every status but `reserved`), and returned with that status. Partners
  * the app binds (`active`, `migrating`, `deleting`) also carry the
- * FirebaseOptions of their project for the caller's platform. The partner's
- * own syncClaims still decides what the user may access there.
+ * FirebaseOptions of their project for the caller's platform. `owner` says
+ * whether the caller is the partner's owner (`ownerEmail`, who created it),
+ * which only matters for deleting their account; the partner's own
+ * syncClaims decides what the user may access there.
  *
  * Request: `{platform: "android" | "web"}`.
- * Response: `{partners: [{id, status, options?}]}`, sorted by id.
+ * Response: `{partners: [{id, status, owner, options?}]}`, sorted by id.
  */
 exports.resolvePartners = onCall({ invoker: "public" }, async (request) => {
   if (!request.auth) {
@@ -102,15 +105,17 @@ exports.resolvePartners = onCall({ invoker: "public" }, async (request) => {
   const entries = await visiblePartners(partnerIdsFromGroups(groups));
 
   const partners = [];
-  for (const { id, status, plan } of entries) {
+  for (const { id, status, plan, ownerEmail } of entries) {
+    const owner = ownerEmail === key;
     if (!BINDABLE.includes(status)) {
-      partners.push({ id, status });
+      partners.push({ id, status, owner });
       continue;
     }
     try {
       partners.push({
         id,
         status,
+        owner,
         options: await options.get(id, platform, plan),
       });
     } catch (error) {
@@ -158,6 +163,7 @@ async function visiblePartners(ids) {
       id: doc.id,
       status: doc.get("status"),
       plan: doc.get("plan"),
+      ownerEmail: String(doc.get("ownerEmail") ?? "").toLowerCase(),
     }));
 }
 
@@ -247,8 +253,9 @@ async function deletePartnerProject(id) {
 
 // ── Teams (#98) ────────────────────────────────────────────────────────────
 // Run as groups-admin@, which holds the Workspace "Groups Administrator"
-// admin role. Every call checks that the caller is the partner's owner
-// (`ownerEmail` in partners/{id}) and only touches that partner's groups.
+// admin role. Every call checks that the caller administers the partner
+// (a direct member of its root group `<id>00@`, not `ownerEmail`) and only
+// touches that partner's groups.
 const GROUPS_ADMIN_SERVICE_ACCOUNT =
   "groups-admin@monamienet-app.iam.gserviceaccount.com";
 
@@ -259,31 +266,30 @@ const groupsApi = new GroupsApi(async (options) => {
 });
 
 /**
- * The partner id of a team call, once the caller is known to own it.
+ * The partner id of a team call, once the caller is known to administer it.
  *
  * @throws {HttpsError} unauthenticated / permission-denied
  */
-async function ownedPartnerId(request) {
+async function administeredPartnerId(request) {
   if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
   const partnerId = request.data?.partnerId;
   const email = String(request.auth.token.email ?? "").toLowerCase();
   if (typeof partnerId !== "string" || !email) {
     throw new HttpsError("invalid-argument", "partnerId is required.");
   }
-  const registry = await admin.firestore().doc(`partners/${partnerId}`).get();
-  const owner = String(registry.get("ownerEmail") ?? "").toLowerCase();
-  if (!registry.exists || registry.get("status") !== "active" || owner !== email) {
-    throw new HttpsError("permission-denied", "Só o responsável gerencia equipes.");
+  if (!(await isPartnerAdmin(admin.firestore(), groupsApi, partnerId, email))) {
+    throw new HttpsError("permission-denied", "Só um administrador gerencia equipes.");
   }
   return partnerId;
 }
 
-/** Wraps a team operation: owner check, then TeamError → invalid-argument. */
+/** Wraps a team operation: administrator check, then TeamError →
+ * invalid-argument. */
 function teamCall(operation) {
   return onCall(
     { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT },
     async (request) => {
-      const partnerId = await ownedPartnerId(request);
+      const partnerId = await administeredPartnerId(request);
       try {
         return await operation(partnerId, request.data ?? {}, request);
       } catch (error) {
@@ -366,7 +372,7 @@ exports.sendInvites = teamCall((partnerId, data, request) =>
   sendInvites(admin.firestore(), groupsApi, mailer(), {
     partnerId,
     partnerName: String(data.partnerName ?? partnerId).slice(0, 60),
-    owner: {
+    inviter: {
       email: String(request.auth.token.email).toLowerCase(),
       name: request.auth.token.name,
     },
@@ -457,7 +463,8 @@ exports.checkPartnerId = onCall({ invoker: "public" }, async (request) => {
   return checkPartnerId(admin.firestore(), String(request.data?.id ?? ""));
 });
 
-/** Creates the caller's organization (they become its owner). */
+/** Creates the caller's organization (they become its owner and first
+ * administrator). */
 exports.createPartner = onCall(
   { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT, timeoutSeconds: 120 },
   async (request) => {

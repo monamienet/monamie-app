@@ -1,7 +1,7 @@
 // Security rules of a partner project's Storage (storage.rules), against
 // the Storage emulator. The only file is partners/{partnerId}/logo.png:
-// public to read, written and deleted only by the partner's owner (the
-// `owns` claim that syncClaims sets), as a PNG of at most 1 MiB.
+// public to read, written and deleted only by the partner's administrators (the
+// `admin` claim that syncClaims sets), as a PNG of at most 1 MiB.
 const { after, before, beforeEach, describe, test } = require("node:test");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -33,7 +33,7 @@ function storageAs(claims) {
   return env.authenticatedContext("user", { email: "user@monamienet.org", ...claims }).storage();
 }
 
-const owner = () => storageAs({ owns: ["rotasul"] });
+const administrator = () => storageAs({ admin: ["rotasul"] });
 
 /** Puts the logo in place, bypassing the rules. */
 async function seedLogo() {
@@ -74,7 +74,7 @@ describe("storage.rules read - Unit Test Suite", () => {
     await assertSucceeds(read);
   });
 
-  test("Edge Case: a signed-in non-owner reads the logo metadata", async () => {
+  test("Edge Case: a signed-in non-administrator reads the logo metadata", async () => {
     // 1. Arrange
     await seedLogo();
     const storage = storageAs({ watch: ["rotasul01"] });
@@ -91,7 +91,7 @@ describe("storage.rules read - Unit Test Suite", () => {
     await env.withSecurityRulesDisabled(async (context) => {
       await uploadBytes(ref(context.storage(), "partners/rotasul/other.png"), pngBytes(), PNG);
     });
-    const storage = owner();
+    const storage = administrator();
 
     // 2. Act
     const read = getBytes(ref(storage, "partners/rotasul/other.png"));
@@ -102,9 +102,9 @@ describe("storage.rules read - Unit Test Suite", () => {
 });
 
 describe("storage.rules write - Unit Test Suite", () => {
-  test("Happy Path: the owner uploads a PNG logo", async () => {
+  test("Happy Path: an administrator uploads a PNG logo", async () => {
     // 1. Arrange
-    const storage = owner();
+    const storage = administrator();
 
     // 2. Act
     const write = uploadBytes(ref(storage, LOGO), pngBytes(), PNG);
@@ -113,10 +113,10 @@ describe("storage.rules write - Unit Test Suite", () => {
     await assertSucceeds(write);
   });
 
-  test("Happy Path: the owner overwrites an existing logo", async () => {
+  test("Happy Path: an administrator overwrites an existing logo", async () => {
     // 1. Arrange
     await seedLogo();
-    const storage = owner();
+    const storage = administrator();
 
     // 2. Act
     const write = uploadBytes(ref(storage, LOGO), pngBytes(128), PNG);
@@ -125,9 +125,9 @@ describe("storage.rules write - Unit Test Suite", () => {
     await assertSucceeds(write);
   });
 
-  test("Edge Case: an owner of several partners uploads this one's logo", async () => {
+  test("Edge Case: an administrator of several partners uploads this one's logo", async () => {
     // 1. Arrange
-    const storage = storageAs({ owns: ["outro", "rotasul"] });
+    const storage = storageAs({ admin: ["outro", "rotasul"] });
 
     // 2. Act
     const write = uploadBytes(ref(storage, LOGO), pngBytes(), PNG);
@@ -138,7 +138,7 @@ describe("storage.rules write - Unit Test Suite", () => {
 
   test("Edge Case: a PNG of exactly 1 MiB is accepted", async () => {
     // 1. Arrange
-    const storage = owner();
+    const storage = administrator();
 
     // 2. Act
     const write = uploadBytes(ref(storage, LOGO), pngBytes(MiB), PNG);
@@ -149,13 +149,13 @@ describe("storage.rules write - Unit Test Suite", () => {
 
   const deniedUsers = [
     ["Sad Path: a signed-out user", () => env.unauthenticatedContext().storage()],
-    ["Sad Path: the owner of another partner", () => storageAs({ owns: ["outro"] })],
+    ["Sad Path: an administrator of another partner", () => storageAs({ admin: ["outro"] })],
     [
       "Sad Path: a user who only shares and watches in the partner",
       () => storageAs({ share: ["rotasul01"], watch: ["rotasul02"], partners: ["rotasul"] }),
     ],
     ["Sad Path: a user without claims", () => storageAs({})],
-    ["Sad Path: owns as a string instead of a list", () => storageAs({ owns: "rotasul" })],
+    ["Sad Path: admin as a string instead of a list", () => storageAs({ admin: "rotasul" })],
   ];
   for (const [label, storageOf] of deniedUsers) {
     test(`${label} cannot upload the logo`, async () => {
@@ -171,9 +171,9 @@ describe("storage.rules write - Unit Test Suite", () => {
   }
 
   for (const contentType of ["image/svg+xml", "image/jpeg"]) {
-    test(`Sad Path: the owner cannot upload ${contentType} as the logo`, async () => {
+    test(`Sad Path: an administrator cannot upload ${contentType} as the logo`, async () => {
       // 1. Arrange
-      const storage = owner();
+      const storage = administrator();
 
       // 2. Act
       const write = uploadBytes(ref(storage, LOGO), pngBytes(), { contentType });
@@ -183,9 +183,9 @@ describe("storage.rules write - Unit Test Suite", () => {
     });
   }
 
-  test("Sad Path: the owner cannot upload a PNG larger than 1 MiB", async () => {
+  test("Sad Path: an administrator cannot upload a PNG larger than 1 MiB", async () => {
     // 1. Arrange
-    const storage = owner();
+    const storage = administrator();
 
     // 2. Act
     const write = uploadBytes(ref(storage, LOGO), pngBytes(MiB + 1), PNG);
@@ -195,9 +195,9 @@ describe("storage.rules write - Unit Test Suite", () => {
   });
 
   for (const other of ["partners/rotasul/other.png", "logo.png", "partners/rotasul/logo.png/x.png"]) {
-    test(`Sad Path: the owner cannot upload to ${other}`, async () => {
+    test(`Sad Path: an administrator cannot upload to ${other}`, async () => {
       // 1. Arrange
-      const storage = owner();
+      const storage = administrator();
 
       // 2. Act
       const write = uploadBytes(ref(storage, other), pngBytes(), PNG);
@@ -209,10 +209,10 @@ describe("storage.rules write - Unit Test Suite", () => {
 });
 
 describe("storage.rules delete - Unit Test Suite", () => {
-  test("Happy Path: the owner deletes the logo", async () => {
+  test("Happy Path: an administrator deletes the logo", async () => {
     // 1. Arrange
     await seedLogo();
-    const storage = owner();
+    const storage = administrator();
 
     // 2. Act
     const remove = deleteObject(ref(storage, LOGO));
@@ -233,10 +233,10 @@ describe("storage.rules delete - Unit Test Suite", () => {
     await assertFails(remove);
   });
 
-  test("Sad Path: the owner of another partner cannot delete the logo", async () => {
+  test("Sad Path: an administrator of another partner cannot delete the logo", async () => {
     // 1. Arrange
     await seedLogo();
-    const storage = storageAs({ owns: ["outro"] });
+    const storage = storageAs({ admin: ["outro"] });
 
     // 2. Act
     const remove = deleteObject(ref(storage, LOGO));

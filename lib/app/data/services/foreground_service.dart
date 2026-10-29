@@ -17,7 +17,7 @@ Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;
 StreamSubscription<User?>? _authSubscription;
 
-/// The owner's tracking settings (`config/tracking`), applied to the
+/// The administrators' tracking settings (`config/tracking`), applied to the
 /// position stream; a change restarts the stream with the new values.
 TrackingSettings _settings = TrackingSettings.defaults;
 StreamSubscription<TrackingSettings>? _settingsSubscription;
@@ -72,7 +72,7 @@ void onStart(ServiceInstance service) async {
   // No Android, o Firebase Auth persiste credenciais via SharedPreferences
   // no nível nativo, que são compartilhadas entre Flutter engines no
   // mesmo processo. Forçamos um refresh do token para garantir que os
-  // custom claims (share, watch, owns) estejam presentes.
+  // custom claims (share, watch, admin) estejam presentes.
   final currentUser = CurrentPartnerFirebase.instance.auth.currentUser;
   if (currentUser != null) {
     try {
@@ -163,7 +163,7 @@ Future<void> updateLocation(
 ]) async {
   _lastRecordedPosition = null;
 
-  // Follow the owner's settings: the first value applies now, later ones
+  // Follow the administrators' settings: the first value applies now, later ones
   // restart this function with the new period and radius.
   if (_settingsSubscription == null) {
     final first = Completer<void>();

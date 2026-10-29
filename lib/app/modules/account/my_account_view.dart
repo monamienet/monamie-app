@@ -5,9 +5,10 @@ import 'package:monamie_app/app/config/partner/monamie_brand.dart';
 import 'account_deletion.dart';
 import 'my_account_controller.dart';
 
-/// *Minha conta*: the signed-in account and its deletion. A member leaves
-/// the organization at once; an owner deletes it with the account. Either
-/// way there are 30 days to cancel.
+/// *Minha conta*: the signed-in account and its deletion. A member (an
+/// administrator included) leaves the organization at once; the owner
+/// (*titular*) deletes it with the account. Either way there are 30 days to
+/// cancel.
 class MyAccountView extends StatelessWidget {
   const MyAccountView({
     super.key,
@@ -22,7 +23,6 @@ class MyAccountView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final owner = controller.isOwner;
     final deleteAt = longDate(DateTime.now().add(const Duration(days: 30)));
     return Scaffold(
       backgroundColor: MonAmieBrand.cream,
@@ -61,54 +61,51 @@ class MyAccountView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            for (final line in [
-              if (owner)
-                'Você é responsável pela $partnerName. Como ela não fica sem '
-                    'responsável, a organização inteira é excluída junto com a '
-                    'sua conta.'
-              else
-                'Você sai da $partnerName agora e deixa de aparecer no mapa.',
-              'Em $deleteAt apagamos de vez sua conta e seus dados no MonAmie.',
-              'Até lá, é só entrar de novo e cancelar a exclusão.',
-            ])
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Text(
-                  line,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    height: 1.5,
-                    color: MonAmieBrand.mutedInk,
-                  ),
-                ),
-              ),
-            if (owner) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Para confirmar, digite ${controller.partnerId}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: MonAmieBrand.navy,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                autocorrect: false,
-                enableSuggestions: false,
-                onChanged: (value) => controller.confirmation.value = value,
-                decoration: InputDecoration(
-                  hintText: controller.partnerId,
-                  hintStyle: TextStyle(
-                    color: MonAmieBrand.mutedInk.withValues(alpha: 0.45),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ],
+            Obx(() {
+              final owner = controller.isOwner.value;
+              if (owner == null) {
+                return controller.isCheckingOwner.value
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: controller.loadOwnership,
+                          child: const Text('Tentar de novo'),
+                        ),
+                      );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final line in [
+                    if (owner)
+                      'Você é titular da $partnerName, então a organização '
+                          'inteira é excluída junto com a sua conta.'
+                    else
+                      'Você sai da $partnerName agora e deixa de aparecer no '
+                          'mapa.',
+                    'Em $deleteAt apagamos de vez sua conta e seus dados no '
+                        'MonAmie.',
+                    'Até lá, é só entrar de novo e cancelar a exclusão.',
+                  ])
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        line,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          height: 1.5,
+                          color: MonAmieBrand.mutedInk,
+                        ),
+                      ),
+                    ),
+                  if (owner) ..._confirmation(),
+                ],
+              );
+            }),
             const SizedBox(height: 24),
             Obx(() {
               final error = controller.errorMessage.value;
@@ -153,7 +150,7 @@ class MyAccountView extends StatelessWidget {
                           ),
                         )
                       : Text(
-                          owner
+                          controller.isOwner.value == true
                               ? 'Excluir conta e organização'
                               : 'Excluir conta',
                         ),
@@ -165,4 +162,30 @@ class MyAccountView extends StatelessWidget {
       ),
     );
   }
+
+  List<Widget> _confirmation() => [
+    const SizedBox(height: 12),
+    Text(
+      'Para confirmar, digite ${controller.partnerId}',
+      style: const TextStyle(
+        fontWeight: FontWeight.w700,
+        color: MonAmieBrand.navy,
+      ),
+    ),
+    const SizedBox(height: 8),
+    TextField(
+      autocorrect: false,
+      enableSuggestions: false,
+      onChanged: (value) => controller.confirmation.value = value,
+      decoration: InputDecoration(
+        hintText: controller.partnerId,
+        hintStyle: TextStyle(
+          color: MonAmieBrand.mutedInk.withValues(alpha: 0.45),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    ),
+  ];
 }

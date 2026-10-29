@@ -56,7 +56,7 @@ async function emailInvite(mailer, invite) {
  *   skipped: Array<{email: string, reason: string}>}>}
  */
 async function sendInvites(db, api, mailer, request) {
-  const { partnerId, partnerName, owner } = request;
+  const { partnerId, partnerName, inviter } = request;
   const people = validateInvites(request.invites);
   let team = request.team;
   if (request.firstTeamName) {
@@ -91,9 +91,9 @@ async function sendInvites(db, api, mailer, request) {
       teamName: target.name,
       email: person.email,
       roles: person.roles,
-      invitedBy: owner.email,
-      invitedByName: owner.name || owner.email,
-      invitedByEmail: owner.email,
+      invitedBy: inviter.email,
+      invitedByName: inviter.name || inviter.email,
+      invitedByEmail: inviter.email,
       createdAt: now,
       expiresAt: inviteExpiry(now),
       status: "pending",
@@ -179,7 +179,7 @@ async function myInvites(db, email, now = new Date()) {
  * Accepts invite `inviteId` as `email` (the signed-in account must be the
  * invited one): adds the person to the team's leaves for their roles and
  * marks the invite accepted. Expired, cancelled or used invites are
- * refused with the message the owner also sees.
+ * refused with the message the administrator also sees.
  */
 async function acceptInvite(db, api, inviteId, email, now = new Date()) {
   const ref = db.doc(`${INVITES}/${inviteId}`);

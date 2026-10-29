@@ -121,7 +121,7 @@ void main() {
     final withAccess = <(String, Capabilities)>[
       ('share', const Capabilities(share: {'aquariustur01'})),
       ('watch', const Capabilities(watch: {'aquariustur01'})),
-      ('owns', const Capabilities(owns: {'aquariustur'})),
+      ('admin', const Capabilities(admin: {'aquariustur'})),
     ];
     for (final (label, capabilities) in withAccess) {
       test('Edge Case: a single $label capability still gives access', () {

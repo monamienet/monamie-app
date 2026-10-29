@@ -254,6 +254,47 @@ void main() {
       });
     }
 
+    test('Happy Path: an entry marked owner is the user\'s own', () {
+      // 1. Arrange
+      final data = response([
+        {...entry('acme'), 'owner': true},
+      ]);
+
+      // 2. Act
+      final candidates = parsePartnerCandidates(data);
+
+      // 3. Assert
+      expect(candidates.single.owner, isTrue);
+    });
+
+    test('Edge Case: an entry without owner is not the user\'s own', () {
+      // 1. Arrange
+      final data = response([entry('acme')]);
+
+      // 2. Act
+      final candidates = parsePartnerCandidates(data);
+
+      // 3. Assert
+      expect(candidates.single.owner, isFalse);
+    });
+
+    final malformedOwners = <Object?>[false, null, 'true', 1];
+    for (final owner in malformedOwners) {
+      test('Sad Path: owner ${owner is String ? '"$owner"' : owner} is not '
+          'the user\'s own', () {
+        // 1. Arrange
+        final data = response([
+          {...entry('acme'), 'owner': owner},
+        ]);
+
+        // 2. Act
+        final candidates = parsePartnerCandidates(data);
+
+        // 3. Assert
+        expect(candidates.single.owner, isFalse);
+      });
+    }
+
     test('Sad Path: null data gives no candidates', () {
       // 1. Arrange
       const Object? data = null;

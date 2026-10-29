@@ -68,7 +68,7 @@ class NoOrganizationView extends GetView<AuthGoogleController> {
                 const SizedBox(height: 24),
                 for (final line in const [
                   'Nome e tema em menos de 2 minutos',
-                  'Você fica responsável e convida a equipe',
+                  'Você administra e convida a equipe',
                   'O logo e a aparência você ajusta depois, no app',
                 ])
                   _Bullet(text: line),

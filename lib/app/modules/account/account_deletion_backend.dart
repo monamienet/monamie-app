@@ -4,8 +4,9 @@ import 'account_deletion.dart';
 /// screens are tested with a fake. Throws [AccountDeletionException] with a
 /// message the person can read.
 abstract interface class AccountDeletionBackend {
-  /// Schedules the deletion of the signed-in account. An owner confirms
-  /// each organization they own by its id in [confirmIds].
+  /// Schedules the deletion of the signed-in account. The owner
+  /// (*titular*) confirms each organization they own by its id in
+  /// [confirmIds].
   Future<AccountDeletion> request({List<String> confirmIds = const []});
 
   /// Cancels the pending deletion of the signed-in account.

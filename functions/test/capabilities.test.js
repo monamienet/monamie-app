@@ -6,7 +6,7 @@ const { capabilitiesFromGroups, hasNoAccess } = require("../capabilities");
 const hostsEverything = () => true;
 const hostsOnlyRotasul = (partnerId) => partnerId === "rotasul";
 
-const none = { share: [], watch: [], owns: [], partners: [], ignored: [] };
+const none = { share: [], watch: [], admin: [], partners: [], ignored: [] };
 
 describe("capabilitiesFromGroups - Unit Test Suite", () => {
   const single = [
@@ -21,9 +21,9 @@ describe("capabilitiesFromGroups - Unit Test Suite", () => {
       { ...none, watch: ["rotasul01"], partners: ["rotasul"] },
     ],
     [
-      "Happy Path: the root group makes the person the owner",
+      "Happy Path: the root group makes the person an administrator",
       "rotasul00@monamienet.org",
-      { ...none, owns: ["rotasul"], partners: ["rotasul"] },
+      { ...none, admin: ["rotasul"], partners: ["rotasul"] },
     ],
     [
       "Edge Case: a direct team group grants nothing and is reported",
@@ -70,7 +70,7 @@ describe("capabilitiesFromGroups - Unit Test Suite", () => {
     assert.deepEqual(caps, {
       share: ["rotasul01", "rotasul02"],
       watch: ["rotasul01", "rotasul03"],
-      owns: ["rotasul"],
+      admin: ["rotasul"],
       partners: ["rotasul"],
       ignored: ["rotasul04@monamienet.org", "rotasul05@monamienet.org"],
     });
@@ -173,13 +173,13 @@ describe("capabilitiesFromGroups partners - Unit Test Suite", () => {
 
 describe("hasNoAccess - Unit Test Suite", () => {
   const cases = [
-    ["Happy Path: no capability means no access", { share: [], watch: [], owns: [] }, true],
-    ["Edge Case: share alone is access", { share: ["rotasul01"], watch: [], owns: [] }, false],
-    ["Edge Case: watch alone is access", { share: [], watch: ["rotasul01"], owns: [] }, false],
-    ["Edge Case: owns alone is access", { share: [], watch: [], owns: ["rotasul"] }, false],
+    ["Happy Path: no capability means no access", { share: [], watch: [], admin: [] }, true],
+    ["Edge Case: share alone is access", { share: ["rotasul01"], watch: [], admin: [] }, false],
+    ["Edge Case: watch alone is access", { share: [], watch: ["rotasul01"], admin: [] }, false],
+    ["Edge Case: admin alone is access", { share: [], watch: [], admin: ["rotasul"] }, false],
     [
       "Sad Path: ignored groups alone are no access",
-      { share: [], watch: [], owns: [], ignored: ["rotasul01@monamienet.org"] },
+      { share: [], watch: [], admin: [], ignored: ["rotasul01@monamienet.org"] },
       true,
     ],
   ];

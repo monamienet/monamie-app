@@ -16,7 +16,7 @@ import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// The side menu: who the person is and where, the organization's
-/// administration (for its owner only) and sign-out.
+/// administration (for its administrators only) and sign-out.
 class HomeMenu extends StatelessWidget {
   const HomeMenu({super.key});
 
@@ -58,7 +58,7 @@ class HomeMenu extends StatelessWidget {
                 },
               ),
               Obx(() {
-                if (!_groups.isOwner) return const SizedBox.shrink();
+                if (!_groups.isAdmin) return const SizedBox.shrink();
                 return _admin();
               }),
               const Spacer(),
@@ -114,7 +114,7 @@ class HomeMenu extends StatelessWidget {
                 Obx(
                   () => Text(
                     menuSubtitle(
-                      isOwner: _groups.isOwner,
+                      isAdmin: _groups.isAdmin,
                       canWatch: _groups.canWatch,
                       canShare: _groups.capabilities.value.canShare,
                       shareTeams: [

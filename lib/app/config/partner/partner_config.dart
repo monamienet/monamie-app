@@ -76,7 +76,7 @@ class PartnerConfig {
   /// shows the default theme.
   final PartnerTheme? theme;
 
-  /// `logoVersion`: set when the owner uploads a logo, so devices know to
+  /// `logoVersion`: set when an administrator uploads a logo, so devices know to
   /// fetch it again. `null` when the partner has no logo.
   final int? logoVersion;
 

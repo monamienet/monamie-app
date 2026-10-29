@@ -23,7 +23,7 @@ class InviteError extends Error {
  * @param {unknown} invites - `[{email, roles}]`
  * @returns {Array<{email: string, roles: string[]}>}
  * @throws {InviteError} code `empty`, `too_many`, `email`, `duplicate` or
- *   `roles` (messages for the owner)
+ *   `roles` (messages for the administrator)
  */
 function validateInvites(invites) {
   if (!Array.isArray(invites) || invites.length === 0) {

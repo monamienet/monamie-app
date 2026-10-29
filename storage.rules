@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // Partner project storage. The only file is each partner's logo: one
-// square 512 px PNG, converted on the owner's device (any input format), so
+// square 512 px PNG, converted on an administrator's device (any input format), so
 // an SVG (and its scripts) is never stored or served.
 service firebase.storage {
   match /b/{bucket}/o {
@@ -10,12 +10,12 @@ service firebase.storage {
       // before signing in to this project.
       allow read: if true;
 
-      // Only the partner's owner (member of its root group), only a PNG of
-      // at most 1 MB.
+      // Only the partner's administrators (members of its root group), only
+      // a PNG of at most 1 MB.
       allow write: if request.auth != null
-        && 'owns' in request.auth.token
-        && request.auth.token.owns is list
-        && request.auth.token.owns.hasAny([partnerId])
+        && 'admin' in request.auth.token
+        && request.auth.token.admin is list
+        && request.auth.token.admin.hasAny([partnerId])
         && (request.resource == null
           || (request.resource.contentType == 'image/png'
             && request.resource.size <= 1024 * 1024));

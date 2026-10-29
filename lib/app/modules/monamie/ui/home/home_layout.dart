@@ -36,12 +36,12 @@ String teamChipLabel({
 
 /// The line under the organization's name in the menu.
 String menuSubtitle({
-  required bool isOwner,
+  required bool isAdmin,
   required bool canWatch,
   required bool canShare,
   required List<String> shareTeams,
 }) {
-  if (isOwner) return 'Você é responsável';
+  if (isAdmin) return 'Administra a organização';
   if (canWatch && canShare) return 'Acompanha e compartilha';
   if (canWatch) return 'Acompanha o mapa';
   final team = teamChipLabel(

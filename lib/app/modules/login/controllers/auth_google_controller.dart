@@ -231,6 +231,13 @@ class AuthGoogleController extends GetxController {
     Get.toNamed(Routes.PARTNER_PICKER);
   }
 
+  /// Whether the signed-in user owns partner [partnerId] (*titular*), as
+  /// the server says now. Throws when it cannot be read.
+  Future<bool> ownsPartner(String partnerId) async {
+    final candidates = await _partnerDirectory.partnersOfSignedInUser();
+    return candidates.any((c) => c.id == partnerId && c.owner);
+  }
+
   /// A failing check must not keep anyone out: the account is then
   /// treated as not being deleted.
   Future<AccountDeletion?> _pendingDeletion() async {

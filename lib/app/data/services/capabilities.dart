@@ -6,10 +6,10 @@ class Capabilities {
   const Capabilities({
     this.share = const {},
     this.watch = const {},
-    this.owns = const {},
+    this.admin = const {},
   });
 
-  /// Reads the claims `share`, `watch` and `owns` (lists of strings). A
+  /// Reads the claims `share`, `watch` and `admin` (lists of strings). A
   /// missing or malformed claim is an empty set, never an error.
   factory Capabilities.fromClaims(Map<String, Object?> claims) {
     Set<String> list(String name) => switch (claims[name]) {
@@ -22,7 +22,7 @@ class Capabilities {
     return Capabilities(
       share: list('share'),
       watch: list('watch'),
-      owns: list('owns'),
+      admin: list('admin'),
     );
   }
 
@@ -32,22 +32,23 @@ class Capabilities {
   /// Team keys whose map the person sees.
   final Set<String> watch;
 
-  /// Partners the person owns: they watch every team of these.
-  final Set<String> owns;
+  /// Partners the person administers (member of their root group): they
+  /// watch every team of these and manage them.
+  final Set<String> admin;
 
   /// No capability at all: the person was removed from every group.
-  bool get isEmpty => share.isEmpty && watch.isEmpty && owns.isEmpty;
+  bool get isEmpty => share.isEmpty && watch.isEmpty && admin.isEmpty;
 
   /// Whether the person shares their location in some team.
   bool get canShare => share.isNotEmpty;
 
-  /// Whether the person owns [partnerId] (the *responsável*).
-  bool isOwnerOf(String partnerId) => owns.contains(partnerId);
+  /// Whether the person administers [partnerId] (the *administrador*).
+  bool isAdminOf(String partnerId) => admin.contains(partnerId);
 
   /// Whether the person sees any map of [partnerId]: they watch one of its
-  /// teams, or own it.
+  /// teams, or administer it.
   bool canWatchIn(String partnerId) =>
-      isOwnerOf(partnerId) ||
+      isAdminOf(partnerId) ||
       watch.any(
         (key) =>
             parseGroupAddress(teamEmailForKey(key))?.partnerId == partnerId,
@@ -57,7 +58,7 @@ class Capabilities {
   bool canWatchTeam(String teamKey) {
     final partnerId = parseGroupAddress(teamEmailForKey(teamKey))?.partnerId;
     return watch.contains(teamKey) ||
-        (partnerId != null && isOwnerOf(partnerId));
+        (partnerId != null && isAdminOf(partnerId));
   }
 
   /// The team keys of [partnerId] where the person shares, sorted.
@@ -67,10 +68,10 @@ class Capabilities {
   ]..sort();
 
   /// The keys of the teams of [partnerId] the person sees on the map,
-  /// sorted. An owner sees every team in [allTeamKeys] (the partner's team
+  /// sorted. An administrator sees every team in [allTeamKeys] (the partner's team
   /// groups); anyone else sees the teams they watch.
   List<String> watchTeamsIn(String partnerId, Iterable<String> allTeamKeys) {
-    final keys = isOwnerOf(partnerId)
+    final keys = isAdminOf(partnerId)
         ? {
             ...allTeamKeys.where(
               (key) =>

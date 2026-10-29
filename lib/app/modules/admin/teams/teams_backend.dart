@@ -1,8 +1,8 @@
 import 'team.dart';
 
-/// The owner's team operations (central functions), kept apart so the
+/// The administrators' team operations (central functions), kept apart so the
 /// screens are tested with a fake. Every method throws [TeamsException]
-/// with a message for the owner.
+/// with a message for an administrator.
 abstract interface class TeamsBackend {
   Future<List<Team>> list(String partnerId);
   Future<Team> create(String partnerId, String name);
@@ -25,7 +25,7 @@ abstract interface class TeamsBackend {
   Future<void> remove(String partnerId, String team, String email);
 }
 
-/// A team operation that failed, in words for the owner.
+/// A team operation that failed, in words for an administrator.
 class TeamsException implements Exception {
   const TeamsException(this.message);
 

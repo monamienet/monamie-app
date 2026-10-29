@@ -25,10 +25,10 @@ const GATEWAY_TIMEOUT_MS = 10000;
  *
  * What a person may do comes from *which* groups they are in (everyone is
  * a plain MEMBER): `<id>NNw` shares in team `<id>NN`, `<id>NNr` watches it,
- * and `<id>00` (the owner) watches every team. Only the person's direct
+ * and `<id>00` (an administrator) watches every team and manages the partner. Only the person's direct
  * groups are needed: one gateway call, no walk of the group tree.
  *
- * Claims: `{share: [teamKey], watch: [teamKey], owns: [partnerId],
+ * Claims: `{share: [teamKey], watch: [teamKey], admin: [partnerId],
  * partners: [partnerId]}`, where a team key is the team group's local part
  * (`rotasul01`) and `partners` lists the partners where the person has any
  * capability. Only the partners hosted by this project are kept: the one
@@ -134,9 +134,9 @@ exports.setBranding = onCall({ invoker: "public", region: "us-central1" }, async
     throw new HttpsError("unauthenticated", "Autenticação necessária.");
   }
   const partnerId = request.data?.partnerId;
-  const owns = request.auth.token.owns;
-  if (typeof partnerId !== "string" || !Array.isArray(owns) || !owns.includes(partnerId)) {
-    throw new HttpsError("permission-denied", "Só o responsável muda a aparência.");
+  const admins = request.auth.token.admin;
+  if (typeof partnerId !== "string" || !Array.isArray(admins) || !admins.includes(partnerId)) {
+    throw new HttpsError("permission-denied", "Só um administrador muda a aparência.");
   }
   let change;
   try {

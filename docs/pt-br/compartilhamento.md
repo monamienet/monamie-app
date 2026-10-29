@@ -17,8 +17,8 @@ revisões e código.
 | Nome | O que é | Quem define | Valor | No código | No Firestore |
 |---|---|---|---|---|---|
 | **período mínimo** | o menor tempo permitido entre duas posições gravadas | MonAmieNet, pelo plano | Community: 15 min; Standard: nenhum | `minPeriodMinutes`, `_minPeriod` | `config/plan.minIntervalMinutes` |
-| **período** | o tempo que o responsável pede entre duas posições; nunca menor que o **período mínimo** | responsável, em *Ajustes de acompanhamento* | 1 a 30 min | `periodMinutes` | `config/tracking.intervalMinutes` |
-| **raio** | quanto a pessoa precisa se afastar da última posição gravada para gravar outra | responsável | 5 a 500 m | `radiusMeters` | `config/tracking.distanceMeters` |
+| **período** | o tempo que um administrador pede entre duas posições; nunca menor que o **período mínimo** | administrador, em *Ajustes de acompanhamento* | 1 a 30 min | `periodMinutes` | `config/tracking.intervalMinutes` |
+| **raio** | quanto a pessoa precisa se afastar da última posição gravada para gravar outra | administrador | 5 a 500 m | `radiusMeters` | `config/tracking.distanceMeters` |
 | **timestamp** | quando o aparelho de quem compartilha atualizou o documento dele pela última vez | o aparelho | data e hora | `timestamp` | `usuarios/{email}.timestamp` |
 | **idade** | quanto tempo passou desde o **timestamp** | calculada por quem observa | agora − **timestamp** | `now.difference(timestamp)` | — |
 | **isTracked** | se a pessoa quer compartilhar | a própria pessoa, pelo botão | ligado ou desligado | `isTracked` | `usuarios/{email}.isTracked` |

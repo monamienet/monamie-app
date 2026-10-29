@@ -778,7 +778,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   bool _acceptedTerms = false;
 
   /// *Tudo certo?* (`CriarRevisao.dc.html`): what the team will see, the
-  /// choices with a link back to each, who becomes the owner, the terms and
+  /// choices with a link back to each, who becomes the owner and first administrator, the terms and
   /// the button that goes on to the plan.
   Widget _reviewStep() {
     final theme = c.pickedTheme;
@@ -932,7 +932,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Você será o responsável',
+                            'Você será titular',
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
@@ -941,10 +941,10 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${widget.ownerEmail} poderá convidar pessoas, criar '
-                            'equipes, mudar a aparência e adicionar o logo. '
-                            'Depois, também pode passar essa função para outra '
-                            'pessoa.',
+                            '${widget.ownerEmail} vai administrar a organização: '
+                            'convidar pessoas, criar equipes, mudar a aparência e '
+                            'adicionar o logo. Depois, outras pessoas também '
+                            'podem administrar.',
                             style: const TextStyle(
                               fontSize: 13,
                               height: 19 / 13,

@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'team.dart';
 import 'teams_backend.dart';
 
-/// State of the owner's team screens (*Equipes*, *Criar equipe*,
+/// State of the administrators' team screens (*Equipes*, *Criar equipe*,
 /// *Equipe*). One operation at a time: [isWorking] guards reentrancy and
 /// drives the pending states; it always resets in `finally`.
 class TeamsController extends GetxController {

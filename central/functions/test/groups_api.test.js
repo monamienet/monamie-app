@@ -46,3 +46,56 @@ describe("GroupsApi.lookup - Unit Test Suite", () => {
     await assert.rejects(lookup, (error) => error.response.status === 500);
   });
 });
+
+describe("GroupsApi.isMember - Unit Test Suite", () => {
+  test("Happy Path: a membership found means the person is a member", async () => {
+    // 1. Arrange
+    const api = new GroupsApi(async () => ({ name: "groups/abc123/memberships/m1" }));
+
+    // 2. Act
+    const isMember = await api.isMember("groups/abc123", "ana@x.com");
+
+    // 3. Assert
+    assert.equal(isMember, true);
+  });
+
+  test("Edge Case: the lookup asks the group for the URL-encoded e-mail", async () => {
+    // 1. Arrange
+    const urls = [];
+    const api = new GroupsApi(async ({ url }) => {
+      urls.push(url);
+      return { name: "groups/abc123/memberships/m1" };
+    });
+
+    // 2. Act
+    await api.isMember("groups/abc123", "ana+obra@x.com");
+
+    // 3. Assert
+    assert.equal(urls.length, 1);
+    assert.match(urls[0], /\/groups\/abc123\/memberships:lookup\?memberKey\.id=ana%2Bobra%40x\.com$/);
+  });
+
+  test("Edge Case: HTTP 404 means the person is not a member", async () => {
+    // 1. Arrange
+    const api = new GroupsApi(rejectingWith(404));
+
+    // 2. Act
+    const isMember = await api.isMember("groups/abc123", "ana@x.com");
+
+    // 3. Assert
+    assert.equal(isMember, false);
+  });
+
+  for (const status of [403, 500]) {
+    test(`Sad Path: HTTP ${status} is rethrown`, async () => {
+      // 1. Arrange
+      const api = new GroupsApi(rejectingWith(status));
+
+      // 2. Act
+      const isMember = api.isMember("groups/abc123", "ana@x.com");
+
+      // 3. Assert
+      await assert.rejects(isMember, (error) => error.response.status === status);
+    });
+  }
+});

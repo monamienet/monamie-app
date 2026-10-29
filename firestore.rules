@@ -11,8 +11,8 @@ rules_version = '2';
 //                            (member of rotasul01w@monamienet.org)
 //   watch:    ["rotasul01"]  team keys whose map they see
 //                            (member of rotasul01r@monamienet.org)
-//   owns:     ["rotasul"]    partners they own (member of rotasul00@), which
-//                            means watching every team of that partner
+//   admin:    ["rotasul"]    partners they administer (member of rotasul00@),
+//                            which means watching every team of that partner
 //   partners: ["rotasul"]    partners where they have any of the above
 // A team key is the local part of the team group, `<partner id><NN>`.
 // Location documents name their team by the team group's e-mail
@@ -59,11 +59,12 @@ service cloud.firestore {
           && claimList('share').hasAny([teamKeyOf(groupEmail)]);
       }
 
-      /// The caller sees this team's map: they watch it, or own the partner.
+      /// The caller sees this team's map: they watch it, or administer the
+      /// partner.
       function canWatch(groupEmail) {
         return isTeamHere(groupEmail)
           && (claimList('watch').hasAny([teamKeyOf(groupEmail)])
-            || claimList('owns').hasAny([partnerId]));
+            || claimList('admin').hasAny([partnerId]));
       }
 
       /// Minimum minutes between two positions: the plan's limit on
@@ -215,12 +216,12 @@ service cloud.firestore {
 
       // ── config/tracking: how often people in the field send positions ──
       // Fields: intervalMinutes, distanceMeters, updatedAt, updatedBy.
-      // Members read it (the background service applies it); only the owner
-      // writes it, with the values the app offers and never below the
-      // plan's minimum interval.
+      // Members read it (the background service applies it); only an
+      // administrator writes it, with the values the app offers and never
+      // below the plan's minimum interval.
       match /config/tracking {
         allow read: if isMember();
-        allow write: if claimList('owns').hasAny([partnerId])
+        allow write: if claimList('admin').hasAny([partnerId])
           && request.resource.data.keys().hasOnly(
                ['intervalMinutes', 'distanceMeters', 'updatedAt', 'updatedBy'])
           && request.resource.data.intervalMinutes in [1, 2, 3, 5, 10, 15, 20, 30]
