@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/config/partner/monamie_brand.dart';
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
-import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 
+import 'widgets/invite_card.dart';
 import 'widgets/monamie_account_header.dart';
 
 /// *Sem organização*: the signed-in account belongs to no organization yet
@@ -42,8 +41,10 @@ class NoOrganizationView extends GetView<AuthGoogleController> {
                 ],
                 // Membership starts on acceptance, so an invited person has
                 // no group yet and lands here, with the invite.
-                for (final invite in controller.pendingInvites)
-                  _InviteCard(invite: invite, controller: controller),
+                for (final invite in controller.pendingInvites) ...[
+                  InviteCard(invite: invite, controller: controller),
+                  const SizedBox(height: 20),
+                ],
                 const Text(
                   'Você ainda não faz parte de uma organização',
                   style: TextStyle(
@@ -183,106 +184,4 @@ class _Notice extends StatelessWidget {
       ),
     ),
   );
-}
-
-class _InviteCard extends StatelessWidget {
-  const _InviteCard({required this.invite, required this.controller});
-
-  final Invite invite;
-  final AuthGoogleController controller;
-
-  @override
-  Widget build(BuildContext context) => Obx(() {
-    final accepting = controller.acceptingInvite.value == invite.id;
-    final busy = controller.acceptingInvite.value != null;
-    final shares = invite.roles.contains(TeamRole.share);
-    final watches = invite.roles.contains(TeamRole.watch);
-    final role = shares && watches
-        ? 'em campo e vendo o mapa'
-        : shares
-        ? 'em campo'
-        : 'vendo o mapa';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Você tem um convite',
-            style: TextStyle(fontSize: 13, color: MonAmieBrand.mutedInk),
-          ),
-          Text(
-            invite.partnerName,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: MonAmieBrand.navy,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${invite.invitedByName.isEmpty ? 'Alguém' : invite.invitedByName} '
-            'chamou você para a ${invite.teamName}, $role.'
-            '${invite.expiresAt == null ? '' : ' Vale até ${dayMonth(invite.expiresAt!)}.'}',
-            style: const TextStyle(fontSize: 15, color: MonAmieBrand.navy),
-          ),
-          if (controller.inviteError.value.isNotEmpty && !busy) ...[
-            const SizedBox(height: 10),
-            Text(
-              controller.inviteError.value,
-              style: const TextStyle(
-                color: Color(0xFFB3261E),
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          SizedBox(
-            height: 56,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: MonAmieBrand.navy,
-                foregroundColor: MonAmieBrand.cream,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              onPressed: busy ? null : () => controller.acceptInvite(invite),
-              child: accepting
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: MonAmieBrand.cream,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: Text(
-                            'Entrando na ${invite.partnerName}…',
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    )
-                  : const Text('Aceitar e entrar'),
-            ),
-          ),
-        ],
-      ),
-    );
-  });
 }
