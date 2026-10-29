@@ -175,4 +175,46 @@ void main() {
       });
     }
   });
+
+  group('Invite.statusLabel - Unit Test Suite', () {
+    final cases = <(String, Map<String, Object?>, String)>[
+      (
+        'Happy Path: a valid invite shows its last day',
+        {'expiresAt': '2026-11-09T12:00:00.000'},
+        'Vale até 9 de novembro',
+      ),
+      (
+        'Happy Path: an expired invite shows the day it expired',
+        {'expiresAt': '2026-11-09T12:00:00.000', 'expired': true},
+        'Expirado · venceu em 9 de novembro',
+      ),
+      (
+        'Edge Case: an expired invite without a date',
+        {'expiresAt': null, 'expired': true},
+        'Expirado',
+      ),
+      (
+        'Edge Case: a valid invite without a date is empty',
+        {'expiresAt': null},
+        '',
+      ),
+      (
+        'Sad Path: an expired flag that is not true reads as valid',
+        {'expiresAt': '2026-11-09T12:00:00.000', 'expired': 'true'},
+        'Vale até 9 de novembro',
+      ),
+    ];
+    for (final (label, overrides, expected) in cases) {
+      test('$label ("$expected")', () {
+        // 1. Arrange
+        final invite = Invite.fromJson(_json(overrides))!;
+
+        // 2. Act
+        final text = invite.statusLabel;
+
+        // 3. Assert
+        expect(text, expected);
+      });
+    }
+  });
 }

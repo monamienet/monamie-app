@@ -123,3 +123,60 @@ String? teamNameProblem(String name, Iterable<String> existing) {
   }
   return null;
 }
+
+/// "Em campo · Vê o mapa", in [TeamRole] order.
+String teamRolesLabel(Set<TeamRole> roles) => [
+  for (final role in TeamRole.values)
+    if (roles.contains(role)) role.label,
+].join(' · ');
+
+/// Up to two capitals from the words of [text] split at spaces, dots and
+/// `@`: "ana.lima@gmail.com" → "AL"; "?" when there are none.
+String initialsOf(String text) {
+  final words = text.split(RegExp(r'[\s.@]+')).where((w) => w.isNotEmpty);
+  final initials = words.take(2).map((w) => w[0].toUpperCase()).join();
+  return initials.isEmpty ? '?' : initials;
+}
+
+/// "1 convite pendente", "3 convites pendentes", or empty for none.
+String pendingInvitesLabel(int count) => switch (count) {
+  <= 0 => '',
+  1 => '1 convite pendente',
+  final n => '$n convites pendentes',
+};
+
+/// What deleting a team does, one sentence per line: who loses access to
+/// [organization] ([loses] people in no other team), who stays, the
+/// [invites] cancelled, and that it cannot be undone.
+List<String> teamDeletionLines({
+  required int loses,
+  required int stays,
+  required int invites,
+  required String organization,
+}) => [
+  if (loses == 1)
+    '1 pessoa só estava nesta equipe e perde o acesso à $organization.'
+  else if (loses > 1)
+    '$loses pessoas só estavam nesta equipe e perdem o acesso à '
+        '$organization.',
+  if (stays == 1)
+    '1 pessoa continua nas outras equipes.'
+  else if (stays > 1)
+    '$stays pessoas continuam nas outras equipes.',
+  if (invites == 1)
+    'O convite pendente é cancelado.'
+  else if (invites > 1)
+    'Os $invites convites pendentes são cancelados.',
+  'Os trajetos antigos continuam no histórico. Não dá para desfazer.',
+];
+
+/// The text under "`<team>` excluída": how many people ([loses]) lost
+/// access to [organization].
+String deletedTeamText({required int loses, required String organization}) {
+  final lost = switch (loses) {
+    <= 0 => '',
+    1 => '1 pessoa perdeu o acesso à $organization. ',
+    final n => '$n pessoas perderam o acesso à $organization. ',
+  };
+  return '${lost}Quem estava em outras equipes continua nelas.';
+}

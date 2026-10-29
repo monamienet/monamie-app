@@ -16,6 +16,10 @@ const _ink = Color(0xFF1B1838);
 const _muted = Color(0xFF4A4858);
 const _soft = Color(0xFFF1F0F4);
 const _line = Color(0xFFECEAF0);
+const _cardLine = Color(0xFFDDD9E4);
+const _fieldLine = Color(0xFFB9B4C9);
+const _dangerLine = Color(0xFFE8B4AF);
+const _handle = Color(0xFFC9C3D6);
 const _error = Color(0xFFB3261E);
 
 PartnerPalette get _palette => PartnerPalette.fromConfig(Partner.current);
@@ -384,227 +388,1064 @@ class _CreateTeamViewState extends State<CreateTeamView> {
   );
 }
 
-/// *Equipe*: the team's people and their roles; rename and delete.
-class TeamView extends StatelessWidget {
-  const TeamView({super.key, required this.controller, required this.number});
+/// Darker than primary, for the role lines (the prototype's #0B6A66 on the
+/// default theme).
+Color get _roleTone => Color.lerp(_palette.primary, _palette.dark, 0.3)!;
+
+String get _organization => Partner.current?.name ?? 'organização';
+
+/// A bottom sheet with [title], optional [content] and [lines], and a
+/// confirm button that runs [onConfirm] (an error message, or `null` on
+/// success). While it runs the sheet cannot close and the button shows
+/// [busyLabel]; a failure stays in the sheet. Returns whether it succeeded.
+Future<bool> _actionSheet({
+  required String title,
+  required String confirmLabel,
+  required String busyLabel,
+  required Future<String?> Function() onConfirm,
+  bool danger = false,
+  List<String> lines = const [],
+  Widget Function(StateSetter setSheet, bool busy)? content,
+  bool Function()? canConfirm,
+}) async {
+  var busy = false;
+  var error = '';
+  final done = await Get.bottomSheet<bool>(
+    StatefulBuilder(
+      builder: (context, setSheet) {
+        final tone = danger ? _error : _palette.primary;
+        final onTone = danger ? Colors.white : _palette.onPrimary;
+        final allowed = canConfirm?.call() ?? true;
+        Future<void> confirm() async {
+          if (busy || !allowed) return;
+          setSheet(() {
+            busy = true;
+            error = '';
+          });
+          String? problem;
+          try {
+            problem = await onConfirm();
+          } finally {
+            if (context.mounted) setSheet(() => busy = false);
+          }
+          if (!context.mounted) return;
+          if (problem == null) {
+            Navigator.of(context).pop(true);
+          } else {
+            setSheet(() => error = problem!);
+          }
+        }
+
+        return PopScope(
+          canPop: !busy,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+              24,
+              8,
+              24,
+              32 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: _handle,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      height: 1.2,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.44,
+                      color: _ink,
+                    ),
+                  ),
+                  if (content != null) ...[
+                    const SizedBox(height: 16),
+                    content(setSheet, busy),
+                  ],
+                  if (lines.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    for (final (i, line) in lines.indexed)
+                      Padding(
+                        padding: EdgeInsets.only(top: i == 0 ? 0 : 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(
+                              width: 20,
+                              child: Text('•', style: _sheetLine),
+                            ),
+                            Expanded(child: Text(line, style: _sheetLine)),
+                          ],
+                        ),
+                      ),
+                  ],
+                  if (error.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      error,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        height: 19 / 13,
+                        fontWeight: FontWeight.w800,
+                        color: _error,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 56,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: tone,
+                        foregroundColor: onTone,
+                        disabledBackgroundColor: busy
+                            ? tone.withValues(alpha: 0.8)
+                            : _line,
+                        disabledForegroundColor: busy ? onTone : _muted,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onPressed: busy || !allowed ? null : confirm,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (busy) ...[
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                color: onTone,
+                                backgroundColor: onTone.withValues(alpha: 0.35),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Text(busy ? busyLabel : confirmLabel),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 48,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: _ink,
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onPressed: busy ? null : () => Navigator.pop(context),
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+    isScrollControlled: true,
+    // Dragging would close the sheet past PopScope while an operation runs.
+    enableDrag: false,
+    barrierColor: const Color(0x8C091416),
+  );
+  return done == true;
+}
+
+const _sheetLine = TextStyle(
+  fontSize: 15,
+  height: 22 / 15,
+  fontWeight: FontWeight.w500,
+  color: _muted,
+);
+
+void _toast(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: const TextStyle(
+            fontSize: 14,
+            height: 20 / 14,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: _ink,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+}
+
+/// *Equipe*: the team's people and pending invites in two tabs; rename,
+/// change roles, remove, resend or cancel invites, and delete the team.
+class TeamView extends StatefulWidget {
+  const TeamView({
+    super.key,
+    required this.controller,
+    required this.number,
+    this.invitesBackend = const FirebaseInvitesBackend(),
+  });
 
   final TeamsController controller;
   final String number;
+  final InvitesBackend invitesBackend;
+
+  @override
+  State<TeamView> createState() => _TeamViewState();
+}
+
+class _TeamViewState extends State<TeamView> {
+  bool _onInvites = false;
+  List<Invite>? _invites;
+  String _invitesError = '';
+  bool _loadingImpact = false;
+
+  /// Set once the team is deleted: its name and how many lost access.
+  ({String name, int loses})? _deleted;
+
+  TeamsController get c => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInvites();
+  }
+
+  Future<void> _loadInvites() async {
+    try {
+      final invites = await widget.invitesBackend.listForTeam(
+        c.partnerId,
+        widget.number,
+      );
+      if (mounted) {
+        setState(() {
+          _invites = invites;
+          _invitesError = '';
+        });
+      }
+    } catch (e) {
+      debugPrint('[Teams] Could not load invites: $e');
+      if (mounted) {
+        setState(
+          () => _invitesError = 'Não foi possível carregar os convites.',
+        );
+      }
+    }
+  }
+
+  /// The controller's message for a failed operation.
+  String get _failure => c.errorMessage.value.isEmpty
+      ? 'Não foi possível concluir agora. Tente de novo.'
+      : c.errorMessage.value;
 
   @override
   Widget build(BuildContext context) => Obx(() {
-    final team = controller.byNumber(number);
-    final busy = controller.isWorking.value;
+    final deleted = _deleted;
+    if (deleted != null) return _deletedScreen(deleted);
+    final team = c.byNumber(widget.number);
     if (team == null) {
       return Scaffold(
+        backgroundColor: Colors.white,
         appBar: _bar('Equipe'),
         body: const Center(child: Text('Equipe não encontrada.')),
       );
     }
+    final invites = _invites;
+    final pending = pendingInvitesLabel(invites?.length ?? 0);
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: _bar(
-        team.name,
-        actions: [
-          PopupMenuButton<String>(
-            enabled: !busy,
-            onSelected: (value) => value == 'rename'
-                ? _rename(context, team)
-                : _delete(context, team),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'rename', child: Text('Renomear')),
-              PopupMenuItem(value: 'delete', child: Text('Excluir equipe')),
-            ],
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        children: [
-          if (busy) const LinearProgressIndicator(),
-          _errorText(controller.errorMessage.value),
-          Text(
-            'Na equipe · ${team.peopleLabel}',
-            style: const TextStyle(fontWeight: FontWeight.w800, color: _ink),
-          ),
-          const SizedBox(height: 8),
-          if (team.people.isEmpty)
-            const Text(
-              'Ninguém nesta equipe ainda. Convide quem vai trabalhar nela.',
-              style: TextStyle(color: _muted),
-            ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: busy
-                ? null
-                : () => openInvite(controller, team: team.number),
-            icon: const Icon(Icons.person_add_alt),
-            label: const Text('Convidar para esta equipe'),
-          ),
-          for (final person in team.people)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(person.email),
-              subtitle: Text(
-                [
-                  for (final r in TeamRole.values)
-                    if (person.roles.contains(r)) r.label,
-                ].join(' · '),
+      appBar: _bar('Equipe'),
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            sliver: SliverFillRemaining(
+              hasScrollBody: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _header(
+                    team,
+                    [
+                      team.peopleLabel,
+                      if (pending.isNotEmpty) pending,
+                    ].join(' · '),
+                  ),
+                  const SizedBox(height: 20),
+                  _tabs(team.people.length, invites?.length),
+                  const SizedBox(height: 20),
+                  _onInvites ? _invitesCard(invites) : _membersCard(team),
+                  const SizedBox(height: 20),
+                  _inviteButton(),
+                  const SizedBox(height: 20),
+                  const Spacer(),
+                  _deleteButton(team),
+                ],
               ),
-              trailing: const Icon(Icons.chevron_right),
-              enabled: !busy,
-              onTap: () => _editPerson(context, team, person),
             ),
-          const SizedBox(height: 24),
-          TeamInvitesSection(
-            partnerId: controller.partnerId,
-            team: team.number,
           ),
         ],
       ),
     );
   });
 
-  Future<void> _editPerson(
-    BuildContext context,
-    Team team,
-    TeamPerson person,
-  ) async {
-    final roles = {...person.roles};
-    await Get.bottomSheet(
-      StatefulBuilder(
-        builder: (context, setState) => Container(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  Widget _header(Team team, String summary) => Row(
+    children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              team.name,
+              style: const TextStyle(
+                fontSize: 28,
+                height: 1.1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.84,
+                color: _ink,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              summary,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: _muted,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(width: 12),
+      SizedBox(
+        height: 44,
+        child: TextButton(
+          style: TextButton.styleFrom(
+            backgroundColor: _soft,
+            foregroundColor: _ink,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          child: Column(
+          onPressed: () => _rename(team),
+          child: const Row(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                person.email,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: _ink,
-                ),
-              ),
-              const SizedBox(height: 8),
-              for (final role in TeamRole.values)
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: roles.contains(role),
-                  title: Text(role.label),
-                  subtitle: Text(
-                    role == TeamRole.share
-                        ? 'Compartilha a localização com a equipe'
-                        : 'Vê no mapa quem está em campo',
-                  ),
-                  onChanged: (on) => setState(
-                    () => on == true ? roles.add(role) : roles.remove(role),
-                  ),
-                ),
-              if (roles.isEmpty)
-                const Text(
-                  'Escolha pelo menos um papel, ou remova a pessoa.',
-                  style: TextStyle(color: _error, fontWeight: FontWeight.w800),
-                ),
-              const SizedBox(height: 12),
-              _primaryButton(
-                label: 'Salvar',
-                busy: false,
-                busyLabel: '',
-                onPressed: roles.isEmpty
-                    ? null
-                    : () {
-                        Get.back();
-                        controller.setRoles(team.number, person.email, roles);
-                      },
-              ),
-              TextButton(
-                style: TextButton.styleFrom(foregroundColor: _error),
-                onPressed: () {
-                  Get.back();
-                  controller.remove(team.number, person.email);
-                },
-                child: const Text('Remover da equipe'),
-              ),
+              Icon(Icons.edit_outlined, size: 16),
+              SizedBox(width: 6),
+              Text('Renomear'),
             ],
           ),
         ),
       ),
+    ],
+  );
+
+  Widget _tabs(int members, int? invites) {
+    Widget tab(String label, bool selected, bool invitesTab) => Expanded(
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: GestureDetector(
+          onTap: () => setState(() => _onInvites = invitesTab),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: selected
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x261B1838),
+                        offset: Offset(0, 1),
+                        blurRadius: 3,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: selected ? _ink : _muted,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: _soft,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          tab('Na equipe · $members', !_onInvites, false),
+          tab('Convidados · ${invites ?? '…'}', _onInvites, true),
+        ],
+      ),
     );
   }
 
-  Future<void> _rename(BuildContext context, Team team) async {
-    final field = TextEditingController(text: team.name);
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Renomear equipe'),
-        content: TextField(controller: field, autofocus: true, maxLength: 40),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+  /// The bordered list both tabs share; [empty] shows when [rows] is empty.
+  Widget _card(List<Widget> rows, String empty) => Container(
+    clipBehavior: Clip.antiAlias,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: _cardLine),
+    ),
+    child: rows.isEmpty
+        ? Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            child: Text(
+              empty,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 21 / 14,
+                fontWeight: FontWeight.w500,
+                color: _muted,
+              ),
+            ),
+          )
+        : Column(
+            children: [
+              for (final (i, row) in rows.indexed)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: i == 0
+                        ? null
+                        : const Border(top: BorderSide(color: _line)),
+                  ),
+                  child: row,
+                ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, field.text),
-            child: const Text('Salvar'),
+  );
+
+  Widget _membersCard(Team team) => _card([
+    for (final person in team.people)
+      _personRow(
+        initials: initialsOf(person.email),
+        title: person.email,
+        roles: teamRolesLabel(person.roles),
+        member: true,
+        onEditRoles: () => _editRoles(team, person),
+        actionText: 'Remover',
+        onAction: () => _remove(team, person),
+      ),
+  ], 'Ninguém nesta equipe ainda. Convide quem vai trabalhar nela.');
+
+  Widget _invitesCard(List<Invite>? invites) {
+    if (invites == null) {
+      return _invitesError.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          : _card(const [], _invitesError);
+    }
+    return _card([
+      for (final invite in invites)
+        _personRow(
+          initials: initialsOf(invite.email),
+          title: invite.email,
+          detail: invite.statusLabel,
+          expired: invite.expired,
+          roles: invite.rolesLabel,
+          member: false,
+          actionText: invite.expired ? 'Reenviar' : 'Cancelar',
+          onAction: () =>
+              invite.expired ? _resend(invite) : _cancelInvite(invite),
+        ),
+    ], 'Nenhum convite pendente.');
+  }
+
+  Widget _personRow({
+    required String initials,
+    required String title,
+    required String roles,
+    required bool member,
+    required String actionText,
+    required VoidCallback onAction,
+    String detail = '',
+    bool expired = false,
+    VoidCallback? onEditRoles,
+  }) {
+    final roleLine = Row(
+      children: [
+        Flexible(
+          child: Text(
+            roles,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: _roleTone,
+            ),
+          ),
+        ),
+        if (onEditRoles != null) ...[
+          const SizedBox(width: 4),
+          Icon(Icons.edit_outlined, size: 12, color: _roleTone),
+        ],
+      ],
+    );
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: _ink,
+          ),
+        ),
+        if (detail.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            detail,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: expired ? FontWeight.w800 : FontWeight.w500,
+              color: expired ? _error : _muted,
+            ),
+          ),
+        ],
+        const SizedBox(height: 2),
+        roleLine,
+      ],
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: member ? _palette.primary : _soft,
+              border: member ? null : Border.all(color: _fieldLine, width: 1.5),
+            ),
+            child: Text(
+              initials,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: member ? _palette.onPrimary : _muted,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: onEditRoles == null
+                ? text
+                : Semantics(
+                    button: true,
+                    label: 'Mudar o que $title faz',
+                    child: InkWell(onTap: onEditRoles, child: text),
+                  ),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            height: 44,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                backgroundColor: expired ? _palette.light : Colors.transparent,
+                foregroundColor: expired ? _palette.dark : _error,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              onPressed: onAction,
+              child: Text(actionText),
+            ),
           ),
         ],
       ),
     );
-    if (name == null) return;
-    final problem = controller.nameProblem(name, renaming: team.number);
-    if (problem != null) {
-      controller.errorMessage.value = problem;
+  }
+
+  Widget _inviteButton() => SizedBox(
+    height: 52,
+    child: TextButton(
+      style: TextButton.styleFrom(
+        backgroundColor: _palette.light,
+        foregroundColor: _palette.dark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+      ),
+      onPressed: () async {
+        await openInvite(c, team: widget.number);
+        await _loadInvites();
+      },
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.person_add_alt, size: 20),
+          SizedBox(width: 8),
+          Text('Convidar para esta equipe'),
+        ],
+      ),
+    ),
+  );
+
+  Widget _deleteButton(Team team) => SizedBox(
+    height: 52,
+    child: OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _error,
+        side: const BorderSide(color: _dangerLine, width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+      ),
+      onPressed: _loadingImpact ? null : () => _delete(team),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_loadingImpact)
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2.4, color: _error),
+            )
+          else
+            const Icon(Icons.delete_outline, size: 18),
+          const SizedBox(width: 8),
+          const Text('Excluir equipe'),
+        ],
+      ),
+    ),
+  );
+
+  Widget _deletedScreen(({String name, int loses}) deleted) => Scaffold(
+    backgroundColor: Colors.white,
+    appBar: _bar('Equipe'),
+    body: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: _soft,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.delete_outline, size: 30, color: _ink),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '${deleted.name} excluída',
+              style: const TextStyle(
+                fontSize: 30,
+                height: 1.1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.9,
+                color: _ink,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              deletedTeamText(
+                loses: deleted.loses,
+                organization: _organization,
+              ),
+              style: const TextStyle(
+                fontSize: 16,
+                height: 24 / 16,
+                fontWeight: FontWeight.w500,
+                color: _muted,
+              ),
+            ),
+            const Spacer(),
+            _primaryButton(
+              label: 'Ver equipes',
+              busy: false,
+              busyLabel: '',
+              onPressed: Get.back,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Future<void> _rename(Team team) async {
+    final field = TextEditingController(text: team.name);
+    String typed() => field.text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    String? problem() =>
+        typed().isEmpty ? null : c.nameProblem(typed(), renaming: team.number);
+    final ok = await _actionSheet(
+      title: 'Renomear equipe',
+      confirmLabel: 'Salvar nome',
+      busyLabel: 'Salvando…',
+      canConfirm: () =>
+          typed().isNotEmpty && typed() != team.name && problem() == null,
+      onConfirm: () async =>
+          await c.rename(team.number, typed()) ? null : _failure,
+      content: (setSheet, busy) {
+        final invalid = problem() != null;
+        OutlineInputBorder border(Color color, double width) =>
+            OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: color, width: width),
+            );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Nome da equipe',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: _ink,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: field,
+              enabled: !busy,
+              autofocus: true,
+              maxLength: 40,
+              textCapitalization: TextCapitalization.sentences,
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w500,
+                color: _ink,
+              ),
+              decoration: InputDecoration(
+                counterText: '',
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 15,
+                ),
+                enabledBorder: invalid
+                    ? border(_error, 2)
+                    : border(_fieldLine, 1.5),
+                focusedBorder: invalid
+                    ? border(_error, 2)
+                    : border(_fieldLine, 1.5),
+                disabledBorder: border(_fieldLine, 1.5),
+              ),
+              onChanged: (_) => setSheet(() {}),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              problem() ??
+                  'As pessoas da equipe veem o novo nome na próxima vez que '
+                      'abrirem o app.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 19 / 13,
+                fontWeight: invalid ? FontWeight.w800 : FontWeight.w500,
+                color: invalid ? _error : _muted,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    field.dispose();
+    if (ok && mounted) _toast(context, 'Equipe renomeada');
+  }
+
+  Future<void> _editRoles(Team team, TeamPerson person) async {
+    final roles = {...person.roles};
+    final ok = await _actionSheet(
+      title: 'O que ${person.email} faz',
+      confirmLabel: 'Salvar',
+      busyLabel: 'Salvando…',
+      canConfirm: () =>
+          roles.isNotEmpty &&
+          !(roles.length == person.roles.length &&
+              roles.containsAll(person.roles)),
+      onConfirm: () async =>
+          await c.setRoles(team.number, person.email, roles) ? null : _failure,
+      content: (setSheet, busy) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (i, role) in TeamRole.values.indexed) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  Expanded(
+                    child: _roleOption(
+                      role,
+                      on: roles.contains(role),
+                      onTap: busy
+                          ? null
+                          : () => setSheet(
+                              () => roles.contains(role)
+                                  ? roles.remove(role)
+                                  : roles.add(role),
+                            ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            roles.isEmpty
+                ? 'Marque pelo menos uma opção.'
+                : 'A mudança vale na próxima vez que o app da pessoa abrir.',
+            style: TextStyle(
+              fontSize: 13,
+              height: 19 / 13,
+              fontWeight: roles.isEmpty ? FontWeight.w800 : FontWeight.w500,
+              color: roles.isEmpty ? _error : _muted,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok && mounted) _toast(context, 'Papel atualizado');
+  }
+
+  Widget _roleOption(TeamRole role, {required bool on, VoidCallback? onTap}) =>
+      Semantics(
+        checked: on,
+        child: Material(
+          color: on ? _palette.light : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: on
+                ? BorderSide(color: _palette.primary, width: 2)
+                : const BorderSide(color: _cardLine),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 18,
+                    height: 18,
+                    margin: const EdgeInsets.only(top: 1),
+                    decoration: BoxDecoration(
+                      color: on ? _palette.primary : null,
+                      borderRadius: BorderRadius.circular(5),
+                      border: on
+                          ? null
+                          : Border.all(color: _fieldLine, width: 2),
+                    ),
+                    child: on
+                        ? Icon(Icons.check, size: 12, color: _palette.onPrimary)
+                        : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          role.label,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: _palette.dark,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          role == TeamRole.share
+                              ? 'Compartilha a própria localização'
+                              : 'Vê quem está em campo',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            height: 16 / 12,
+                            fontWeight: FontWeight.w500,
+                            color: _muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+  Future<void> _remove(Team team, TeamPerson person) async {
+    final ok = await _actionSheet(
+      title: 'Remover ${person.email} da ${team.name}?',
+      confirmLabel: 'Remover',
+      busyLabel: 'Removendo…',
+      danger: true,
+      lines: [
+        'Se esta for a única equipe da pessoa, o acesso à $_organization '
+            'acaba.',
+        'Deixa de aparecer no mapa desta equipe e de ver quem está nela.',
+        'Os trajetos antigos continuam no histórico.',
+      ],
+      onConfirm: () async =>
+          await c.remove(team.number, person.email) ? null : _failure,
+    );
+    if (ok && mounted) {
+      _toast(context, '${person.email} não faz mais parte da equipe');
+    }
+  }
+
+  /// Runs an invite operation for [_actionSheet]: an error message or
+  /// `null`, then reloads the invites.
+  Future<String?> _inviteOperation(Future<void> Function() operation) async {
+    try {
+      await operation();
+    } on InvitesException catch (e) {
+      return e.message;
+    } catch (e) {
+      debugPrint('[Teams] Invite operation failed: $e');
+      return 'Não foi possível concluir agora. Verifique a conexão e tente '
+          'de novo.';
+    }
+    await _loadInvites();
+    return null;
+  }
+
+  Future<void> _resend(Invite invite) async {
+    final ok = await _actionSheet(
+      title: 'Reenviar o convite?',
+      confirmLabel: 'Reenviar convite',
+      busyLabel: 'Reenviando…',
+      lines: [
+        '${invite.email} recebe um novo e-mail.',
+        'O novo convite vale por 14 dias.',
+      ],
+      onConfirm: () => _inviteOperation(
+        () => widget.invitesBackend.resend(c.partnerId, invite.id),
+      ),
+    );
+    if (ok && mounted) _toast(context, 'Convite reenviado');
+  }
+
+  Future<void> _cancelInvite(Invite invite) async {
+    final ok = await _actionSheet(
+      title: 'Cancelar o convite?',
+      confirmLabel: 'Cancelar convite',
+      busyLabel: 'Cancelando…',
+      danger: true,
+      lines: [
+        'O link enviado para ${invite.email} deixa de funcionar.',
+        'Você pode convidar de novo depois.',
+      ],
+      onConfirm: () => _inviteOperation(
+        () => widget.invitesBackend.cancel(c.partnerId, invite.id),
+      ),
+    );
+    if (ok && mounted) _toast(context, 'Convite cancelado');
+  }
+
+  Future<void> _delete(Team team) async {
+    if (_loadingImpact) return;
+    setState(() => _loadingImpact = true);
+    ({List<String> loses, List<String> stays})? impact;
+    try {
+      impact = await c.deletionImpact(team.number);
+    } finally {
+      if (mounted) setState(() => _loadingImpact = false);
+    }
+    if (!mounted) return;
+    if (impact == null) {
+      _toast(context, _failure);
       return;
     }
-    await controller.rename(team.number, name);
-  }
-
-  Future<void> _delete(BuildContext context, Team team) async {
-    final impact = await controller.deletionImpact(team.number);
-    if (impact == null || !context.mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Excluir ${team.name}?'),
-        content: Text(
-          [
-            if (impact.loses.isNotEmpty)
-              'Perdem o acesso à organização (não estão em outra equipe): '
-                  '${impact.loses.join(', ')}.',
-            if (impact.stays.isNotEmpty)
-              'Continuam em outras equipes: ${impact.stays.join(', ')}.',
-            if (impact.loses.isEmpty && impact.stays.isEmpty)
-              'A equipe não tem ninguém.',
-            'Os trajetos antigos continuam no histórico.',
-          ].join('\n\n'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: _error),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Excluir'),
-          ),
-        ],
+    final loses = impact.loses.length;
+    await _actionSheet(
+      title: 'Excluir a ${team.name}?',
+      confirmLabel: 'Excluir equipe',
+      busyLabel: 'Excluindo…',
+      danger: true,
+      lines: teamDeletionLines(
+        loses: loses,
+        stays: impact.stays.length,
+        invites: _invites?.length ?? 0,
+        organization: _organization,
       ),
+      onConfirm: () async {
+        if (!await c.delete(team.number)) return _failure;
+        // Set before the next frame: the team is already gone from the list.
+        if (mounted) setState(() => _deleted = (name: team.name, loses: loses));
+        return null;
+      },
     );
-    if (confirmed == true && await controller.delete(team.number)) Get.back();
   }
 }
 
-/// Opens *Convidar pessoas* for the owner's teams (preselecting [team]).
-void openInvite(TeamsController controller, {String? team}) {
-  Get.to(
+/// Opens *Convidar pessoas* for the owner's teams (preselecting [team]);
+/// completes after the teams are reloaded.
+Future<void> openInvite(TeamsController controller, {String? team}) async {
+  await Get.to(
     () => InviteView(
       controller: InviteController(
         partnerId: controller.partnerId,
@@ -614,124 +1455,6 @@ void openInvite(TeamsController controller, {String? team}) {
         backend: const FirebaseInvitesBackend(),
       ),
     ),
-  )?.then((_) => controller.load());
-}
-
-/// *Convidados* of a team: pending invites, expired ones with *Reenviar*,
-/// and *Cancelar*.
-class TeamInvitesSection extends StatefulWidget {
-  const TeamInvitesSection({
-    super.key,
-    required this.partnerId,
-    required this.team,
-    this.backend = const FirebaseInvitesBackend(),
-  });
-
-  final String partnerId;
-  final String team;
-  final InvitesBackend backend;
-
-  @override
-  State<TeamInvitesSection> createState() => _TeamInvitesSectionState();
-}
-
-class _TeamInvitesSectionState extends State<TeamInvitesSection> {
-  List<Invite>? _invites;
-  String? _working;
-  String _error = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final invites = await widget.backend.listForTeam(
-        widget.partnerId,
-        widget.team,
-      );
-      if (mounted) setState(() => _invites = invites);
-    } catch (e) {
-      if (mounted) setState(() => _error = '$e');
-    }
-  }
-
-  Future<void> _run(String id, Future<void> Function() action) async {
-    if (_working != null) return;
-    setState(() {
-      _working = id;
-      _error = '';
-    });
-    try {
-      await action();
-      await _load();
-    } catch (e) {
-      if (mounted) setState(() => _error = '$e');
-    } finally {
-      if (mounted) setState(() => _working = null);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final invites = _invites;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Convidados${invites == null ? '' : ' · ${invites.length}'}',
-          style: const TextStyle(fontWeight: FontWeight.w800, color: _ink),
-        ),
-        if (_error.isNotEmpty) _errorText(_error),
-        if (invites == null)
-          const Padding(
-            padding: EdgeInsets.all(12),
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (invites.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text(
-              'Nenhum convite pendente.',
-              style: TextStyle(color: _muted),
-            ),
-          ),
-        for (final invite in invites ?? const <Invite>[])
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(invite.email),
-            subtitle: Text(
-              invite.expired
-                  ? 'Expirado · ${invite.rolesLabel}'
-                  : '${invite.rolesLabel}'
-                        '${invite.expiresAt == null ? '' : ' · vale até ${dayMonth(invite.expiresAt!)}'}',
-            ),
-            trailing: _working == invite.id
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  )
-                : PopupMenuButton<String>(
-                    enabled: _working == null,
-                    onSelected: (value) => _run(
-                      invite.id,
-                      () => value == 'resend'
-                          ? widget.backend.resend(widget.partnerId, invite.id)
-                          : widget.backend.cancel(widget.partnerId, invite.id),
-                    ),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'resend', child: Text('Reenviar')),
-                      PopupMenuItem(
-                        value: 'cancel',
-                        child: Text('Cancelar convite'),
-                      ),
-                    ],
-                  ),
-          ),
-      ],
-    );
-  }
+  );
+  await controller.load();
 }
