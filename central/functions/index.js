@@ -14,6 +14,7 @@ const { TtlCache } = require("./ttl_cache");
 const { GROUPS_SCOPES, GroupsApi } = require("./groups_api");
 const { TeamError } = require("./teams");
 const { isPartnerAdmin } = require("./partner_admin");
+const { teamNames } = require("./team_names");
 const { InviteError } = require("./invites");
 const { GmailMailer } = require("./mailer");
 const {
@@ -40,6 +41,7 @@ const {
   duePartnerIds,
   retirePartner,
 } = require("./partner_status");
+const { isValidPartnerId } = require("./group_address");
 
 admin.initializeApp();
 
@@ -146,7 +148,7 @@ async function fetchUserGroups(idToken, email) {
     signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
   });
   if (!response.ok) {
-    logger.error(`[resolvePartners] Gateway answered ${response.status}.`);
+    logger.error(`[groups] Gateway answered ${response.status}.`);
     throw new HttpsError("unavailable", "Could not read your groups.");
   }
   const body = await response.json();
@@ -310,6 +312,43 @@ function teamCall(operation) {
 exports.listTeams = teamCall(async (partnerId) => ({
   teams: await listTeams(groupsApi, partnerId),
 }));
+
+/**
+ * The display names of the teams the caller sees in a partner, for the
+ * team menu: every team for an administrator, otherwise the teams of the
+ * caller's leaves. Open to everyone in the partner, not only its
+ * administrators: the caller's direct groups (one gateway call, cached like
+ * resolvePartners) decide which teams are named.
+ *
+ * Request: `{partnerId}`.
+ * Response: `{names: {<teamKey>: displayName}}`; a team without a display
+ * name is left out.
+ */
+exports.teamNames = onCall(
+  { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+    const { email, email_verified: emailVerified } = request.auth.token;
+    if (!email || emailVerified !== true) {
+      throw new HttpsError("failed-precondition", "A verified email is required.");
+    }
+    const partnerId = request.data?.partnerId;
+    if (!isValidPartnerId(partnerId)) {
+      throw new HttpsError("invalid-argument", "partnerId is required.");
+    }
+    const groups = await groupsByEmail.getOrCompute(email.toLowerCase(), () =>
+      fetchUserGroups(bearerToken(request), email)
+    );
+    const [entry] = await visiblePartners([partnerId]);
+    if (!entry || !BINDABLE.includes(entry.status)) return { names: {} };
+    try {
+      return { names: await teamNames(groupsApi, partnerId, groups) };
+    } catch (error) {
+      logger.error(`[teamNames] ${partnerId}: ${error.message}`);
+      throw new HttpsError("unavailable", "Não foi possível falar com os grupos agora.");
+    }
+  }
+);
 
 exports.createTeam = teamCall((partnerId, data) =>
   createTeam(groupsApi, partnerId, data.name)

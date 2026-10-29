@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/config/partner/group_address.dart';
 import 'package:monamie_app/app/config/partner/partner.dart';
+import 'package:monamie_app/app/data/partner/central_team_names.dart';
 import 'package:monamie_app/app/data/partner/partner_membership.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/data/repository/google_groups_repository.dart';
@@ -13,13 +14,19 @@ import 'package:monamie_app/app/modules/monamie/models/google_group_member_model
 import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 class GoogleGroupsController extends GetxController {
-  GoogleGroupsController({Future<void> Function()? onAccessLost})
-    : _onAccessLost =
-          onAccessLost ??
-          (() => Get.find<AuthGoogleController>().forgetRemovedPartner());
+  GoogleGroupsController({
+    Future<void> Function()? onAccessLost,
+    Future<Map<String, String>> Function(String partnerId)? teamNames,
+  }) : _onAccessLost =
+           onAccessLost ??
+           (() => Get.find<AuthGoogleController>().forgetRemovedPartner()),
+       _teamNames = teamNames ?? fetchTeamNames;
 
   /// Called when the user no longer belongs to the bound partner.
   final Future<void> Function() _onAccessLost;
+
+  /// The display names of the teams the person sees, by team key.
+  final Future<Map<String, String>> Function(String partnerId) _teamNames;
 
   final GoogleGroupsRepository _repository = GoogleGroupsRepository();
   fb.FirebaseAuth get _auth => CurrentPartnerFirebase.instance.auth;
@@ -85,28 +92,18 @@ class GoogleGroupsController extends GetxController {
     _loadGroups();
   }
 
-  /// The teams of [partnerId] as groups, for the keys in [teamKeys].
+  /// The teams for the keys in [teamKeys], as groups named from [names]
+  /// (display name by team key, from [fetchTeamNames]), or "Equipe NN" when
+  /// a team has no name there.
   ///
-  /// [rootEntities] are the root group's members (`/members`): its subgroups
-  /// are the teams, with their display names. [userGroups] are the person's
-  /// own groups (`/groups`). A team's name comes from its entry in either
-  /// list, or is "Equipe NN" when neither names it.
+  /// The gateway never has a team's name: its member resources carry none,
+  /// and a person's own groups are the leaves and the root, never the team
+  /// group itself (#117).
   @visibleForTesting
   static List<GoogleGroupModel> teamsFor(
     Iterable<String> teamKeys,
-    List<Map<String, dynamic>> rootEntities,
-    List<Map<String, dynamic>> userGroups,
+    Map<String, String> names,
   ) {
-    final names = <String, String>{};
-    for (final entry in [...userGroups, ...rootEntities]) {
-      final email = entry['email'];
-      final name = entry['name'];
-      if (email is! String || name is! String || name.trim().isEmpty) continue;
-      final address = parseGroupAddress(email);
-      if (address?.level == GroupLevel.team) {
-        names[address!.teamKey] = name.trim();
-      }
-    }
     return [
       for (final key in teamKeys)
         GoogleGroupModel(
@@ -196,6 +193,8 @@ class GoogleGroupsController extends GetxController {
         await _onAccessLost();
         return;
       }
+      // Asked while the claims sync, which it does not depend on.
+      final names = _teamNamesOrNone(partner.id);
 
       // 2. Capabilities decide which teams the person sees and shares in.
       // Synced on every start, not only at sign-in: the binding stays on the
@@ -210,12 +209,11 @@ class GoogleGroupsController extends GetxController {
       _observableGoogleGroups.assignAll(
         teamsFor(
           caps.watchTeamsIn(partnerId, teamKeysOf(partnerId, rootEntities)),
-          rootEntities,
-          userGroups,
+          await names,
         ),
       );
       shareTeams.assignAll(
-        teamsFor(caps.shareTeamsIn(partnerId), rootEntities, userGroups),
+        teamsFor(caps.shareTeamsIn(partnerId), await names),
       );
 
       // Someone who watches opens straight onto a team, not an empty panel.
@@ -227,6 +225,19 @@ class GoogleGroupsController extends GetxController {
       _observableGoogleGroups.clear();
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// The team names, or none when they cannot be read now: the menu then
+  /// shows "Equipe NN" instead of failing the whole load.
+  Future<Map<String, String>> _teamNamesOrNone(String partnerId) async {
+    try {
+      final names = await _teamNames(partnerId);
+      debugPrint('Team names of $partnerId: $names');
+      return names;
+    } catch (e) {
+      debugPrint('Could not read the team names of $partnerId: $e');
+      return const {};
     }
   }
 
@@ -359,11 +370,12 @@ class GoogleGroupsController extends GetxController {
 
     await _loadGroups(forceRefresh: true);
 
-    final currentGroupName = observedGroup.value;
-    if (currentGroupName != 'Nenhum') {
+    // By e-mail: a renamed team is still the same team.
+    final current = selectedGroup.value;
+    if (current != null) {
       try {
         final selectedGroup = _observableGoogleGroups.firstWhere(
-          (g) => g.name == currentGroupName,
+          (g) => g.email == current.email,
         );
         await updateObservedUsers(selectedGroup, forceRefresh: true);
       } catch (e) {
