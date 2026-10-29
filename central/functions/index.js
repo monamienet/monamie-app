@@ -18,6 +18,7 @@ const { GmailMailer } = require("./mailer");
 const {
   acceptInvite,
   cancelInvite,
+  cancelTeamInvites,
   listInvites,
   myInvites,
   resendInvite,
@@ -316,8 +317,12 @@ exports.teamDeletionImpact = teamCall((partnerId, data) =>
   deletionImpact(groupsApi, partnerId, String(data.team ?? ""))
 );
 
+// Groups first: if that fails, nothing changed. Invites left pending by a
+// failure after it cannot be accepted (`acceptInvite` checks the team's age).
 exports.deleteTeam = teamCall(async (partnerId, data) => {
-  await deleteTeam(groupsApi, partnerId, String(data.team ?? ""));
+  const team = String(data.team ?? "");
+  await deleteTeam(groupsApi, partnerId, team);
+  await cancelTeamInvites(admin.firestore(), partnerId, team);
   return { deleted: true };
 });
 

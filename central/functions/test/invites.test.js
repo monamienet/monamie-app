@@ -1,7 +1,13 @@
 const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { InviteError, inviteExpiry, inviteState, validateInvites } = require("../invites");
+const {
+  InviteError,
+  inviteExpiry,
+  inviteState,
+  predatesTeam,
+  validateInvites,
+} = require("../invites");
 
 /** Runs `act` and returns the InviteError it throws. */
 function inviteErrorOf(act) {
@@ -118,6 +124,42 @@ describe("inviteState - Unit Test Suite", () => {
 
       // 3. Assert
       assert.equal(result, state);
+    });
+  }
+});
+
+describe("predatesTeam - Unit Test Suite", () => {
+  /** When the current team group was created (Cloud Identity `createTime`). */
+  const teamCreated = "2026-10-15T12:00:00Z";
+  const after = new Date("2026-10-20T12:00:00Z");
+  const before = new Date("2026-10-10T12:00:00Z");
+  const cases = [
+    ["Happy Path", "an invite sent after the team was created, as a Date", { createdAt: after }, teamCreated, false],
+    ["Happy Path", "an invite sent after the team was created, as ISO text", { createdAt: "2026-10-20T12:00:00Z" }, teamCreated, false],
+    ["Happy Path", "an invite sent after the team was created, as a Timestamp-like", { createdAt: { toDate: () => after } }, teamCreated, false],
+    ["Happy Path", "an invite sent after a team created at a Date", { createdAt: after }, new Date(teamCreated), false],
+    ["Happy Path", "an invite sent before the team was recreated", { createdAt: before }, teamCreated, true],
+    ["Happy Path", "a Timestamp-like invite sent before the team was recreated", { createdAt: { toDate: () => before } }, teamCreated, true],
+    ["Edge Case", "an invite sent at the very millisecond the team was created", { createdAt: new Date(teamCreated) }, teamCreated, false],
+    ["Edge Case", "an invite sent one millisecond before the team was created", { createdAt: new Date("2026-10-15T11:59:59.999Z") }, teamCreated, true],
+    ["Sad Path", "an invite without createdAt", {}, teamCreated, true],
+    ["Sad Path", "an invite with unreadable createdAt text", { createdAt: "ontem" }, teamCreated, true],
+    ["Sad Path", "an invite with a number as createdAt", { createdAt: 1792411200000 }, teamCreated, true],
+    ["Sad Path", "a Timestamp-like that yields an invalid Date", { createdAt: { toDate: () => new Date("x") } }, teamCreated, true],
+    ["Sad Path", "no invite at all", undefined, teamCreated, true],
+    ["Sad Path", "a team without createTime", { createdAt: after }, undefined, true],
+    ["Sad Path", "a team with unreadable createTime", { createdAt: after }, "não é data", true],
+  ];
+  for (const [kind, label, invite, createTime, expected] of cases) {
+    test(`${kind}: ${label} ${expected ? "predates" : "does not predate"} the team`, () => {
+      // 1. Arrange
+      const input = invite;
+
+      // 2. Act
+      const result = predatesTeam(input, createTime);
+
+      // 3. Assert
+      assert.equal(result, expected);
     });
   }
 });
