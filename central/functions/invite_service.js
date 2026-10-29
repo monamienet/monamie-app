@@ -1,4 +1,10 @@
-const { InviteError, inviteExpiry, inviteState, validateInvites } = require("./invites");
+const {
+  InviteError,
+  inviteExpiry,
+  inviteState,
+  predatesTeam,
+  validateInvites,
+} = require("./invites");
 const { inviteEmail } = require("./mailer");
 const { createTeam, listTeams } = require("./team_service");
 const { teamGroupEmails } = require("./teams");
@@ -50,12 +56,15 @@ async function emailInvite(mailer, invite) {
  *   skipped: Array<{email: string, reason: string}>}>}
  */
 async function sendInvites(db, api, mailer, request) {
-  const { partnerId, partnerName, owner, now = new Date() } = request;
+  const { partnerId, partnerName, owner } = request;
   const people = validateInvites(request.invites);
   let team = request.team;
   if (request.firstTeamName) {
     team = (await createTeam(api, partnerId, request.firstTeamName)).team;
   }
+  // Read after the team exists: an invite stamped before its team group was
+  // created is refused on acceptance (see `predatesTeam`).
+  const now = request.now ?? new Date();
   const teams = await listTeams(api, partnerId);
   const target = teams.find((t) => t.team === team);
   if (!target) throw new InviteError("team", "Escolha uma equipe.");
@@ -94,6 +103,23 @@ async function sendInvites(db, api, mailer, request) {
     sent.push({ ...person, emailed: await emailInvite(mailer, invite) });
   }
   return { team, teamName: target.name, sent, skipped };
+}
+
+/**
+ * Cancels the pending invites of `team`, when the team is deleted: its
+ * number is reused by the next team created, which must not inherit them.
+ *
+ * @returns {Promise<number>} How many were cancelled
+ */
+async function cancelTeamInvites(db, partnerId, team) {
+  const snapshot = await db
+    .collection(INVITES)
+    .where("partnerId", "==", partnerId)
+    .where("team", "==", team)
+    .where("status", "==", "pending")
+    .get();
+  for (const doc of snapshot.docs) await doc.ref.update({ status: "cancelled" });
+  return snapshot.docs.length;
 }
 
 /** The partner's pending and expired invites (of `team`, when given). */
@@ -170,6 +196,13 @@ async function acceptInvite(db, api, inviteId, email, now = new Date()) {
     throw new InviteError("invite", "Este convite não vale mais.");
   }
   const emails = teamGroupEmails(invite.partnerId, invite.team);
+  // A team deleted and recreated keeps its number: an invite older than the
+  // current team group was meant for the deleted one.
+  const teamGroup = await api.lookup(emails.team);
+  const created = teamGroup ? (await api.get(teamGroup)).createTime : null;
+  if (!teamGroup || predatesTeam({ createdAt: doc.get("createdAt") }, created)) {
+    throw new InviteError("team", "A equipe deste convite não existe mais.");
+  }
   for (const role of invite.roles) {
     const leaf = await api.lookup(role === "watch" ? emails.watch : emails.share);
     if (!leaf) throw new InviteError("team", "A equipe deste convite não existe mais.");
@@ -188,6 +221,7 @@ async function acceptInvite(db, api, inviteId, email, now = new Date()) {
 module.exports = {
   acceptInvite,
   cancelInvite,
+  cancelTeamInvites,
   listInvites,
   myInvites,
   resendInvite,

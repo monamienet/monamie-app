@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
   acceptInvite,
   cancelInvite,
+  cancelTeamInvites,
   myInvites,
   resendInvite,
   sendInvites,
@@ -15,21 +16,30 @@ const NOW = new Date("2026-10-26T12:00:00Z");
 const IN_14_DAYS = "2026-11-09T12:00:00.000Z";
 const LATER = new Date("2026-11-05T12:00:00Z");
 const EARLIER = new Date("2026-10-20T12:00:00Z");
+/** When the fake's groups were created, unless a test says otherwise. */
+const GROUPS_CREATED = "2026-10-01T12:00:00Z";
 
 /**
  * An in-memory `GroupsApi` (as in team_service.test.js): groups by e-mail
- * with a resource name `groups/<e-mail>`, display name, parent and direct
- * members. Every call is appended to `calls`.
+ * with a resource name `groups/<e-mail>`, display name, parent, creation
+ * time and direct members. Every call is appended to `calls`.
  */
 function fakeGroupsApi(groups = {}) {
   const byEmail = new Map();
   const calls = [];
   const nameOf = (email) => `groups/${email}`;
   const byName = (name) => [...byEmail.values()].find((g) => g.name === name);
-  const add = (email, displayName, parent, members = []) =>
-    byEmail.set(email, { name: nameOf(email), email, displayName, parent, members: [...members] });
+  const add = (email, displayName, parent, members = [], createTime = GROUPS_CREATED) =>
+    byEmail.set(email, {
+      name: nameOf(email),
+      email,
+      displayName,
+      parent,
+      createTime,
+      members: [...members],
+    });
   for (const [email, group] of Object.entries(groups)) {
-    add(email, group.displayName, group.parent ?? CUSTOMER, group.members);
+    add(email, group.displayName, group.parent ?? CUSTOMER, group.members, group.createTime);
   }
   return {
     calls,
@@ -41,7 +51,7 @@ function fakeGroupsApi(groups = {}) {
     async get(name) {
       calls.push(["get", name]);
       const group = byName(name);
-      return { displayName: group.displayName, parent: group.parent };
+      return { displayName: group.displayName, parent: group.parent, createTime: group.createTime };
     },
     async create(email, displayName, customer) {
       calls.push(["create", email, displayName, customer]);
@@ -101,6 +111,33 @@ function rotaSulWithoutTeams() {
   return fakeGroupsApi({
     [g("rotasul00")]: { displayName: "Rota Sul", members: [user("dono@x.com")] },
   });
+}
+
+/** Rota Sul as in `rotaSul()`, but its team 01 group was created at `createTime`. */
+function rotaSulTeamCreatedAt(createTime) {
+  const api = rotaSul();
+  api.byEmail.get(g("rotasul01")).createTime = createTime;
+  return api;
+}
+
+/**
+ * Rota Sul with no team yet, whose `create()` waits a few milliseconds and
+ * then stamps the new group with the real clock, as Cloud Identity does.
+ * `createdTimes` keeps each group's stamp by e-mail.
+ */
+function rotaSulWithoutTeamsStampingCreation() {
+  const api = rotaSulWithoutTeams();
+  const create = api.create;
+  api.createdTimes = {};
+  api.create = async (email, displayName, customer) => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const name = await create(email, displayName, customer);
+    const createTime = new Date().toISOString();
+    api.byEmail.get(email).createTime = createTime;
+    api.createdTimes[email] = createTime;
+    return name;
+  };
+  return api;
 }
 
 const peopleOf = (api, leaf) => api.byEmail.get(g(leaf)).members.map((m) => m.email);
@@ -204,6 +241,7 @@ function storedInvite(overrides = {}) {
     roles: ["share", "watch"],
     invitedByName: "Rita Lima",
     invitedByEmail: "dono@x.com",
+    createdAt: EARLIER,
     expiresAt: LATER,
     status: "pending",
     ...overrides,
@@ -341,6 +379,40 @@ describe("sendInvites - Unit Test Suite", () => {
       { team: invite.team, teamName: invite.teamName, resultTeam: result.team },
       { team: "01", teamName: "Equipe Serra", resultTeam: "01" }
     );
+  });
+
+  test("Edge Case: with firstTeamName and no now, the invite is not older than its new team group", async () => {
+    // 1. Arrange
+    const db = fakeFirestore();
+    const api = rotaSulWithoutTeamsStampingCreation();
+    const request = sendRequest({ team: undefined, firstTeamName: "Equipe Serra", now: undefined });
+
+    // 2. Act
+    await sendInvites(db, api, fakeMailer(), request);
+
+    // 3. Assert
+    const [invite] = db.all("invites");
+    const teamCreated = new Date(api.createdTimes[g("rotasul01")]);
+    assert.ok(
+      invite.createdAt.getTime() >= teamCreated.getTime(),
+      `invite createdAt ${iso(invite.createdAt)} is before team createTime ${teamCreated.toISOString()}`
+    );
+  });
+
+  test("Edge Case: an invite sent together with the first team can be accepted", async () => {
+    // 1. Arrange
+    const db = fakeFirestore();
+    const api = rotaSulWithoutTeamsStampingCreation();
+    const request = sendRequest({ team: undefined, firstTeamName: "Equipe Serra", now: undefined });
+    await sendInvites(db, api, fakeMailer(), request);
+    const [{ id }] = db.all("invites");
+
+    // 2. Act
+    await acceptInvite(db, api, id, "davi@x.com", new Date());
+
+    // 3. Assert
+    assert.equal(db.store.get(`invites/${id}`).status, "accepted");
+    assert.ok(peopleOf(api, "rotasul01w").includes("davi@x.com"));
   });
 
   test("Sad Path: when the e-mail fails the invite still exists and emailed is false", async () => {
@@ -540,6 +612,127 @@ describe("acceptInvite - Unit Test Suite", () => {
     // 3. Assert
     assert.equal(error.code, "team");
     assert.equal(db.store.get("invites/inv1").status, "pending");
+  });
+});
+
+describe("acceptInvite of a reused team number - Unit Test Suite", () => {
+  test("Happy Path: an invite sent after the team was recreated is accepted", async () => {
+    // 1. Arrange
+    const db = fakeFirestore({ "invites/inv1": storedInvite({ createdAt: EARLIER }) });
+    const api = rotaSulTeamCreatedAt("2026-10-15T12:00:00Z");
+
+    // 2. Act
+    await acceptInvite(db, api, "inv1", "davi@x.com", NOW);
+
+    // 3. Assert
+    assert.equal(db.store.get("invites/inv1").status, "accepted");
+    assert.ok(peopleOf(api, "rotasul01w").includes("davi@x.com"));
+  });
+
+  test("Edge Case: an invite sent at the very moment the team was created is accepted", async () => {
+    // 1. Arrange
+    const db = fakeFirestore({ "invites/inv1": storedInvite({ createdAt: EARLIER }) });
+    const api = rotaSulTeamCreatedAt(EARLIER.toISOString());
+
+    // 2. Act
+    await acceptInvite(db, api, "inv1", "davi@x.com", NOW);
+
+    // 3. Assert
+    assert.equal(db.store.get("invites/inv1").status, "accepted");
+  });
+
+  test("Sad Path: an invite sent before the team was deleted and recreated throws team", async () => {
+    // 1. Arrange
+    const db = fakeFirestore({ "invites/inv1": storedInvite({ createdAt: EARLIER }) });
+    const api = rotaSulTeamCreatedAt("2026-10-22T12:00:00Z");
+
+    // 2. Act
+    const error = await inviteErrorOf(() => acceptInvite(db, api, "inv1", "davi@x.com", NOW));
+
+    // 3. Assert
+    assert.equal(error.code, "team");
+    assert.deepEqual(api.calls.filter(([m]) => m === "addMember"), []);
+    assert.equal(db.store.get("invites/inv1").status, "pending");
+  });
+
+  test("Sad Path: an invite without createdAt throws team and adds nobody", async () => {
+    // 1. Arrange
+    const db = fakeFirestore({ "invites/inv1": storedInvite({ createdAt: undefined }) });
+    const api = rotaSul();
+
+    // 2. Act
+    const error = await inviteErrorOf(() => acceptInvite(db, api, "inv1", "davi@x.com", NOW));
+
+    // 3. Assert
+    assert.equal(error.code, "team");
+    assert.deepEqual(api.calls.filter(([m]) => m === "addMember"), []);
+    assert.equal(db.store.get("invites/inv1").status, "pending");
+  });
+});
+
+describe("cancelTeamInvites - Unit Test Suite", () => {
+  /** Two pending invites of Rota Sul's team 01, plus ones that must not change. */
+  function invitesAroundTeam01() {
+    return fakeFirestore({
+      "invites/davi": storedInvite(),
+      "invites/eva": storedInvite({ email: "eva@x.com" }),
+      "invites/team02": storedInvite({ team: "02" }),
+      "invites/otherPartner": storedInvite({ partnerId: "outro" }),
+      "invites/accepted": storedInvite({ email: "fabi@x.com", status: "accepted" }),
+      "invites/cancelled": storedInvite({ email: "gil@x.com", status: "cancelled" }),
+    });
+  }
+  const statuses = (db) =>
+    Object.fromEntries(db.all("invites").map((i) => [i.id, i.status]));
+
+  test("Happy Path: cancels the pending invites of the team and returns 2", async () => {
+    // 1. Arrange
+    const db = invitesAroundTeam01();
+
+    // 2. Act
+    const count = await cancelTeamInvites(db, "rotasul", "01");
+
+    // 3. Assert
+    assert.equal(count, 2);
+    assert.equal(db.store.get("invites/davi").status, "cancelled");
+    assert.equal(db.store.get("invites/eva").status, "cancelled");
+  });
+
+  test("Edge Case: invites of another team, another partner, accepted or cancelled are untouched", async () => {
+    // 1. Arrange
+    const db = invitesAroundTeam01();
+
+    // 2. Act
+    await cancelTeamInvites(db, "rotasul", "01");
+
+    // 3. Assert
+    assert.deepEqual(statuses(db), {
+      davi: "cancelled",
+      eva: "cancelled",
+      team02: "pending",
+      otherPartner: "pending",
+      accepted: "accepted",
+      cancelled: "cancelled",
+    });
+  });
+
+  test("Sad Path: a team with no pending invite returns 0 and changes nothing", async () => {
+    // 1. Arrange
+    const db = invitesAroundTeam01();
+
+    // 2. Act
+    const count = await cancelTeamInvites(db, "rotasul", "03");
+
+    // 3. Assert
+    assert.equal(count, 0);
+    assert.deepEqual(statuses(db), {
+      davi: "pending",
+      eva: "pending",
+      team02: "pending",
+      otherPartner: "pending",
+      accepted: "accepted",
+      cancelled: "cancelled",
+    });
   });
 });
 

@@ -63,6 +63,17 @@ function inviteExpiry(now) {
   return new Date(now.getTime() + INVITE_TTL_MS);
 }
 
+/** A Date, ISO text or Firestore Timestamp as a valid Date, else null. */
+function toDate(raw) {
+  const at =
+    raw instanceof Date
+      ? raw
+      : typeof raw === "string"
+        ? new Date(raw)
+        : raw?.toDate?.() ?? null;
+  return at && !Number.isNaN(at.getTime()) ? at : null;
+}
+
 /**
  * Whether `invite` can still be accepted at `now`: pending and not expired.
  *
@@ -73,17 +84,26 @@ function inviteExpiry(now) {
 function inviteState(invite, now) {
   if (invite?.status === "cancelled") return "cancelled";
   if (invite?.status === "accepted") return "accepted";
-  const raw = invite?.expiresAt;
-  const at =
-    raw instanceof Date
-      ? raw
-      : typeof raw === "string"
-        ? new Date(raw)
-        : raw?.toDate?.() ?? null;
-  if (!at || Number.isNaN(at.getTime()) || at.getTime() <= now.getTime()) {
-    return "expired";
-  }
+  const at = toDate(invite?.expiresAt);
+  if (!at || at.getTime() <= now.getTime()) return "expired";
   return "ok";
+}
+
+/**
+ * Whether `invite` was sent before its team's group was created, that is,
+ * to an earlier team that was deleted and whose number was then reused
+ * (`nextTeamNumber` hands out the lowest free one). An unreadable time
+ * counts as older, so such an invite is refused.
+ *
+ * @param {{createdAt?: Date|string|{toDate(): Date}}} invite
+ * @param {string|Date|undefined} teamCreateTime - The team group's
+ *   `createTime` (Cloud Identity)
+ * @returns {boolean}
+ */
+function predatesTeam(invite, teamCreateTime) {
+  const sent = toDate(invite?.createdAt);
+  const created = toDate(teamCreateTime);
+  return !sent || !created || sent.getTime() < created.getTime();
 }
 
 module.exports = {
@@ -92,5 +112,6 @@ module.exports = {
   MAX_INVITES_PER_SEND,
   inviteExpiry,
   inviteState,
+  predatesTeam,
   validateInvites,
 };

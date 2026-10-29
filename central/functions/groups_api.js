@@ -42,7 +42,7 @@ class GroupsApi {
     }
   }
 
-  /** The group `name` (`groups/…`): displayName, parent (customer). */
+  /** The group `name` (`groups/…`): displayName, parent (customer), createTime. */
   get(name) {
     return this._request({ url: `${CLOUD_IDENTITY}/${name}` });
   }
