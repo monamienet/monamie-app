@@ -15,6 +15,7 @@ import 'teams_controller.dart';
 const _ink = Color(0xFF1B1838);
 const _muted = Color(0xFF4A4858);
 const _soft = Color(0xFFF1F0F4);
+const _line = Color(0xFFECEAF0);
 const _error = Color(0xFFB3261E);
 
 PartnerPalette get _palette => PartnerPalette.fromConfig(Partner.current);
@@ -22,7 +23,13 @@ PartnerPalette get _palette => PartnerPalette.fromConfig(Partner.current);
 AppBar _bar(String title, {List<Widget>? actions}) => AppBar(
   backgroundColor: _palette.dark,
   foregroundColor: _palette.onDark,
+  toolbarHeight: 64,
   title: Text(title),
+  titleTextStyle: TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w800,
+    color: _palette.onDark,
+  ),
   centerTitle: false,
   actions: actions,
 );
@@ -32,12 +39,15 @@ Widget _primaryButton({
   required bool busy,
   required String busyLabel,
   required VoidCallback? onPressed,
+  IconData? icon,
 }) => SizedBox(
   height: 56,
   child: FilledButton(
     style: FilledButton.styleFrom(
       backgroundColor: _palette.primary,
       foregroundColor: _palette.onPrimary,
+      disabledBackgroundColor: _line,
+      disabledForegroundColor: _muted,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
     ),
@@ -58,7 +68,16 @@ Widget _primaryButton({
               Text(busyLabel),
             ],
           )
-        : Text(label),
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 20),
+                const SizedBox(width: 8),
+              ],
+              Text(label),
+            ],
+          ),
   ),
 );
 
@@ -72,7 +91,7 @@ Widget _errorText(String message) => message.isEmpty
         ),
       );
 
-Widget _initialTile(String name, {double size = 44}) {
+Widget _initialTile(String name, {double size = 44, double? fontSize}) {
   final initial = name.replaceFirst(RegExp(r'^Equipe\s+'), '');
   return Container(
     width: size,
@@ -80,12 +99,12 @@ Widget _initialTile(String name, {double size = 44}) {
     alignment: Alignment.center,
     decoration: BoxDecoration(
       color: _palette.light,
-      borderRadius: BorderRadius.circular(size * 0.3),
+      borderRadius: BorderRadius.circular(size == 40 ? 12 : size * 0.3),
     ),
     child: Text(
       initial.isEmpty ? '?' : initial[0].toUpperCase(),
       style: TextStyle(
-        fontSize: size * 0.42,
+        fontSize: fontSize ?? size * 0.42,
         fontWeight: FontWeight.w800,
         color: _palette.dark,
       ),
@@ -102,78 +121,132 @@ class TeamsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.white,
-    appBar: _bar('Equipes'),
-    body: Obx(() {
-      if (controller.isLoading.value && controller.teams.isEmpty) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      return RefreshIndicator(
-        onRefresh: controller.load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+    appBar: _bar(
+      'Equipes',
+      actions: [
+        Obx(
+          () => Padding(
+            padding: const EdgeInsets.only(right: 20),
+            child: Center(
+              child: Text(
+                controller.countLabel,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: _palette.light,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+    body: Column(
+      children: [
+        Expanded(
+          child: Obx(() {
+            if (controller.isLoading.value && controller.teams.isEmpty) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return RefreshIndicator(
+              onRefresh: controller.load,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+                children: [
+                  if (controller.errorMessage.value.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: _errorText(controller.errorMessage.value),
+                    ),
+                  if (controller.teams.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(12, 8, 12, 24),
+                      child: Text(
+                        'Sua organização ainda não tem equipes. Crie a '
+                        'primeira e convide quem vai trabalhar nela.',
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1.45,
+                          color: _muted,
+                        ),
+                      ),
+                    ),
+                  for (final team in controller.teams) _teamRow(team),
+                ],
+              ),
+            );
+          }),
+        ),
+        Container(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: _line)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+          child: SafeArea(
+            top: false,
+            minimum: const EdgeInsets.only(bottom: 32),
+            child: Obx(
+              () => _primaryButton(
+                label: 'Criar equipe',
+                busy: false,
+                busyLabel: '',
+                icon: Icons.add,
+                onPressed: controller.teams.length >= 99
+                    ? null
+                    : () =>
+                          Get.to(() => CreateTeamView(controller: controller)),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _teamRow(Team team) => InkWell(
+    borderRadius: BorderRadius.circular(16),
+    onTap: () =>
+        Get.to(() => TeamView(controller: controller, number: team.number)),
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 64),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
           children: [
-            Text(
-              controller.countLabel,
-              style: const TextStyle(fontSize: 14, color: _muted),
-            ),
-            const SizedBox(height: 12),
-            _errorText(controller.errorMessage.value),
-            if (controller.teams.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  'Sua organização ainda não tem equipes. Crie a primeira e '
-                  'convide quem vai trabalhar nela.',
-                  style: TextStyle(fontSize: 15, height: 1.45, color: _muted),
-                ),
-              ),
-            for (final team in controller.teams)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: _initialTile(team.name),
-                title: Text(
-                  team.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: _ink,
+            _initialTile(team.name, size: 40, fontSize: 15),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    team.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: _ink,
+                    ),
                   ),
-                ),
-                subtitle: Text(team.peopleLabel),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Get.to(
-                  () => TeamView(controller: controller, number: team.number),
-                ),
-              ),
-            const SizedBox(height: 16),
-            _primaryButton(
-              label: 'Convidar pessoas',
-              busy: false,
-              busyLabel: '',
-              onPressed: () => openInvite(controller),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _ink,
-                minimumSize: const Size.fromHeight(52),
-                side: const BorderSide(color: _ink, width: 2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              onPressed: controller.teams.length >= 99
-                  ? null
-                  : () => Get.to(() => CreateTeamView(controller: controller)),
-              icon: const Icon(Icons.add),
-              label: const Text(
-                'Criar equipe',
-                style: TextStyle(fontWeight: FontWeight.w800),
+                  const SizedBox(height: 2),
+                  Text(
+                    team.peopleLabel,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: _muted,
+                    ),
+                  ),
+                ],
               ),
             ),
+            const SizedBox(width: 12),
+            const Icon(Icons.chevron_right, size: 20, color: _muted),
           ],
         ),
-      );
-    }),
+      ),
+    ),
   );
 }
 
