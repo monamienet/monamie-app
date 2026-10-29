@@ -60,10 +60,19 @@ class Invite {
   final bool expired;
 
   /// "Em campo · Vê o mapa".
-  String get rolesLabel => [
-    for (final role in TeamRole.values)
-      if (roles.contains(role)) role.label,
-  ].join(' · ');
+  String get rolesLabel => teamRolesLabel(roles);
+
+  /// "Vale até 9 de novembro", "Expirado · venceu em 9 de novembro", or
+  /// just "Expirado" / empty when the date is unknown.
+  String get statusLabel {
+    final until = expiresAt;
+    if (expired) {
+      return until == null
+          ? 'Expirado'
+          : 'Expirado · venceu em ${dayMonth(until)}';
+    }
+    return until == null ? '' : 'Vale até ${dayMonth(until)}';
+  }
 }
 
 DateTime? _date(Object? value) => switch (value) {
@@ -89,8 +98,11 @@ const _months = [
   'dezembro',
 ];
 
-/// "9 de novembro".
-String dayMonth(DateTime date) => '${date.day} de ${_months[date.month - 1]}';
+/// "9 de novembro", on the device's calendar (the server sends UTC).
+String dayMonth(DateTime date) {
+  final local = date.toLocal();
+  return '${local.day} de ${_months[local.month - 1]}';
+}
 
 /// A person on *Convidar pessoas* before sending: e-mail and roles.
 class InviteDraft {
