@@ -304,12 +304,6 @@ class _CreateTeamViewState extends State<CreateTeamView> {
             color: _ink,
           ),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'Uma equipe junta quem trabalha junto. Quem vê o mapa de uma equipe '
-          'acompanha só as pessoas dela.',
-          style: TextStyle(fontSize: 15, height: 1.45, color: _muted),
-        ),
         const SizedBox(height: 20),
         TextField(
           controller: _name,
