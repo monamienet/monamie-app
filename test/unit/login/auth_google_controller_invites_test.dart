@@ -44,6 +44,15 @@ const _kOptions = FirebaseOptions(
 
 const _kRotaSul = PartnerCandidate(id: 'rotasul', options: _kOptions);
 const _kRotaSulName = 'Rota Sul';
+const _kVerdeMar = PartnerCandidate(id: 'verdemar', options: _kOptions);
+const _kAzulCeu = PartnerCandidate(id: 'azulceu', options: _kOptions);
+
+/// Display name of each partner the fake branding loader knows.
+const Map<String, String> _kPartnerNames = {
+  'rotasul': _kRotaSulName,
+  'verdemar': 'Verde Mar',
+  'azulceu': 'Azul Céu',
+};
 
 /// Claims of a person who shares their location in one team.
 const Map<String, Object?> _kShareClaims = {
@@ -123,7 +132,10 @@ class _FakeBrandingLoader implements PartnerBrandingLoader {
   @override
   Future<PartnerBinding> load(PartnerCandidate candidate) async =>
       PartnerBinding(
-        partner: PartnerConfig(id: candidate.id, name: _kRotaSulName),
+        partner: PartnerConfig(
+          id: candidate.id,
+          name: _kPartnerNames[candidate.id] ?? candidate.id,
+        ),
         options: candidate.options,
       );
 
@@ -157,9 +169,13 @@ class _FakePartnerSession extends PartnerSession {
   final Object? syncError = null;
   int forgetCalls = 0;
 
+  /// Id of every partner bound, in order.
+  final boundIds = <String>[];
+
   @override
   Future<void> bind(PartnerBinding binding, {bool remember = true}) async {
     log.add('bind');
+    boundIds.add(binding.partner.id);
     Partner.bind(binding.partner);
     CurrentPartnerFirebase.set(
       _FakePartnerFirebase(claims: claims ?? const {}, error: syncError),
@@ -320,11 +336,14 @@ class _SequencedPartnerDirectory implements PartnerDirectory {
 }
 
 /// [InvitesBackend] whose `accept` records the invite, optionally waits on
-/// [gate] and fails with [failure].
+/// [gate] and fails with [failure]; `mine` answers [mineResult] or fails
+/// with [mineFailure].
 class _FakeInvitesBackend implements InvitesBackend {
   final accepted = <String>[];
   Completer<void>? gate;
   Object? failure;
+  List<Invite> mineResult = const [];
+  Object? mineFailure;
 
   @override
   Future<Invite> accept(Invite invite) async {
@@ -335,7 +354,10 @@ class _FakeInvitesBackend implements InvitesBackend {
   }
 
   @override
-  Future<List<Invite>> mine() async => const [];
+  Future<List<Invite>> mine() async {
+    if (mineFailure case final failure?) throw failure;
+    return mineResult;
+  }
 
   @override
   Future<InviteSendResult> send(
@@ -358,6 +380,18 @@ class _FakeInvitesBackend implements InvitesBackend {
   Future<void> cancel(String partnerId, String inviteId) =>
       throw UnimplementedError();
 }
+
+final _kOtherInvite = Invite(
+  id: 'inv2',
+  partnerId: 'verdemar',
+  partnerName: 'Verde Mar',
+  team: '02',
+  teamName: 'Equipe Sul',
+  email: _kCentralEmail,
+  roles: const {TeamRole.watch},
+  invitedByName: 'Caio Prado',
+  expiresAt: DateTime.utc(2026, 11, 10, 12),
+);
 
 final _kInvite = Invite(
   id: 'inv1',
@@ -382,13 +416,14 @@ class _Harness {
     ],
   }) {
     directory = _SequencedPartnerDirectory(answers);
+    session = _FakePartnerSession(log, claims: _kShareClaims);
     controller = AuthGoogleController(
       authGoogleService: _FakeAuthGoogleService(log),
       userRepository: _FakeUserGoogleRepository(),
       trackingStopper: _FakeTrackingStopper(log),
       partnerDirectory: directory,
       brandingLoader: _FakeBrandingLoader(),
-      partnerSession: _FakePartnerSession(log, claims: _kShareClaims),
+      partnerSession: session,
       partnerLocalData: _FakePartnerLocalData(),
       invitesBackend: backend,
       refreshTheme: () => log.add('refreshTheme'),
@@ -398,6 +433,7 @@ class _Harness {
   final List<String> log = <String>[];
   final backend = _FakeInvitesBackend();
   late final _SequencedPartnerDirectory directory;
+  late final _FakePartnerSession session;
   late final AuthGoogleController controller;
 }
 
@@ -421,14 +457,25 @@ Future<void> _pumpApp(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Starts accepting [_kInvite] and advances the fake clock one second at a
-/// time (the retries wait 4 s each) until the accept is over.
-Future<void> _accept(
+/// Starts accepting [_kInvite] and advances the fake clock until it is over.
+Future<void> _accept(WidgetTester tester, AuthGoogleController controller) =>
+    _drive(tester, controller, () => controller.acceptInvite(_kInvite));
+
+/// Starts [act] and advances the fake clock one second at a time (the
+/// retries wait 4 s each) until the controller is no longer busy.
+Future<void> _drive(
   WidgetTester tester,
   AuthGoogleController controller,
+  Future<void> Function() act,
 ) async {
-  final done = controller.acceptInvite(_kInvite);
-  for (var i = 0; i < 60 && controller.acceptingInvite.value != null; i++) {
+  final done = act();
+  for (
+    var i = 0;
+    i < 60 &&
+        (controller.acceptingInvite.value != null ||
+            controller.isLoading.value);
+    i++
+  ) {
     await tester.pump(const Duration(seconds: 1));
   }
   await done;
@@ -576,6 +623,301 @@ void main() {
         );
         expect(harness.controller.acceptingInvite.value, isNull);
         expect(harness.directory.calls, 0);
+      },
+    );
+  });
+
+  group('AuthGoogleController pending invites on the picker - Unit Test Suite', () {
+    testWidgets(
+      'Happy Path: recheckPartners with one partner loads the pending invites',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness();
+        harness.backend.mineResult = [_kInvite];
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _drive(
+          tester,
+          harness.controller,
+          harness.controller.recheckPartners,
+        );
+
+        // 3. Assert
+        expect(harness.controller.pendingInvites, [_kInvite]);
+        expect(Get.currentRoute, Routes.PARTNER_PICKER);
+      },
+    );
+
+    testWidgets(
+      'Edge Case: recheckPartners with several partners loads every pending invite',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          answers: const [
+            [_kRotaSul, _kVerdeMar],
+          ],
+        );
+        harness.backend.mineResult = [_kInvite, _kOtherInvite];
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _drive(
+          tester,
+          harness.controller,
+          harness.controller.recheckPartners,
+        );
+
+        // 3. Assert
+        expect(harness.controller.pendingInvites, [_kInvite, _kOtherInvite]);
+        expect(Get.currentRoute, Routes.PARTNER_PICKER);
+        expect(harness.log, isNot(contains('bind')));
+      },
+    );
+
+    testWidgets(
+      'Sad Path: a failing invite read leaves pendingInvites empty and still opens the picker',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness();
+        harness.controller.pendingInvites.add(_kOtherInvite);
+        harness.backend.mineFailure = Exception('sem rede');
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _drive(
+          tester,
+          harness.controller,
+          harness.controller.recheckPartners,
+        );
+
+        // 3. Assert
+        expect(harness.controller.pendingInvites, isEmpty);
+        expect(Get.currentRoute, Routes.PARTNER_PICKER);
+      },
+    );
+  });
+
+  group(
+    'AuthGoogleController.acceptInvite (several organizations) - Unit Test Suite',
+    () {
+      testWidgets(
+        "Happy Path: binds the invite's partner even when another one is listed first",
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(
+            answers: const [
+              [_kVerdeMar, _kRotaSul],
+            ],
+          );
+          await _pumpApp(tester);
+
+          // 2. Act
+          await _accept(tester, harness.controller);
+
+          // 3. Assert
+          expect(harness.session.boundIds, ['rotasul']);
+        },
+      );
+
+      testWidgets('Happy Path: ends on the welcome screen, not the picker', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _Harness(
+          answers: const [
+            [_kVerdeMar, _kRotaSul],
+          ],
+        );
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _accept(tester, harness.controller);
+
+        // 3. Assert
+        expect(Get.currentRoute, Routes.WELCOME);
+      });
+
+      testWidgets(
+        "Edge Case: binds the invite's partner once it shows up on the third try",
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(
+            answers: const [
+              [_kVerdeMar],
+              [_kVerdeMar],
+              [_kVerdeMar, _kRotaSul],
+            ],
+          );
+          await _pumpApp(tester);
+
+          // 2. Act
+          await _accept(tester, harness.controller);
+
+          // 3. Assert
+          expect(harness.session.boundIds, ['rotasul']);
+          expect(Get.currentRoute, Routes.WELCOME);
+        },
+      );
+
+      testWidgets(
+        "Sad Path: opens the picker when the invite's partner never shows up among several others",
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(
+            answers: const [
+              [_kVerdeMar, _kAzulCeu],
+            ],
+          );
+          await _pumpApp(tester);
+
+          // 2. Act
+          await _accept(tester, harness.controller);
+
+          // 3. Assert
+          expect(harness.directory.calls, inInclusiveRange(6, 7));
+          expect(harness.session.boundIds, isEmpty);
+          expect(Get.currentRoute, Routes.PARTNER_PICKER);
+        },
+      );
+
+      testWidgets(
+        "Sad Path: opens the picker when the invite's partner never shows up and one other is listed",
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(
+            answers: const [
+              [_kVerdeMar],
+            ],
+          );
+          await _pumpApp(tester);
+
+          // 2. Act
+          await _accept(tester, harness.controller);
+
+          // 3. Assert
+          expect(harness.session.boundIds, isEmpty);
+          expect(Get.currentRoute, Routes.PARTNER_PICKER);
+        },
+      );
+    },
+  );
+
+  group('AuthGoogleController.enterCreatedOrganization - Unit Test Suite', () {
+    testWidgets(
+      'Happy Path: binds the created partner when several are listed',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          answers: const [
+            [_kRotaSul, _kVerdeMar],
+          ],
+        );
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _drive(
+          tester,
+          harness.controller,
+          () => harness.controller.enterCreatedOrganization('verdemar'),
+        );
+
+        // 3. Assert
+        expect(harness.session.boundIds, ['verdemar']);
+      },
+    );
+
+    testWidgets('Happy Path: ends on MonAmie, not the picker', (
+      WidgetTester tester,
+    ) async {
+      // 1. Arrange
+      final harness = _Harness(
+        answers: const [
+          [_kRotaSul, _kVerdeMar],
+        ],
+      );
+      await _pumpApp(tester);
+
+      // 2. Act
+      await _drive(
+        tester,
+        harness.controller,
+        () => harness.controller.enterCreatedOrganization('verdemar'),
+      );
+
+      // 3. Assert
+      expect(Get.currentRoute, Routes.MONAMIE);
+    });
+
+    testWidgets(
+      'Edge Case: binds the created partner once it shows up on the third try',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          answers: const [
+            [_kRotaSul],
+            [_kRotaSul],
+            [_kRotaSul, _kVerdeMar],
+          ],
+        );
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _drive(
+          tester,
+          harness.controller,
+          () => harness.controller.enterCreatedOrganization('verdemar'),
+        );
+
+        // 3. Assert
+        expect(harness.directory.fresh, everyElement(isTrue));
+        expect(harness.session.boundIds, ['verdemar']);
+        expect(Get.currentRoute, Routes.MONAMIE);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: opens the picker when the created partner never shows up among several others',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(
+          answers: const [
+            [_kRotaSul, _kAzulCeu],
+          ],
+        );
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _drive(
+          tester,
+          harness.controller,
+          () => harness.controller.enterCreatedOrganization('verdemar'),
+        );
+
+        // 3. Assert
+        expect(harness.directory.calls, inInclusiveRange(6, 7));
+        expect(harness.session.boundIds, isEmpty);
+        expect(Get.currentRoute, Routes.PARTNER_PICKER);
+      },
+    );
+
+    testWidgets(
+      'Sad Path: opens the picker when the created partner never shows up and one other is listed',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness();
+        await _pumpApp(tester);
+
+        // 2. Act
+        await _drive(
+          tester,
+          harness.controller,
+          () => harness.controller.enterCreatedOrganization('verdemar'),
+        );
+
+        // 3. Assert
+        expect(harness.session.boundIds, isEmpty);
+        expect(Get.currentRoute, Routes.PARTNER_PICKER);
       },
     );
   });
