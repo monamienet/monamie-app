@@ -14,11 +14,11 @@ Os passos são identificados por grupo, de acordo com a frequência com que são
 | **A** | Uma única vez para a empresa | A1 keystore · A2 a A6 base do CI no Google Cloud |
 | **B** | Uma vez por máquina ou clone | B1 `key.properties` · B2 login no Firebase CLI |
 | **C** | Uma vez para o app (`org.monamienet.app`) | C1 a C4 Firebase · C5 a C7 primeiro envio, manual · C8 SHAs do Play · C9 a C12 CI do app |
-| **D** | A cada nova versão | D1 merge da PR · D2 publicação automática ⚙️ |
+| **D** | A cada nova versão | D1 merge da PR · D2 publicação automática ⚙️ · D3 lançar uma versão · D4 promover ao teste fechado |
 
 | A cada nova versão | Antes do CI | Com o CI |
 | :--- | :--- | :--- |
-| Passos manuais | 5: atualizar o versionCode, gerar o bundle, enviar, preencher as notas e lançar | 1: fazer o merge da PR |
+| Passos manuais | 5: atualizar o versionCode, gerar o bundle, enviar, preencher as notas e lançar | 1: fazer o merge da PR (e, para mudar o versionName ou chegar ao teste fechado, um merge ou um clique) |
 
 ### Dependências entre os passos
 
@@ -38,6 +38,7 @@ flowchart LR
     nCI((" "))
     nM((" "))
     nE((" "))
+    nCl((" "))
 
     nS -->|A1| nK
     nS -->|A2| nCI
@@ -64,6 +65,7 @@ flowchart LR
     nK -->|C12| nCI
     nCI -->|D1| nM
     nM -->|D2 ⚙️| nE
+    nE -->|D4| nCl
 
     %% uma vez para a empresa (roxo)
     linkStyle 0,1,2,3,4,5 stroke:#7b2d8e,stroke-width:3px
@@ -74,7 +76,7 @@ flowchart LR
     %% só dependência, sem trabalho (cinza)
     linkStyle 11,18,19 stroke:#999999,stroke-width:1px
     %% a cada versão: manual (verde) e automático (verde tracejado)
-    linkStyle 23 stroke:#009e73,stroke-width:3px
+    linkStyle 23,25 stroke:#009e73,stroke-width:3px
     linkStyle 24 stroke:#009e73,stroke-width:3px,stroke-dasharray:6 4
 ```
 
@@ -90,7 +92,7 @@ flowchart LR
   - 🟣 uma vez para a empresa;
   - 🟠 uma vez por máquina;
   - 🔵 uma vez para o app;
-  - 🟢 a cada versão. A aresta **tracejada** (D2) é executada automaticamente pelo CI. D1 e D2 se repetem a cada versão.
+  - 🟢 a cada versão. A aresta **tracejada** (D2) é executada automaticamente pelo CI. D1 e D2 se repetem a cada build. D3 é um D1 especial (o merge da PR de release), e D4 só acontece quando você quer levar um build ao teste fechado.
 
 ## Valores usados
 
@@ -459,21 +461,65 @@ deve mostrar `main`.
 
 ### D1. Fazer o merge da PR na `main`
 
-É o único passo manual. Para mudar o versionName (por exemplo, de `1.0.0` para `1.1.0`), altere o
-`version:` do `pubspec.yaml` na própria PR. O versionCode é automático.
+É o único passo manual de todo build. Antes do merge, confira no diff da PR as **notas da versão**, o
+texto "O que há de novo" que aparece no Play:
+
+- Ficam em `distribution/whatsnew/whatsnew-pt-BR` e `whatsnew-en-US`, com até 500 caracteres cada,
+  o limite do Play por idioma.
+- Quem as escreve são os agentes de IA, na mesma PR da mudança (regra em `AGENTS.md`, seção
+  *Releases*). Elas resumem, em linguagem de quem usa o app, tudo o que mudou desde a última versão
+  lançada (a última tag `v…`).
+- O versionCode é automático, e o versionName muda só em D3.
 
 ### D2. Publicação automática ⚙️
 
-O merge dispara o workflow, que roda os testes, gera e assina o bundle, envia-o ao Play e lança a versão
-para os testadores. Nada precisa ser feito, mas vale saber:
+O merge dispara o workflow. Ele confere as notas, roda os testes, gera e assina o bundle, envia-o ao
+Play **com as notas** e lança a versão para os testadores. Nada precisa ser feito, mas vale saber:
 
 - **Acompanhar:** em *Actions → Deploy to Play (internal)*, cada execução mostra os logs de cada passo.
   Se algo falhar, nada é enviado e quem fez o push recebe um e-mail.
 - **Publicar de novo sem merge**, por exemplo depois de corrigir uma permissão: use *Run workflow* na `main`.
-- **Notas da versão:** são opcionais na faixa interna, e o workflow não as preenche. Se quiser notas,
-  edite a versão no Play Console.
 - ⚠️ **Não renomeie o arquivo do workflow.** O número da execução, usado como versionCode, é contado por
   arquivo. Renomeá-lo reinicia a contagem em 1, e o Play recusa versionCodes repetidos.
+
+### D3. Lançar uma versão (mudar o versionName)
+
+O workflow *Release PR* (`release-please.yml`) usa o **release-please**, uma ferramenta do Google, para
+manter aberta uma PR chamada **"chore: release X.Y.Z"**. Ela lê os commits que entraram desde a última
+versão, que seguem o padrão *Conventional Commits*, e calcula o próximo número:
+
+| Commits desde a última versão | Próxima versão |
+| :--- | :--- |
+| algum `feat:` (funcionalidade nova) | sobe o do meio: `1.0.0` → `1.1.0` |
+| só `fix:` (correções) | sobe o último: `1.0.0` → `1.0.1` |
+| um commit com o rodapé `Release-As: 2.0.0` | exatamente `2.0.0` |
+
+O primeiro número (`1.x.x` → `2.0.0`) **só muda quando você decide**: peça a um agente um commit com o
+rodapé `Release-As: 2.0.0`. Os agentes nunca usam `feat!:` nem `BREAKING CHANGE:`, que fariam esse
+número subir sozinho.
+
+Quando quiser lançar, faça o merge dessa PR. O merge:
+1. muda o `version:` do `pubspec.yaml` e escreve o `CHANGELOG.md`, um histórico técnico em inglês;
+2. cria a tag `vX.Y.Z` e um *GitHub Release*;
+3. dispara D2, que envia ao teste interno o build com o versionName novo e as notas que já estavam lá.
+
+Depois da tag, as notas da versão seguinte começam do zero na próxima PR com mudança visível.
+
+**Configuração única:** em *Settings → Actions → General*, marque *Allow GitHub Actions to create and
+approve pull requests*. Sem ela o release-please não consegue abrir a PR.
+
+### D4. Promover ao teste fechado
+
+Em *Actions → Promote to Play (closed) → Run workflow*, com a `main` selecionada:
+
+- **track:** o nome da faixa de teste fechado no Play. O padrão `alpha` é o nome interno da faixa
+  fechada que o Play cria. Se você criou outra faixa fechada, use o nome dela.
+- **version_code:** deixe vazio para promover o build que está no teste interno.
+
+O workflow não recompila nada. Pela API do Google Play, ele copia o versionCode **e as notas** da
+versão interna para a faixa fechada, que é revisada pelo Google antes de chegar aos testadores. Ele roda
+no environment `play-internal`, porque é nele que a service account de C10 confia. A permissão de C11
+(lançar em faixas de teste) já cobre o teste fechado.
 
 **Sem o CI:** se o workflow estiver indisponível, repita C6 e C7 com um versionCode maior que o da última
 versão enviada, que aparece no Play Console.
@@ -489,6 +535,10 @@ versão enviada, que aparece no Play Console.
 | `The given credential is rejected by the attribute condition` | O token não veio da organização `monamienet`. Confira a condição do provider (A4). |
 | `Permission 'iam.serviceAccounts.getAccessToken' denied` | O subject liberado em C10 não é o que o GitHub envia. Confira se o binding usa o prefixo da API (`echo $SUBJECT_PREFIX`) e se o job rodou no environment `play-internal`. |
 | `The caller does not have permission` | A service account ainda não tem permissão no Play Console, ou a permissão ainda não propagou (C11). |
+| `Release notes missing or empty` / `... has N characters` | Faltam as notas em `distribution/whatsnew/`, ou uma passa de 500 caracteres (D1). Corrija numa PR; nada foi enviado. |
+| `App changes since vX.Y.Z but distribution/whatsnew was not updated` | Entraram commits `feat:`/`fix:` no app sem atualizar as notas (D1). Uma PR que as atualize libera o próximo deploy. |
+| `No matching release on the internal track` (promoção) | O teste interno não tem versão concluída, ou o `version_code` informado não está nele (D4). |
+| release-please: `GitHub Actions is not permitted to create or approve pull requests` | Falta a configuração única de D3. |
 | `Version code ... has already been used` | O versionCode já foi usado. Normalmente o arquivo do workflow foi renomeado. Aumente o `+ 100` no workflow. |
 | `Only releases with status draft may be created on draft app` | O app ainda está em rascunho no Play. Conclua o primeiro lançamento (C7). |
 | O app instala, mas o login com Google falha | Faltam SHAs no Firebase: da chave de upload (C3) ou da assinatura do Google Play (C8). Localmente, busque a config de novo (B2). |

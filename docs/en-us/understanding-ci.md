@@ -49,7 +49,8 @@ PR opened ──► PR approved ──► "Merge" on GitHub
              GitHub Actions starts an empty Ubuntu runner
                                     │
    ┌────────────────────────────────┴─────────────────────────────────┐
-   │ 1. downloads the code    2. installs Java 17                      │
+   │ 1. downloads the code (with history and tags)                     │
+   │ 1b. checks the release notes   2. installs Java 17                │
    │ 3. installs Flutter      4. adjusts Gradle memory                 │
    │ 5. restores the keystore and key.properties                       │
    │ 6. fetches dependencies  7. runs the unit tests                   │
@@ -58,7 +59,7 @@ PR opened ──► PR approved ──► "Merge" on GitHub
    │ 10. flutter build appbundle (fetches google-services.json,        │
    │     signs, new versionCode)                                       │
    │ 11. authenticates with Google: publisher account (WIF)            │
-   │ 12. uploads to Play (internal track)                              │
+   │ 12. uploads to Play (internal track, with the notes)              │
    └────────────────────────────────┬─────────────────────────────────┘
                                     ▼
          Internal testers get the update through the Play Store
@@ -86,7 +87,8 @@ the push changes at least one of these paths, which are the inputs of the Androi
 | `assets/**` | images declared in `pubspec.yaml` |
 | `tool/**` | the partner tool: the build runs `tool/partner.dart firebase` to fetch `google-services.json` (section 6) |
 | `pubspec.yaml`, `pubspec.lock` | dependencies and the asset list |
-| `.github/workflows/deploy-play-internal.yml` | the pipeline itself: if it changes, it must run to prove it still works |
+| `distribution/**` | not part of the `.aab`, but the release notes are uploaded with it (section 5.1) |
+| `.github/scripts/check-release-notes.sh`, `.github/workflows/deploy-play-internal.yml` | the pipeline itself: if it changes, it must run to prove it still works |
 
 `**` means "any file, in any subfolder". For a PR merge, GitHub considers **all** files the PR changed:
 a PR that touches `AGENTS.md` **and** `lib/` deploys as usual.
@@ -175,13 +177,14 @@ In Dart, this would be something like `setupJava(distribution: 'temurin', javaVe
 
 ```yaml
 concurrency:
-  group: play-internal          # any "queue name", chosen by us
+  group: play                   # any "queue name", chosen by us
   cancel-in-progress: false     # do not interrupt the run in progress
 ```
 
 - **`group`** is a label. GitHub guarantees that, among all runs with the **same label**, only **one**
-  runs at a time. The others wait in the queue. The text `play-internal` has no special meaning: it
-  only has to be the same across runs that must not overlap.
+  runs at a time. The others wait in the queue. The text `play` has no special meaning: it only has
+  to be the same across runs that must not overlap. The closed testing promotion workflow (section 5.1)
+  uses the same group, so it never touches Play in the middle of an upload.
 - **`cancel-in-progress`** decides what happens to the run **already in progress** when a new one
   arrives:
   - `true`: the running one is **cancelled** and the new one takes its place;
@@ -196,7 +199,8 @@ middle one is dropped and only the newest runs after the first. Nothing is lost,
 
 | # | Step | What it does and why |
 | :--- | :--- | :--- |
-| 1 | `actions/checkout` | The runner starts empty; this downloads the code of the commit that triggered the workflow. |
+| 1 | `actions/checkout` | The runner starts empty; this downloads the code of the commit that triggered the workflow. With `fetch-depth: 0` it also downloads the history and tags, which step 1b uses. |
+| 1b | `Check release notes` | Checks the release notes in `distribution/whatsnew/` (section 5.1). It runs first to fail fast: without valid notes, nothing is built or uploaded. |
 | 2 | `actions/setup-java` | Android's Gradle needs Java. The project compiles for JVM 17 ([build.gradle.kts](../../android/app/build.gradle.kts)). |
 | 3 | `subosito/flutter-action` | Installs the **same** Flutter version used in development, so CI does not produce a different app. `cache: true` reuses the SDK and makes later runs faster. |
 | 4 | `Raise Gradle memory` | [android/gradle.properties](../../android/gradle.properties) caps the Gradle heap at 2 GB (`-Xmx2g`) for 8 GB dev laptops. The runner has more RAM, so CI raises it to 4 GB; `~/.gradle/gradle.properties` takes precedence over the project file, so the change applies to CI only. |
@@ -207,7 +211,7 @@ middle one is dropped and only the newest runs after the first. Nothing is lost,
 | 9 | `google-github-actions/auth` (`auth-config`) | Trades GitHub's OIDC token for temporary credentials of a service account that **only reads** Firebase app configs (section 6). |
 | 10 | `flutter build appbundle` | Builds the release `.aab` of the single app `org.monamienet.app`, signed with the keystore from step 5 and with a new versionCode (section 5). Before compiling, Gradle fetches the central project's `google-services.json` with the credentials from step 9. Partners are bound at runtime, so no partner is chosen here. |
 | 11 | `google-github-actions/auth` (`auth`) | Trades GitHub's OIDC token for temporary credentials of the publisher service account, with no key (section 6). |
-| 12 | `r0adkll/upload-google-play` | Uploads the `.aab` to the `internal` track with the credentials from step 11. `status: completed` releases it straight to testers. |
+| 12 | `r0adkll/upload-google-play` | Uploads the `.aab` to the `internal` track with the credentials from step 11. `status: completed` releases it straight to testers. `whatsNewDirectory` uploads the release notes. |
 
 ## 4. How the keystore reaches the runner (why base64)
 
@@ -255,13 +259,60 @@ The `--build-number` flag of `flutter build` overrides the number after the `+` 
 pubspec. So the 1st run produces versionCode **101**, the 2nd **102**, and so on. The `+100` reserves
 the numbers below 101 for manual uploads, such as an app's first release.
 
-- The **versionName** (`1.0.0`, what users see in the store) still comes from `pubspec.yaml`. Change
-  it in a PR whenever you want.
+- The **versionName** (`1.0.0`, what users see in the store) comes from `pubspec.yaml` and is changed
+  by the release PR (section 5.1). release-please also adds 1 to the number after the `+`, but CI
+  ignores it.
 - Pushes filtered out by `paths` (section 2) do **not** consume a number: the workflow never runs.
 - Failed runs also consume a number. This leaves "gaps" (101, 103...), which is fine: Play only
   requires the number to grow.
 - ⚠️ **Do not rename the workflow file.** The counter belongs to the file. If it is renamed, the counter
   restarts at 1 and the upload fails with a duplicate versionCode.
+
+### 5.1 versionName, release notes and closed testing
+
+The **versionName** (`1.0.0`, what users see in the store) comes from `version:` in `pubspec.yaml`, but
+nobody edits it by hand. It is changed by **release-please**, a Google tool run by the
+[release-please.yml](../../.github/workflows/release-please.yml) workflow. It reads the commits since
+the last version, which follow the *Conventional Commits* convention: `feat:` bumps the middle number
+(`1.1.0`) and `fix:` the last one (`1.0.1`). With that, it keeps a "chore: release X.Y.Z" PR open. The
+first number changes only by human decision, with the `Release-As: X.0.0` footer in a commit. The
+configuration is in [release-please-config.json](../../release-please-config.json), and the current
+version in [.release-please-manifest.json](../../.release-please-manifest.json).
+
+The **release notes** (`distribution/whatsnew/whatsnew-pt-BR` and `whatsnew-en-US`) are written by the
+AI agents in every PR with a visible change (rule in `AGENTS.md`, *Releases*). Step 1b of the deploy
+([check-release-notes.sh](../../.github/scripts/check-release-notes.sh)) checks that they exist, that
+they are at most 500 characters long and that they were updated since the last `v…` tag if the app
+changed. Step 12 uploads them with the `.aab`.
+
+The [promote-play-closed.yml](../../.github/workflows/promote-play-closed.yml) workflow runs only from
+the *Run workflow* button. It copies the internal testing release, with its versionCode and notes, to
+closed testing, without rebuilding.
+
+```mermaid
+sequenceDiagram
+    actor Dev as Person
+    participant IA as AI agent
+    participant GH as GitHub (main)
+    participant RP as release-please
+    participant Dep as deploy-play-internal
+    participant Pro as promote-play-closed
+    participant Play as Google Play
+
+    IA->>GH: feat:/fix: PR with code + notes (pt-BR/en-US)
+    Dev->>GH: reviews and merges
+    GH->>Dep: push to main
+    Dep->>Dep: 1b. checks the notes
+    Dep->>Play: .aab + notes to internal testing (versionName still 1.0.0)
+    GH->>RP: push to main
+    RP->>GH: opens/updates the "chore: release 1.1.0" PR
+    Dev->>GH: when ready to release, merges the release PR
+    RP->>GH: v1.1.0 tag + GitHub Release
+    GH->>Dep: the merge changed pubspec.yaml
+    Dep->>Play: .aab 1.1.0 + the same notes to internal testing
+    Dev->>Pro: Run workflow
+    Pro->>Play: copies the internal release (build + notes) to closed testing
+```
 
 ## 6. How GitHub gets permission to publish on Play (keyless)
 

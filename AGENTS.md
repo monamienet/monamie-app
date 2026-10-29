@@ -104,6 +104,15 @@ Follow `docs/en-us/run-web-locally.md`. Serve `build/web` on `http://localhost:5
 - **Pull request after human approval**: When the task is finished, wait for explicit human approval before opening a pull request to merge the branch into `main`. Do not open the PR, or merge it, without that approval. The PR description closes the task's issue (`Closes #<n>`).
 - **GitHub interactions via MCP**: Interact with GitHub (pull requests, issues, reviews, projects, comments, etc.) preferably through the GitHub MCP server tools. Fall back to the `gh` CLI only when the GitHub MCP server is unavailable in the session or does not support the required operation.
 
+## Releases
+
+Every merge to `main` that touches the app is uploaded to the Play internal track, and a human promotes it to closed testing with the `promote-play-closed.yml` workflow (walkthrough: `docs/en-us/publish-internal-testing.md`, section D).
+- **versionName**: changed only by release-please's "chore: release X.Y.Z" PR, never by hand in `pubspec.yaml`. Commit types drive it: `feat:` bumps the minor, `fix:` the patch. **Never** use `!` or a `BREAKING CHANGE:` footer; the major version changes only when the human asks, through a commit with the footer `Release-As: X.0.0`.
+- **Release notes**: every PR with a change visible to people using the app (`feat:` or `fix:` touching `lib/`, `android/` or `assets/`) rewrites `distribution/whatsnew/whatsnew-pt-BR` and `whatsnew-en-US`, the same text in both languages:
+    - they cover **everything** visible since the last release tag (`git describe --tags --abbrev=0 --match 'v*'`; with no tag yet, the whole app), merging the new change into what is already there; if the files were last changed before that tag, they describe the previous version, so start over;
+    - write for end users: no technical terms, commit types, screen code names or issue numbers; at most 500 characters per file (`wc -m`), Play's limit;
+    - the deploy fails before uploading if the files are missing, too long, or not updated since the last tag while the app changed (`.github/scripts/check-release-notes.sh`).
+
 ## Tracking Work in Issues
 
 - **One issue per request, before starting**: Whenever the human asks for anything that changes the repository (code, tests, docs, configuration, rule files, this file), create its GitHub issue **before** making any change, then do the work. Two exceptions, where no new issue is created: a follow-up of a task that already has an issue (adjusting its open PR, answering review comments, fixing its CI) uses that issue; and a request already covered by an open issue reuses it (add the request as a comment). Requests that change nothing in the repository (questions, investigations, running the app) need no issue; whatever they find follows the next rule.
