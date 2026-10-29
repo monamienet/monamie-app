@@ -48,7 +48,8 @@ PR aberta ──► PR aprovada ──► "Merge" no GitHub
              GitHub Actions liga um runner Ubuntu vazio
                                     │
    ┌────────────────────────────────┴─────────────────────────────────┐
-   │ 1. baixa o código        2. instala Java 17                       │
+   │ 1. baixa o código (com histórico e tags)                          │
+   │ 1b. confere as notas da versão   2. instala Java 17               │
    │ 3. instala Flutter       4. ajusta a memória do Gradle            │
    │ 5. recria a keystore e o key.properties                           │
    │ 6. baixa dependências    7. roda os testes unitários              │
@@ -57,7 +58,7 @@ PR aberta ──► PR aprovada ──► "Merge" no GitHub
    │ 10. flutter build appbundle (busca o google-services.json,        │
    │     assina, versionCode novo)                                     │
    │ 11. autentica no Google: conta que publica (WIF, sem chave)       │
-   │ 12. envia ao Play (faixa internal)                                │
+   │ 12. envia ao Play (faixa internal, com as notas)                  │
    └────────────────────────────────┬─────────────────────────────────┘
                                     ▼
          Testadores internos recebem a atualização pela Play Store
@@ -86,7 +87,8 @@ push alterar pelo menos um destes caminhos, que são as entradas do build Androi
 | `assets/**` | imagens declaradas no `pubspec.yaml` |
 | `tool/**` | a ferramenta dos parceiros: o build roda `tool/partner.dart firebase` para buscar o `google-services.json` (seção 6) |
 | `pubspec.yaml`, `pubspec.lock` | dependências e lista de assets |
-| `.github/workflows/deploy-play-internal.yml` | o próprio pipeline: se ele muda, precisa rodar para provar que ainda funciona |
+| `distribution/**` | não entra no `.aab`, mas as notas da versão são enviadas junto com ele (seção 5.1) |
+| `.github/scripts/check-release-notes.sh`, `.github/workflows/deploy-play-internal.yml` | o próprio pipeline: se ele muda, precisa rodar para provar que ainda funciona |
 
 O `**` significa "qualquer arquivo, em qualquer subpasta". Num merge de PR, o GitHub considera **todos**
 os arquivos que o PR mudou: um PR que mexe no `AGENTS.md` **e** em `lib/` publica normalmente.
@@ -177,13 +179,14 @@ texto, e não como número.
 
 ```yaml
 concurrency:
-  group: play-internal          # um "nome de fila" qualquer, escolhido por nós
+  group: play                   # um "nome de fila" qualquer, escolhido por nós
   cancel-in-progress: false     # não interromper quem já está rodando
 ```
 
 - **`group`** é um rótulo. O GitHub garante que, entre todas as execuções com o **mesmo rótulo**, só
-  **uma** roda por vez. As outras esperam na fila. O texto `play-internal` não tem significado
-  especial: ele só precisa ser igual entre as execuções que não podem se sobrepor.
+  **uma** roda por vez. As outras esperam na fila. O texto `play` não tem significado especial:
+  ele só precisa ser igual entre as execuções que não podem se sobrepor. O workflow de promoção ao teste
+  fechado (seção 5.1) usa o mesmo grupo, para nunca mexer no Play no meio de um upload.
 - **`cancel-in-progress`** decide o que acontece com a execução **que já está rodando** quando chega
   uma nova:
   - `true`: a que está rodando é **cancelada** e a nova assume o lugar;
@@ -198,7 +201,8 @@ a `main` mais nova já contém as mudanças da do meio.
 
 | # | Passo | O que faz e por quê |
 | :--- | :--- | :--- |
-| 1 | `actions/checkout` | O runner começa vazio; este passo baixa o código do commit que disparou o workflow. |
+| 1 | `actions/checkout` | O runner começa vazio; este passo baixa o código do commit que disparou o workflow. Com `fetch-depth: 0`, baixa também o histórico e as tags, que o passo 1b usa. |
+| 1b | `Check release notes` | Confere as notas da versão em `distribution/whatsnew/` (seção 5.1). Roda antes de tudo para falhar rápido: sem notas válidas, nada é compilado nem enviado. |
 | 2 | `actions/setup-java` | O Gradle do Android precisa de Java. O projeto compila para JVM 17 ([build.gradle.kts](../../android/app/build.gradle.kts)). |
 | 3 | `subosito/flutter-action` | Instala a **mesma** versão do Flutter usada no desenvolvimento, para o CI não gerar um app diferente. Com `cache: true`, o SDK é reaproveitado e as próximas execuções ficam mais rápidas. |
 | 4 | `Raise Gradle memory` | O [android/gradle.properties](../../android/gradle.properties) limita o heap do Gradle a 2 GB (`-Xmx2g`), pensando nos notebooks de 8 GB. O runner tem mais RAM, então o CI aumenta para 4 GB; o `~/.gradle/gradle.properties` tem prioridade sobre o arquivo do projeto, então a mudança vale só no CI. |
@@ -209,7 +213,7 @@ a `main` mais nova já contém as mudanças da do meio.
 | 9 | `google-github-actions/auth` (`auth-config`) | Troca o token OIDC do GitHub por credenciais temporárias de uma service account que **só lê** a config dos apps do Firebase (seção 6). |
 | 10 | `flutter build appbundle` | Gera o `.aab` de release do app único `org.monamienet.app`, assinado com a keystore do passo 5 e com um versionCode novo (seção 5). Antes de compilar, o Gradle busca o `google-services.json` do projeto central com as credenciais do passo 9. Os parceiros são ligados em tempo de execução, então nenhum parceiro é escolhido aqui. |
 | 11 | `google-github-actions/auth` (`auth`) | Troca o token OIDC do GitHub por credenciais temporárias da service account que publica, sem chave (seção 6). |
-| 12 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal` com as credenciais do passo 11. `status: completed` lança o release direto para os testadores. |
+| 12 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal` com as credenciais do passo 11. `status: completed` lança o release direto para os testadores. `whatsNewDirectory` envia as notas da versão. |
 
 ## 4. Como a keystore chega ao runner (por que base64)
 
@@ -258,13 +262,59 @@ cresce**. O flag `--build-number` do `flutter build` substitui o número depois 
 pubspec. Assim, a 1ª execução gera versionCode **101**, a 2ª gera **102**, e assim por diante. O `+100`
 reserva os números abaixo de 101 para envios manuais, como o primeiro envio de um app.
 
-- O **versionName** (`1.0.0`, o que o usuário vê na loja) continua vindo do `pubspec.yaml`. Mude-o
-  numa PR quando quiser.
+- O **versionName** (`1.0.0`, o que o usuário vê na loja) vem do `pubspec.yaml` e é mudado pela PR de
+  release (seção 5.1). O release-please também soma 1 ao número depois do `+`, mas o CI o ignora.
 - Execuções que falham também consomem um número. Isso cria "buracos" (101, 103...), o que é normal:
   o Play só exige que o número cresça.
 - Pushes barrados pelo filtro `paths` (seção 2) **não** consomem número: o workflow nem chega a rodar.
 - ⚠️ **Não renomeie o arquivo do workflow.** O contador pertence ao arquivo. Se ele for renomeado, o
   contador volta a 1 e o upload falha por versionCode repetido.
+
+### 5.1 versionName, notas da versão e teste fechado
+
+O **versionName** (`1.0.0`, o que o usuário vê na loja) vem do `version:` do `pubspec.yaml`, mas
+ninguém o edita à mão. Quem o muda é o **release-please**, uma ferramenta do Google que roda no workflow
+[release-please.yml](../../.github/workflows/release-please.yml). Ela lê os commits desde a última
+versão, que seguem o padrão *Conventional Commits*: `feat:` sobe o número do meio (`1.1.0`) e `fix:`
+sobe o último (`1.0.1`). Com isso, mantém aberta uma PR "chore: release X.Y.Z". O primeiro número só
+muda por decisão humana, com o rodapé `Release-As: X.0.0` num commit. A configuração está em
+[release-please-config.json](../../release-please-config.json), e a versão atual em
+[.release-please-manifest.json](../../.release-please-manifest.json).
+
+As **notas da versão** (`distribution/whatsnew/whatsnew-pt-BR` e `whatsnew-en-US`) são escritas pelos
+agentes de IA em cada PR com mudança visível (regra em `AGENTS.md`, *Releases*). O passo 1b do deploy
+([check-release-notes.sh](../../.github/scripts/check-release-notes.sh)) confere que elas existem, que
+têm até 500 caracteres e que foram atualizadas desde a última tag `v…` se o app mudou. O passo 12 as
+envia junto com o `.aab`.
+
+O workflow [promote-play-closed.yml](../../.github/workflows/promote-play-closed.yml) roda só pelo botão
+*Run workflow*. Ele copia a versão do teste interno, com o versionCode e as notas, para o teste fechado,
+sem recompilar.
+
+```mermaid
+sequenceDiagram
+    actor Dev as Pessoa
+    participant IA as Agente de IA
+    participant GH as GitHub (main)
+    participant RP as release-please
+    participant Dep as deploy-play-internal
+    participant Pro as promote-play-closed
+    participant Play as Google Play
+
+    IA->>GH: PR feat:/fix: com código + notas (pt-BR/en-US)
+    Dev->>GH: revisa e faz o merge
+    GH->>Dep: push na main
+    Dep->>Dep: 1b. confere as notas
+    Dep->>Play: .aab + notas para o teste interno (versionName ainda 1.0.0)
+    GH->>RP: push na main
+    RP->>GH: abre/atualiza a PR "chore: release 1.1.0"
+    Dev->>GH: quando quiser lançar, faz o merge da PR de release
+    RP->>GH: tag v1.1.0 + GitHub Release
+    GH->>Dep: o merge mudou o pubspec.yaml
+    Dep->>Play: .aab 1.1.0 + as mesmas notas para o teste interno
+    Dev->>Pro: Run workflow
+    Pro->>Play: copia a versão interna (build + notas) para o teste fechado
+```
 
 ## 6. Como o GitHub ganha permissão para publicar no Play (sem chave)
 

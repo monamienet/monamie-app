@@ -1,0 +1,30 @@
+# Keeps one pull request open ("chore: release X.Y.Z") that bumps the
+# versionName in pubspec.yaml and writes CHANGELOG.md from the Conventional
+# Commits merged since the last release (feat: bumps the minor, fix: the
+# patch). Merging that PR tags the merge commit vX.Y.Z and creates a GitHub
+# Release; the push to main then deploys the new version to Play internal.
+#
+# Configuration: release-please-config.json and .release-please-manifest.json.
+# Walkthrough: docs/pt-br/entendendo-o-ci.md
+#
+# Needs "Allow GitHub Actions to create and approve pull requests" enabled in
+# the repository settings (Actions > General).
+name: Release PR
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

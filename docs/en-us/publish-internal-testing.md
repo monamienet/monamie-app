@@ -14,11 +14,11 @@ Steps are identified by group, according to how often they are done:
 | **A** | Once for the company | A1 keystore · A2 to A6 CI foundation in Google Cloud |
 | **B** | Once per machine or clone | B1 `key.properties` · B2 Firebase CLI sign-in |
 | **C** | Once for the app (`org.monamienet.app`) | C1 to C4 Firebase · C5 to C7 first release, manual · C8 Play SHAs · C9 to C12 app CI |
-| **D** | On every new version | D1 merge the PR · D2 automatic release ⚙️ |
+| **D** | On every new version | D1 merge the PR · D2 automatic release ⚙️ · D3 release a version · D4 promote to closed testing |
 
 | On every new version | Before CI | With CI |
 | :--- | :--- | :--- |
-| Manual steps | 5: bump the versionCode, build the bundle, upload, fill in release notes and release | 1: merge the PR |
+| Manual steps | 5: bump the versionCode, build the bundle, upload, fill in release notes and release | 1: merge the PR (and, to change the versionName or reach closed testing, one merge or one click) |
 
 ### Dependencies between steps
 
@@ -38,6 +38,7 @@ flowchart LR
     nCI((" "))
     nM((" "))
     nE((" "))
+    nCl((" "))
 
     nS -->|A1| nK
     nS -->|A2| nCI
@@ -64,6 +65,7 @@ flowchart LR
     nK -->|C12| nCI
     nCI -->|D1| nM
     nM -->|D2 ⚙️| nE
+    nE -->|D4| nCl
 
     %% once for the company (purple)
     linkStyle 0,1,2,3,4,5 stroke:#7b2d8e,stroke-width:3px
@@ -74,7 +76,7 @@ flowchart LR
     %% dependency only, no work (gray)
     linkStyle 11,18,19 stroke:#999999,stroke-width:1px
     %% every version: manual (green) and automatic (dashed green)
-    linkStyle 23 stroke:#009e73,stroke-width:3px
+    linkStyle 23,25 stroke:#009e73,stroke-width:3px
     linkStyle 24 stroke:#009e73,stroke-width:3px,stroke-dasharray:6 4
 ```
 
@@ -90,7 +92,7 @@ flowchart LR
   - 🟣 once for the company;
   - 🟠 once per machine;
   - 🔵 once for the app;
-  - 🟢 every version. The **dashed** edge (D2) is run automatically by CI. D1 and D2 repeat for every version.
+  - 🟢 every version. The **dashed** edge (D2) is run automatically by CI. D1 and D2 repeat for every build. D3 is a special D1 (merging the release PR), and D4 happens only when you want to take a build to closed testing.
 
 ## Values used
 
@@ -450,21 +452,67 @@ must print `main`.
 
 ### D1. Merge the PR into `main`
 
-This is the only manual step. To change the versionName (for example, from `1.0.0` to `1.1.0`), edit the
-`version:` in `pubspec.yaml` in the PR itself. The versionCode is automatic.
+This is the only manual step of every build. Before merging, check the **release notes** in the PR's
+diff, the "What's new" text shown in Play:
+
+- They live in `distribution/whatsnew/whatsnew-pt-BR` and `whatsnew-en-US`, at most 500 characters
+  each, Play's limit per language.
+- The AI agents write them, in the same PR as the change (rule in `AGENTS.md`, *Releases*). They
+  summarize, in the words of someone using the app, everything that changed since the last released
+  version (the last `v…` tag).
+- The versionCode is automatic, and the versionName changes only in D3.
 
 ### D2. Automatic release ⚙️
 
-The merge triggers the workflow, which runs the tests, builds and signs the bundle, uploads it to Play and
-releases the version to testers. Nothing needs to be done, but it is worth knowing:
+The merge triggers the workflow, which checks the notes, runs the tests, builds and signs the bundle,
+uploads it to Play **with the notes** and releases the version to testers. Nothing needs to be done, but
+it is worth knowing:
 
 - **Monitoring:** under *Actions → Deploy to Play (internal)*, each run shows the logs of every step. If
   anything fails, nothing is uploaded and whoever pushed gets an email.
 - **Publishing again without a merge**, for example after fixing a permission: use *Run workflow* on `main`.
-- **Release notes:** optional on the internal track, and the workflow does not fill them in. If you want
-  notes, edit the release in the Play Console.
 - ⚠️ **Do not rename the workflow file.** The run number, used as versionCode, is counted per file.
   Renaming it restarts the count at 1, and Play refuses duplicate versionCodes.
+
+### D3. Release a version (change the versionName)
+
+The *Release PR* workflow (`release-please.yml`) uses **release-please**, a Google tool, to keep a PR
+named **"chore: release X.Y.Z"** open. It reads the commits merged since the last version, which follow
+the *Conventional Commits* convention, and computes the next number:
+
+| Commits since the last version | Next version |
+| :--- | :--- |
+| any `feat:` (new feature) | bumps the middle one: `1.0.0` → `1.1.0` |
+| only `fix:` (fixes) | bumps the last one: `1.0.0` → `1.0.1` |
+| a commit with the footer `Release-As: 2.0.0` | exactly `2.0.0` |
+
+The first number (`1.x.x` → `2.0.0`) **changes only when you decide**: ask an agent for a commit with
+the footer `Release-As: 2.0.0`. Agents never use `feat!:` or `BREAKING CHANGE:`, which would bump that
+number on their own.
+
+When you want to release, merge that PR. The merge:
+1. changes `version:` in `pubspec.yaml` and writes `CHANGELOG.md`, a technical history in English;
+2. creates the `vX.Y.Z` tag and a *GitHub Release*;
+3. triggers D2, which uploads to internal testing the build with the new versionName and the notes
+   already in place.
+
+After the tag, the next version's notes start from scratch in the next PR with a visible change.
+
+**One-time setup:** under *Settings → Actions → General*, enable *Allow GitHub Actions to create and
+approve pull requests*. Without it, release-please cannot open the PR.
+
+### D4. Promote to closed testing
+
+Under *Actions → Promote to Play (closed) → Run workflow*, with `main` selected:
+
+- **track:** the name of the closed testing track in Play. The default `alpha` is the internal name of
+  the closed track Play creates. If you created another closed track, use its name.
+- **version_code:** leave it empty to promote the build on internal testing.
+
+The workflow rebuilds nothing. Through the Google Play API, it copies the versionCode **and the notes**
+of the internal release to the closed track, which Google reviews before it reaches testers. It runs in
+the `play-internal` environment because that is the one the C10 service account trusts. The C11
+permission (release to testing tracks) already covers closed testing.
 
 **Without CI:** if the workflow is unavailable, repeat C6 and C7 with a versionCode greater than the last
 uploaded version's, which is shown in the Play Console.
@@ -480,6 +528,10 @@ uploaded version's, which is shown in the Play Console.
 | `The given credential is rejected by the attribute condition` | The token did not come from the `monamienet` organization. Check the provider condition (A4). |
 | `Permission 'iam.serviceAccounts.getAccessToken' denied` | The subject allowed in C10 is not the one GitHub sends. Check that the binding uses the prefix from the API (`echo $SUBJECT_PREFIX`) and that the job ran in the `play-internal` environment. |
 | `The caller does not have permission` | The service account has no permission in the Play Console yet, or it has not propagated (C11). |
+| `Release notes missing or empty` / `... has N characters` | The notes in `distribution/whatsnew/` are missing, or one is over 500 characters (D1). Fix them in a PR; nothing was uploaded. |
+| `App changes since vX.Y.Z but distribution/whatsnew was not updated` | `feat:`/`fix:` commits reached the app without updating the notes (D1). A PR that updates them unblocks the next deploy. |
+| `No matching release on the internal track` (promotion) | Internal testing has no completed release, or the given `version_code` is not on it (D4). |
+| release-please: `GitHub Actions is not permitted to create or approve pull requests` | The D3 one-time setup is missing. |
 | `Version code ... has already been used` | The versionCode was already used. Usually the workflow file was renamed. Raise the `+ 100` in the workflow. |
 | `Only releases with status draft may be created on draft app` | The app is still a draft on Play. Finish the first release (C7). |
 | The app installs but Google sign-in fails | SHAs are missing in Firebase: from the upload key (C3) or from Google Play signing (C8). Locally, also fetch the config again (B2). |

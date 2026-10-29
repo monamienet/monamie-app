@@ -1,0 +1,79 @@
+# Promotes the build on the Play internal testing track to a closed testing
+# track, copying its versionCode and its release notes. Nothing is rebuilt:
+# closed testers get exactly the bundle internal testers already have.
+#
+# Runs only by hand: Actions > Promote to Play (closed) > Run workflow.
+# Walkthrough: docs/pt-br/publicar-teste-interno.md
+name: Promote to Play (closed)
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Closed testing track (Play's name for the default one is "alpha")
+        required: true
+        default: alpha
+      version_code:
+        description: versionCode to promote (empty = the release on internal)
+        required: false
+
+# Same group as deploy-play-internal.yml: a promotion never runs in the middle
+# of an upload, and vice versa.
+concurrency:
+  group: play
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    # The publisher service account trusts only jobs in this environment
+    # (docs/pt-br/publicar-teste-interno.md, step C10), which only main can use.
+    environment: play-internal
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # Keyless auth as the publisher service account, as in the deploy, but
+      # asking for a short-lived access token to call the Play API directly.
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/787253151660/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: wlif-monamie-app-play@ci-cd-management.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+
+      # Play Developer API: open an edit (a draft of changes), read the internal
+      # release, write it to the closed track, commit the edit.
+      - name: Promote internal release
+        env:
+          TOKEN: ${{ steps.auth.outputs.access_token }}
+          TRACK: ${{ inputs.track }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          API: https://androidpublisher.googleapis.com/androidpublisher/v3/applications/org.monamienet.app
+        run: |
+          set -euo pipefail
+          call() { curl -sS --fail-with-body -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' "$@"; }
+
+          edit=$(call -X POST "$API/edits" -d '{}' | jq -r .id)
+          internal=$(call "$API/edits/$edit/tracks/internal")
+
+          # The completed internal release, or the one holding the requested versionCode.
+          release=$(jq -c --arg vc "$VERSION_CODE" '
+            [.releases[]? | select(if $vc == "" then .status == "completed"
+                                   else (.versionCodes | index($vc)) end)][0] // empty' <<<"$internal")
+          if [ -z "$release" ]; then
+            echo "::error::No matching release on the internal track. Internal track: $internal"
+            exit 1
+          fi
+          if [ "$(jq '.releaseNotes | length' <<<"$release")" -eq 0 ]; then
+            echo "::warning::The internal release has no release notes; closed testers will see none."
+          fi
+
+          body=$(jq -c --arg track "$TRACK" '{track: $track, releases: [{
+            name, versionCodes, releaseNotes, status: "completed"}
+            | with_entries(select(.value != null))]}' <<<"$release")
+          call -X PUT "$API/edits/$edit/tracks/$TRACK" -d "$body" > /dev/null
+          call -X POST "$API/edits/$edit:commit" > /dev/null
+
+          echo "Promoted versionCode(s) $(jq -r '.versionCodes | join(", ")' <<<"$release") to $TRACK."

@@ -20,13 +20,15 @@ on:
       - 'tool/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
+      - 'distribution/**'
+      - '.github/scripts/check-release-notes.sh'
       - '.github/workflows/deploy-play-internal.yml'
   workflow_dispatch:
 
-# Serializes deploys: a new run waits for the one in progress instead of
-# cancelling it halfway through an upload.
+# Serializes Play changes: a new run waits for the one in progress instead of
+# cancelling it halfway through an upload. Shared with promote-play-closed.yml.
 concurrency:
-  group: play-internal
+  group: play
   cancel-in-progress: false
 
 jobs:
@@ -39,7 +41,16 @@ jobs:
       contents: read
       id-token: write
     steps:
+      # Full history and tags: the release notes check compares with the last
+      # v* tag.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Fails before anything is built or uploaded if the notes are missing,
+      # too long, or not updated since the last release.
+      - name: Check release notes
+        run: .github/scripts/check-release-notes.sh
 
       - uses: actions/setup-java@v6
         with:
@@ -120,3 +131,6 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
+          # whatsnew-pt-BR and whatsnew-en-US, written in each PR (AGENTS.md,
+          # "Releases"). Promotion to closed testing copies them along.
+          whatsNewDirectory: distribution/whatsnew
