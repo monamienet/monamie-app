@@ -68,7 +68,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
           // The plan screen scrolls between a header and a footer bar that
           // reach the screen's edges (`Plano.dc.html`); the others are one
           // column with 24 px margins.
-          final plan = _step == 3;
+          final plan = _step == 2;
           return Padding(
             padding: plan
                 ? const EdgeInsets.only(top: 8)
@@ -86,7 +86,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                 SizedBox(
                   height: switch (_step) {
                     0 => 24,
-                    3 => 12,
+                    2 => 12,
                     _ => 20,
                   },
                 ),
@@ -94,8 +94,8 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                   child: switch (_step) {
                     0 => _nameStep(),
                     1 => _themeStep(),
-                    2 => _reviewStep(),
-                    _ => _planStep(),
+                    2 => _planStep(),
+                    _ => _reviewStep(),
                   },
                 ),
               ],
@@ -543,7 +543,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         ),
       ),
       const SizedBox(height: 20),
-      _button('Revisar e criar', () => setState(() => _step = 2)),
+      _button('Continuar', () => setState(() => _step = 2)),
     ],
   );
 
@@ -778,8 +778,9 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   bool _acceptedTerms = false;
 
   /// *Tudo certo?* (`CriarRevisao.dc.html`): what the team will see, the
-  /// choices with a link back to each, who becomes the owner and first administrator, the terms and
-  /// the button that goes on to the plan.
+  /// choices (plan included) with a link back to each, who becomes the owner
+  /// and first administrator, the terms and the button that creates the
+  /// organization.
   Widget _reviewStep() {
     final theme = c.pickedTheme;
     final name = _preview.name;
@@ -892,6 +893,14 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                         ],
                       ),
                       1,
+                    ),
+                    _reviewRow(
+                      'Plano',
+                      Text(
+                        c.plan.value == 'community' ? 'Community' : 'Standard',
+                        style: _value,
+                      ),
+                      2,
                       last: true,
                     ),
                   ],
@@ -962,6 +971,19 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
           ),
         ),
         const SizedBox(height: 20),
+        if (c.errorMessage.value.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              c.errorMessage.value,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 19 / 13,
+                color: Color(0xFFB3261E),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         Row(
           children: [
             SizedBox(
@@ -972,7 +994,9 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                 activeColor: _navy,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
-                onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
+                onChanged: c.isCreating.value
+                    ? null
+                    : (v) => setState(() => _acceptedTerms = v ?? false),
               ),
             ),
             const SizedBox(width: 12),
@@ -1001,7 +1025,9 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         const SizedBox(height: 16),
         _button(
           'Criar organização',
-          _acceptedTerms ? () => setState(() => _step = 3) : null,
+          _acceptedTerms ? c.create : null,
+          busy: c.isCreating.value,
+          busyLabel: 'Criando…',
         ),
       ],
     );
@@ -1064,7 +1090,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   );
 
   /// *Escolha um plano* (`Plano.dc.html`): the two plans as radio cards, a
-  /// note, and a footer bar whose button creates the organization.
+  /// note, and a footer bar whose button goes on to the review.
   Widget _planStep() {
     final community = c.plan.value == 'community';
     final name = _preview.name;
@@ -1169,29 +1195,9 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
           decoration: const BoxDecoration(
             border: Border(top: BorderSide(color: _line)),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (c.errorMessage.value.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    c.errorMessage.value,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      height: 19 / 13,
-                      color: Color(0xFFB3261E),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              _button(
-                community ? 'Começar no Community' : 'Continuar com Standard',
-                c.create,
-                busy: c.isCreating.value,
-                busyLabel: 'Criando…',
-              ),
-            ],
+          child: _button(
+            community ? 'Continuar com Community' : 'Continuar com Standard',
+            () => setState(() => _step = 3),
           ),
         ),
       ],
