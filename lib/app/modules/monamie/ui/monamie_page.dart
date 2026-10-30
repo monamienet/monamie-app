@@ -16,6 +16,7 @@ import 'package:monamie_app/app/modules/monamie/ui/widgets/logout_progress_overl
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart' hide Path;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 
 class MonamiePage extends StatelessWidget {
@@ -129,6 +130,7 @@ class MonamiePage extends StatelessWidget {
             _highlightedTrajectories(),
             _firebaseMarkers(),
             _ownMarker(),
+            _attribution(),
             _centralizeButton(),
           ],
         ),
@@ -368,10 +370,34 @@ class MonamiePage extends StatelessWidget {
     );
   }
 
+  /// Keeps 35% of the tiles' saturation (Rec. 709 luminance weights): the
+  /// default OSM style is loud, and the team's markers must stand out on it.
+  static const _softColors = ColorFilter.matrix(<double>[
+    0.48819, 0.46488, 0.04693, 0, 0, //R
+    0.13819, 0.81488, 0.04693, 0, 0, //G
+    0.13819, 0.46488, 0.39693, 0, 0, //B
+    0, 0, 0, 1, 0, //A
+  ]);
+
   Widget _tile() {
     return TileLayer(
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       userAgentPackageName: 'org.monamienet.app',
+      tileBuilder: (context, tileWidget, tile) =>
+          ColorFiltered(colorFilter: _softColors, child: tileWidget),
+    );
+  }
+
+  /// The credit that the OSM licence and tile policy require on the map;
+  /// bottom left, since the center button takes the bottom right.
+  Widget _attribution() {
+    return SimpleAttributionWidget(
+      source: const Text('OpenStreetMap contributors'),
+      alignment: Alignment.bottomLeft,
+      onTap: () => launchUrl(
+        Uri.parse('https://www.openstreetmap.org/copyright'),
+        mode: LaunchMode.externalApplication,
+      ),
     );
   }
 
