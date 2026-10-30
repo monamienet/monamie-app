@@ -1,2 +1,3 @@
-Fix:
+Fixes:
 • The map's team menu now shows the name you gave each team, instead of "Equipe 01", "Equipe 02"…
+• Teams you create, rename or delete show in the map's team menu right away, without signing out and in again.

@@ -38,6 +38,14 @@ GoogleGroupModel team(String email) => GoogleGroupModel(
   subgroups: [],
 );
 
+GoogleGroupModel namedTeam(String email, String name) => GoogleGroupModel(
+  name: name,
+  email: email,
+  description: '',
+  members: [],
+  subgroups: [],
+);
+
 /// [PartnerFirebase] whose signed-in user always has an ID token.
 class FakePartnerFirebase implements PartnerFirebase {
   @override
@@ -354,6 +362,169 @@ void main() {
 
       // 3. Assert
       expect(next, isNull);
+    });
+  });
+
+  group('GoogleGroupsController.partnerTeams - Unit Test Suite', () {
+    test('Happy Path: every team of the partner, in team order, named', () {
+      // 1. Arrange
+      final names = {
+        'rotasul13': 'Zona Sul',
+        'rotasul01': 'Centro',
+        'rotasul02': 'Zona Norte',
+      };
+
+      // 2. Act
+      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+
+      // 3. Assert
+      expect(namesAndEmails(teams), [
+        ('Centro', 'rotasul01@monamienet.org'),
+        ('Zona Norte', 'rotasul02@monamienet.org'),
+        ('Zona Sul', 'rotasul13@monamienet.org'),
+      ]);
+    });
+
+    test('Edge Case: no names give no teams', () {
+      // 1. Arrange
+      const names = <String, String>{};
+
+      // 2. Act
+      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+
+      // 3. Assert
+      expect(teams, isEmpty);
+    });
+
+    test('Edge Case: a name with surrounding spaces is trimmed', () {
+      // 1. Arrange
+      final names = {'rotasul04': '  Zona Oeste \t'};
+
+      // 2. Act
+      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+
+      // 3. Assert
+      expect(namesAndEmails(teams), [
+        ('Zona Oeste', 'rotasul04@monamienet.org'),
+      ]);
+    });
+
+    test('Sad Path: a blank name falls back to "Equipe NN"', () {
+      // 1. Arrange
+      final names = {'rotasul04': ''};
+
+      // 2. Act
+      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+
+      // 3. Assert
+      expect(namesAndEmails(teams), [
+        ('Equipe 04', 'rotasul04@monamienet.org'),
+      ]);
+    });
+
+    test('Sad Path: a whitespace-only name falls back to "Equipe NN"', () {
+      // 1. Arrange
+      final names = {'rotasul05': ' \t\n '};
+
+      // 2. Act
+      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+
+      // 3. Assert
+      expect(namesAndEmails(teams), [
+        ('Equipe 05', 'rotasul05@monamienet.org'),
+      ]);
+    });
+
+    test('Sad Path: other partners, the root, leaves and non-team keys are '
+        'skipped', () {
+      // 1. Arrange
+      final names = {
+        'outro01': 'Outro parceiro',
+        'rota01': 'Prefixo do parceiro',
+        'rotasulx01': 'Parceiro mais longo',
+        'rotasul00': 'Administração',
+        'rotasul01r': 'Leitura',
+        'rotasul01w': 'Envio',
+        'RotaSul05': 'Maiúsculas',
+        'rotasul1': 'Um dígito',
+        'rotasul123': 'Três dígitos',
+        'rotasul02@monamienet.org': 'E-mail completo',
+        '': 'Vazio',
+        'rotasul03': 'Centro',
+      };
+
+      // 2. Act
+      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+
+      // 3. Assert
+      expect(namesAndEmails(teams), [('Centro', 'rotasul03@monamienet.org')]);
+    });
+  });
+
+  group('GoogleGroupsController.renamedSelection - Unit Test Suite', () {
+    test('Happy Path: the observed team with a new name is returned as it '
+        'is now', () {
+      // 1. Arrange
+      final teams = [
+        namedTeam(centro, 'Centro'),
+        namedTeam(norte, 'Zona Norte Nova'),
+      ];
+      final current = namedTeam(norte, 'Zona Norte');
+
+      // 2. Act
+      final renamed = GoogleGroupsController.renamedSelection(teams, current);
+
+      // 3. Assert
+      expect(renamed, same(teams.last));
+    });
+
+    test('Edge Case: the observed team with the same name gives null', () {
+      // 1. Arrange
+      final teams = [namedTeam(centro, 'Centro'), namedTeam(norte, 'Norte')];
+      final current = namedTeam(norte, 'Norte');
+
+      // 2. Act
+      final renamed = GoogleGroupsController.renamedSelection(teams, current);
+
+      // 3. Assert
+      expect(renamed, isNull);
+    });
+
+    test('Edge Case: nothing observed gives null', () {
+      // 1. Arrange
+      final teams = [namedTeam(centro, 'Centro')];
+
+      // 2. Act
+      final renamed = GoogleGroupsController.renamedSelection(teams, null);
+
+      // 3. Assert
+      expect(renamed, isNull);
+    });
+
+    test('Sad Path: an observed team that is gone gives null', () {
+      // 1. Arrange
+      final teams = [namedTeam(centro, 'Centro'), namedTeam(norte, 'Norte')];
+      final current = namedTeam(sul, 'Sul');
+
+      // 2. Act
+      final renamed = GoogleGroupsController.renamedSelection(teams, current);
+
+      // 3. Assert
+      expect(renamed, isNull);
+    });
+
+    test('Sad Path: no teams give null even with a team observed', () {
+      // 1. Arrange
+      final current = namedTeam(centro, 'Centro');
+
+      // 2. Act
+      final renamed = GoogleGroupsController.renamedSelection(
+        const [],
+        current,
+      );
+
+      // 3. Assert
+      expect(renamed, isNull);
     });
   });
 

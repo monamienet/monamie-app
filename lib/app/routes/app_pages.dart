@@ -1,3 +1,4 @@
+import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/bindings/monamie_bindings.dart';
 import 'package:monamie_app/app/modules/monamie/ui/monamie_page.dart';
 import 'package:get/get.dart';
@@ -85,6 +86,13 @@ class AppPages {
           TeamsController(
             partnerId: Partner.current!.id,
             backend: const FirebaseTeamsBackend(),
+            // The map under this screen follows the teams made here.
+            onTeamsChanged: (teams) {
+              if (!Get.isRegistered<GoogleGroupsController>()) return;
+              Get.find<GoogleGroupsController>().adoptPartnerTeams({
+                for (final team in teams) team.key: team.name,
+              });
+            },
           ),
         ),
       ),

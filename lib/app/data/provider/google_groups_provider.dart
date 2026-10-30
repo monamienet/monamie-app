@@ -70,4 +70,17 @@ class GoogleGroupsProvider {
       return null;
     }
   }
+
+  /// Drops the cached entities of [groupEmail], so the next read asks the
+  /// gateway.
+  Future<void> deleteGroupEntities(String groupEmail) async {
+    try {
+      final box = await Hive.openBox(_hiveBox);
+      await box.delete(groupEmail);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error deleting Group Entities from Hive: $e');
+      }
+    }
+  }
 }
