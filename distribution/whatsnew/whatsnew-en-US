@@ -1,3 +1,7 @@
+New:
+• The map has softer colors, so the people on your team stand out.
+• The map shows the OpenStreetMap credit; tap it to see the licence.
+
 Fixes:
 • The map's team menu now shows the name you gave each team, instead of "Equipe 01", "Equipe 02"…
 • Teams you create, rename or delete show in the map's team menu right away, without signing out and in again.
