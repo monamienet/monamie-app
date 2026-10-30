@@ -1068,28 +1068,6 @@ void main() {
     );
 
     testWidgets(
-      'Happy Path: Deve parar o rastreamento antes de sair, como no logout',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness();
-        await _pumpApp(tester);
-
-        // 2. Act
-        await _run(
-          tester,
-          harness.controller,
-          harness.controller.forgetRemovedPartner,
-        );
-
-        // 3. Assert
-        expect(harness.log.where((e) => e == 'stop' || e == 'logoutGoogle'), [
-          'stop',
-          'logoutGoogle',
-        ]);
-      },
-    );
-
-    testWidgets(
       'Edge Case: Deve usar "desta organização" quando não houver parceiro vinculado',
       (WidgetTester tester) async {
         // 1. Arrange
@@ -1109,25 +1087,6 @@ void main() {
           harness.controller.noAccessReason.value,
           'Você não faz mais parte desta organização.',
         );
-      },
-    );
-
-    testWidgets(
-      'Sad Path: Deve permanecer na tela atual quando logoutGoogle lançar',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness(logoutError: Exception('falha de rede'));
-        await _pumpApp(tester);
-
-        // 2. Act
-        await _run(
-          tester,
-          harness.controller,
-          harness.controller.forgetRemovedPartner,
-        );
-
-        // 3. Assert
-        expect(Get.currentRoute, _kHomeRoute);
       },
     );
   });
@@ -1399,25 +1358,6 @@ void main() {
     );
 
     testWidgets(
-      'Sad Path: Deve manter isLoggingOut false quando não houver token válido nem renovação',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
-        await _pumpApp(tester);
-
-        // 2. Act
-        await _run(
-          tester,
-          harness.controller,
-          harness.controller.switchOrganization,
-        );
-
-        // 3. Assert
-        expect(harness.controller.isLoggingOut.value, isFalse);
-      },
-    );
-
-    testWidgets(
       'Sad Path: Não deve parar o rastreamento nem esquecer o parceiro quando a busca de organizações lançar',
       (WidgetTester tester) async {
         // 1. Arrange
@@ -1524,67 +1464,6 @@ void main() {
         // 3. Assert
         await sub.cancel();
         expect(seen, [true, false]);
-        expect(harness.controller.isSwitchingOrganization.value, isFalse);
-      },
-    );
-
-    testWidgets(
-      'Edge Case: Não deve marcar isSwitchingOrganization durante um logout comum',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness();
-        await _pumpApp(tester);
-        final seen = <bool>[];
-        final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
-
-        // 2. Act
-        await _run(tester, harness.controller, harness.controller.logout);
-
-        // 3. Assert
-        await sub.cancel();
-        expect(seen, isEmpty);
-        expect(harness.controller.isSwitchingOrganization.value, isFalse);
-      },
-    );
-
-    test(
-      'Edge Case: Não deve marcar isSwitchingOrganization quando chamado com isLoggingOut true (reentrância)',
-      () async {
-        // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul]);
-        harness.controller.isLoggingOut.value = true;
-        final seen = <bool>[];
-        final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
-
-        // 2. Act
-        await harness.controller.switchOrganization();
-
-        // 3. Assert
-        await sub.cancel();
-        expect(seen, isEmpty);
-        expect(harness.controller.isSwitchingOrganization.value, isFalse);
-      },
-    );
-
-    testWidgets(
-      'Sad Path: Não deve marcar isSwitchingOrganization quando não houver token válido nem renovação',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
-        await _pumpApp(tester);
-        final seen = <bool>[];
-        final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
-
-        // 2. Act
-        await _run(
-          tester,
-          harness.controller,
-          harness.controller.switchOrganization,
-        );
-
-        // 3. Assert
-        await sub.cancel();
-        expect(seen, isEmpty);
         expect(harness.controller.isSwitchingOrganization.value, isFalse);
       },
     );

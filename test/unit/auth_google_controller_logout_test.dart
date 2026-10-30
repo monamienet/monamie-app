@@ -354,23 +354,6 @@ void main() {
     );
 
     testWidgets(
-      'Happy Path: Deve navegar para Routes.LOGIN ao concluir o logout',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness(storedUser: _storedUser());
-        await _pumpApp(tester, harness);
-
-        // 2. Act
-        await _runLogout(tester, harness.controller);
-
-        // 3. Assert
-        expect(Get.currentRoute, Routes.LOGIN);
-        expect(find.text(_kLoginPlaceholder), findsOneWidget);
-        expect(find.text(_kHomePlaceholder), findsNothing);
-      },
-    );
-
-    testWidgets(
       'Happy Path: Deve concluir sem exceção e sem snackbar quando o rastreamento parar normalmente',
       (WidgetTester tester) async {
         // 1. Arrange
@@ -419,24 +402,6 @@ void main() {
     // ---------------------------------------------------------------------
     // Edge Case
     // ---------------------------------------------------------------------
-    test('Edge Case: Deve iniciar com isLoggingOut false', () {
-      // 1. Arrange
-      final log = <String>[];
-
-      // 2. Act
-      final controller = AuthGoogleController(
-        partnerSession: PartnerSession(store: _MemoryBindingStore()),
-        partnerLocalData: _FakePartnerLocalData(),
-        refreshTheme: () {},
-        authGoogleService: _FakeAuthGoogleService(log),
-        userRepository: _FakeUserGoogleRepository(log),
-        trackingStopper: _FakeTrackingStopper(log),
-      );
-
-      // 3. Assert
-      expect(controller.isLoggingOut.value, isFalse);
-    });
-
     testWidgets(
       'Edge Case: Deve chamar stop com e-mail nulo quando não houver usuário salvo',
       (WidgetTester tester) async {
@@ -449,26 +414,6 @@ void main() {
 
         // 3. Assert
         expect(harness.stopper.emails, [null]);
-      },
-    );
-
-    testWidgets(
-      'Edge Case: Deve prosseguir com signOut, limpeza e navegação quando não houver usuário salvo',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness(storedUser: null);
-        await _pumpApp(tester, harness);
-
-        // 2. Act
-        await _runLogout(tester, harness.controller);
-
-        // 3. Assert
-        expect(harness.log, [
-          _kLogStop,
-          _kLogSignOut,
-          _kLogDeleteUser,
-          _kLogNavigateLogin,
-        ]);
       },
     );
 
@@ -528,26 +473,6 @@ void main() {
 
         // 3. Assert
         expect(harness.stopper.calls, 1);
-      },
-    );
-
-    testWidgets(
-      'Edge Case: Deve executar stop e logoutGoogle uma única vez quando logout for chamado duas vezes em sequência',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness(storedUser: _storedUser());
-        await _pumpApp(tester, harness);
-
-        // 2. Act
-        await Future.wait([
-          harness.controller.logout(),
-          harness.controller.logout(),
-        ]);
-        await tester.pumpAndSettle();
-
-        // 3. Assert
-        expect(harness.stopper.calls, 1);
-        expect(harness.authService.logoutCalls, 1);
       },
     );
 

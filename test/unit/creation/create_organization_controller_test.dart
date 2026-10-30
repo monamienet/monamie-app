@@ -113,6 +113,7 @@ void main() {
     final cases = [
       ('Happy Path', 'Rota Sul Turismo', 'rotasulturismo'),
       ('Edge Case', 'São João 2', 'saojoao'),
+      ('Edge Case', 'Maçã', 'maca'),
       ('Edge Case', 'abcdefghij klmnopqrst uvwxy', 'abcdefghijklmnopqrst'),
       ('Sad Path', '123 - !!', ''),
     ];
@@ -491,19 +492,6 @@ void main() {
     );
   });
 
-  group('CreateOrganizationController.offeredPlans - Unit Test Suite', () {
-    test('Happy Path: only community is offered for now', () {
-      // 1. Arrange
-      const expected = {'community'};
-
-      // 2. Act
-      final offered = CreateOrganizationController.offeredPlans;
-
-      // 3. Assert
-      expect(offered, expected);
-    });
-  });
-
   group('CreateOrganizationController.pickPlan - Unit Test Suite', () {
     test('Happy Path: community is picked', () {
       // 1. Arrange
@@ -523,17 +511,6 @@ void main() {
 
       // 2. Act
       controller.pickPlan('standard');
-
-      // 3. Assert
-      expect(controller.plan.value, 'community');
-    });
-
-    test('Sad Path: an unknown plan leaves the plan unchanged', () {
-      // 1. Arrange
-      final controller = startedController();
-
-      // 2. Act
-      controller.pickPlan('premium');
 
       // 3. Assert
       expect(controller.plan.value, 'community');

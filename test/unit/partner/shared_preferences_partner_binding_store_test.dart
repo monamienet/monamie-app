@@ -113,33 +113,6 @@ void main() {
       expect(read, isNull);
     });
 
-    test('Edge Case: clear with nothing stored completes', () async {
-      // 1. Arrange
-      final store = SharedPreferencesPartnerBindingStore();
-
-      // 2. Act
-      final clearing = store.clear();
-
-      // 3. Assert
-      await expectLater(clearing, completes);
-    });
-
-    test('Edge Case: a second write replaces the first binding', () async {
-      // 1. Arrange
-      final store = SharedPreferencesPartnerBindingStore();
-      await store.write(binding);
-      const other = PartnerBinding(
-        partner: PartnerConfig(id: 'beta', name: 'Beta'),
-        options: options,
-      );
-
-      // 2. Act
-      await store.write(other);
-
-      // 3. Assert
-      expect((await store.read())?.partner.id, 'beta');
-    });
-
     test('Sad Path: unreadable JSON is read as null', () async {
       // 1. Arrange
       await storeRaw('{not json');

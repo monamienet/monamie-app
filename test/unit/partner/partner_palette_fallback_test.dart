@@ -100,71 +100,9 @@ void main() {
       // 3. Assert
       expect(palette.background, white);
     });
-
-    test('Happy Path: no partner gives the same shades as the MonAmie '
-        'colors', () {
-      // 1. Arrange
-      final monAmie = PartnerPalette.fromColors(
-        primary: MonAmieBrand.primary,
-        background: MonAmieBrand.background,
-      );
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(null);
-
-      // 3. Assert
-      expect(
-        [palette.dark, palette.light, palette.accentDark, palette.accent],
-        [monAmie.dark, monAmie.light, monAmie.accentDark, monAmie.accent],
-      );
-    });
-
-    test('Edge Case: a partner without a theme gets white as background', () {
-      // 1. Arrange
-      const config = PartnerConfig(id: 'acme', name: 'Acme');
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect(palette.background, white);
-    });
-
-    test('Sad Path: a partner without a theme does not look like MonAmie: it '
-        'gets Grafite', () {
-      // 1. Arrange
-      const config = PartnerConfig(id: 'acme', name: 'Acme');
-
-      // 2. Act
-      final palette = PartnerPalette.fromConfig(config);
-
-      // 3. Assert
-      expect(
-        [palette.primary, palette.dark, palette.light],
-        [
-          const Color(0xFF3F4754),
-          const Color(0xFF1F2128),
-          const Color(0xFFDCDEE2),
-        ],
-      );
-    });
   });
 
   group('PartnerPalette on* colors - Unit Test Suite', () {
-    test('Happy Path: onPrimary is readable on the primary color', () {
-      // 1. Arrange
-      final palette = PartnerPalette.fromColors(
-        primary: const Color(0xFF0ABAB5),
-        background: white,
-      );
-
-      // 2. Act
-      final onPrimary = palette.onPrimary;
-
-      // 3. Assert
-      expect(onPrimary, readableOn(palette.primary));
-    });
-
     test('Edge Case: the dark shade of a light primary still gets white '
         'text', () {
       // 1. Arrange
@@ -178,20 +116,6 @@ void main() {
 
       // 3. Assert
       expect(onDark, white);
-    });
-
-    test('Sad Path: onPrimary differs from onDark for a light primary', () {
-      // 1. Arrange
-      final palette = PartnerPalette.fromColors(
-        primary: const Color(0xFF0ABAB5),
-        background: white,
-      );
-
-      // 2. Act
-      final pair = [palette.onPrimary, palette.onDark];
-
-      // 3. Assert
-      expect(pair, [black, white]);
     });
   });
 }

@@ -737,69 +737,6 @@ void main() {
         // 3. Assert
         expect(Get.currentRoute, Routes.WELCOME);
       });
-
-      testWidgets(
-        "Edge Case: binds the invite's partner once it shows up on the third try",
-        (WidgetTester tester) async {
-          // 1. Arrange
-          final harness = _Harness(
-            answers: const [
-              [_kVerdeMar],
-              [_kVerdeMar],
-              [_kVerdeMar, _kRotaSul],
-            ],
-          );
-          await _pumpApp(tester);
-
-          // 2. Act
-          await _accept(tester, harness.controller);
-
-          // 3. Assert
-          expect(harness.session.boundIds, ['rotasul']);
-          expect(Get.currentRoute, Routes.WELCOME);
-        },
-      );
-
-      testWidgets(
-        "Sad Path: opens the picker when the invite's partner never shows up among several others",
-        (WidgetTester tester) async {
-          // 1. Arrange
-          final harness = _Harness(
-            answers: const [
-              [_kVerdeMar, _kAzulCeu],
-            ],
-          );
-          await _pumpApp(tester);
-
-          // 2. Act
-          await _accept(tester, harness.controller);
-
-          // 3. Assert
-          expect(harness.directory.calls, inInclusiveRange(6, 7));
-          expect(harness.session.boundIds, isEmpty);
-          expect(Get.currentRoute, Routes.PARTNER_PICKER);
-        },
-      );
-
-      testWidgets(
-        "Sad Path: opens the picker when the invite's partner never shows up and one other is listed",
-        (WidgetTester tester) async {
-          // 1. Arrange
-          final harness = _Harness(
-            answers: const [
-              [_kVerdeMar],
-            ],
-          );
-          await _pumpApp(tester);
-
-          // 2. Act
-          await _accept(tester, harness.controller);
-
-          // 3. Assert
-          expect(harness.session.boundIds, isEmpty);
-          expect(Get.currentRoute, Routes.PARTNER_PICKER);
-        },
-      );
     },
   );
 

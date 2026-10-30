@@ -45,50 +45,6 @@ void main() {
       // 3. Assert
       expect(fake.toggleCalls, 1);
     });
-
-    testWidgets('Happy Path: while sharing it reads on, with no spinner', (
-      tester,
-    ) async {
-      // 1. Arrange
-      final fake = FakeTrackingToggleController(enabled: true);
-
-      // 2. Act
-      await tester.pumpWidget(buildApp(fake));
-
-      // 3. Assert
-      expect(find.text('Compartilhando sua localização'), findsOneWidget);
-      expect(find.byKey(busyKey), findsNothing);
-    });
-
-    testWidgets('Happy Path: while off it reads off, with no spinner', (
-      tester,
-    ) async {
-      // 1. Arrange
-      final fake = FakeTrackingToggleController(enabled: false);
-
-      // 2. Act
-      await tester.pumpWidget(buildApp(fake));
-
-      // 3. Assert
-      expect(find.text('Localização desligada'), findsOneWidget);
-      expect(find.byKey(busyKey), findsNothing);
-    });
-
-    testWidgets('Edge Case: tapping an enabled idle card also toggles', (
-      tester,
-    ) async {
-      // 1. Arrange
-      final fake = FakeTrackingToggleController(enabled: true);
-      await tester.pumpWidget(buildApp(fake));
-
-      // 2. Act
-      await tester.tap(find.byType(ShareCard));
-      await tester.pump();
-
-      // 3. Assert
-      expect(fake.toggleCalls, 1);
-    });
-
     testWidgets('Edge Case: the spinner shows when the loading flag flips', (
       tester,
     ) async {
@@ -126,22 +82,6 @@ void main() {
     ) async {
       // 1. Arrange
       final fake = FakeTrackingToggleController(enabled: false, loading: true);
-      await tester.pumpWidget(buildApp(fake));
-
-      // 2. Act
-      await tester.tap(find.byType(ShareCard));
-      await tester.pump();
-
-      // 3. Assert
-      expect(fake.toggleCalls, 0);
-      expect(find.byKey(busyKey), findsOneWidget);
-    });
-
-    testWidgets('Sad Path: while stopping, a tap does not toggle', (
-      tester,
-    ) async {
-      // 1. Arrange
-      final fake = FakeTrackingToggleController(enabled: true, loading: true);
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act

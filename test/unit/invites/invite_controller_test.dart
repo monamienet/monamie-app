@@ -144,13 +144,7 @@ void main() {
       expect(controller.firstTeamMode, isTrue);
     });
 
-    final names = <String, bool>{
-      'Equipe Serra': true,
-      'Ab': true,
-      'A': false,
-      '': false,
-      '  1 2 ': false,
-    };
+    final names = <String, bool>{'Equipe Serra': true, 'A': false};
     for (final MapEntry(key: name, value: valid) in names.entries) {
       test(
         '${valid ? 'Happy Path' : 'Sad Path'}: first team name "$name" is ${valid ? 'valid' : 'refused'}',

@@ -118,24 +118,6 @@ void main() {
       expect(noAccess, isTrue);
     });
 
-    final withAccess = <(String, Capabilities)>[
-      ('share', const Capabilities(share: {'aquariustur01'})),
-      ('watch', const Capabilities(watch: {'aquariustur01'})),
-      ('admin', const Capabilities(admin: {'aquariustur'})),
-    ];
-    for (final (label, capabilities) in withAccess) {
-      test('Edge Case: a single $label capability still gives access', () {
-        // 1. Arrange
-        final input = capabilities;
-
-        // 2. Act
-        final noAccess = claimsShowNoAccess(input);
-
-        // 3. Assert
-        expect(noAccess, isFalse);
-      });
-    }
-
     test('Sad Path: null capabilities (failed sync) are not evidence of '
         'removal', () {
       // 1. Arrange

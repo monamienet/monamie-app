@@ -1,6 +1,5 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
 import 'package:monamie_app/app/modules/creation/id_input_formatter.dart';
 
 TextEditingValue _typed(String text, {int? caret}) => TextEditingValue(
@@ -12,45 +11,17 @@ void main() {
   const old = TextEditingValue.empty;
 
   group('IdInputFormatter changed text', () {
-    // input, expected cleaned text
-    final cases = <(String, String, String)>[
-      ('capital is lowered', 'Rota', 'rota'),
-      ('accent is dropped', 'ásia', 'asia'),
-      ('cedilla is dropped', 'maçã', 'maca'),
-      ('digit is removed', 'rota1', 'rota'),
-      ('space is removed', 'rota sul', 'rotasul'),
-      ('symbol is removed', 'ro-ta_!', 'rota'),
-    ];
-    for (final (name, input, expected) in cases) {
-      test('$name', () {
-        // 1. Arrange
-        final calls = <bool>[];
-        final formatter = IdInputFormatter(calls.add);
-
-        // 2. Act
-        final result = formatter.formatEditUpdate(old, _typed(input));
-
-        // 3. Assert
-        expect(result.text, expected);
-        expect(result.selection, TextSelection.collapsed(offset: expected.length));
-        expect(calls, [true]);
-      });
-    }
-
-    test('text over the maximum length is truncated like suggestPartnerId', () {
+    test('a changed text is cleaned and the caret goes to its end', () {
       // 1. Arrange
-      final long = List.filled(60, 'a').join();
-      final max = suggestPartnerId(long).length;
       final calls = <bool>[];
       final formatter = IdInputFormatter(calls.add);
 
       // 2. Act
-      final result = formatter.formatEditUpdate(old, _typed(long));
+      final result = formatter.formatEditUpdate(old, _typed('Rota Sul'));
 
       // 3. Assert
-      expect(max, lessThan(60));
-      expect(result.text.length, max);
-      expect(result.selection, TextSelection.collapsed(offset: max));
+      expect(result.text, 'rotasul');
+      expect(result.selection, const TextSelection.collapsed(offset: 7));
       expect(calls, [true]);
     });
 

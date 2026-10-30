@@ -102,7 +102,8 @@ jobs:
 
       - run: flutter pub get
 
-      # Integration tests are skipped: they need the Firebase emulators.
+      # The security rules tests (test/rules) are skipped: they need the
+      # Firebase emulators.
       - run: flutter test test/unit
 
       # The build fetches the central project's google-services.json with

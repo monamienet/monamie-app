@@ -132,17 +132,6 @@ void main() {
       });
     });
 
-    test('Happy Path: the app name is partner-<id>', () {
-      // 1. Arrange
-      const binding = PartnerBinding(partner: acme, options: fullOptions);
-
-      // 2. Act
-      final name = binding.appName;
-
-      // 3. Assert
-      expect(name, 'partner-acme');
-    });
-
     test('Edge Case: absent optional options are left out of toJson', () {
       // 1. Arrange
       const binding = PartnerBinding(

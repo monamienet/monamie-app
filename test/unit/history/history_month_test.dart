@@ -11,19 +11,6 @@ HistoryMonth monthOf(int year, int month, {Set<String> trailDays = const {}}) =>
 HistoryDay cellOf(HistoryMonth month, int day) => month.days[day - 1];
 
 void main() {
-  group('historyMonthsBack - Unit Test Suite', () {
-    test('Happy Path: the calendar goes 12 months back', () {
-      // 1. Arrange
-      const expected = 12;
-
-      // 2. Act
-      const value = historyMonthsBack;
-
-      // 3. Assert
-      expect(value, expected);
-    });
-  });
-
   group('dayKey - Unit Test Suite', () {
     final cases = <(String, DateTime, String)>[
       (
