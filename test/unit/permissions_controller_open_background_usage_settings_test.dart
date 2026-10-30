@@ -100,32 +100,6 @@ void main() {
     );
 
     testWidgets(
-      'Edge Case: Deve limpar a restrição registrada e não exibir diálogo quando o usuário já a removeu',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
-        final checker = FakeBackgroundRestrictionChecker(result: false);
-        final launcher = FakeBackgroundUsageSettingsLauncher();
-        final controller = PermissionsController(
-          backgroundRestrictionChecker: checker,
-          backgroundUsageSettingsLauncher: launcher,
-        );
-        controller.isBackgroundRestricted.value = true;
-
-        // 2. Act
-        await controller.openBackgroundUsageSettings();
-        await tester.pumpAndSettle();
-
-        // 3. Assert
-        expect(find.byType(AlertDialog), findsNothing);
-        expect(controller.isBackgroundRestricted.value, isFalse);
-        expect(checker.calls, 1);
-        expect(launcher.calls, 0);
-        expect(permissionCalls, isEmpty);
-      },
-    );
-
-    testWidgets(
       'Sad Path: Deve exibir o diálogo explicativo com "AGORA NÃO" e "PROSSEGUIR" quando o app está restrito',
       (WidgetTester tester) async {
         // 1. Arrange

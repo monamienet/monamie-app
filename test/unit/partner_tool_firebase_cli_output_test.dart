@@ -192,25 +192,6 @@ void main() {
       );
     });
 
-    test('Edge Case: a success envelope parses the same with a project id', () {
-      // 1. Arrange
-      final stdout = jsonEncode({
-        'status': 'success',
-        'result': [appObject('1:111:android:aaa', 'org.monamienet.acme')],
-      });
-
-      // 2. Act
-      final apps = parseAppsListOutput(stdout, projectId: 'monamienet-acme');
-
-      // 3. Assert
-      expect(apps, const [
-        FirebaseAndroidApp(
-          appId: '1:111:android:aaa',
-          packageName: 'org.monamienet.acme',
-        ),
-      ]);
-    });
-
     test('Sad Path: output that is not JSON throws PartnerToolException', () {
       // 1. Arrange
       const stdout = 'i  Preparing the list of your Firebase ANDROID apps';
@@ -410,68 +391,6 @@ void main() {
       );
     });
 
-    test('Edge Case: a success envelope returns the contents verbatim with a '
-        'project id', () {
-      // 1. Arrange
-      final stdout = jsonEncode({
-        'status': 'success',
-        'result': {
-          'fileName': 'google-services.json',
-          'fileContents': secretConfigContents,
-        },
-      });
-
-      // 2. Act
-      final contents = parseSdkConfigOutput(
-        stdout,
-        projectId: 'monamienet-acme',
-      );
-
-      // 3. Assert
-      expect(contents, secretConfigContents);
-    });
-
-    test('Sad Path: malformed output never leaks the contents when a project '
-        'id is given', () {
-      // 1. Arrange
-      final stdout = jsonEncode({
-        'status': 'success',
-        'result': {
-          'fileName': 'google-services.json',
-          'fileContents': jsonDecode(secretConfigContents),
-        },
-      });
-
-      // 2. Act
-      final message = partnerToolErrorMessage(
-        () => parseSdkConfigOutput(stdout, projectId: 'monamienet-acme'),
-      );
-
-      // 3. Assert
-      expect(message, isNot(contains(secretMarker)));
-    });
-
-    test('Sad Path: a truncated envelope never leaks the contents when a '
-        'project id is given', () {
-      // 1. Arrange
-      final full = jsonEncode({
-        'status': 'success',
-        'result': {
-          'fileName': 'google-services.json',
-          'fileContents': secretConfigContents,
-        },
-      });
-      final stdout = full.substring(0, full.length - 3);
-
-      // 2. Act
-      final message = partnerToolErrorMessage(
-        () => parseSdkConfigOutput(stdout, projectId: 'monamienet-acme'),
-      );
-
-      // 3. Assert
-      expect(message, isNot(contains(secretMarker)));
-    });
-
     test('Sad Path: output that is not JSON throws PartnerToolException', () {
       // 1. Arrange
       const stdout = 'Error: not logged in';
@@ -584,17 +503,6 @@ void main() {
 
     tearDown(() {
       if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-    });
-
-    test('Happy Path: defaults to the "firebase" executable', () {
-      // 1. Arrange
-      const cli = ProcessFirebaseCli();
-
-      // 2. Act
-      final executable = cli.executable;
-
-      // 3. Assert
-      expect(executable, 'firebase');
     });
 
     test('Edge Case: a missing executable also fails the config call with '

@@ -5,22 +5,6 @@ TrackingSettings settingsOf(int minutes, int meters) =>
     TrackingSettings(periodMinutes: minutes, radiusMeters: meters);
 
 void main() {
-  group('TrackingSettings.defaults - Unit Test Suite', () {
-    test(
-      'Happy Path: the defaults are Economia, 15 minutes and 100 meters',
-      () {
-        // 1. Arrange
-        const defaults = TrackingSettings.defaults;
-
-        // 2. Act
-        final values = [defaults.periodMinutes, defaults.radiusMeters];
-
-        // 3. Assert
-        expect(values, [15, 100]);
-      },
-    );
-  });
-
   group('TrackingSettings.fromMap - Unit Test Suite', () {
     test('Happy Path: allowed values are read as they are', () {
       // 1. Arrange

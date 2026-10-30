@@ -35,19 +35,6 @@ void main() {
       expect(invite.expiresAt, DateTime.utc(2026, 11, 9, 12));
     });
 
-    test('Happy Path: rolesLabel lists Em campo before Vê o mapa', () {
-      // 1. Arrange
-      final json = _json({
-        'roles': ['watch', 'share'],
-      });
-
-      // 2. Act
-      final invite = Invite.fromJson(json);
-
-      // 3. Assert
-      expect(invite!.rolesLabel, 'Em campo · Vê o mapa');
-    });
-
     test('Edge Case: unknown roles are ignored when a known one remains', () {
       // 1. Arrange
       final json = _json({

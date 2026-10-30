@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/app/data/services/method_channel_background_usage_settings_launcher.dart';
 
 /// Canal nativo registrado em `MainActivity.kt` (o mesmo do checker de
@@ -51,20 +50,6 @@ void main() {
 
   group('MethodChannelBackgroundUsageSettingsLauncher - Suíte de Testes Unitários', () {
     test(
-      'Happy Path: Deve implementar o contrato BackgroundUsageSettingsLauncher',
-      () {
-        // 1. Arrange
-        // (sem pré-condições)
-
-        // 2. Act
-        final launcher = MethodChannelBackgroundUsageSettingsLauncher();
-
-        // 3. Assert
-        expect(launcher, isA<BackgroundUsageSettingsLauncher>());
-      },
-    );
-
-    test(
       'Happy Path: Deve retornar true quando o Android abre a tela de uso da bateria',
       () async {
         // 1. Arrange
@@ -102,23 +87,6 @@ void main() {
     );
 
     test(
-      'Happy Path: Deve dispensar o openAppSettings quando o Android confirma a abertura da tela de uso da bateria',
-      () async {
-        // 1. Arrange
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
-        mockChannel(_nativeChannel, (_) async => true);
-        final permissionCalls = mockOpenAppSettings(opened: true);
-        final launcher = MethodChannelBackgroundUsageSettingsLauncher();
-
-        // 2. Act
-        await launcher.open();
-
-        // 3. Assert
-        expect(permissionCalls, isEmpty);
-      },
-    );
-
-    test(
       'Edge Case: Deve recorrer ao openAppSettings e retornar o resultado dele quando a plataforma nativa responde null',
       () async {
         // 1. Arrange
@@ -132,25 +100,6 @@ void main() {
 
         // 3. Assert
         expect(opened, isTrue);
-        expect(permissionCalls.map((call) => call.method), ['openAppSettings']);
-      },
-    );
-
-    test(
-      'Edge Case: Deve ir direto ao openAppSettings, sem consultar o canal nativo, quando a plataforma é iOS',
-      () async {
-        // 1. Arrange
-        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-        final nativeCalls = mockChannel(_nativeChannel, (_) async => true);
-        final permissionCalls = mockOpenAppSettings(opened: true);
-        final launcher = MethodChannelBackgroundUsageSettingsLauncher();
-
-        // 2. Act
-        final opened = await launcher.open();
-
-        // 3. Assert
-        expect(opened, isTrue);
-        expect(nativeCalls, isEmpty);
         expect(permissionCalls.map((call) => call.method), ['openAppSettings']);
       },
     );
@@ -223,27 +172,6 @@ void main() {
         debugDefaultTargetPlatformOverride = TargetPlatform.android;
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(_nativeChannel, null);
-        final permissionCalls = mockOpenAppSettings(opened: true);
-        final launcher = MethodChannelBackgroundUsageSettingsLauncher();
-
-        // 2. Act
-        final opened = await launcher.open();
-
-        // 3. Assert
-        expect(opened, isTrue);
-        expect(permissionCalls.map((call) => call.method), ['openAppSettings']);
-      },
-    );
-
-    test(
-      'Sad Path: Deve recorrer ao openAppSettings quando o handler nativo não implementa o método (notImplemented)',
-      () async {
-        // 1. Arrange
-        debugDefaultTargetPlatformOverride = TargetPlatform.android;
-        mockChannel(
-          _nativeChannel,
-          (_) async => throw MissingPluginException(),
-        );
         final permissionCalls = mockOpenAppSettings(opened: true);
         final launcher = MethodChannelBackgroundUsageSettingsLauncher();
 

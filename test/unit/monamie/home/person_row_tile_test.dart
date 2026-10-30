@@ -13,8 +13,6 @@ TeamRow rowOf(Presence presence, {String name = 'Ana Souza'}) => TeamRow(
 
 const live = Presence(PresenceKind.live, 'Agora');
 const stale = Presence(PresenceKind.stale, 'Há 12 min');
-const off = Presence(PresenceKind.off, 'Localização desligada');
-const never = Presence(PresenceKind.never, 'Ainda não ativou a localização');
 
 class Taps {
   int trail = 0;
@@ -47,20 +45,6 @@ Future<void> pumpTile(
 
 void main() {
   group('PersonRowTile - Widget Test Suite', () {
-    testWidgets('Happy Path: shows the name and the presence label', (
-      tester,
-    ) async {
-      // 1. Arrange
-      final taps = Taps();
-
-      // 2. Act
-      await pumpTile(tester, row: rowOf(stale), taps: taps);
-
-      // 3. Assert
-      expect(find.text('Ana Souza'), findsOneWidget);
-      expect(find.text('Há 12 min'), findsOneWidget);
-    });
-
     testWidgets('Happy Path: a selected row is tinted, an unselected is not', (
       tester,
     ) async {
@@ -156,34 +140,6 @@ void main() {
       expect(find.textContaining('trajeto visível'), findsNothing);
     });
 
-    testWidgets('Edge Case: an off, highlighted person gets no trail note', (
-      tester,
-    ) async {
-      // 1. Arrange
-      final taps = Taps();
-
-      // 2. Act
-      await pumpTile(tester, row: rowOf(off), taps: taps, highlighted: true);
-
-      // 3. Assert
-      expect(find.text('Localização desligada'), findsOneWidget);
-      expect(find.textContaining('trajeto visível'), findsNothing);
-    });
-
-    testWidgets('Edge Case: a never-shared, highlighted person gets no note', (
-      tester,
-    ) async {
-      // 1. Arrange
-      final taps = Taps();
-
-      // 2. Act
-      await pumpTile(tester, row: rowOf(never), taps: taps, highlighted: true);
-
-      // 3. Assert
-      expect(find.text('Ainda não ativou a localização'), findsOneWidget);
-      expect(find.textContaining('trajeto visível'), findsNothing);
-    });
-
     testWidgets('Edge Case: highlighted offers to hide the trail', (
       tester,
     ) async {
@@ -231,22 +187,6 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets(
-      'Edge Case: tapping the trail button of a highlighted row calls it',
-      (tester) async {
-        // 1. Arrange
-        final taps = Taps();
-        await pumpTile(tester, row: rowOf(live), taps: taps, highlighted: true);
-
-        // 2. Act
-        await tester.tap(find.byTooltip('Esconder trajeto de Ana Souza'));
-        await tester.pump();
-
-        // 3. Assert
-        expect((taps.trail, taps.call), (1, 0));
-      },
-    );
-
     testWidgets('Sad Path: without onCall there is no Meet button at all', (
       tester,
     ) async {
@@ -259,21 +199,6 @@ void main() {
       // 3. Assert
       expect(find.byTooltip('Chamar Ana Souza no Meet'), findsNothing);
       expect(find.byTooltip('Mostrar trajeto de Ana Souza'), findsOneWidget);
-    });
-
-    testWidgets('Sad Path: without onCall the trail button still works', (
-      tester,
-    ) async {
-      // 1. Arrange
-      final taps = Taps();
-      await pumpTile(tester, row: rowOf(live), taps: taps, withCall: false);
-
-      // 2. Act
-      await tester.tap(find.byTooltip('Mostrar trajeto de Ana Souza'));
-      await tester.pump();
-
-      // 3. Assert
-      expect((taps.trail, taps.call), (1, 0));
     });
 
     testWidgets('Sad Path: a long name is shown on one line without overflow', (

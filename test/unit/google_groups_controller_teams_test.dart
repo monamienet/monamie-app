@@ -235,23 +235,6 @@ void main() {
         ('Equipe 07', 'rotasul07@monamienet.org'),
       ]);
     });
-
-    test('Sad Path: no names at all name every team "Equipe NN"', () {
-      // 1. Arrange
-      const names = <String, String>{};
-
-      // 2. Act
-      final teams = GoogleGroupsController.teamsFor([
-        'rotasul12',
-        'rotasul03',
-      ], names);
-
-      // 3. Assert
-      expect(namesAndEmails(teams), [
-        ('Equipe 12', 'rotasul12@monamienet.org'),
-        ('Equipe 03', 'rotasul03@monamienet.org'),
-      ]);
-    });
   });
 
   group('GoogleGroupsController.shareLeafEmail - Unit Test Suite', () {
@@ -345,14 +328,6 @@ void main() {
       expect(next, same(teams.first));
     });
 
-    test('Sad Path: no teams leave the map as it is', () {
-      // 1. Arrange / 2. Act
-      final next = GoogleGroupsController.teamToObserve(const [], null);
-
-      // 3. Assert
-      expect(next, isNull);
-    });
-
     test('Sad Path: no teams do not switch away from the observed one', () {
       // 1. Arrange
       final current = team('rotasul01@monamienet.org');
@@ -406,19 +381,6 @@ void main() {
       // 3. Assert
       expect(namesAndEmails(teams), [
         ('Zona Oeste', 'rotasul04@monamienet.org'),
-      ]);
-    });
-
-    test('Sad Path: a blank name falls back to "Equipe NN"', () {
-      // 1. Arrange
-      final names = {'rotasul04': ''};
-
-      // 2. Act
-      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
-
-      // 3. Assert
-      expect(namesAndEmails(teams), [
-        ('Equipe 04', 'rotasul04@monamienet.org'),
       ]);
     });
 

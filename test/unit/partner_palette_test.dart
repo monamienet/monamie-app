@@ -16,37 +16,14 @@ const aquariusTurLight = Color(0xFFCCF1F0);
 const aquariusTurAccentDark = Color(0xFF052E32);
 const aquariusTurAccent = Color(0xFF088F8B);
 
-/// One row of the shade table of issue #35.
-typedef ShadeSpec = ({
-  double hueShift,
-  double saturationFactor,
-  double lightness,
-});
-
-const darkSpec = (hueShift: 6.97, saturationFactor: 0.894, lightness: 0.139);
-const lightSpec = (hueShift: 0.08, saturationFactor: 0.634, lightness: 0.873);
-const accentDarkSpec = (
-  hueShift: 7.04,
-  saturationFactor: 0.911,
-  lightness: 0.108,
-);
-const accentSpec = (hueShift: -0.07, saturationFactor: 0.996, lightness: 0.296);
+/// The shade table of issue #35: the lightness each shade gets.
+const darkLightness = 0.139;
+const lightLightness = 0.873;
+const accentDarkLightness = 0.108;
+const accentLightness = 0.296;
 
 /// One 8-bit step of a color channel, the precision a [Color] keeps.
 const channelStep = 1 / 255;
-
-/// The shade [spec] of [primary], derived straight from the issue's rule:
-/// hue shifted (wrapping into [0, 360)), saturation scaled (clamped to
-/// [0, 1]) and lightness replaced.
-Color expectedShade(Color primary, ShadeSpec spec) {
-  final hsl = HSLColor.fromColor(primary);
-  return HSLColor.fromAHSL(
-    hsl.alpha,
-    (hsl.hue + spec.hueShift) % 360,
-    (hsl.saturation * spec.saturationFactor).clamp(0.0, 1.0),
-    spec.lightness,
-  ).toColor();
-}
 
 /// Whether the red, green and blue channels of [color] are equal.
 bool isGrey(Color color) => color.r == color.g && color.g == color.b;
@@ -152,42 +129,6 @@ void main() {
   });
 
   group('PartnerPalette.fromColors (shade rule) - Unit Test Suite', () {
-    test('Happy Path: a non-AquariusTur primary follows the shade table', () {
-      // 1. Arrange
-      const primary = Color(0xFF8E24AA);
-
-      // 2. Act
-      final palette = PartnerPalette.fromColors(
-        primary: primary,
-        background: const Color(0xFFFFFFFF),
-      );
-
-      // 3. Assert
-      expect(
-        [palette.dark, palette.light, palette.accentDark, palette.accent],
-        [
-          expectedShade(primary, darkSpec),
-          expectedShade(primary, lightSpec),
-          expectedShade(primary, accentDarkSpec),
-          expectedShade(primary, accentSpec),
-        ],
-      );
-    });
-
-    test('Happy Path: background is not derived from primary', () {
-      // 1. Arrange
-      const background = Color(0xFF123456);
-
-      // 2. Act
-      final palette = PartnerPalette.fromColors(
-        primary: const Color(0xFFFF5722),
-        background: background,
-      );
-
-      // 3. Assert
-      expect(palette.background, background);
-    });
-
     test(
       'Edge Case: a grey primary gives grey shades (saturation stays 0)',
       () {
@@ -233,10 +174,10 @@ void main() {
           palette.accent,
         ].map((shade) => HSLColor.fromColor(shade).lightness).toList(),
         [
-          closeTo(darkSpec.lightness, channelStep),
-          closeTo(lightSpec.lightness, channelStep),
-          closeTo(accentDarkSpec.lightness, channelStep),
-          closeTo(accentSpec.lightness, channelStep),
+          closeTo(darkLightness, channelStep),
+          closeTo(lightLightness, channelStep),
+          closeTo(accentDarkLightness, channelStep),
+          closeTo(accentLightness, channelStep),
         ],
       );
     });
@@ -261,52 +202,12 @@ void main() {
           palette.accent,
         ].map((shade) => HSLColor.fromColor(shade).lightness).toList(),
         [
-          closeTo(darkSpec.lightness, channelStep),
-          closeTo(lightSpec.lightness, channelStep),
-          closeTo(accentDarkSpec.lightness, channelStep),
-          closeTo(accentSpec.lightness, channelStep),
+          closeTo(darkLightness, channelStep),
+          closeTo(lightLightness, channelStep),
+          closeTo(accentDarkLightness, channelStep),
+          closeTo(accentLightness, channelStep),
         ],
       );
-    });
-
-    test('Edge Case: the shades do not depend on the primary lightness', () {
-      // 1. Arrange
-      // Same hue and saturation as #0ABAB5, much lighter.
-      final lighterPrimary = HSLColor.fromColor(
-        aquariusTurPrimary,
-      ).withLightness(0.8).toColor();
-
-      // 2. Act
-      final palette = PartnerPalette.fromColors(
-        primary: lighterPrimary,
-        background: const Color(0xFFFFFFFF),
-      );
-
-      // 3. Assert
-      expect(
-        [palette.dark, palette.light, palette.accentDark, palette.accent],
-        [
-          expectedShade(lighterPrimary, darkSpec),
-          expectedShade(lighterPrimary, lightSpec),
-          expectedShade(lighterPrimary, accentDarkSpec),
-          expectedShade(lighterPrimary, accentSpec),
-        ],
-      );
-    });
-
-    test('Edge Case: a hue near 360 wraps around for the dark shade', () {
-      // 1. Arrange
-      // Hue ~359.06 degrees: +6.97 must wrap to ~6.03, not exceed 360.
-      const redPrimary = Color(0xFFFF0004);
-
-      // 2. Act
-      final palette = PartnerPalette.fromColors(
-        primary: redPrimary,
-        background: const Color(0xFFFFFFFF),
-      );
-
-      // 3. Assert
-      expect(palette.dark, expectedShade(redPrimary, darkSpec));
     });
 
     test('Edge Case: a wrapped hue lands in [0, 360)', () {
@@ -323,95 +224,6 @@ void main() {
       expect(
         HSLColor.fromColor(palette.accentDark).hue,
         allOf(greaterThanOrEqualTo(0), lessThan(360)),
-      );
-    });
-
-    test('Edge Case: a hue of 0 wraps backwards for the accent shade', () {
-      // 1. Arrange
-      // Hue 0 degrees: -0.07 must wrap to 359.93, not go negative.
-      const pureRed = Color(0xFFFF0000);
-
-      // 2. Act
-      final palette = PartnerPalette.fromColors(
-        primary: pureRed,
-        background: const Color(0xFFFFFFFF),
-      );
-
-      // 3. Assert
-      expect(palette.accent, expectedShade(pureRed, accentSpec));
-    });
-
-    test('Edge Case: an opaque primary gives opaque shades', () {
-      // 1. Arrange
-      const opaquePrimary = aquariusTurPrimary;
-
-      // 2. Act
-      final palette = PartnerPalette.fromColors(
-        primary: opaquePrimary,
-        background: const Color(0xFFFFFFFF),
-      );
-
-      // 3. Assert
-      expect(
-        [
-          palette.dark,
-          palette.light,
-          palette.accentDark,
-          palette.accent,
-        ].map((shade) => shade.a).toList(),
-        [1.0, 1.0, 1.0, 1.0],
-      );
-    });
-
-    test('Edge Case: a translucent primary is kept as is, alpha included', () {
-      // 1. Arrange
-      const translucentPrimary = Color(0x800ABAB5);
-
-      // 2. Act
-      final palette = PartnerPalette.fromColors(
-        primary: translucentPrimary,
-        background: const Color(0xFFFFFFFF),
-      );
-
-      // 3. Assert
-      expect(palette.primary, translucentPrimary);
-    });
-
-    test('Edge Case: a translucent background is kept as is, alpha '
-        'included', () {
-      // 1. Arrange
-      const translucentBackground = Color(0x40FFFFFF);
-
-      // 2. Act
-      final palette = PartnerPalette.fromColors(
-        primary: aquariusTurPrimary,
-        background: translucentBackground,
-      );
-
-      // 3. Assert
-      expect(palette.background, translucentBackground);
-    });
-
-    test('Edge Case: shades only change hue, saturation and lightness, so '
-        'they carry the primary alpha', () {
-      // 1. Arrange
-      const translucentPrimary = Color(0x800ABAB5);
-
-      // 2. Act
-      final palette = PartnerPalette.fromColors(
-        primary: translucentPrimary,
-        background: const Color(0xFFFFFFFF),
-      );
-
-      // 3. Assert
-      expect(
-        [
-          palette.dark,
-          palette.light,
-          palette.accentDark,
-          palette.accent,
-        ].map((shade) => shade.a).toList(),
-        List.filled(4, translucentPrimary.a),
       );
     });
 

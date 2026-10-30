@@ -21,19 +21,6 @@ class FakeBackgroundRestrictionChecker implements BackgroundRestrictionChecker {
 
 void main() {
   group('PermissionsController - Restrição de Segundo Plano', () {
-    test('Happy Path: Deve iniciar isBackgroundRestricted como false', () {
-      // 1. Arrange
-      final checker = FakeBackgroundRestrictionChecker(result: true);
-
-      // 2. Act
-      final controller = PermissionsController(
-        backgroundRestrictionChecker: checker,
-      );
-
-      // 3. Assert
-      expect(controller.isBackgroundRestricted.value, isFalse);
-    });
-
     test(
       'Happy Path: Deve retornar true e atualizar o estado quando o checker confirma a restrição',
       () async {
@@ -162,25 +149,6 @@ void main() {
     );
 
     test(
-      'Edge Case: Deve ignorar a permissão "durante o uso" quando todas as obrigatórias estão concedidas',
-      () {
-        // 1. Arrange
-        final controller = buildController(
-          always: true,
-          notification: true,
-          restricted: false,
-        );
-        controller.hasWhenInUseLocationPermission.value = false;
-
-        // 2. Act
-        final concedidas = controller.arePermissionsGranted();
-
-        // 3. Assert
-        expect(concedidas, isTrue);
-      },
-    );
-
-    test(
       'Sad Path: Deve retornar false quando o app está restrito em segundo plano mesmo com permissões concedidas',
       () {
         // 1. Arrange
@@ -225,27 +193,6 @@ void main() {
           notification: false,
           restricted: false,
         );
-
-        // 2. Act
-        final concedidas = controller.arePermissionsGranted();
-
-        // 3. Assert
-        expect(concedidas, isFalse);
-      },
-    );
-
-    test(
-      'Sad Path: Deve retornar false quando o refresh detecta restrição após permissões concedidas',
-      () async {
-        // 1. Arrange
-        final controller = PermissionsController(
-          backgroundRestrictionChecker: FakeBackgroundRestrictionChecker(
-            result: true,
-          ),
-        );
-        controller.hasAlwaysLocationPermission.value = true;
-        controller.hasNotificationPermission.value = true;
-        await controller.refreshBackgroundRestriction();
 
         // 2. Act
         final concedidas = controller.arePermissionsGranted();

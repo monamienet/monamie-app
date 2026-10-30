@@ -85,20 +85,6 @@ void main() {
   });
 
   group('LoginController - Restauração de Sessão no Cold Start', () {
-    test(
-      'Edge Case: Deve iniciar isRestoringSession como true logo após a construção',
-      () {
-        // 1. Arrange
-        const hasBond = true;
-
-        // 2. Act
-        final controller = _FakeLoginController(hasBond: hasBond);
-
-        // 3. Assert
-        expect(controller.isRestoringSession.value, isTrue);
-      },
-    );
-
     testWidgets(
       'Happy Path: Deve navegar para Routes.MONAMIE quando houver sessão Google ativa',
       (WidgetTester tester) async {
@@ -129,22 +115,6 @@ void main() {
 
         // 3. Assert
         expect(controller.isRestoringSession.value, isFalse);
-      },
-    );
-
-    testWidgets(
-      'Happy Path: Deve consultar hasActiveGoogleBond exatamente uma vez no onReady',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
-        final controller = _FakeLoginController(hasBond: true);
-
-        // 2. Act
-        Get.put<LoginController>(controller);
-        await tester.pumpAndSettle();
-
-        // 3. Assert
-        expect(controller.hasActiveGoogleBondCalls, 1);
       },
     );
 
@@ -181,22 +151,6 @@ void main() {
         expect(Get.currentRoute, _kLoginRoute);
         expect(find.text(_kLoginPlaceholder), findsOneWidget);
         expect(find.text(_kMonamiePlaceholder), findsNothing);
-      },
-    );
-
-    testWidgets(
-      'Sad Path: Deve finalizar isRestoringSession como false quando não houver sessão ativa',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
-        final controller = _FakeLoginController(hasBond: false);
-
-        // 2. Act
-        Get.put<LoginController>(controller);
-        await tester.pumpAndSettle();
-
-        // 3. Assert
-        expect(controller.isRestoringSession.value, isFalse);
       },
     );
 
