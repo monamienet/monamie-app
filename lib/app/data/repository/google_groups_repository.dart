@@ -53,4 +53,9 @@ class GoogleGroupsRepository {
     await _provider.saveGroupEntities(key, groups);
     return groups;
   }
+
+  /// Forgets the cached members of [groupEmail] (e.g. the root group after
+  /// a team is created or deleted), so the next read is fresh.
+  Future<void> forgetGroupEntities(String groupEmail) =>
+      _provider.deleteGroupEntities(groupEmail);
 }

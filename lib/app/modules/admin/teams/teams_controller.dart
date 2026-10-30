@@ -8,11 +8,18 @@ import 'teams_backend.dart';
 /// *Equipe*). One operation at a time: [isWorking] guards reentrancy and
 /// drives the pending states; it always resets in `finally`.
 class TeamsController extends GetxController {
-  TeamsController({required this.partnerId, required TeamsBackend backend})
-    : _backend = backend;
+  TeamsController({
+    required this.partnerId,
+    required TeamsBackend backend,
+    this.onTeamsChanged,
+  }) : _backend = backend;
 
   final String partnerId;
   final TeamsBackend _backend;
+
+  /// Called with every team of the partner each time [teams] is read or
+  /// changed, so the map's team menu follows them without a new sign-in.
+  final void Function(List<Team> teams)? onTeamsChanged;
 
   final RxList<Team> teams = <Team>[].obs;
   final RxBool isLoading = false.obs;
@@ -43,6 +50,7 @@ class TeamsController extends GetxController {
     errorMessage.value = '';
     try {
       teams.assignAll(await _backend.list(partnerId));
+      onTeamsChanged?.call(teams.toList());
     } on TeamsException catch (e) {
       errorMessage.value = e.message;
     } catch (e) {
@@ -78,6 +86,7 @@ class TeamsController extends GetxController {
   Future<Team?> create(String name) => _guarded(() async {
     final team = await _backend.create(partnerId, name.trim());
     teams.add(team);
+    onTeamsChanged?.call(teams.toList());
     return team;
   });
 
@@ -97,6 +106,7 @@ class TeamsController extends GetxController {
       await _guarded(() async {
         await _backend.delete(partnerId, number);
         teams.removeWhere((t) => t.number == number);
+        onTeamsChanged?.call(teams.toList());
         return true;
       }) ??
       false;

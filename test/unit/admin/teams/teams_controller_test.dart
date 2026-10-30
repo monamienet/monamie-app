@@ -95,6 +95,22 @@ Future<TeamsController> loadedController() async {
   return controller;
 }
 
+/// A started controller like [loadedController] whose `onTeamsChanged`
+/// records every list it gets in `received`, cleared after the first load.
+Future<(TeamsController, List<List<Team>>)> recordingController() async {
+  final received = <List<Team>>[];
+  final controller = TeamsController(
+    partnerId: 'rotasul',
+    backend: backend,
+    onTeamsChanged: received.add,
+  );
+  controller.onStart();
+  await pumpEventQueue();
+  backend.calls.clear();
+  received.clear();
+  return (controller, received);
+}
+
 void main() {
   setUp(() {
     Get.testMode = true;
@@ -363,6 +379,191 @@ void main() {
       expect(controller.teams, [norte, leste]);
       expect(controller.errorMessage.value, 'Equipe não encontrada.');
       expect(controller.isWorking.value, isFalse);
+    });
+  });
+
+  group('TeamsController.onTeamsChanged - Unit Test Suite', () {
+    test('Happy Path: a load passes every team read', () async {
+      // 1. Arrange
+      final received = <List<Team>>[];
+      final controller = TeamsController(
+        partnerId: 'rotasul',
+        backend: backend,
+        onTeamsChanged: received.add,
+      );
+
+      // 2. Act
+      controller.onStart();
+      await pumpEventQueue();
+
+      // 3. Assert
+      expect(received, [
+        [norte, leste],
+      ]);
+    });
+
+    test('Edge Case: a load with no teams passes an empty list', () async {
+      // 1. Arrange
+      backend.teams = [];
+      final received = <List<Team>>[];
+      final controller = TeamsController(
+        partnerId: 'rotasul',
+        backend: backend,
+        onTeamsChanged: received.add,
+      );
+
+      // 2. Act
+      controller.onStart();
+      await pumpEventQueue();
+
+      // 3. Assert
+      expect(received, [<Team>[]]);
+    });
+
+    test('Sad Path: a failed load does not call it', () async {
+      // 1. Arrange
+      backend = _FailingListBackend();
+      final received = <List<Team>>[];
+      final controller = TeamsController(
+        partnerId: 'rotasul',
+        backend: backend,
+        onTeamsChanged: received.add,
+      );
+
+      // 2. Act
+      controller.onStart();
+      await pumpEventQueue();
+
+      // 3. Assert
+      expect(received, isEmpty);
+    });
+
+    test('Happy Path: a create passes the teams with the new one', () async {
+      // 1. Arrange
+      final (controller, received) = await recordingController();
+
+      // 2. Act
+      await controller.create('Equipe Serra');
+
+      // 3. Assert
+      expect(received, [
+        [norte, leste, serra],
+      ]);
+    });
+
+    test('Sad Path: a failed create does not call it', () async {
+      // 1. Arrange
+      final (controller, received) = await recordingController();
+      backend.failure = const TeamsException('Já existe a equipe.');
+
+      // 2. Act
+      await controller.create('Equipe Serra');
+
+      // 3. Assert
+      expect(received, isEmpty);
+    });
+
+    test('Edge Case: a create refused while another runs calls it only for '
+        'the first', () async {
+      // 1. Arrange
+      final (controller, received) = await recordingController();
+      backend.gate = Completer<void>();
+      final first = controller.create('Equipe Serra');
+
+      // 2. Act
+      final second = controller.create('Equipe Mar');
+
+      // 3. Assert
+      backend.gate!.complete();
+      await Future.wait([first, second]);
+      expect(received, [
+        [norte, leste, serra],
+      ]);
+    });
+
+    test(
+      'Happy Path: a delete passes the teams without the deleted one',
+      () async {
+        // 1. Arrange
+        final (controller, received) = await recordingController();
+
+        // 2. Act
+        await controller.delete('01');
+
+        // 3. Assert
+        expect(received, [
+          [leste],
+        ]);
+      },
+    );
+
+    test('Edge Case: deleting the last team passes an empty list', () async {
+      // 1. Arrange
+      backend.teams = [norte];
+      final (controller, received) = await recordingController();
+
+      // 2. Act
+      await controller.delete('01');
+
+      // 3. Assert
+      expect(received, [<Team>[]]);
+    });
+
+    test('Sad Path: a failed delete does not call it', () async {
+      // 1. Arrange
+      final (controller, received) = await recordingController();
+      backend.failure = StateError('network down');
+
+      // 2. Act
+      await controller.delete('01');
+
+      // 3. Assert
+      expect(received, isEmpty);
+    });
+
+    test('Happy Path: a rename passes the teams read again', () async {
+      // 1. Arrange
+      final (controller, received) = await recordingController();
+      const renamed = Team(
+        number: '01',
+        key: 'rotasul01',
+        name: 'Equipe Mar',
+        people: [],
+      );
+      backend.teams = [renamed, leste];
+
+      // 2. Act
+      await controller.rename('01', 'Equipe Mar');
+
+      // 3. Assert
+      expect(received, [
+        [renamed, leste],
+      ]);
+    });
+
+    test('Sad Path: a failed rename does not call it', () async {
+      // 1. Arrange
+      final (controller, received) = await recordingController();
+      backend.failure = const TeamsException('Equipe não encontrada.');
+
+      // 2. Act
+      await controller.rename('01', 'Equipe Mar');
+
+      // 3. Assert
+      expect(received, isEmpty);
+    });
+
+    test('Edge Case: a list passed earlier does not change with later '
+        'operations', () async {
+      // 1. Arrange
+      final (controller, received) = await recordingController();
+      await controller.create('Equipe Serra');
+
+      // 2. Act
+      await controller.delete('01');
+
+      // 3. Assert
+      expect(received.first, [norte, leste, serra]);
     });
   });
 }

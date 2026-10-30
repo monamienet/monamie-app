@@ -146,6 +146,68 @@ class GoogleGroupsController extends GetxController {
           address.teamKey,
   ];
 
+  /// The menu's teams for every team of [partnerId] in [namesByKey]
+  /// (display name by team key), in team order. Keys of another partner,
+  /// or that are not team keys, are skipped; a blank name falls back to
+  /// "Equipe NN", as in [parseTeamNames].
+  @visibleForTesting
+  static List<GoogleGroupModel> partnerTeams(
+    String partnerId,
+    Map<String, String> namesByKey,
+  ) {
+    final keys = [
+      for (final key in namesByKey.keys)
+        if (parseGroupAddress(teamEmailForKey(key)) case final address?
+            when address.partnerId == partnerId &&
+                address.level == GroupLevel.team &&
+                address.teamKey == key)
+          key,
+    ]..sort();
+    return teamsFor(keys, {
+      for (final MapEntry(:key, :value) in namesByKey.entries)
+        if (value.trim().isNotEmpty) key: value.trim(),
+    });
+  }
+
+  /// The observed [current] as it is now in [teams] when only its name
+  /// changed, so the app bar shows the new name; `null` otherwise.
+  @visibleForTesting
+  static GoogleGroupModel? renamedSelection(
+    List<GoogleGroupModel> teams,
+    GoogleGroupModel? current,
+  ) {
+    if (current == null) return null;
+    final same = teams.firstWhereOrNull((team) => team.email == current.email);
+    return same != null && same.name != current.name ? same : null;
+  }
+
+  /// Takes [namesByKey], every team of the bound partner by team key (from
+  /// the administrators' *Equipes* screens), as the teams of the menu, so a
+  /// team created, renamed or deleted there shows at once. An administrator
+  /// watches every team, so this is the list a new sign-in would read. The
+  /// root group's cached members are dropped too, or the next start would
+  /// read the old teams from the 7-day cache. Only for administrators.
+  Future<void> adoptPartnerTeams(Map<String, String> namesByKey) async {
+    final partner = Partner.current;
+    if (partner == null || !isAdmin) return;
+    final teams = partnerTeams(partner.id, namesByKey);
+    _observableGoogleGroups.assignAll(teams);
+    await _repository.forgetGroupEntities(partner.rootGroupEmail);
+
+    final current = selectedGroup.value;
+    if (teams.isEmpty && current != null) {
+      // The last team was deleted: nothing is left to observe.
+      observedGroup.value = 'Nenhum';
+      selectedGroup.value = null;
+      observedMembers.clear();
+    } else if (renamedSelection(teams, current) case final renamed?) {
+      observedGroup.value = renamed.name;
+      selectedGroup.value = renamed;
+    } else if (teamToObserve(teams, current) case final next?) {
+      await updateObservedUsers(next);
+    }
+  }
+
   Future<void> _loadGroups({bool forceRefresh = false}) async {
     loadError.value = '';
     _observableGoogleGroups.clear();
@@ -212,9 +274,7 @@ class GoogleGroupsController extends GetxController {
           await names,
         ),
       );
-      shareTeams.assignAll(
-        teamsFor(caps.shareTeamsIn(partnerId), await names),
-      );
+      shareTeams.assignAll(teamsFor(caps.shareTeamsIn(partnerId), await names));
 
       // Someone who watches opens straight onto a team, not an empty panel.
       final next = teamToObserve(_observableGoogleGroups, selectedGroup.value);
