@@ -223,6 +223,17 @@ The copy keeps every field and type. The old root documents stay; delete them by
 
 **Setting up `monamienet-community`** (once): create the project on MonAmieNet's billing account (it needs a free slot on that account), add Firebase, Firestore in `southamerica-east1`, the Google provider with the central web client in *Allowed client IDs*, the Android app `org.monamienet.app` without a SHA-1 and exactly one web app, the same IAM as a partner project (section 5, steps 4 and 8) plus `roles/datastore.user` for `partner-expirer@monamienet-app.iam.gserviceaccount.com`, then deploy `firestore.rules` and `functions/` to it. Add a **budget alert**: the free Firestore quota (50,000 reads and 20,000 writes a day) is shared by every Community partner.
 
+**Moving a Standard partner to Community** (by hand; no tool yet). Since both plans use the same layout, the move is a copy to the same paths in another project plus one registry field:
+
+1. Copy every document under `partners/<id>/` of `monamienet-<id>` to the same path in `monamienet-community`, keeping fields and types (Firestore REST `batchWrite`, like `migrate-layout` does), **except** `users/{uid}`: Firebase Auth uids are per project, so those profiles would be orphans there; the app writes a new one at each person's next sign-in.
+2. Write `partners/<id>/config/plan` = `{minIntervalMinutes: 15}`, and raise `config/tracking.intervalMinutes` to at least 15 if it is lower (the rules refuse a lower value on the next save; use 15 min / 100 m, *Economia*).
+3. Copy `partners/<id>/logo.png` to the Community bucket with content type `image/png`. A project without billing answers HTTP 402 even on the public logo URL, so link billing first if it was removed.
+4. Compare the copy with the source document by document, then set `plan: "community"` in the central registry `partners/<id>` (`monamienet-app`). `resolvePartners` reads the plan at every call, so the next organization pick gets the Community project.
+5. Tell the people of the partner to tap *Trocar de organização* and pick it again (on Android, close the app first): devices keep the project they were bound to until then (#145).
+6. Delete `monamienet-<id>` (`gcloud projects delete`); Google keeps it restorable for 30 days.
+
+**This is the point of no return for the id**: a Standard partner's project is always `monamienet-<id>` (`projectIdFor` in `central/functions/partner_options.js`), and a deleted project id can never be reused. After step 6 the partner cannot return to Standard under the same id unless that rule changes (#104). `aquariustur` and `monamietest` were moved this way on 2026-10-30.
+
 ## 10. Teams and invites (from the app)
 
 Administrators (*administradores*) manage teams and invites in the app (*Equipes*, *Criar equipe*, *Equipe*, *Convidar pessoas*). The work happens in the central project's functions, never on the device:

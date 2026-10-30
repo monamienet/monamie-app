@@ -223,6 +223,17 @@ A cópia mantém todos os campos e tipos. Os documentos antigos na raiz continua
 
 **Configurar o `monamienet-community`** (uma vez): crie o projeto na conta de faturamento da MonAmieNet (precisa de uma vaga livre nela), adicione o Firebase, o Firestore em `southamerica-east1`, o provedor Google com o cliente web central em *IDs de cliente permitidos*, o app Android `org.monamienet.app` sem SHA-1 e exatamente um app web, o mesmo IAM de um projeto de parceiro (seção 5, passos 4 e 8) mais `roles/datastore.user` para `partner-expirer@monamienet-app.iam.gserviceaccount.com`, e publique o `firestore.rules` e o `functions/` nele. Crie um **alerta de orçamento**: a cota gratuita do Firestore (50.000 leituras e 20.000 gravações por dia) é dividida entre todos os parceiros Community.
 
+**Levar um parceiro Standard para o Community** (à mão; ainda não há ferramenta). Como os dois planos usam o mesmo layout, a mudança é uma cópia para os mesmos caminhos em outro projeto, mais um campo no registro:
+
+1. Copie todo documento de `partners/<id>/` do `monamienet-<id>` para o mesmo caminho no `monamienet-community`, mantendo campos e tipos (`batchWrite` da API REST do Firestore, como faz o `migrate-layout`), **menos** `users/{uid}`: os uids do Firebase Auth são de cada projeto, então esses perfis ficariam órfãos lá; o app grava um novo no próximo login de cada pessoa.
+2. Grave `partners/<id>/config/plan` = `{minIntervalMinutes: 15}` e, se `config/tracking.intervalMinutes` for menor que 15, suba para 15 (as regras recusam um valor menor no próximo salvamento; use 15 min / 100 m, *Economia*).
+3. Copie `partners/<id>/logo.png` para o bucket do Community com tipo `image/png`. Um projeto sem faturamento responde HTTP 402 até no link público da logo; se o faturamento foi removido, ligue-o antes.
+4. Compare a cópia com a origem documento por documento e só então grave `plan: "community"` no registro central `partners/<id>` (`monamienet-app`). A `resolvePartners` lê o plano a cada chamada, então a próxima escolha de organização já recebe o projeto Community.
+5. Avise as pessoas do parceiro para tocar em *Trocar de organização* e escolhê-lo de novo (no Android, feche o app antes): até lá os aparelhos continuam no projeto em que estavam (#145).
+6. Apague o `monamienet-<id>` (`gcloud projects delete`); o Google permite restaurá-lo por 30 dias.
+
+**Aqui o id não tem volta**: o projeto de um parceiro Standard é sempre `monamienet-<id>` (`projectIdFor` em `central/functions/partner_options.js`), e o id de um projeto apagado nunca pode ser reaproveitado. Depois do passo 6 o parceiro não volta ao Standard com o mesmo id, a não ser que essa regra mude (#104). `aquariustur` e `monamietest` foram levados assim em 30/10/2026.
+
 ## 10. Equipes e convites (pelo app)
 
 Os administradores gerenciam equipes e convites no app (*Equipes*, *Criar equipe*, *Equipe*, *Convidar pessoas*). O trabalho acontece nas funções do projeto central, nunca no aparelho:
