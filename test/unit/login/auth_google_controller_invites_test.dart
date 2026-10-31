@@ -401,7 +401,7 @@ Future<void> _drive(
     await tester.pump(const Duration(seconds: 1));
   }
   await done;
-  // Let any snackbar (the groups gateway is unavailable in tests) close:
+  // Let any snackbar (the central functions are unavailable in tests) close:
   // GetX timers cannot be left pending.
   for (var i = 0; i < 30 && Get.isSnackbarOpen; i++) {
     await tester.pump(const Duration(seconds: 1));
