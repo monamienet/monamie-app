@@ -1,7 +1,7 @@
 # Plano: trocar o Google Groups pelo Firestore nos grupos e papéis
 
 > Status: **aprovado em 31/10/2026** (revisão 16). Acompanhamento: [monamienet/monamie-app#159](https://github.com/monamienet/monamie-app/issues/159), uma issue por fase (seção 5).
-> Este documento descreve o sistema **depois** da migração. Enquanto ela não termina, o [AGENTS.md](../../AGENTS.md) e o [white-label.md](white-label.md) descrevem o sistema de hoje.
+> As fases 0 a 4 e 6 estão feitas no código; falta só a limpeza manual da fase 5 ([#164](https://github.com/monamienet/monamie-app/issues/164)). O [AGENTS.md](../../AGENTS.md) e o [white-label.md](white-label.md) descrevem o sistema como ele é agora; este plano guarda o porquê das decisões.
 
 **Vocabulário:** nas telas e neste texto usamos só a palavra **grupo**, nunca "equipe". "Grupo" é o grupo do MonAmie, guardado no Firestore; o sistema velho é chamado de "Google Group". **No backend:** *organization* (no lugar de *partner*) e *group*; o gestor do grupo é o *maintainer*.
 

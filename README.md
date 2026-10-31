@@ -5,7 +5,7 @@ Team tracking, coordination and communication. One app (`org.monamienet.app`) se
 - How organizations, groups and users fit together, and how to onboard an organization without releasing the app: [docs/en-us/white-label.md](docs/en-us/white-label.md) ([pt-BR](docs/pt-br/white-label.md))
 - Release to Play internal testing and the CI pipeline: [docs/en-us/publish-internal-testing.md](docs/en-us/publish-internal-testing.md), [docs/en-us/understanding-ci.md](docs/en-us/understanding-ci.md)
 - Run the web app locally: [docs/en-us/run-web-locally.md](docs/en-us/run-web-locally.md)
-- Plan to move groups and roles from Google Groups to Firestore (in progress, pt-BR): [docs/pt-br/migracao-grupos-firestore.md](docs/pt-br/migracao-grupos-firestore.md)
+- Plan to move groups and roles from Google Groups to Firestore (pt-BR): [docs/pt-br/migracao-grupos-firestore.md](docs/pt-br/migracao-grupos-firestore.md)
 - Rules for contributors and coding agents: [AGENTS.md](AGENTS.md)
 
 ## Quick start
