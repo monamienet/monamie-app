@@ -30,6 +30,8 @@ Onboarding a partner needs no app release: see `docs/en-us/white-label.md`. CI o
 
 ### Partners, Groups and Users
 
+> **Migration in progress (#159).** Groups and roles are moving from Google Groups to Firestore membership documents, and every Firestore name to English (`partner` → `organization`). The approved plan, with one issue per phase, is [docs/pt-br/migracao-grupos-firestore.md](docs/pt-br/migracao-grupos-firestore.md). This file keeps describing the system as it is today; each phase updates the part it changes in the same PR. Read the plan before touching groups, roles, invites, positions or Firestore paths.
+
 Groups in the monamienet.org Google Workspace have **three levels**, and **everyone is a plain `MEMBER`**: what a person can do comes from *which* group they are in, never from the `MANAGER`/`OWNER` roles (those carry admin powers in groups.google.com, so nobody outside MonAmieNet gets them).
 
 ```
