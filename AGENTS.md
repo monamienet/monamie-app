@@ -30,8 +30,6 @@ Onboarding an organization needs no app release: see `docs/en-us/white-label.md`
 
 ### Organizations, Groups and Users
 
-> **Migration done in code (#159).** Groups and roles moved from Google Groups to Firestore membership documents; the plan, with one issue per phase, is [docs/pt-br/migracao-grupos-firestore.md](docs/pt-br/migracao-grupos-firestore.md). No code reads Google Groups, the groups gateway or custom claims any more. Only the manual clean-up of phase 5 (#164) is left: deleting the old Google Groups, the gateway and the `groups-admin@` Workspace role, and the orphaned test data under `partners/`.
-
 Who belongs where lives in Firestore documents of the organization's project, **written only by the central functions** (`central/functions/`, Admin SDK) and by `dart run tool/organization.dart add-admin`; the rules let no client write them.
 
 - **personKey**: every document about a person is keyed by `personKey(email)`, the lowercase-hex SHA-256 of the trimmed, lowercased e-mail, so no e-mail appears in a document name; each document also stores `email`. Twins that must agree: `person_key.js` in `central/functions/` and `functions/`, `lib/app/data/organization/person_key.dart` (also used by `tool/`), and `personKey()` in `firestore.rules` and `storage.rules`. Fixed test vector: `ana@example.com` → `8e43ca37…a018e11`.
@@ -44,24 +42,6 @@ Who belongs where lives in Firestore documents of the organization's project, **
 - **Changing roles** = `setMemberRoles` (an administrator gives exactly the roles sent, `maintainer` included; a maintainer only `publisher`/`subscriber`); losing `publisher` (or leaving the group with `removeMember`) marks the person's position in that group with `removedAt`, so the map leaves it out and the history keeps it. Leaving one's last group also leaves the organization, unless one is an administrator. Joining happens only through an invite (`acceptInvite`: organization membership `member` if absent plus the group membership, one batch).
 - **In the app**: what a person may do (`Capabilities`) comes from listening to their own organization membership and, with the collection-group query, to their group memberships (`GroupMapController`, behind the `GroupMapState` contract), so a change made by an administrator shows at once and a missing organization membership makes the app forget the organization. The map of a group listens to `groups/{groupId}/positions` with `removedAt == null`; the history reads every position of the group (removed people included), its `trail` and its `trailDays`. There is no "active group": while sharing is on, the background service (its own isolate, its own listener on the person's memberships) publishes each position in **every** group where the person is `publisher`, one batch per group (position, trail point, day summary), and a group that refuses does not stop the others. The administrators' and maintainers' screens call the central group and invite functions with `groupId`; the menu shows *Grupos* to administrators, *Meus grupos* to maintainers and *Administradores* to the owner only.
 - **Who runs it**: the membership-writing calls run as `groups-admin@monamienet-app.iam.gserviceaccount.com` (it keeps its old name; it needs `roles/datastore.user` on the central project, on the Community project and on each Standard project); the scheduled expiry and erase run as `partner-expirer@`.
-
-### Client Onboarding Data (Google Drive via `rclone`)
-
-Clients submit their instance identity through an onboarding Google Form. The answers and uploaded files live in MonAmieNet's **"Onboarding de parceiros"** shared drive. When asked to retrieve client data, use `rclone` with the `monamie:` remote; do not use the claude.ai Google Drive connector (it cannot be bound to the monamienet.org account).
-
-- **Remote**: `monamie:` — Google Drive, `scope = drive.readonly`, bound to the "Onboarding de parceiros" shared drive and authenticated with a monamienet.org account. Check it exists with `rclone listremotes`.
-- **Layout**:
-    - `Respostas.xlsx` — native Google Sheet with the form answers (one row per submission: app name, alternative name, suggested identifier, primary/secondary colors, logo file names).
-    - `Envios/<YYYY-MM-DD HHMM> – MonAmie <instance_name>/` — files uploaded with each submission (e.g. `logo-sem-texto.svg` for the app icon, `logo-com-texto.svg` for the login screen).
-- **Commands**:
-    - List everything: `rclone lsjson -R monamie:`
-    - Export the answers: `rclone copy monamie: <dir> --include "Respostas.*" --drive-export-formats csv` (exports the first sheet as `Respostas.csv`).
-    - Download a submission: `rclone copy "monamie:Envios/<submission folder>" <dir>`
-- **Handling rules**:
-    - Download into a session scratch/temp directory, never into the repository. The answers contain client personal data (e.g. contact e-mail); only copy the fields the task needs into the codebase.
-    - Never print or read `~/.config/rclone/rclone.conf` in full; it stores the OAuth token. `rclone config show monamie` is fine only when filtered to non-secret keys (`type`, `scope`, `team_drive`).
-    - Read-only access: never request a broader scope or try to modify the drive.
-- **Missing remote**: `rclone config` is interactive, so the human must run it (`n` → name `monamie` → `drive` → empty client id/secret → scope `drive.readonly` → browser login with the monamienet.org account → Shared Drive `y` → "Onboarding de parceiros"). If Google shows a generic "Error 400 … malformed" page, open the `http://127.0.0.1:53682/auth?...` link printed by rclone in a private window signed in only to the monamienet.org account.
 
 
 ## Frontend & Architectural Best Practices
