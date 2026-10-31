@@ -2,15 +2,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
-import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/people_list.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/share_card.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/sheet_colors.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// The panel under the map: the sharing switch for people who share, the
-/// observed group for people who watch.
+/// observed group for people who watch. It is drawn on the theme's light
+/// shade ([SheetColors]).
 ///
 /// Dragging the grabber down hides the group's list so the map gets the
 /// room; dragging it up (or tapping it) shows the list again.
@@ -53,7 +54,7 @@ class _HomeSheetState extends State<HomeSheet> {
         return const SizedBox.shrink();
       }
       return Material(
-        color: Colors.white,
+        color: SheetColors.background,
         elevation: 12,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         child: ConstrainedBox(
@@ -100,7 +101,7 @@ class _HomeSheetState extends State<HomeSheet> {
       width: 36,
       height: 4,
       decoration: BoxDecoration(
-        color: HomeColors.handle,
+        color: SheetColors.handle,
         borderRadius: BorderRadius.circular(2),
       ),
     ),
@@ -140,8 +141,8 @@ class _HomeSheetState extends State<HomeSheet> {
                 group?.name ?? 'Nenhum grupo escolhido',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: HomeColors.ink,
+                style: TextStyle(
+                  color: SheetColors.ink,
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                 ),
@@ -150,8 +151,8 @@ class _HomeSheetState extends State<HomeSheet> {
             if (group != null)
               Text(
                 count == 1 ? '1 pessoa' : '$count pessoas',
-                style: const TextStyle(
-                  color: HomeColors.muted,
+                style: TextStyle(
+                  color: SheetColors.muted,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -171,12 +172,12 @@ class _HomeSheetState extends State<HomeSheet> {
       padding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
       child: Column(
         children: [
-          const Text(
+          Text(
             'Ninguém neste grupo ainda. Convide quem vai trabalhar nele '
             'para ver todos no mapa.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: HomeColors.muted,
+              color: SheetColors.muted,
               fontSize: 15,
               height: 1.45,
               fontWeight: FontWeight.w500,

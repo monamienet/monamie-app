@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/sheet_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/initials.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/presence.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/group_rows.dart';
@@ -47,7 +48,7 @@ class PersonRowTile extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       constraints: const BoxConstraints(minHeight: 52),
       decoration: BoxDecoration(
-        color: selected ? HomeColors.surface : Colors.transparent,
+        color: selected ? SheetColors.surface : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Padding(
@@ -64,8 +65,8 @@ class PersonRowTile extends StatelessWidget {
                     name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: HomeColors.ink,
+                    style: TextStyle(
+                      color: SheetColors.ink,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                     ),
@@ -78,7 +79,7 @@ class PersonRowTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: live ? AppColors.darkBlue() : HomeColors.muted,
+                      color: live ? SheetColors.ink : SheetColors.muted,
                       fontSize: 12,
                       fontWeight: live ? FontWeight.w800 : FontWeight.w500,
                     ),
@@ -94,7 +95,7 @@ class PersonRowTile extends StatelessWidget {
               child: Icon(
                 Icons.timeline,
                 size: 20,
-                color: highlighted ? AppColors.darkBlue() : HomeColors.muted,
+                color: highlighted ? AppColors.onPrimary : SheetColors.muted,
               ),
             ),
             if (onCall != null) ...[
@@ -151,11 +152,11 @@ class _SquareButton extends StatelessWidget {
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: on ? AppColors.lightBlue() : Colors.white,
+              color: on ? AppColors.mediumBlue() : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
               border: on
                   ? null
-                  : Border.all(color: HomeColors.outline, width: 1.5),
+                  : Border.all(color: SheetColors.outline, width: 1.5),
             ),
             child: child,
           ),
@@ -185,9 +186,9 @@ class _Avatar extends StatelessWidget {
         foreground = Colors.white;
       case PresenceKind.off:
       case PresenceKind.never:
-        background = HomeColors.surface;
-        foreground = HomeColors.muted;
-        border = Border.all(color: HomeColors.handle, width: 1.5);
+        background = SheetColors.surface;
+        foreground = SheetColors.muted;
+        border = Border.all(color: SheetColors.handle, width: 1.5);
     }
     return Container(
       width: 36,

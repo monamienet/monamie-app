@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/sheet_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/share_card_state.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
@@ -28,9 +29,9 @@ class ShareCard extends StatelessWidget {
         loading: _tracking.isTrackingLoading.value,
       );
       final tinted = state.isOn && !state.busy;
-      final background = tinted ? AppColors.lightBlue() : HomeColors.surface;
-      final titleColor = tinted ? AppColors.darkBlue() : HomeColors.ink;
-      final subtitleColor = tinted ? AppColors.darkBlue() : HomeColors.muted;
+      final background = tinted ? SheetColors.raised : SheetColors.surface;
+      final titleColor = SheetColors.ink;
+      final subtitleColor = tinted ? SheetColors.ink : SheetColors.muted;
 
       return Semantics(
         toggled: state.isOn,
@@ -103,7 +104,7 @@ class ShareCard extends StatelessWidget {
         child: CircularProgressIndicator(
           strokeWidth: 2.6,
           color: AppColors.mediumBlue(),
-          backgroundColor: HomeColors.handle,
+          backgroundColor: SheetColors.handle,
         ),
       );
     }
@@ -111,7 +112,7 @@ class ShareCard extends StatelessWidget {
       state.isOn ? Icons.location_on_outlined : Icons.location_off_outlined,
       key: ValueKey(state.isOn ? 'share_card_on' : 'share_card_off'),
       size: 24,
-      color: state.isOn ? AppColors.darkBlue() : HomeColors.muted,
+      color: state.isOn ? SheetColors.ink : SheetColors.muted,
     );
   }
 }
@@ -125,7 +126,7 @@ class _Switch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final track = busy
-        ? HomeColors.handle
+        ? SheetColors.handle
         : on
         ? AppColors.mediumBlue()
         : HomeColors.offline;
