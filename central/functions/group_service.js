@@ -23,7 +23,6 @@ const { personKey } = require("./person_key");
  * never reused, and `groupMemberships/{personKey}` under each.
  */
 
-const MAX_GROUPS = 99;
 const MIN_NAME = 2;
 const MAX_NAME = 40;
 
@@ -35,8 +34,8 @@ const ASSIGNABLE_ROLES = Object.freeze(["publisher", "subscriber"]);
 const GROUP_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 /**
- * Error the group functions return as `invalid-argument` (or
- * `failed-precondition` for `full`), with a message for the administrator.
+ * Error the group functions return as `invalid-argument`, with a message
+ * for the administrator.
  */
 class GroupError extends Error {
   constructor(code, message) {
@@ -232,7 +231,7 @@ async function requireGroup(db, organizationId, groupId) {
  * Creates a group with an auto id.
  *
  * @returns {Promise<{id: string, name: string}>}
- * @throws {GroupError} `name`, `duplicate` or `full` (99 groups)
+ * @throws {GroupError} `name` or `duplicate`
  */
 async function createGroup(db, organizationId, requestedName, now = new Date()) {
   const existing = await db.collection(`${organizationPath(organizationId)}/${GROUPS}`).get();
@@ -240,9 +239,6 @@ async function createGroup(db, organizationId, requestedName, now = new Date()) 
     requestedName,
     existing.docs.map((d) => String(d.get("name") ?? ""))
   );
-  if (existing.docs.length >= MAX_GROUPS) {
-    throw new GroupError("full", `A organização já tem ${MAX_GROUPS} grupos, o máximo.`);
-  }
   const ref = await db
     .collection(`${organizationPath(organizationId)}/${GROUPS}`)
     .add({ name, createdAt: now });
@@ -369,7 +365,6 @@ async function removeMember(
 module.exports = {
   ASSIGNABLE_ROLES,
   GroupError,
-  MAX_GROUPS,
   createGroup,
   deleteGroup,
   groupDeletionImpact,

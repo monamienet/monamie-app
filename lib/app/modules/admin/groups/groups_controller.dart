@@ -41,17 +41,11 @@ class GroupsController extends GetxController {
   final RxBool isWorking = false.obs;
   final RxString errorMessage = ''.obs;
 
-  /// The most groups an organization may have (the server refuses more).
-  static const maxGroups = 99;
-
   @override
   void onInit() {
     super.onInit();
     load();
   }
-
-  /// "12 de 99".
-  String get countLabel => '${groups.length} de $maxGroups';
 
   Group? byId(String groupId) =>
       groups.firstWhereOrNull((g) => g.id == groupId);

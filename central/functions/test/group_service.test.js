@@ -3,7 +3,6 @@ const assert = require("node:assert/strict");
 
 const {
   GroupError,
-  MAX_GROUPS,
   createGroup,
   deleteGroup,
   groupDeletionImpact,
@@ -504,21 +503,6 @@ describe("listGroups (response shape) - Unit Test Suite", () => {
 
     // 3. Assert
     assert.deepEqual(groups, []);
-  });
-});
-
-describe("createGroup (limit) - Unit Test Suite", () => {
-  test("Sad Path: an organization with 99 groups is refused with full", async () => {
-    // 1. Arrange
-    const docs = {};
-    for (let i = 0; i < MAX_GROUPS; i++) docs[`${ORG}/groups/g${i}`] = { name: `Grupo ${i}` };
-    const db = fakeFirestore(docs);
-
-    // 2. Act
-    const error = await groupErrorOf(() => createGroup(db, "rotasul", "Vendas", NOW));
-
-    // 3. Assert
-    assert.deepEqual([MAX_GROUPS, error.code], [99, "full"]);
   });
 });
 

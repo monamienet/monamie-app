@@ -287,20 +287,15 @@ function requestedOrganizationId(request) {
 }
 
 /** A service error as the HttpsError the app reads: `forbidden` →
- * permission-denied, `full` → failed-precondition, other codes →
- * invalid-argument, with `{field}`; anything else → unavailable. */
+ * permission-denied, other codes → invalid-argument, with `{field}`;
+ * anything else → unavailable. */
 function serviceError(error, organizationId) {
   if (
     error instanceof GroupError ||
     error instanceof InviteError ||
     error instanceof AdministratorError
   ) {
-    const code =
-      error.code === "forbidden"
-        ? "permission-denied"
-        : error.code === "full"
-          ? "failed-precondition"
-          : "invalid-argument";
+    const code = error.code === "forbidden" ? "permission-denied" : "invalid-argument";
     return new HttpsError(code, error.message, { field: error.code });
   }
   logger.error(`[groups] ${organizationId}: ${error.message}`);
