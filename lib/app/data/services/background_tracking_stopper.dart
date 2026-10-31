@@ -4,7 +4,8 @@
 abstract class BackgroundTrackingStopper {
   /// Para o serviço (se estiver rodando) e aguarda a confirmação de que ele
   /// parou. Quando [email] é informado e o serviço estava rodando, marca
-  /// `isPublishing = false` no documento desse usuário.
+  /// `isPublishing = false` na posição desse usuário em cada grupo onde ele
+  /// publica.
   ///
   /// Deve ser chamado enquanto o usuário ainda está autenticado: depois do
   /// logout as regras do Firestore recusam a escrita.

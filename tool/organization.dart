@@ -4,11 +4,11 @@ import 'package:args/command_runner.dart';
 import 'package:path/path.dart' as p;
 
 import 'src/activate_command.dart';
+import 'src/add_admin_command.dart';
 import 'src/check_command.dart';
 import 'src/firebase_command.dart';
 import 'src/gcloud.dart';
 import 'src/http_firestore_documents.dart';
-import 'src/migrate_groups_command.dart';
 import 'src/organizations.dart';
 import 'src/process_firebase_cli.dart';
 import 'src/publish_command.dart';
@@ -22,7 +22,6 @@ Future<void> main(List<String> args) async {
   final repoRoot = Directory(p.dirname(p.dirname(p.fromUri(Platform.script))));
 
   const cli = ProcessFirebaseCli();
-  const groups = GcloudGroupDirectory();
   const tokens = GcloudAccessTokenSource();
   final firestore = HttpFirestoreDocuments();
 
@@ -34,10 +33,10 @@ Future<void> main(List<String> args) async {
         ..addCommand(FirebaseCommand(repoRoot, cli))
         ..addCommand(WebCommand(repoRoot, cli))
         ..addCommand(PublishCommand(firestore, tokens))
-        ..addCommand(CheckCommand(cli, groups, firestore))
-        ..addCommand(ActivateCommand(cli, groups, firestore, tokens))
-        ..addCommand(ThemesCommand(firestore, tokens))
-        ..addCommand(MigrateGroupsCommand(groups, runGcloudIdentity));
+        ..addCommand(CheckCommand(cli, firestore, tokens))
+        ..addCommand(AddAdminCommand(firestore, tokens))
+        ..addCommand(ActivateCommand(cli, firestore, tokens))
+        ..addCommand(ThemesCommand(firestore, tokens));
 
   try {
     await runner.run(args);

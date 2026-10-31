@@ -11,8 +11,8 @@ import 'shared_preferences_organization_binding_store.dart';
 /// Binds, restores and forgets the organization in the current isolate.
 ///
 /// Binding sets [Organization.current] and [CurrentOrganizationFirebase] together, so
-/// the branding, the root group and the Firebase project always belong to
-/// the same organization.
+/// the branding and the Firebase project always belong to the same
+/// organization.
 class OrganizationSession {
   OrganizationSession({OrganizationBindingStore? store})
     : _store = store ?? SharedPreferencesOrganizationBindingStore();

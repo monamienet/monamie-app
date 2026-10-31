@@ -6,7 +6,7 @@ import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
-import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
@@ -20,7 +20,7 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 class HomeMenu extends StatelessWidget {
   const HomeMenu({super.key});
 
-  GoogleGroupsController get _groups => Get.find<GoogleGroupsController>();
+  GroupMapState get _groups => Get.find<GroupMapState>();
   UserController get _user => Get.find<UserController>();
   AuthGoogleController get _auth => Get.find<AuthGoogleController>();
   TrackingController get _tracking => Get.find<TrackingController>();
@@ -116,9 +116,9 @@ class HomeMenu extends StatelessWidget {
                     menuSubtitle(
                       isAdmin: _groups.isAdmin,
                       canWatch: _groups.canWatch,
-                      canShare: _groups.capabilities.value.canShare,
-                      shareTeams: [
-                        for (final team in _groups.shareTeams) team.name,
+                      canShare: _groups.canPublish,
+                      publishGroups: [
+                        for (final group in _groups.publishGroups) group.name,
                       ],
                     ),
                     maxLines: 1,
@@ -240,8 +240,8 @@ class HomeMenu extends StatelessWidget {
           ),
           _MenuItem(
             icon: Icons.groups_outlined,
-            label: 'Equipes',
-            onTap: () => _open(Routes.TEAMS),
+            label: 'Grupos',
+            onTap: () => _open(Routes.GROUPS),
           ),
           _MenuItem(
             icon: Icons.palette_outlined,

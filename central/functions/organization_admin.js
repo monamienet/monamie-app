@@ -1,25 +1,26 @@
-const { GROUP_DOMAIN, isValidOrganizationId } = require("./group_address");
-const { organizationPath } = require("./firestore_paths");
+const { organizationMembership } = require("./membership_store");
 
 /**
- * The organization's administrators are the direct members of its root group
- * `<id>00@` (Google Groups is the only source of administration powers).
- * Its owner, `ownerEmail` in the registry, is who created it: that alone
- * grants nothing here.
+ * Administrators are the people whose membership of the organization,
+ * `organizations/{id}/organizationMemberships/{personKey}` in its project,
+ * has `role: "admin"` (written only by the central functions and
+ * `tool/organization.dart add-admin`). The owner, `ownerEmail` in the
+ * registry, is always one: creation makes them `admin`, and no function
+ * demotes or removes them.
  *
- * @param {FirebaseFirestore.Firestore} db - The central Firestore
- * @param {{lookup: (email: string) => Promise<string|null>,
- *   isMember: (name: string, email: string) => Promise<boolean>}} groups
+ * @param {(organizationId: unknown) => Promise<{db: FirebaseFirestore.Firestore,
+ *   registry: object}|null>} openOrganization - See `organizationOpener`
  * @param {unknown} organizationId
  * @param {string} email - The caller's e-mail
- * @returns {Promise<boolean>} Whether `email` administers `organizationId`
+ * @returns {Promise<FirebaseFirestore.Firestore|null>} The organization's
+ *   Firestore when `email` administers it and it is `active`, else null
  */
-async function isOrganizationAdmin(db, groups, organizationId, email) {
-  if (!isValidOrganizationId(organizationId) || !email) return false;
-  const registry = await db.doc(organizationPath(organizationId)).get();
-  if (!registry.exists || registry.get("status") !== "active") return false;
-  const root = await groups.lookup(`${organizationId}00@${GROUP_DOMAIN}`);
-  return root !== null && (await groups.isMember(root, email.toLowerCase()));
+async function administeredOrganization(openOrganization, organizationId, email) {
+  if (!email) return null;
+  const organization = await openOrganization(organizationId);
+  if (!organization || organization.registry?.status !== "active") return null;
+  const membership = await organizationMembership(organization.db, organizationId, email);
+  return membership?.role === "admin" ? organization.db : null;
 }
 
-module.exports = { isOrganizationAdmin };
+module.exports = { administeredOrganization };

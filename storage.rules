@@ -6,16 +6,19 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    /// The caller's key in Firestore (#159): the lowercase-hex SHA-256 of
-    /// the lowercased e-mail, as in firestore.rules.
+    /// The caller's key in Firestore: the lowercase-hex SHA-256 of the
+    /// lowercased e-mail, as in firestore.rules.
     function personKey() {
       return hashing.sha256(request.auth.token.email.lower()).toHexString().lower();
     }
 
-    /// The caller administers [organizationId] in Firestore (#159). Reads one
-    /// document of the default database.
+    /// The caller administers [organizationId]: their
+    /// organizationMemberships document has `role: 'admin'`. Reads one
+    /// document of the default database (Storage may read Firestore once the
+    /// project grants it, on the first deploy of these rules).
     function isOrganizationAdmin(organizationId) {
-      return request.auth.token.email_verified == true
+      return request.auth != null
+        && request.auth.token.email_verified == true
         && firestore.get(/databases/(default)/documents/organizations/$(organizationId)/organizationMemberships/$(personKey())).data.role == 'admin';
     }
 
@@ -24,14 +27,8 @@ service firebase.storage {
       // before signing in to this project.
       allow read: if true;
 
-      // Only the organization's administrators (members of its root group, or,
-      // after the migration, an `admin` membership in Firestore), only a
-      // PNG of at most 1 MB.
-      allow write: if request.auth != null
-        && (('admin' in request.auth.token
-            && request.auth.token.admin is list
-            && request.auth.token.admin.hasAny([organizationId]))
-          || isOrganizationAdmin(organizationId))
+      // Only the organization's administrators, only a PNG of at most 1 MB.
+      allow write: if isOrganizationAdmin(organizationId)
         && (request.resource == null
           || (request.resource.contentType == 'image/png'
             && request.resource.size <= 1024 * 1024));

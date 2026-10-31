@@ -1,17 +1,13 @@
 import 'dart:typed_data';
 
-import 'group_address.dart';
+import 'organization_id.dart';
 import 'organization_theme.dart';
 
-export 'group_address.dart';
+export 'organization_id.dart';
 
 /// The organization's Firebase project: `monamienet-<id>`.
 String firebaseProjectIdFor(String organizationId) =>
     'monamienet-$organizationId';
-
-/// The organization's root group: `<id>00@monamienet.org`.
-String rootGroupEmailFor(String organizationId) =>
-    '${organizationId}00@$groupDomain';
 
 /// The name shown when an organization's branding has no usable name: the id with
 /// its first letter in upper case (`aquariustur` → `Aquariustur`).
@@ -63,7 +59,8 @@ class OrganizationConfig {
     );
   }
 
-  /// Permanent organization id: `<id>` in `monamienet-<id>` and `<id>NN@...`.
+  /// Permanent organization id: `<id>` in `monamienet-<id>` and in
+  /// `organizations/<id>`.
   final String id;
 
   /// The organization's own name. Users see it alone: the MonAmie name and a
@@ -88,9 +85,6 @@ class OrganizationConfig {
 
   /// The theme the app uses: [theme], or the default (Grafite).
   OrganizationTheme get effectiveTheme => theme ?? defaultOrganizationTheme;
-
-  /// The organization's root group: `<id>00@monamienet.org`.
-  String get rootGroupEmail => rootGroupEmailFor(id);
 
   /// The organization's Firebase project when it is on the Standard plan:
   /// `monamienet-<id>`.

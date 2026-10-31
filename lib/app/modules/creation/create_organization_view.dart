@@ -602,7 +602,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                     ),
                   ),
                   Text(
-                    'Equipe Norte',
+                    'Motoristas',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -951,7 +951,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                           const SizedBox(height: 4),
                           Text(
                             '${widget.ownerEmail} vai administrar a organização: '
-                            'convidar pessoas, criar equipes, mudar a aparência e '
+                            'convidar pessoas, criar grupos, mudar a aparência e '
                             'adicionar o logo. Depois, outras pessoas também '
                             'podem administrar.',
                             style: const TextStyle(
@@ -1113,7 +1113,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Os dois têm o mapa, as equipes e a aparência da $name. Muda '
+                'Os dois têm o mapa, os grupos e a aparência da $name. Muda '
                 'onde os dados ficam e quem paga.',
                 style: const TextStyle(
                   fontSize: 15,
@@ -1175,7 +1175,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Dá para passar do Community para o Standard depois, sem perder equipes nem histórico.',
+                        'Dá para passar do Community para o Standard depois, sem perder grupos nem histórico.',
                         style: TextStyle(
                           fontSize: 13,
                           height: 19 / 13,
@@ -1337,7 +1337,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
       'active' => (
         'A $name está pronta',
         'O app já aparece com o nome e o tema de vocês. O logo você adiciona '
-            'quando quiser, em Aparência. Próximo passo: chame sua equipe em Equipes.',
+            'quando quiser, em Aparência. Próximo passo: chame sua equipe em Grupos.',
         'Entrar na $name',
       ),
       'awaiting_billing' => (

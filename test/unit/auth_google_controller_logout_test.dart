@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:monamie_app/app/data/organization/organization_binding.dart';
 import 'package:monamie_app/app/data/organization/organization_binding_store.dart';
@@ -83,9 +82,6 @@ class _FakeAuthGoogleService implements AuthGoogleService {
 
   @override
   Future<UserGoogleModel?> saveOrganizationProfile() async => null;
-
-  @override
-  Future<String?> getFirebaseIdToken() async => null;
 
   @override
   Future<String?> refreshGoogleIdToken() async => null;
@@ -172,10 +168,6 @@ class _FakeUserGoogleRepository implements UserGoogleRepository {
   @override
   Future<bool> hasUserGoogle() =>
       throw UnimplementedError('hasUserGoogle não é usado no logout');
-
-  @override
-  Future<GdiGroupsGoogle> getGdiGroupsGoogle(String token, String email) =>
-      throw UnimplementedError('getGdiGroupsGoogle não é usado no logout');
 }
 
 /// Registra no log compartilhado as rotas empilhadas pelo Navigator.

@@ -1,21 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
+import 'package:monamie_app/app/data/groups/firestore_organization_membership_check.dart';
+import 'package:monamie_app/app/data/groups/organization_membership_check.dart';
 import 'package:monamie_app/app/data/organization/central_organization_directory.dart';
 import 'package:monamie_app/app/data/organization/organization_binding.dart';
 import 'package:monamie_app/app/data/organization/organization_branding_loader.dart';
 import 'package:monamie_app/app/data/organization/hive_organization_local_data.dart';
 import 'package:monamie_app/app/data/organization/organization_directory.dart';
 import 'package:monamie_app/app/data/organization/organization_local_data.dart';
-import 'package:monamie_app/app/data/organization/organization_membership.dart';
 import 'package:monamie_app/app/data/organization/organization_session.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
-import 'package:monamie_app/app/data/repository/user_data_repository.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/flutter_background_service_tracking_stopper.dart';
-import 'package:monamie_app/app/data/services/capabilities.dart';
 import 'package:monamie_app/app/data/theme/firestore_theme_catalog.dart';
 import 'package:monamie_app/app/modules/account/account_deletion.dart';
 import 'package:monamie_app/app/modules/account/account_deletion_backend.dart';
@@ -26,7 +24,6 @@ import 'package:monamie_app/app/modules/creation/firebase_creation_backend.dart'
 import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
-import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/login/id_token_expiry.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
@@ -36,10 +33,11 @@ import 'package:monamie_app/app/utils/app_theme.dart';
 /// Signs the user in and binds their organization.
 ///
 /// After Google sign-in (central project), the user's organizations come from
-/// their groups: none shows the "not linked" screen, one is entered
-/// directly, several open the organization picker. Entering an organization binds its
-/// Firebase project, root group and branding together, then signs in to the
-/// organization project and syncs the claims there.
+/// the central `resolveOrganizations`: none shows the "not linked" screen,
+/// one is entered directly, several open the organization picker. Entering
+/// an organization binds its Firebase project and branding together, signs
+/// in to the organization project and checks there that the person still
+/// has a membership.
 class AuthGoogleController extends GetxController {
   AuthGoogleController({
     AuthGoogleService? authGoogleService,
@@ -51,8 +49,11 @@ class AuthGoogleController extends GetxController {
     OrganizationLocalData? organizationLocalData,
     InvitesBackend? invitesBackend,
     AccountDeletionBackend? deletionBackend,
+    OrganizationMembershipCheck? membershipCheck,
     void Function()? refreshTheme,
-  }) : _invitesBackend = invitesBackend ?? const FirebaseInvitesBackend(),
+  }) : _membershipCheck =
+           membershipCheck ?? const FirestoreOrganizationMembershipCheck(),
+       _invitesBackend = invitesBackend ?? const FirebaseInvitesBackend(),
        _deletionBackend =
            deletionBackend ?? const FirebaseAccountDeletionBackend(),
        _organizationLocalData =
@@ -75,6 +76,7 @@ class AuthGoogleController extends GetxController {
   final OrganizationLocalData _organizationLocalData;
   final InvitesBackend _invitesBackend;
   final AccountDeletionBackend _deletionBackend;
+  final OrganizationMembershipCheck _membershipCheck;
 
   /// The signed-in account's pending deletion, shown on *Em exclusão*.
   final Rxn<AccountDeletion> accountDeletion = Rxn<AccountDeletion>();
@@ -94,9 +96,6 @@ class AuthGoogleController extends GetxController {
   /// Error of the last accept, shown on the invite card.
   final RxString inviteError = ''.obs;
 
-  static const _acceptRetries = 6;
-  static const _acceptRetryDelay = Duration(seconds: 4);
-
   /// The invite just accepted: *Boas-vindas* is shown once, after entering.
   final Rxn<Invite> welcome = Rxn<Invite>();
 
@@ -112,7 +111,6 @@ class AuthGoogleController extends GetxController {
       _injectedAuthGoogle ?? AuthGoogleService();
   late final UserGoogleRepository _userRepository =
       _injectedUserRepository ?? UserGoogleRepository();
-  late final UserDataRepository _userDataRepository = UserDataRepository();
   late final BackgroundTrackingStopper _trackingStopper =
       _injectedTrackingStopper ?? FlutterBackgroundServiceTrackingStopper();
   StreamSubscription? _webSignInSub;
@@ -146,8 +144,8 @@ class AuthGoogleController extends GetxController {
   /// shown on MonAmie's own screens with "Trocar".
   final RxnString signedInEmail = RxnString();
 
-  /// Why the user is on *Sem organização* after trying to enter an organization
-  /// (removed from its groups, or no capability there); `null` otherwise.
+  /// Why the user is on *Sem organização* after trying to enter an
+  /// organization (no membership there any more); `null` otherwise.
   final RxnString noAccessReason = RxnString();
 
   @override
@@ -193,10 +191,9 @@ class AuthGoogleController extends GetxController {
   /// MonAmie, so they can check again (after accepting an invite) or create
   /// their organization without signing in twice. Both screens show the
   /// pending invites: someone already in an organization can be invited to
-  /// another one, or to another team.
+  /// another one, or to another group.
   Future<void> _continueWithOrganizations(
     String idToken, {
-    bool fresh = false,
     bool alwaysPick = false,
     String? enter,
   }) async {
@@ -212,9 +209,8 @@ class AuthGoogleController extends GetxController {
     }
     deletionRestored.value = false;
     accountDeletion.value = null;
-    final candidates = await _organizationDirectory.organizationsOfSignedInUser(
-      fresh: fresh,
-    );
+    final candidates = await _organizationDirectory
+        .organizationsOfSignedInUser();
     if (candidates.isEmpty) {
       await _loadInvites();
       Get.offAllNamed(Routes.NO_ORGANIZATION);
@@ -307,24 +303,16 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// Enters [organizationId] once the central directory lists it, without the
-  /// picker in between. Google's group directory takes a few seconds to show
-  /// a new membership (an accepted invite, a newly created root group), so
-  /// it asks again without the server's cache before going on with the
-  /// sign-in.
-  Future<void> _enterWhenListed(String organizationId) async {
+  /// Enters [organizationId], which just became the person's (an invite
+  /// accepted, an organization created), without the picker in between. The
+  /// memberships live in Firestore, so the central directory lists it at
+  /// once; if it does not, the picker shows, never another organization
+  /// silently.
+  Future<void> _enterNew(String organizationId) async {
     final idToken = _pendingIdToken ?? await _authGoogle.signInGoogle();
     if (idToken == null) return;
-    for (var attempt = 0; attempt < _acceptRetries; attempt++) {
-      final candidates = await _organizationDirectory
-          .organizationsOfSignedInUser(fresh: true);
-      if (candidates.any((c) => c.id == organizationId)) break;
-      await Future<void>.delayed(_acceptRetryDelay);
-    }
-    // Still not listed: the picker, never another organization silently.
     await _continueWithOrganizations(
       idToken,
-      fresh: true,
       alwaysPick: true,
       enter: organizationId,
     );
@@ -335,7 +323,7 @@ class AuthGoogleController extends GetxController {
     if (isLoading.value) return;
     isLoading.value = true;
     try {
-      await _enterWhenListed(organizationId);
+      await _enterNew(organizationId);
     } catch (e) {
       _showLoginError("Não foi possível entrar agora: $e");
     } finally {
@@ -343,8 +331,8 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// "Aceitar e entrar": joins the invite's team, then enters its organization
-  /// (looked up without the server's cache) and shows *Boas-vindas*.
+  /// "Aceitar e entrar": joins the invite's group, then enters its
+  /// organization and shows *Boas-vindas*.
   Future<void> acceptInvite(Invite invite) async {
     if (acceptingInvite.value != null || isLoading.value) return;
     acceptingInvite.value = invite.id;
@@ -352,7 +340,7 @@ class AuthGoogleController extends GetxController {
     try {
       await _invitesBackend.accept(invite);
       welcome.value = invite;
-      await _enterWhenListed(invite.organizationId);
+      await _enterNew(invite.organizationId);
     } on InvitesException catch (e) {
       inviteError.value = e.message;
     } catch (e) {
@@ -511,12 +499,14 @@ class AuthGoogleController extends GetxController {
       enteringOrganizationName.value = binding.organization.name;
       await _authGoogle.signInToOrganization(idToken);
 
-      // Sync the claims first: the rules only let the organization's members
-      // read the map or write their own position.
-      final capabilities = await _syncClaims();
-      if (claimsShowNoAccess(capabilities)) {
-        // Listed by the central directory (its group cache may still have
-        // the user) but no capability here: same outcome as no organization.
+      // The person's membership first: the rules only let the
+      // organization's members read the map or write their own position.
+      // A failed read (null) is not evidence of removal.
+      final member = await _membershipCheck.isMemberOf(binding.organization.id);
+      if (member == false) {
+        // Listed by the central directory (`accounts` may lag behind the
+        // organization) but no membership here: same outcome as no
+        // organization.
         await _authGoogle.signOutOfOrganization();
         await _organizationSession.forget();
         noAccessReason.value =
@@ -533,8 +523,6 @@ class AuthGoogleController extends GetxController {
         );
       }
       await _userRepository.saveUserGoogleModel(user);
-      final token = await _authGoogle.getFirebaseIdToken();
-      await _getGdiGroupsGoogle(token ?? '', user.email);
 
       // The token stays (in memory, until sign-out) so that switching
       // organization does not need Google again while it is still good.
@@ -567,42 +555,6 @@ class AuthGoogleController extends GetxController {
     );
   }
 
-  Future<void> _getGdiGroupsGoogle(String token, String email) async {
-    try {
-      GdiGroupsGoogle gdiGroups = await _userRepository.getGdiGroupsGoogle(
-        token,
-        email,
-      );
-      // TODO: o comando abaixo retorna a promessa de uma String s,
-      // mas nada é feito com s. Por isso, talvez eu possa remover o await.
-      await _userDataRepository.updateGdiGroupsGoogle(gdiGroups);
-    } catch (e) {
-      debugPrint("Erro ao obter grupos GDI Google: $e");
-      Get.snackbar(
-        "Aviso",
-        "Não foi possível carregar seus grupos. Algumas funcionalidades podem ficar limitadas.\nErro: $e",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange.shade100,
-        duration: const Duration(seconds: 5),
-      );
-    }
-  }
-
-  //Future<void> _getGoogleGroupMembers(String token, String groupEmail) async {
-  //  try {
-  //    GdiGroupsGoogle gdiGroups = await _userRepository.getGdiGroupsGoogle(
-  //      token,
-  //      groupEmail,
-  //    );
-  //
-  //    // TODO: o comando abaixo retorna a promessa de uma String s,
-  //    // mas nada é feito com s. Por isso, talvez eu possa remover o await.
-  //    await _userDataRepository.updateGdiGroupsGoogle(gdiGroups);
-  //  } catch (e) {
-  //    debugPrint("Erro ao obter grupos GDI Google: $e");
-  //  }
-  //}
-
   void loginGoogle() async {
     if (isLoading.value) return;
     isLoading.value = true;
@@ -620,12 +572,9 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// Recomputes the person's capabilities in the organization (`syncClaims`).
-  Future<Capabilities?> _syncClaims() => MonAmieClaimsService.syncClaims();
-
   Future<void> logout() => _signOut();
 
-  /// Forgets the organization after the user was removed from all its groups:
+  /// Forgets the organization after the user's membership was removed:
   /// the same steps as [logout], then *Sem organização* saying why.
   Future<void> forgetRemovedOrganization() async {
     final name = Organization.current?.name;

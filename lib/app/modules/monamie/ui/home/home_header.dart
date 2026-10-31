@@ -6,23 +6,23 @@ import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
-import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_chip.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/initials.dart';
-import 'package:monamie_app/app/modules/monamie/ui/home/team_menu_button.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/group_menu_button.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// The home app bar: menu, the organization, the person, and under them the
-/// team chip and (for people who watch) the day chip.
+/// group chip and (for people who watch) the day chip.
 ///
-/// The team chip is what answers "which team am I with?" for everyone: a
+/// The group chip is what answers "which group am I with?" for everyone: a
 /// person who watches picks it, a person who only shares sees theirs.
 class HomeHeader extends StatelessWidget {
   const HomeHeader({super.key});
 
-  GoogleGroupsController get _groups => Get.find<GoogleGroupsController>();
+  GroupMapState get _groups => Get.find<GroupMapState>();
   UserController get _user => Get.find<UserController>();
   CalendarController get _calendar => Get.find<CalendarController>();
 
@@ -81,7 +81,7 @@ class HomeHeader extends StatelessWidget {
                     spacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      _teamChip(),
+                      _groupChip(),
                       if (_groups.canWatch) ..._dayChips(),
                     ],
                   ),
@@ -94,15 +94,15 @@ class HomeHeader extends StatelessWidget {
     );
   }
 
-  Widget _teamChip() {
+  Widget _groupChip() {
     final canWatch = _groups.canWatch;
-    final label = teamChipLabel(
+    final label = groupChipLabel(
       canWatch: canWatch,
-      observedTeam: _groups.selectedGroup.value?.name,
-      shareTeams: [for (final team in _groups.shareTeams) team.name],
+      observedGroup: _groups.selectedGroup.value?.name,
+      publishGroups: [for (final group in _groups.publishGroups) group.name],
     );
-    if (canWatch) return TeamMenuButton(label: label);
-    return HomeChip(label: label, semanticsLabel: 'Equipe: $label');
+    if (canWatch) return GroupMenuButton(label: label);
+    return HomeChip(label: label, semanticsLabel: 'Grupo: $label');
   }
 
   List<Widget> _dayChips() {

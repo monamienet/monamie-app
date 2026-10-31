@@ -3,9 +3,10 @@ import 'package:hive/hive.dart';
 
 import 'organization_local_data.dart';
 
-/// Hive boxes that hold organization data: the gateway groups cache
-/// (`GoogleGroupsProvider`) and the user's data (`UserDataProvider`).
-/// `user_google_data` is deleted by the sign-out itself.
+/// Hive boxes earlier versions filled with organization data (the groups
+/// gateway's cache and the user's groups), still deleted at sign-out so
+/// nothing of them stays on an updated device. `user_google_data` is
+/// deleted by the sign-out itself.
 const organizationHiveBoxes = ['google_groups_data', 'user_data'];
 
 /// [OrganizationLocalData] stored in Hive.

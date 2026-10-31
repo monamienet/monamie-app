@@ -3,7 +3,7 @@ import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 
 void main() {
   group('HomeLayout.of - Unit Test Suite', () {
-    // (label, canShare, canWatch, isWeb, showShareCard, showTeam)
+    // (label, canShare, canWatch, isWeb, showShareCard, showGroup)
     final cases = <(String, bool, bool, bool, bool, bool)>[
       ('Happy Path: share only on a phone', true, false, false, true, false),
       ('Happy Path: watch only on a phone', false, true, false, false, true),
@@ -56,18 +56,18 @@ void main() {
         );
 
         // 3. Assert
-        expect((layout.showShareCard, layout.showTeam), (card, team));
+        expect((layout.showShareCard, layout.showGroup), (card, team));
       });
     }
   });
 
-  group('teamChipLabel - Unit Test Suite', () {
+  group('groupChipLabel - Unit Test Suite', () {
     test('Happy Path: a watcher sees the team they picked', () {
       // 1. Arrange / 2. Act
-      final label = teamChipLabel(
+      final label = groupChipLabel(
         canWatch: true,
-        observedTeam: 'Centro',
-        shareTeams: const [],
+        observedGroup: 'Centro',
+        publishGroups: const [],
       );
 
       // 3. Assert
@@ -76,10 +76,10 @@ void main() {
 
     test('Happy Path: share only with one team names that team (#110)', () {
       // 1. Arrange / 2. Act
-      final label = teamChipLabel(
+      final label = groupChipLabel(
         canWatch: false,
-        observedTeam: null,
-        shareTeams: const ['Zona Norte'],
+        observedGroup: null,
+        publishGroups: const ['Zona Norte'],
       );
 
       // 3. Assert
@@ -88,10 +88,10 @@ void main() {
 
     test('Edge Case: share only with several teams names the first +N', () {
       // 1. Arrange / 2. Act
-      final label = teamChipLabel(
+      final label = groupChipLabel(
         canWatch: false,
-        observedTeam: null,
-        shareTeams: const ['Centro', 'Zona Norte', 'Zona Sul'],
+        observedGroup: null,
+        publishGroups: const ['Centro', 'Zona Norte', 'Zona Sul'],
       );
 
       // 3. Assert
@@ -100,10 +100,10 @@ void main() {
 
     test('Edge Case: share only with two teams reads "+1"', () {
       // 1. Arrange / 2. Act
-      final label = teamChipLabel(
+      final label = groupChipLabel(
         canWatch: false,
-        observedTeam: null,
-        shareTeams: const ['Centro', 'Zona Norte'],
+        observedGroup: null,
+        publishGroups: const ['Centro', 'Zona Norte'],
       );
 
       // 3. Assert
@@ -112,36 +112,36 @@ void main() {
 
     test('Edge Case: a watcher who shares too still picks the team', () {
       // 1. Arrange / 2. Act
-      final label = teamChipLabel(
+      final label = groupChipLabel(
         canWatch: true,
-        observedTeam: 'Zona Sul',
-        shareTeams: const ['Centro'],
+        observedGroup: 'Zona Sul',
+        publishGroups: const ['Centro'],
       );
 
       // 3. Assert
       expect(label, 'Zona Sul');
     });
 
-    test('Edge Case: a watcher with no team picked is asked to choose', () {
+    test('Edge Case: a watcher with no group picked is asked to choose', () {
       // 1. Arrange / 2. Act
-      final label = teamChipLabel(
+      final label = groupChipLabel(
         canWatch: true,
-        observedTeam: null,
-        shareTeams: const ['Centro'],
+        observedGroup: null,
+        publishGroups: const ['Centro'],
       );
 
       // 3. Assert
-      expect(label, 'Escolher equipe');
+      expect(label, 'Escolher grupo');
     });
 
     test(
       'Sad Path: a person who only shares ignores a stale observed team',
       () {
         // 1. Arrange / 2. Act
-        final label = teamChipLabel(
+        final label = groupChipLabel(
           canWatch: false,
-          observedTeam: 'Outra',
-          shareTeams: const ['Centro'],
+          observedGroup: 'Outra',
+          publishGroups: const ['Centro'],
         );
 
         // 3. Assert
@@ -149,16 +149,16 @@ void main() {
       },
     );
 
-    test('Sad Path: no capability and no team reads "Sem equipe"', () {
+    test('Sad Path: no capability and no group reads "Sem grupo"', () {
       // 1. Arrange / 2. Act
-      final label = teamChipLabel(
+      final label = groupChipLabel(
         canWatch: false,
-        observedTeam: null,
-        shareTeams: const [],
+        observedGroup: null,
+        publishGroups: const [],
       );
 
       // 3. Assert
-      expect(label, 'Sem equipe');
+      expect(label, 'Sem grupo');
     });
   });
 
@@ -169,7 +169,7 @@ void main() {
         isAdmin: true,
         canWatch: true,
         canShare: false,
-        shareTeams: const [],
+        publishGroups: const [],
       );
 
       // 3. Assert
@@ -182,7 +182,7 @@ void main() {
         isAdmin: false,
         canWatch: false,
         canShare: true,
-        shareTeams: const ['Centro'],
+        publishGroups: const ['Centro'],
       );
 
       // 3. Assert
@@ -195,7 +195,7 @@ void main() {
         isAdmin: false,
         canWatch: true,
         canShare: false,
-        shareTeams: const [],
+        publishGroups: const [],
       );
 
       // 3. Assert
@@ -208,7 +208,7 @@ void main() {
         isAdmin: false,
         canWatch: true,
         canShare: true,
-        shareTeams: const ['Centro'],
+        publishGroups: const ['Centro'],
       );
 
       // 3. Assert
@@ -221,7 +221,7 @@ void main() {
         isAdmin: true,
         canWatch: true,
         canShare: true,
-        shareTeams: const ['Centro'],
+        publishGroups: const ['Centro'],
       );
 
       // 3. Assert
@@ -234,24 +234,24 @@ void main() {
         isAdmin: false,
         canWatch: false,
         canShare: true,
-        shareTeams: const ['Centro', 'Zona Norte'],
+        publishGroups: const ['Centro', 'Zona Norte'],
       );
 
       // 3. Assert
       expect(subtitle, 'Centro +1 · em campo');
     });
 
-    test('Sad Path: no capability and no team still reads sensibly', () {
+    test('Sad Path: no capability and no group still reads sensibly', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
         isAdmin: false,
         canWatch: false,
         canShare: false,
-        shareTeams: const [],
+        publishGroups: const [],
       );
 
       // 3. Assert
-      expect(subtitle, 'Sem equipe · em campo');
+      expect(subtitle, 'Sem grupo · em campo');
     });
   });
 }

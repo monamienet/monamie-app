@@ -3,10 +3,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/initials.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/presence.dart';
-import 'package:monamie_app/app/modules/monamie/ui/home/team_rows.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/group_rows.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
-/// One person of the team list: avatar, name, how fresh their position is,
+/// One person of the group list: avatar, name, how fresh their position is,
 /// and the buttons to draw their trail and to call them on Google Meet.
 ///
 /// It reads no controller: the list passes what it shows and what each
@@ -21,7 +21,7 @@ class PersonRowTile extends StatelessWidget {
     this.onCall,
   });
 
-  final TeamRow row;
+  final GroupRow row;
 
   /// Whether the person's trail is drawn on the map.
   final bool highlighted;

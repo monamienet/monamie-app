@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
 import 'package:monamie_app/app/modules/monamie/history/history_calendar_sheet.dart';
 import 'package:monamie_app/app/modules/monamie/history/history_month.dart';
@@ -67,16 +67,20 @@ class CalendarController extends GetxController {
     _observedDay.value = DateTime(day.year, day.month, day.day);
   }
 
-  /// Marks the days of the shown month when someone of the observed team
-  /// shared their location (one summary read per person and day).
+  /// Marks the days of the shown month when someone shared their location
+  /// in the observed group, including people who no longer publish there
+  /// (one summary read per person and day).
   Future<void> _loadTrailDays() async {
     final month = viewMonth.value;
+    final groupMap = Get.find<GroupMapState>();
+    final groupId = groupMap.selectedGroup.value?.id;
+    if (groupId == null) return;
     isLoadingMonth.value = true;
     try {
-      final emails = Get.find<GoogleGroupsController>().observedMembers.map(
-        (m) => m.email,
-      );
-      final days = await FirebaseProvider().trailDays(emails, month);
+      final emails = [
+        for (final member in await groupMap.loadHistoryMembers()) member.email,
+      ];
+      final days = await FirebaseProvider().trailDays(groupId, emails, month);
       if (viewMonth.value.first == month.first) {
         viewMonth.value = month.shift(0, trailDays: days);
       }

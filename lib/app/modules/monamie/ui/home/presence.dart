@@ -1,5 +1,5 @@
 /// How fresh a person's last position is, which decides the line under their
-/// name and the color of their avatar in the team list.
+/// name and the color of their avatar in the group list.
 enum PresenceKind {
   /// Updated within the organization's freshness threshold.
   live,

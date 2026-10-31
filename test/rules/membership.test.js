@@ -1,8 +1,11 @@
-// Membership-based rules of an organization project (#159, phase 1), against the
-// Firestore and Storage emulators. Organizations, groups and roles live in
-// Firestore documents keyed by personKey (the lowercase-hex SHA-256 of the
-// lowercased e-mail); the rules read them with get() instead of claims.
-// Positions live inside each group: groups/{groupId}/positions/{personKey}.
+// Rules of an organization project (firestore.rules and storage.rules),
+// against the Firestore and Storage emulators. Organizations, groups and
+// roles live in Firestore documents keyed by personKey (the lowercase-hex
+// SHA-256 of the lowercased e-mail), written only by the central functions;
+// the rules read them with get(). Positions live inside each group:
+// groups/{groupId}/positions/{personKey}. The Storage rules read the same
+// memberships, so the logo tests live here too (the Storage emulator's
+// firestore.get() only sees the project the emulators were started with).
 const { after, before, beforeEach, describe, test } = require("node:test");
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
@@ -18,6 +21,7 @@ const {
   Timestamp,
   collection,
   collectionGroup,
+  deleteDoc,
   doc,
   documentId,
   getDoc,
@@ -29,7 +33,7 @@ const {
   where,
   writeBatch,
 } = require("firebase/firestore");
-const { ref, uploadBytes } = require("firebase/storage");
+const { deleteObject, getBytes, ref, uploadBytes } = require("firebase/storage");
 
 const root = path.join(__dirname, "..", "..");
 
@@ -304,38 +308,67 @@ describe("membership rules: organizationMemberships - Rules Test Suite", () => {
 });
 
 describe("membership rules: groups - Rules Test Suite", () => {
-  test("Happy Path: a member of the organization reads a group", async () => {
+  test("Happy Path: a person reads a group they belong to", async () => {
     // 1. Arrange
     const db = dbOf("caio");
-
-    // 2. Act
-    const read = getDoc(doc(db, RECEPCAO));
-
-    // 3. Assert
-    await assertSucceeds(read);
-  });
-
-  test("Sad Path: someone outside the organization cannot read its groups", async () => {
-    // 1. Arrange
-    const db = dbOf("nina");
 
     // 2. Act
     const read = getDoc(doc(db, GUIAS));
 
     // 3. Assert
-    await assertFails(read);
+    await assertSucceeds(read);
   });
 
-  test("Sad Path: an administrator cannot write a group from the app", async () => {
+  test("Happy Path: an administrator in no group lists every group", async () => {
     // 1. Arrange
     const db = dbOf("olga");
 
     // 2. Act
-    const write = setDoc(doc(db, `${HERE}/groups/nova`), { name: "Nova" });
+    const snapshot = await getDocs(collection(db, `${HERE}/groups`));
 
     // 3. Assert
-    await assertFails(write);
+    assert.equal(snapshot.size, 2);
   });
+
+  test("Edge Case: a subscriber-only member reads their group", async () => {
+    // 1. Arrange
+    const db = dbOf("vera");
+
+    // 2. Act
+    const read = getDoc(doc(db, GUIAS));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  const denied = [
+    ["a member reading a group they are not in", () => getDoc(doc(dbOf("caio"), RECEPCAO))],
+    ["a member listing the groups", () => getDocs(collection(dbOf("ana"), `${HERE}/groups`))],
+    ["someone outside the organization", () => getDoc(doc(dbOf("nina"), GUIAS))],
+    ["another organization's administrator", () => getDoc(doc(dbOf("otto"), GUIAS))],
+    ["an administrator writing a group", () => setDoc(doc(dbOf("olga"), `${HERE}/groups/nova`), { name: "Nova" })],
+    [
+      "an administrator writing a group membership",
+      () =>
+        setDoc(doc(dbOf("olga"), `${GUIAS}/groupMemberships/${keyOf(people.nina)}`), {
+          email: people.nina,
+          organizationId: "rotasul",
+          roles: ["subscriber"],
+        }),
+    ],
+  ];
+  for (const [label, act] of denied) {
+    test(`Sad Path: ${label} is denied`, async () => {
+      // 1. Arrange
+      // (people, groups and memberships are seeded in beforeEach)
+
+      // 2. Act
+      const request = act();
+
+      // 3. Assert
+      await assertFails(request);
+    });
+  }
 });
 
 describe("membership rules: my groups (collection-group query) - Rules Test Suite", () => {
@@ -559,16 +592,208 @@ describe("membership rules: history - Rules Test Suite", () => {
   });
 });
 
-describe("membership rules: logo upload with a Firestore admin - Rules Test Suite", () => {
-  const png = () => {
-    const bytes = new Uint8Array(64);
+describe("membership rules: config/branding - Rules Test Suite", () => {
+  test("Happy Path: an unauthenticated client reads the branding", async () => {
+    // 1. Arrange
+    const db = env.unauthenticatedContext().firestore();
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/config/branding`));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  test("Edge Case: an administrator of another organization reads the branding", async () => {
+    // 1. Arrange
+    const db = dbOf("otto");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/config/branding`));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  test("Sad Path: even an administrator cannot write the branding", async () => {
+    // 1. Arrange
+    const db = dbOf("olga");
+
+    // 2. Act
+    const write = setDoc(doc(db, `${HERE}/config/branding`), { name: "Outro" });
+
+    // 3. Assert
+    await assertFails(write);
+  });
+});
+
+describe("membership rules: config/plan - Rules Test Suite", () => {
+  test("Happy Path: a member reads the plan", async () => {
+    // 1. Arrange
+    const db = dbOf("pia");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${THERE}/config/plan`));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  test("Edge Case: a member reads a plan that does not exist (Standard)", async () => {
+    // 1. Arrange
+    const db = dbOf("ana");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/config/plan`));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  const denied = [
+    ["someone outside the organization reading", () => getDoc(doc(dbOf("nina"), `${THERE}/config/plan`))],
+    ["an unauthenticated client reading", () => getDoc(doc(env.unauthenticatedContext().firestore(), `${THERE}/config/plan`))],
+    ["an administrator writing", () => setDoc(doc(dbOf("otto"), `${THERE}/config/plan`), { minIntervalMinutes: 0 })],
+  ];
+  for (const [label, act] of denied) {
+    test(`Sad Path: ${label} the plan is denied`, async () => {
+      // 1. Arrange
+      // (the plan is seeded in beforeEach)
+
+      // 2. Act
+      const request = act();
+
+      // 3. Assert
+      await assertFails(request);
+    });
+  }
+});
+
+/** config/tracking as an administrator's app writes it. */
+function trackingBy(email, intervalMinutes = 5, distanceMeters = 10) {
+  return { intervalMinutes, distanceMeters, updatedAt: serverTimestamp(), updatedBy: email };
+}
+
+describe("membership rules: config/tracking - Rules Test Suite", () => {
+  const seedTracking = () =>
+    env.withSecurityRulesDisabled((context) =>
+      setDoc(doc(context.firestore(), `${HERE}/config/tracking`), { intervalMinutes: 5, distanceMeters: 10 })
+    );
+
+  test("Happy Path: a member reads the tracking settings", async () => {
+    // 1. Arrange
+    await seedTracking();
+    const db = dbOf("ana");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/config/tracking`));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  test("Happy Path: an administrator writes allowed values (no plan: 1 min, 5 m)", async () => {
+    // 1. Arrange
+    const db = dbOf("olga");
+
+    // 2. Act
+    const write = setDoc(doc(db, `${HERE}/config/tracking`), trackingBy(people.olga, 1, 5));
+
+    // 3. Assert
+    await assertSucceeds(write);
+  });
+
+  test("Edge Case: on a 15-minute plan an administrator writes 15 minutes", async () => {
+    // 1. Arrange
+    const db = dbOf("otto");
+
+    // 2. Act
+    const write = setDoc(doc(db, `${THERE}/config/tracking`), trackingBy(people.otto, 15, 100));
+
+    // 3. Assert
+    await assertSucceeds(write);
+  });
+
+  test("Sad Path: someone outside the organization cannot read the tracking settings", async () => {
+    // 1. Arrange
+    await seedTracking();
+    const db = dbOf("otto");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${HERE}/config/tracking`));
+
+    // 3. Assert
+    await assertFails(read);
+  });
+
+  const denied = [
+    ["a member who is not an administrator", "ana", HERE, trackingBy(people.ana)],
+    ["an administrator of another organization", "otto", HERE, trackingBy(people.otto)],
+    ["interval 4, not an allowed value", "olga", HERE, trackingBy(people.olga, 4, 10)],
+    ["distance 15, not an allowed value", "olga", HERE, trackingBy(people.olga, 5, 15)],
+    ["a client timestamp in updatedAt", "olga", HERE, { ...trackingBy(people.olga), updatedAt: Timestamp.now() }],
+    ["someone else's e-mail in updatedBy", "olga", HERE, trackingBy(people.ana)],
+    ["an extra field", "olga", HERE, { ...trackingBy(people.olga), extra: true }],
+    ["interval 5 on a 15-minute plan", "otto", THERE, trackingBy(people.otto, 5, 100)],
+  ];
+  for (const [label, who, organization, data] of denied) {
+    test(`Sad Path: write denied with ${label} (${who})`, async () => {
+      // 1. Arrange
+      const db = dbOf(who);
+
+      // 2. Act
+      const write = setDoc(doc(db, `${organization}/config/tracking`), data);
+
+      // 3. Assert
+      await assertFails(write);
+    });
+  }
+});
+
+describe("membership rules: root paths - Rules Test Suite", () => {
+  const denied = [
+    ["a member reading config/branding at the root", () => getDoc(doc(dbOf("ana"), "config/branding"))],
+    ["an unauthenticated client reading config/branding at the root", () => getDoc(doc(env.unauthenticatedContext().firestore(), "config/branding"))],
+    ["a publisher writing a position at the root", () => setDoc(doc(dbOf("ana"), `positions/${ANA_KEY}`), newPosition(people.ana))],
+    [
+      "a publisher writing the old organizations/{id}/positions/{email} layout",
+      () => setDoc(doc(dbOf("ana"), `${HERE}/positions/${people.ana}`), newPosition(people.ana)),
+    ],
+    ["a publisher deleting their own position", () => deleteDoc(doc(dbOf("ana"), positionPath(GUIAS, "ana")))],
+  ];
+  for (const [label, act] of denied) {
+    test(`Sad Path: ${label} is denied`, async () => {
+      // 1. Arrange
+      // (people and positions are seeded in beforeEach)
+
+      // 2. Act
+      const request = act();
+
+      // 3. Assert
+      await assertFails(request);
+    });
+  }
+});
+
+describe("storage.rules: the logo - Rules Test Suite", () => {
+  const LOGO = "organizations/rotasul/logo.png";
+  const MiB = 1024 * 1024;
+  const PNG = { contentType: "image/png" };
+  const png = (size = 64) => {
+    const bytes = new Uint8Array(size);
     bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     return bytes;
   };
-  const upload = (storage) =>
-    uploadBytes(ref(storage, "organizations/rotasul/logo.png"), png(), { contentType: "image/png" });
+  const upload = (storage, size = 64, metadata = PNG, target = LOGO) =>
+    uploadBytes(ref(storage, target), png(size), metadata);
+  const seedLogo = () =>
+    env.withSecurityRulesDisabled((context) => uploadBytes(ref(context.storage(), LOGO), png(), PNG));
 
-  test("Happy Path: an administrator in Firestore (no claims) uploads the logo", async () => {
+  beforeEach(async () => {
+    await env.clearStorage();
+  });
+
+  test("Happy Path: an administrator in Firestore uploads the logo", async () => {
     // 1. Arrange
     const storage = storageOf("olga");
 
@@ -577,6 +802,30 @@ describe("membership rules: logo upload with a Firestore admin - Rules Test Suit
 
     // 3. Assert
     await assertSucceeds(write);
+  });
+
+  test("Happy Path: anyone, even signed out, reads the logo", async () => {
+    // 1. Arrange
+    await seedLogo();
+    const storage = env.unauthenticatedContext().storage();
+
+    // 2. Act
+    const read = getBytes(ref(storage, LOGO));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  test("Happy Path: an administrator deletes the logo", async () => {
+    // 1. Arrange
+    await seedLogo();
+    const storage = storageOf("olga");
+
+    // 2. Act
+    const remove = deleteObject(ref(storage, LOGO));
+
+    // 3. Assert
+    await assertSucceeds(remove);
   });
 
   test("Edge Case: the Storage rules hash an uppercase e-mail to the same key", async () => {
@@ -590,14 +839,36 @@ describe("membership rules: logo upload with a Firestore admin - Rules Test Suit
     await assertSucceeds(write);
   });
 
-  test("Sad Path: a member who is not an administrator cannot upload the logo", async () => {
+  test("Edge Case: a PNG of exactly 1 MiB is accepted", async () => {
     // 1. Arrange
-    const storage = storageOf("vera");
+    const storage = storageOf("olga");
 
     // 2. Act
-    const write = upload(storage);
+    const write = upload(storage, MiB);
 
     // 3. Assert
-    await assertFails(write);
+    await assertSucceeds(write);
   });
+
+  const denied = [
+    ["a member who is not an administrator", () => upload(storageOf("vera"))],
+    ["an administrator of another organization", () => upload(storageOf("otto"))],
+    ["a signed-out user", () => upload(env.unauthenticatedContext().storage())],
+    ["an administrator uploading more than 1 MiB", () => upload(storageOf("olga"), MiB + 1)],
+    ["an administrator uploading an SVG", () => upload(storageOf("olga"), 64, { contentType: "image/svg+xml" })],
+    ["an administrator uploading another file", () => upload(storageOf("olga"), 64, PNG, "organizations/rotasul/other.png")],
+    ["an administrator of another organization deleting it", () => deleteObject(ref(storageOf("otto"), LOGO))],
+  ];
+  for (const [label, act] of denied) {
+    test(`Sad Path: ${label} is denied`, async () => {
+      // 1. Arrange
+      await seedLogo();
+
+      // 2. Act
+      const request = act();
+
+      // 3. Assert
+      await assertFails(request);
+    });
+  }
 });

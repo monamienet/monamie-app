@@ -1,19 +1,14 @@
-const {
-  InviteError,
-  inviteExpiry,
-  inviteState,
-  predatesTeam,
-  validateInvites,
-} = require("./invites");
+const { InviteError, inviteExpiry, inviteState, validateInvites } = require("./invites");
 const { inviteEmail } = require("./mailer");
-const { createTeam, listTeams } = require("./team_service");
-const { teamGroupEmails } = require("./teams");
+const { createGroup, readGroup } = require("./group_service");
+const { addToAccount, groupExists, joinGroup } = require("./membership_store");
 const { INVITES } = require("./firestore_paths");
 
 /**
  * Pending invites live in the central project (`invites/{id}`), because an
- * invited person has no group yet and cannot read any organization project.
- * Membership starts on acceptance: until then nobody is added to a group.
+ * invited person belongs to nothing yet and cannot read any organization
+ * project. Membership starts on acceptance: until then nobody is added to a
+ * group.
  */
 function plain(doc) {
   const data = doc.data();
@@ -21,11 +16,11 @@ function plain(doc) {
     id: doc.id,
     organizationId: data.organizationId,
     organizationName: data.organizationName,
-    team: data.team,
-    teamName: data.teamName,
+    groupId: data.groupId,
+    groupName: data.groupName,
     email: data.email,
     roles: data.roles,
-    invitedByName: data.invitedByName,
+    inviterName: data.inviterName,
     // ISO text: callable responses cannot carry a Date.
     expiresAt: (data.expiresAt?.toDate?.() ?? data.expiresAt)?.toISOString?.() ?? null,
     status: data.status,
@@ -45,89 +40,88 @@ async function emailInvite(mailer, invite) {
 }
 
 /**
- * Sends invites for `team` (or creates the first team, `firstTeamName`,
- * in the same operation; if the team cannot be created, nothing is sent).
- * People already in the team with those roles are skipped; a pending
- * invite for the same person and team is updated and its 14 days restart.
+ * Sends invites for group `groupId` of the organization (whose Firestore
+ * is `db`), or creates the first group, `firstGroupName`, in the same
+ * operation (if it cannot be created, nothing is sent). People already in
+ * the group with those roles are skipped; a pending invite for the same
+ * person and group is updated and its 14 days restart.
  *
- * @returns {Promise<{team: string, teamName: string,
+ * @param {FirebaseFirestore.Firestore} centralDb
+ * @param {FirebaseFirestore.Firestore} db - The organization's Firestore
+ * @returns {Promise<{groupId: string, groupName: string,
  *   sent: Array<{email: string, roles: string[], emailed: boolean}>,
  *   skipped: Array<{email: string, reason: string}>}>}
  */
-async function sendInvites(db, api, mailer, request) {
+async function sendInvites(centralDb, db, mailer, request) {
   const { organizationId, organizationName, inviter } = request;
   const people = validateInvites(request.invites);
-  let team = request.team;
-  if (request.firstTeamName) {
-    team = (await createTeam(api, organizationId, request.firstTeamName)).team;
-  }
-  // Read after the team exists: an invite stamped before its team group was
-  // created is refused on acceptance (see `predatesTeam`).
   const now = request.now ?? new Date();
-  const teams = await listTeams(api, organizationId);
-  const target = teams.find((t) => t.team === team);
-  if (!target) throw new InviteError("team", "Escolha uma equipe.");
+  let groupId = request.groupId;
+  if (request.firstGroupName) {
+    groupId = (await createGroup(db, organizationId, request.firstGroupName, now)).id;
+  }
+  const target =
+    typeof groupId === "string" && groupId ? await readGroup(db, organizationId, groupId) : null;
+  if (!target) throw new InviteError("group", "Escolha um grupo.");
 
   const sent = [];
   const skipped = [];
   for (const person of people) {
     const member = target.people.find((p) => p.email === person.email);
     if (member && person.roles.every((r) => member.roles.includes(r))) {
-      skipped.push({ email: person.email, reason: "Já está na equipe." });
+      skipped.push({ email: person.email, reason: "Já está no grupo." });
       continue;
     }
-    const existing = await db
+    const existing = await centralDb
       .collection(INVITES)
       .where("organizationId", "==", organizationId)
-      .where("team", "==", team)
+      .where("groupId", "==", target.id)
       .where("email", "==", person.email)
       .where("status", "==", "pending")
       .get();
     const invite = {
       organizationId,
       organizationName,
-      team,
-      teamName: target.name,
+      groupId: target.id,
+      groupName: target.name,
       email: person.email,
       roles: person.roles,
-      invitedBy: inviter.email,
-      invitedByName: inviter.name || inviter.email,
-      invitedByEmail: inviter.email,
+      inviterEmail: inviter.email,
+      inviterName: inviter.name || inviter.email,
       createdAt: now,
       expiresAt: inviteExpiry(now),
       status: "pending",
     };
-    if (existing.empty) await db.collection(INVITES).add(invite);
+    if (existing.empty) await centralDb.collection(INVITES).add(invite);
     else await existing.docs[0].ref.update(invite);
     sent.push({ ...person, emailed: await emailInvite(mailer, invite) });
   }
-  return { team, teamName: target.name, sent, skipped };
+  return { groupId: target.id, groupName: target.name, sent, skipped };
 }
 
 /**
- * Cancels the pending invites of `team`, when the team is deleted: its
- * number is reused by the next team created, which must not inherit them.
+ * Cancels the pending invites of a deleted group.
  *
  * @returns {Promise<number>} How many were cancelled
  */
-async function cancelTeamInvites(db, organizationId, team) {
-  const snapshot = await db
+async function cancelGroupInvites(centralDb, organizationId, groupId) {
+  const snapshot = await centralDb
     .collection(INVITES)
     .where("organizationId", "==", organizationId)
-    .where("team", "==", team)
+    .where("groupId", "==", groupId)
     .where("status", "==", "pending")
     .get();
   for (const doc of snapshot.docs) await doc.ref.update({ status: "cancelled" });
   return snapshot.docs.length;
 }
 
-/** The organization's pending and expired invites (of `team`, when given). */
-async function listInvites(db, organizationId, team, now = new Date()) {
-  let query = db
+/** The organization's pending and expired invites (of `groupId`, when given). */
+async function listInvites(centralDb, organizationId, groupId, now = new Date()) {
+  let query = centralDb
     .collection(INVITES)
     .where("organizationId", "==", organizationId)
     .where("status", "==", "pending");
-  if (team) query = query.where("team", "==", team);
+  if (groupId) query = query.where("groupId", "==", groupId);
   const snapshot = await query.get();
   return snapshot.docs.map((doc) => {
     const invite = plain(doc);
@@ -135,8 +129,8 @@ async function listInvites(db, organizationId, team, now = new Date()) {
   });
 }
 
-async function ownedInvite(db, inviteId, organizationId) {
-  const ref = db.doc(`${INVITES}/${inviteId}`);
+async function ownedInvite(centralDb, inviteId, organizationId) {
+  const ref = centralDb.doc(`${INVITES}/${inviteId}`);
   const doc = await ref.get();
   if (!doc.exists || doc.get("organizationId") !== organizationId) {
     throw new InviteError("invite", "Convite não encontrado.");
@@ -145,8 +139,8 @@ async function ownedInvite(db, inviteId, organizationId) {
 }
 
 /** "Reenviar": a new 14-day period, and the e-mail again. */
-async function resendInvite(db, mailer, inviteId, organizationId, now = new Date()) {
-  const { ref, doc } = await ownedInvite(db, inviteId, organizationId);
+async function resendInvite(centralDb, mailer, inviteId, organizationId, now = new Date()) {
+  const { ref, doc } = await ownedInvite(centralDb, inviteId, organizationId);
   if (doc.get("status") !== "pending") {
     throw new InviteError("invite", "Esse convite já foi usado ou cancelado.");
   }
@@ -157,33 +151,38 @@ async function resendInvite(db, mailer, inviteId, organizationId, now = new Date
 }
 
 /** Cancels the invite: its link and *Aceitar* stop working. */
-async function cancelInvite(db, inviteId, organizationId) {
-  const { ref } = await ownedInvite(db, inviteId, organizationId);
+async function cancelInvite(centralDb, inviteId, organizationId) {
+  const { ref } = await ownedInvite(centralDb, inviteId, organizationId);
   await ref.update({ status: "cancelled" });
 }
 
 /** The pending, unexpired invites addressed to `email`. */
-async function myInvites(db, email, now = new Date()) {
-  const snapshot = await db
+async function myInvites(centralDb, email, now = new Date()) {
+  const snapshot = await centralDb
     .collection(INVITES)
     .where("email", "==", email.toLowerCase())
     .where("status", "==", "pending")
     .get();
-  return snapshot.docs
-    .map(plain)
-    .filter((invite) => inviteState(invite, now) === "ok");
+  return snapshot.docs.map(plain).filter((invite) => inviteState(invite, now) === "ok");
 }
 
 /**
  * Accepts invite `inviteId` as `email` (the signed-in account must be the
- * invited one): adds the person to the team's leaves for their roles and
- * marks the invite accepted. Expired, cancelled or used invites are
- * refused with the message the administrator also sees.
+ * invited one): in one batch in the organization project, the person
+ * becomes a member of the organization (if they were not) and of the group
+ * with the invite's roles added to theirs; then the organization joins
+ * their `accounts` entry and the invite is marked accepted. Valid at once:
+ * the rules read the memberships. Expired, cancelled or used invites, and
+ * invites to a deleted group, are refused.
+ *
+ * @param {(organizationId: string) => Promise<{db: FirebaseFirestore.Firestore}|null>}
+ *   openOrganization - See `organizationOpener` (membership_store.js)
  */
-async function acceptInvite(db, api, inviteId, email, now = new Date()) {
-  const ref = db.doc(`${INVITES}/${inviteId}`);
+async function acceptInvite(centralDb, openOrganization, inviteId, email, now = new Date()) {
+  email = email.toLowerCase();
+  const ref = centralDb.doc(`${INVITES}/${inviteId}`);
   const doc = await ref.get();
-  if (!doc.exists || doc.get("email") !== email.toLowerCase()) {
+  if (!doc.exists || doc.get("email") !== email) {
     throw new InviteError("invite", "Convite não encontrado para esta conta.");
   }
   const invite = plain(doc);
@@ -194,33 +193,32 @@ async function acceptInvite(db, api, inviteId, email, now = new Date()) {
   if (state !== "ok") {
     throw new InviteError("invite", "Este convite não vale mais.");
   }
-  const emails = teamGroupEmails(invite.organizationId, invite.team);
-  // A team deleted and recreated keeps its number: an invite older than the
-  // current team group was meant for the deleted one.
-  const teamGroup = await api.lookup(emails.team);
-  const created = teamGroup ? (await api.get(teamGroup)).createTime : null;
-  if (!teamGroup || predatesTeam({ createdAt: doc.get("createdAt") }, created)) {
-    throw new InviteError("team", "A equipe deste convite não existe mais.");
+  const organization = await openOrganization(invite.organizationId);
+  if (
+    !organization ||
+    typeof invite.groupId !== "string" ||
+    !invite.groupId ||
+    !(await groupExists(organization.db, invite.organizationId, invite.groupId))
+  ) {
+    throw new InviteError("group", "O grupo deste convite não existe mais.");
   }
-  for (const role of invite.roles) {
-    const leaf = await api.lookup(role === "watch" ? emails.watch : emails.share);
-    if (!leaf) throw new InviteError("team", "A equipe deste convite não existe mais.");
-    await api.addMember(leaf, invite.email);
-  }
+  await joinGroup(organization.db, invite.organizationId, invite.groupId, email, invite.roles, now);
+  await addToAccount(centralDb, email, invite.organizationId);
   await ref.update({ status: "accepted", acceptedAt: now });
   return {
     organizationId: invite.organizationId,
+    groupId: invite.groupId,
     organizationName: invite.organizationName,
-    teamName: invite.teamName,
+    groupName: invite.groupName,
     roles: invite.roles,
-    invitedByName: invite.invitedByName,
+    inviterName: invite.inviterName,
   };
 }
 
 module.exports = {
   acceptInvite,
+  cancelGroupInvites,
   cancelInvite,
-  cancelTeamInvites,
   listInvites,
   myInvites,
   resendInvite,

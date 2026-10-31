@@ -6,15 +6,13 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 //import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
-import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/data/live_users.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
 import 'package:monamie_app/app/modules/monamie/models/animated_user_marker.dart';
-import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
@@ -41,9 +39,9 @@ class TrackingController extends GetxController
   );
   RxList<UserModel> firebaseUsers = <UserModel>[].obs;
 
-  /// Every document of the observed team, sharing or not: the team list's
+  /// Every position of the observed group, sharing or not: the group list's
   /// source. [firebaseUsers] is the live part of it.
-  final RxList<UserModel> teamUsers = <UserModel>[].obs;
+  final RxList<UserModel> groupUsers = <UserModel>[].obs;
   late final MapController mapController;
   @override
   final isTrackingEnabled = false.obs;
@@ -56,7 +54,7 @@ class TrackingController extends GetxController
 
   /// Where this device is, once a fix is known. It is the person's own
   /// marker on the map, which a person who only shares cannot get from the
-  /// team's documents (they observe no team).
+  /// group's documents (they observe no group).
   final Rxn<LatLng> ownPosition = Rxn<LatLng>();
   //StreamSubscription<CompassEvent>? _compassSubscription;
 
@@ -96,14 +94,15 @@ class TrackingController extends GetxController
 
   StreamSubscription? _readySubscription;
   StreamSubscription? _locationSubscription;
-  StreamSubscription<List<UserModel>>? _groupUsersSubscription;
+
+  GroupMapState get _groupMap => Get.find<GroupMapState>();
 
   /// Timer para debounce do listener de highlightedObservedUsers.
   Timer? _highlightedUsersDebounce;
 
   /// Inicia o worker que observa mudanças em highlightedObservedUsers.
   void _setupHighlightedUsersListener() {
-    ever(Get.find<GoogleGroupsController>().highlightedObservedUsers, (_) {
+    ever(_groupMap.highlightedObservedUsers, (_) {
       // Debounce para evitar múltiplas reações quando toggleHighlight
       // é chamado rapidamente (adiciona/remove um item por vez)
       _highlightedUsersDebounce?.cancel();
@@ -117,10 +116,9 @@ class TrackingController extends GetxController
   /// Sincroniza as subscriptions de trajetórias com a lista atual de
   /// highlightedObservedUsers.
   void _syncHighlightedTrajectories() {
-    final googleGroupsCtrl = Get.find<GoogleGroupsController>();
     final calendarCtrl = Get.find<CalendarController>();
     final day = calendarCtrl.observedDay.value;
-    final members = googleGroupsCtrl.highlightedObservedUsers;
+    final members = _groupMap.highlightedObservedUsers;
 
     final currentEmails = members.map((m) => m.email).toSet();
 
@@ -141,9 +139,15 @@ class TrackingController extends GetxController
     }
   }
 
-  /// Inscreve-se na trajetória de um usuário destacado.
+  /// Inscreve-se na trajetória de um usuário destacado, no grupo observado.
   void _subscribeToHighlightedTrajectory(String email, DateTime day) {
-    final stream = FirebaseProvider().getTrajectoryForDate(email, day: day);
+    final groupId = _groupMap.selectedGroup.value?.id;
+    if (groupId == null) return;
+    final stream = FirebaseProvider().getTrajectoryForDate(
+      groupId,
+      email,
+      day: day,
+    );
 
     final subscription = stream.listen((points) {
       highlightedTrajectories[email] = points;
@@ -162,8 +166,7 @@ class TrackingController extends GetxController
     _highlightedTrajectorySubscriptions.clear();
     highlightedTrajectories.clear();
 
-    final googleGroupsCtrl = Get.find<GoogleGroupsController>();
-    for (final member in googleGroupsCtrl.highlightedObservedUsers) {
+    for (final member in _groupMap.highlightedObservedUsers) {
       _subscribeToHighlightedTrajectory(member.email, day);
     }
 
@@ -177,12 +180,13 @@ class TrackingController extends GetxController
   /// vindas do stream de `firebaseUsers`. Quando é um dia passado, busca a
   /// última localização conhecida de cada usuário observado no histórico.
   Future<void> _refreshMarkersForObservedDay(DateTime day) async {
-    final googleGroupsCtrl = Get.find<GoogleGroupsController>();
-    final observedEmails = googleGroupsCtrl.observedMembers
-        .map((m) => m.email)
-        .toSet();
+    final groupId = _groupMap.selectedGroup.value?.id;
+    if (groupId == null) return;
 
     if (isObservingToday) {
+      final observedEmails = _groupMap.observedMembers
+          .map((m) => m.email)
+          .toSet();
       // Verifica, no histórico do dia, quais usuários observados possuem pelo
       // menos um ponto registrado hoje. Apenas estes devem aparecer no mapa.
       usersWithPointsOnObservedDay.clear();
@@ -190,6 +194,7 @@ class TrackingController extends GetxController
       for (final email in observedEmails) {
         futures.add(() async {
           final hasPoints = await FirebaseProvider().hasPointsOnDate(
+            groupId,
             email,
             day,
           );
@@ -234,17 +239,23 @@ class TrackingController extends GetxController
       return;
     }
 
-    // Dia passado: busca a última posição conhecida no histórico para cada
-    // usuário observado.
+    // Dia passado: busca a última posição conhecida no histórico de cada
+    // pessoa que já publicou no grupo, inclusive quem não publica mais.
+    final observedEmails = {
+      for (final member in await _groupMap.loadHistoryMembers()) member.email,
+    };
+    usersWithPointsOnObservedDay.clear();
     final futures = <Future<void>>[];
     for (final email in observedEmails) {
       futures.add(() async {
         final point = await FirebaseProvider().getLastKnownPositionForDate(
+          groupId,
           email,
           day: day,
         );
 
         if (point != null) {
+          usersWithPointsOnObservedDay.add(email);
           final user = firebaseUsers.firstWhereOrNull((u) => u.email == email);
           if (_animatedMarkers.containsKey(email)) {
             _animatedMarkers[email]!.updateTargetPosition(point.lat, point.lng);
@@ -302,11 +313,11 @@ class TrackingController extends GetxController
     }
   }
 
-  /// Re-applies [liveUsers] to the last team snapshot, so a person whose
+  /// Re-applies [liveUsers] to the last group snapshot, so a person whose
   /// position went stale leaves the map even when no document changed.
   void _dropUsersNoLongerLive() {
     final stillLive = liveUsers(
-      teamUsers.toList(),
+      groupUsers.toList(),
       now: DateTime.now(),
       validity: validity,
     );
@@ -316,25 +327,14 @@ class TrackingController extends GetxController
     }
   }
 
-  void _subscribeToGroupUsers(String groupEmail) {
-    _groupUsersSubscription?.cancel();
-    _groupUsersSubscription = FirebaseProvider()
-        .streamUsersOfGroup(groupEmail)
-        .listen(
-          (users) {
-            teamUsers.value = users;
-            firebaseUsers.value = liveUsers(
-              users,
-              now: DateTime.now(),
-              validity: validity,
-            );
-          },
-          onError: (e) {
-            debugPrint(
-              '[TrackingController] Erro no stream do grupo $groupEmail: $e',
-            );
-          },
-        );
+  /// Takes the observed group's positions (read by [GroupMapState]).
+  void _onGroupPositions(List<UserModel> users) {
+    groupUsers.value = users.toList();
+    firebaseUsers.value = liveUsers(
+      users,
+      now: DateTime.now(),
+      validity: validity,
+    );
   }
 
   @override
@@ -342,17 +342,8 @@ class TrackingController extends GetxController
     super.onInit();
     mapController = MapController();
 
-    // Vincula o stream do Firebase aos usuários do grupo observado
-    ever(Get.find<GoogleGroupsController>().selectedGroup, (selectedGroup) {
-      if (selectedGroup != null) {
-        _subscribeToGroupUsers(selectedGroup.email);
-      } else {
-        _groupUsersSubscription?.cancel();
-        _groupUsersSubscription = null;
-        firebaseUsers.clear();
-        teamUsers.clear();
-      }
-    });
+    // The observed group's positions drive the markers and the list.
+    ever(_groupMap.groupPositions, _onGroupPositions);
 
     // Avisa se o app passou a ser restrito em segundo plano durante uma
     // jornada ativa: o rastreamento vai parar quando o app sair da tela.
@@ -371,10 +362,7 @@ class TrackingController extends GetxController
       }
     });
 
-    final initialGroup = Get.find<GoogleGroupsController>().selectedGroup.value;
-    if (initialGroup != null) {
-      _subscribeToGroupUsers(initialGroup.email);
-    }
+    _onGroupPositions(_groupMap.groupPositions);
 
     // Escuta mudanças na lista de usuários para atualizar as animações
     ever(firebaseUsers, _onFirebaseUsersUpdated);
@@ -401,7 +389,7 @@ class TrackingController extends GetxController
     });
 
     // Observa mudanças nos membros observados para atualizar marcadores ao trocar de grupo
-    ever(Get.find<GoogleGroupsController>().observedMembers, (_) {
+    ever(_groupMap.observedMembers, (_) {
       final day = Get.find<CalendarController>().observedDay.value;
       _refreshMarkersForObservedDay(day);
     });
@@ -409,7 +397,7 @@ class TrackingController extends GetxController
     _initPosition();
     // The person's capabilities and the location permission arrive after this
     // controller starts: look for the device again when they do.
-    ever(Get.find<GoogleGroupsController>().capabilities, (_) {
+    ever(_groupMap.capabilities, (_) {
       _initPosition();
     });
     ever(permissionsCtrl.hasWhenInUseLocationPermission, (granted) {
@@ -436,8 +424,8 @@ class TrackingController extends GetxController
           const Duration(seconds: 5),
         ),
       );
-      // A person who only shares has no team on the map: show them.
-      if (!Get.find<GoogleGroupsController>().canWatch) {
+      // A person who only shares has no group on the map: show them.
+      if (!_groupMap.canWatch) {
         await centerMapOnCurrentLocation();
       }
     } catch (e) {
@@ -603,120 +591,19 @@ class TrackingController extends GetxController
       return; // Interrompe a execução para não iniciar o serviço sem GPS
     }
 
-    // The rules only accept positions from people who share in a team.
-    final hasClaims = await MonAmieClaimsService.ensureCanShare();
-    if (!hasClaims) {
-      debugPrint(
-        '[TrackingController] Claims inválidos — tracking não iniciado.',
-      );
-      Get.snackbar(
-        'Não foi possível iniciar o rastreamento',
-        'Suas permissões de grupo não puderam ser verificadas. '
-            'Tente atualizar seus grupos e tentar novamente.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade100,
-        duration: const Duration(seconds: 5),
-      );
-      return;
-    }
-
-    // Determina o grupo operacional ativo para esta jornada
-    final googleGroupsCtrl = Get.find<GoogleGroupsController>();
-    final observableGroups = await googleGroupsCtrl
-        .getObservableGroupsForUser();
-
-    if (observableGroups.isEmpty) {
-      debugPrint('[TrackingController] The user shares in no team.');
+    // The rules only accept positions from people who publish in a group;
+    // the service publishes in every one of them.
+    if (!_groupMap.canPublish) {
+      debugPrint('[TrackingController] The user publishes in no group.');
       Get.snackbar(
         'Compartilhamento não autorizado',
-        'Você não está em campo em nenhuma equipe. Peça a um administrador '
+        'Você não está em campo em nenhum grupo. Peça a um administrador '
             'para liberar o compartilhamento da sua localização.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.shade100,
         duration: const Duration(seconds: 5),
       );
       return;
-    }
-
-    String? activeGroupEmail;
-
-    if (observableGroups.length == 1) {
-      activeGroupEmail = observableGroups.first.email;
-    } else {
-      // Se tiver mais de um grupo observável, checa se o grupo atualmente selecionado é um deles
-      final currentSelected = googleGroupsCtrl.selectedGroup.value;
-      if (currentSelected != null &&
-          observableGroups.any(
-            (g) =>
-                g.email.trim().toLowerCase() ==
-                currentSelected.email.trim().toLowerCase(),
-          )) {
-        activeGroupEmail = currentSelected.email;
-      } else {
-        // Exibe BottomSheet para seleção explícita do grupo operacional
-        final selected = await Get.bottomSheet<GoogleGroupModel>(
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Compartilhar sua localização',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Escolha a equipe com quem você vai compartilhar neste turno:',
-                  style: TextStyle(fontSize: 14, color: Colors.black54),
-                ),
-                const SizedBox(height: 16),
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: observableGroups.length,
-                    itemBuilder: (context, index) {
-                      final g = observableGroups[index];
-                      return ListTile(
-                        leading: const Icon(Icons.group, color: Colors.indigo),
-                        title: Text(
-                          g.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        subtitle: Text(
-                          g.email,
-                          style: const TextStyle(color: Colors.black54),
-                        ),
-                        onTap: () => Get.back(result: g),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          isDismissible: true,
-        );
-
-        if (selected == null) {
-          debugPrint(
-            '[TrackingController] Usuário cancelou a seleção do grupo.',
-          );
-          return;
-        }
-        activeGroupEmail = selected.email;
-      }
     }
 
     // Tenta obter a posição GPS atual para sincronizar imediatamente
@@ -752,7 +639,6 @@ class TrackingController extends GetxController
       _service.invoke("setUserInfo", {
         "email": userCtrl.user!.email,
         "name": userCtrl.getUserName(),
-        "groupId": activeGroupEmail,
       });
     });
 
@@ -772,29 +658,8 @@ class TrackingController extends GetxController
     // Registra imediatamente que o usuário atual possui ponto no dia de hoje
     usersWithPointsOnObservedDay.add(userCtrl.user!.email);
 
-    // Informa Firebase que sua posição pode ser visualizada no mapa associada ao grupo ativo.
-    // A persistência de localização e histórico é gerenciada exclusivamente pelo ForegroundService.
-    try {
-      await FirebaseProvider().updateIsPublishing(
-        userCtrl.user!.email,
-        true,
-        groupId: activeGroupEmail,
-      );
-    } catch (e) {
-      debugPrint(
-        '[TrackingController] Erro ao atualizar status inicial de rastreamento: $e',
-      );
-      Get.snackbar(
-        'Erro ao iniciar rastreamento',
-        'Não foi possível atualizar o status de rastreamento. '
-            'Verifique suas permissões de grupo.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade100,
-        duration: const Duration(seconds: 5),
-      );
-      // Reverter estado — o serviço foi iniciado mas o Firestore recusou
-      await _stopService();
-    }
+    // The service turns `isPublishing` on in every group and publishes the
+    // positions: this screen writes nothing while sharing.
   }
 
   Future<void> _stopService() async {
@@ -805,7 +670,7 @@ class TrackingController extends GetxController
     _service.invoke("stopService");
     isTrackingEnabled.value = false;
     try {
-      await FirebaseProvider().updateIsPublishing(userCtrl.user!.email, false);
+      await FirebaseProvider().markNotPublishing(userCtrl.user!.email);
     } catch (e) {
       debugPrint('[TrackingController] Erro ao desativar isPublishing: $e');
     }
@@ -814,7 +679,6 @@ class TrackingController extends GetxController
   @override
   void onClose() {
     //_compassSubscription?.cancel();
-    _groupUsersSubscription?.cancel();
     _readySubscription?.cancel();
     _locationSubscription?.cancel();
     _markerAnimationTimer?.cancel();

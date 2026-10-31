@@ -12,7 +12,7 @@ import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/app/data/firebase/organization_firebase.dart';
-import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
+import 'package:monamie_app/app/data/groups/organization_membership_check.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:monamie_app/app/data/organization/organization_binding.dart';
 import 'package:monamie_app/app/data/organization/organization_binding_store.dart';
@@ -22,7 +22,7 @@ import 'package:monamie_app/app/data/organization/organization_local_data.dart';
 import 'package:monamie_app/app/data/organization/organization_session.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
@@ -52,13 +52,6 @@ const Map<String, String> _kOrganizationNames = {
   'rotasul': _kRotaSulName,
   'verdemar': 'Verde Mar',
   'azulceu': 'Azul Céu',
-};
-
-/// Claims of a person who shares their location in one team.
-const Map<String, Object?> _kShareClaims = {
-  'share': ['rotasul01'],
-  'watch': <String>[],
-  'admin': <String>[],
 };
 
 // ---------------------------------------------------------------------------
@@ -116,9 +109,6 @@ class _FakeAuthGoogleService implements AuthGoogleService {
       UserGoogleModel(id: 'uid-123', name: 'Ana Souza', email: _kCentralEmail);
 
   @override
-  Future<String?> getFirebaseIdToken() async => null;
-
-  @override
   Stream<String?> get onWebSignIn => const Stream<String?>.empty();
 
   @override
@@ -158,15 +148,11 @@ class _MemoryBindingStore implements OrganizationBindingStore {
 }
 
 /// [OrganizationSession] that binds without creating a real [FirebaseApp]: it
-/// sets [Organization.current] and a fake [OrganizationFirebase] whose `syncClaims`
-/// returns [claims].
+/// sets [Organization.current] and a fake [OrganizationFirebase].
 class _FakeOrganizationSession extends OrganizationSession {
-  _FakeOrganizationSession(this.log, {this.claims})
-    : super(store: _MemoryBindingStore());
+  _FakeOrganizationSession(this.log) : super(store: _MemoryBindingStore());
 
   final List<String> log;
-  final Map<String, Object?>? claims;
-  final Object? syncError = null;
   int forgetCalls = 0;
 
   /// Id of every organization bound, in order.
@@ -177,9 +163,7 @@ class _FakeOrganizationSession extends OrganizationSession {
     log.add('bind');
     boundIds.add(binding.organization.id);
     Organization.bind(binding.organization);
-    CurrentOrganizationFirebase.set(
-      _FakeOrganizationFirebase(claims: claims ?? const {}, error: syncError),
-    );
+    CurrentOrganizationFirebase.set(_FakeOrganizationFirebase());
   }
 
   @override
@@ -191,16 +175,11 @@ class _FakeOrganizationSession extends OrganizationSession {
 }
 
 class _FakeOrganizationFirebase implements OrganizationFirebase {
-  _FakeOrganizationFirebase({required this.claims, this.error});
-
-  final Map<String, Object?> claims;
-  final Object? error;
+  @override
+  FirebaseAuth get auth => throw UnimplementedError();
 
   @override
-  FirebaseAuth get auth => _FakeFirebaseAuth();
-
-  @override
-  FirebaseFunctions get functions => _FakeFunctions(claims, error);
+  FirebaseFunctions get functions => throw UnimplementedError();
 
   @override
   FirebaseFirestore get firestore => throw UnimplementedError();
@@ -213,59 +192,10 @@ class _FakeOrganizationFirebase implements OrganizationFirebase {
       throw UnimplementedError();
 }
 
-class _FakeFirebaseAuth implements FirebaseAuth {
+/// The person still belongs to every organization entered.
+class _MemberEverywhere implements OrganizationMembershipCheck {
   @override
-  User? get currentUser => _FakeUser();
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeUser implements User {
-  @override
-  Future<String?> getIdToken([bool forceRefresh = false]) async =>
-      'organization-id-token';
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeFunctions implements FirebaseFunctions {
-  _FakeFunctions(this.claims, this.error);
-
-  final Map<String, Object?> claims;
-  final Object? error;
-
-  @override
-  HttpsCallable httpsCallable(String name, {HttpsCallableOptions? options}) =>
-      _FakeCallable(claims, error);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeCallable implements HttpsCallable {
-  _FakeCallable(this.claims, this.error);
-
-  final Map<String, Object?> claims;
-  final Object? error;
-
-  @override
-  Future<HttpsCallableResult<T>> call<T>([dynamic parameters]) async {
-    final failure = error;
-    if (failure != null) throw failure;
-    return _FakeCallableResult<T>(claims as T);
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeCallableResult<T> implements HttpsCallableResult<T> {
-  _FakeCallableResult(this.data);
-
-  @override
-  final T data;
+  Future<bool?> isMemberOf(String organizationId) async => true;
 }
 
 class _FakeTrackingStopper implements BackgroundTrackingStopper {
@@ -296,10 +226,6 @@ class _FakeUserGoogleRepository implements UserGoogleRepository {
   Future<String> saveUserGoogleModel(UserGoogleModel user) async => 'ok';
 
   @override
-  Future<GdiGroupsGoogle> getGdiGroupsGoogle(String token, String email) =>
-      throw StateError('groups gateway unavailable in tests');
-
-  @override
   Future<UserGoogleModel> saveGoogleProfile(
     String email,
     String name,
@@ -316,21 +242,16 @@ class _FakeUserGoogleRepository implements UserGoogleRepository {
 }
 
 /// [OrganizationDirectory] that answers the n-th call with `answers[n]` (the last
-/// answer repeats) and records the `fresh` flag of every call.
+/// answer repeats) and counts the calls.
 class _SequencedOrganizationDirectory implements OrganizationDirectory {
   _SequencedOrganizationDirectory(this.answers);
 
   final List<List<OrganizationCandidate>> answers;
-  final fresh = <bool>[];
-
-  int get calls => fresh.length;
+  int calls = 0;
 
   @override
-  Future<List<OrganizationCandidate>> organizationsOfSignedInUser({
-    bool fresh = false,
-  }) async {
-    final index = this.fresh.length;
-    this.fresh.add(fresh);
+  Future<List<OrganizationCandidate>> organizationsOfSignedInUser() async {
+    final index = calls++;
     return answers[index < answers.length ? index : answers.length - 1];
   }
 }
@@ -363,13 +284,13 @@ class _FakeInvitesBackend implements InvitesBackend {
   Future<InviteSendResult> send(
     String organizationId, {
     required String organizationName,
-    String? team,
-    String? firstTeamName,
-    required List<({String email, Set<TeamRole> roles})> invites,
+    String? groupId,
+    String? firstGroupName,
+    required List<({String email, Set<GroupRole> roles})> invites,
   }) => throw UnimplementedError();
 
   @override
-  Future<List<Invite>> listForTeam(String organizationId, String team) =>
+  Future<List<Invite>> listForGroup(String organizationId, String groupId) =>
       throw UnimplementedError();
 
   @override
@@ -385,11 +306,11 @@ final _kOtherInvite = Invite(
   id: 'inv2',
   organizationId: 'verdemar',
   organizationName: 'Verde Mar',
-  team: '02',
-  teamName: 'Equipe Sul',
+  groupId: '02',
+  groupName: 'Equipe Sul',
   email: _kCentralEmail,
-  roles: const {TeamRole.watch},
-  invitedByName: 'Caio Prado',
+  roles: const {GroupRole.subscriber},
+  inviterName: 'Caio Prado',
   expiresAt: DateTime.utc(2026, 11, 10, 12),
 );
 
@@ -397,11 +318,11 @@ final _kInvite = Invite(
   id: 'inv1',
   organizationId: 'rotasul',
   organizationName: _kRotaSulName,
-  team: '01',
-  teamName: 'Equipe Norte',
+  groupId: '01',
+  groupName: 'Equipe Norte',
   email: _kCentralEmail,
-  roles: const {TeamRole.share},
-  invitedByName: 'Rita Lima',
+  roles: const {GroupRole.publisher},
+  inviterName: 'Rita Lima',
   expiresAt: DateTime.utc(2026, 11, 9, 12),
 );
 
@@ -416,7 +337,7 @@ class _Harness {
     ],
   }) {
     directory = _SequencedOrganizationDirectory(answers);
-    session = _FakeOrganizationSession(log, claims: _kShareClaims);
+    session = _FakeOrganizationSession(log);
     controller = AuthGoogleController(
       authGoogleService: _FakeAuthGoogleService(log),
       userRepository: _FakeUserGoogleRepository(),
@@ -426,6 +347,7 @@ class _Harness {
       organizationSession: session,
       organizationLocalData: _FakeOrganizationLocalData(),
       invitesBackend: backend,
+      membershipCheck: _MemberEverywhere(),
       refreshTheme: () => log.add('refreshTheme'),
     );
   }
@@ -462,7 +384,7 @@ Future<void> _accept(WidgetTester tester, AuthGoogleController controller) =>
     _drive(tester, controller, () => controller.acceptInvite(_kInvite));
 
 /// Starts [act] and advances the fake clock one second at a time (the
-/// retries wait 4 s each) until the controller is no longer busy.
+/// snackbars wait on timers) until the controller is no longer busy.
 Future<void> _drive(
   WidgetTester tester,
   AuthGoogleController controller,
@@ -528,7 +450,7 @@ void main() {
     });
 
     testWidgets(
-      'Happy Path: with the organization listed at once, asks fresh and continues into the organization',
+      'Happy Path: with the organization listed, asks once and continues into the organization',
       (WidgetTester tester) async {
         // 1. Arrange
         final harness = _Harness();
@@ -538,8 +460,7 @@ void main() {
         await _accept(tester, harness.controller);
 
         // 3. Assert
-        expect(harness.directory.fresh, isNotEmpty);
-        expect(harness.directory.fresh, everyElement(isTrue));
+        expect(harness.directory.calls, 1);
         expect(
           harness.log,
           containsAllInOrder(['bind', 'signInToOrganization']),
@@ -549,31 +470,7 @@ void main() {
     );
 
     testWidgets(
-      'Edge Case: asks again, fresh, until the organization shows up on the third try',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness(
-          answers: const [
-            [],
-            [],
-            [_kRotaSul],
-          ],
-        );
-        await _pumpApp(tester);
-
-        // 2. Act
-        await _accept(tester, harness.controller);
-
-        // 3. Assert
-        // Three asks to see the organization, at most one more to continue.
-        expect(harness.directory.calls, inInclusiveRange(3, 4));
-        expect(harness.directory.fresh, everyElement(isTrue));
-        expect(harness.log, contains('bind'));
-      },
-    );
-
-    testWidgets(
-      'Edge Case: stops asking after 6 tries when the organization never shows up',
+      'Edge Case: an organization not listed is not waited for: Sem organização after one ask',
       (WidgetTester tester) async {
         // 1. Arrange
         final harness = _Harness(answers: const [[]]);
@@ -583,8 +480,7 @@ void main() {
         await _accept(tester, harness.controller);
 
         // 3. Assert
-        // Six retries, at most one more to continue the sign-in.
-        expect(harness.directory.calls, inInclusiveRange(6, 7));
+        expect(harness.directory.calls, 1);
         expect(harness.log, isNot(contains('bind')));
         expect(Get.currentRoute, Routes.NO_ORGANIZATION);
       },
@@ -742,28 +638,6 @@ void main() {
       });
 
       testWidgets(
-        "Edge Case: binds the invite's organization once it shows up on the third try",
-        (WidgetTester tester) async {
-          // 1. Arrange
-          final harness = _Harness(
-            answers: const [
-              [_kVerdeMar],
-              [_kVerdeMar],
-              [_kVerdeMar, _kRotaSul],
-            ],
-          );
-          await _pumpApp(tester);
-
-          // 2. Act
-          await _accept(tester, harness.controller);
-
-          // 3. Assert
-          expect(harness.session.boundIds, ['rotasul']);
-          expect(Get.currentRoute, Routes.WELCOME);
-        },
-      );
-
-      testWidgets(
         "Sad Path: opens the picker when the invite's organization never shows up among several others",
         (WidgetTester tester) async {
           // 1. Arrange
@@ -778,7 +652,7 @@ void main() {
           await _accept(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.directory.calls, inInclusiveRange(6, 7));
+          expect(harness.directory.calls, 1);
           expect(harness.session.boundIds, isEmpty);
           expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
         },
@@ -853,33 +727,6 @@ void main() {
     });
 
     testWidgets(
-      'Edge Case: binds the created organization once it shows up on the third try',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness(
-          answers: const [
-            [_kRotaSul],
-            [_kRotaSul],
-            [_kRotaSul, _kVerdeMar],
-          ],
-        );
-        await _pumpApp(tester);
-
-        // 2. Act
-        await _drive(
-          tester,
-          harness.controller,
-          () => harness.controller.enterCreatedOrganization('verdemar'),
-        );
-
-        // 3. Assert
-        expect(harness.directory.fresh, everyElement(isTrue));
-        expect(harness.session.boundIds, ['verdemar']);
-        expect(Get.currentRoute, Routes.MONAMIE);
-      },
-    );
-
-    testWidgets(
       'Sad Path: opens the picker when the created organization never shows up among several others',
       (WidgetTester tester) async {
         // 1. Arrange
@@ -898,7 +745,7 @@ void main() {
         );
 
         // 3. Assert
-        expect(harness.directory.calls, inInclusiveRange(6, 7));
+        expect(harness.directory.calls, 1);
         expect(harness.session.boundIds, isEmpty);
         expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
       },

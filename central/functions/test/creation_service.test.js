@@ -1,162 +1,45 @@
 const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
-const { FieldValue } = require("firebase-admin/firestore");
 
 const { checkOrganizationId, createOrganization, myCreations } = require("../creation_service");
 const { CreationError } = require("../organization_creation");
+const { fakeFirestore } = require("./fake_firestore");
 
-const CUSTOMER = "customers/C0abc";
 const NOW = new Date("2026-10-26T12:00:00.000Z");
 const SEVEN_DAYS_LATER = new Date("2026-11-02T12:00:00.000Z");
 const ACTIVE_THEMES = new Set(["grafite", "oceano"]);
-const ROOT = "rotasul00@monamienet.org";
+/** personKey("dono@x.com"), computed once with `sha256sum`. */
+const OWNER_KEY = "cae28455d02087f78701c78329a53cf76712bf86f45c15de24a3509977e34e57";
 
-const isDelete = (value) =>
-  value !== null && typeof value?.isEqual === "function" && value.isEqual(FieldValue.delete());
-
-/**
- * An in-memory central Firestore with what the creation service and
- * `transitionOrganizationStatus` use: `doc(path).get()`, `runTransaction` with
- * `tx.get/create/update` (a `FieldValue.delete()` removes the field) and
- * `collection(c).where(f, "==" | "in", v)...get()`. `reads` counts every
- * read; `statuses` keeps each status written, by path, in order.
- */
-function fakeFirestore(docs = {}) {
-  const store = new Map(Object.entries(docs).map(([path, data]) => [path, { ...data }]));
-  const statuses = new Map();
-  let reads = 0;
-  let transactions = 0;
-  const snapshot = (path) => {
-    const data = store.get(path);
-    return {
-      id: path.split("/").pop(),
-      exists: data !== undefined,
-      data: () => (data === undefined ? undefined : { ...data }),
-      get: (field) => data?.[field],
-    };
+/** A Community Firestore whose every write rejects. */
+function failingCommunityDb() {
+  const fail = async () => {
+    throw new Error("community firestore unavailable");
   };
-  const noteStatus = (path, data) => {
-    if (data.status !== undefined) statuses.set(path, [...(statuses.get(path) ?? []), data.status]);
-  };
-  const query = (collection, filters) => ({
-    where(field, op, value) {
-      assert.ok(op === "==" || op === "in", `the fake only supports == and in, got ${op}`);
-      return query(collection, [...filters, [field, op, value]]);
-    },
-    async get() {
-      reads++;
-      const docs = [...store.keys()]
-        .filter((path) => path.startsWith(`${collection}/`) && path.split("/").length === 2)
-        .filter((path) =>
-          filters.every(([f, op, v]) =>
-            op === "==" ? store.get(path)[f] === v : v.includes(store.get(path)[f])
-          )
-        )
-        .map(snapshot);
-      return { empty: docs.length === 0, docs };
-    },
-  });
-  return {
-    store,
-    statuses,
-    get reads() {
-      return reads;
-    },
-    get transactions() {
-      return transactions;
-    },
-    doc(path) {
-      return {
-        path,
-        async get() {
-          reads++;
-          return snapshot(path);
-        },
-      };
-    },
-    collection(name) {
-      return query(name, []);
-    },
-    async runTransaction(fn) {
-      transactions++;
-      const writes = [];
-      const tx = {
-        async get(ref) {
-          reads++;
-          return snapshot(ref.path);
-        },
-        create(ref, data) {
-          assert.equal(store.has(ref.path), false, `create over existing ${ref.path}`);
-          writes.push(() => {
-            store.set(ref.path, { ...data });
-            noteStatus(ref.path, data);
-          });
-        },
-        update(ref, data) {
-          assert.ok(store.has(ref.path), `update of missing ${ref.path}`);
-          writes.push(() => {
-            const next = { ...store.get(ref.path) };
-            for (const [field, value] of Object.entries(data)) {
-              if (isDelete(value)) delete next[field];
-              else next[field] = value;
-            }
-            store.set(ref.path, next);
-            noteStatus(ref.path, data);
-          });
-        },
-      };
-      const result = await fn(tx);
-      for (const write of writes) write();
-      return result;
-    },
-  };
+  const doc = () => ({ set: fail, collection: () => ({ doc }) });
+  return { doc };
 }
 
-/** The shared Community Firestore: `doc(p).collection(c).doc(d).set(data)`;
- * every set rejects when `failing` is set. */
-function fakeCommunityDb({ failing = false } = {}) {
-  const store = new Map();
-  const doc = (path) => ({
-    collection: (name) => ({ doc: (id) => doc(`${path}/${name}/${id}`) }),
-    async set(data) {
-      if (failing) throw new Error("community firestore unavailable");
-      store.set(path, { ...data });
-    },
-  });
-  return { store, doc };
-}
-
-/** An in-memory GroupsApi recording calls; `failCreate` makes `create` reject. */
-function fakeGroupsApi({ existing = [], failCreate = false } = {}) {
-  const groups = new Set(existing);
-  const calls = [];
-  return {
-    calls,
-    async lookup(email) {
-      calls.push(["lookup", email]);
-      return groups.has(email) ? `groups/${email}` : null;
-    },
-    async create(email, displayName, customer) {
-      calls.push(["create", email, displayName, customer]);
-      if (failCreate) throw new Error("cloud identity refused");
-      groups.add(email);
-      return `groups/${email}`;
-    },
-    async setMonAmieSettings(email) {
-      calls.push(["setMonAmieSettings", email]);
-    },
-    async addMember(name, email) {
-      calls.push(["addMember", name, email]);
-    },
-  };
+/** A Community Firestore that keeps the configuration but rejects the
+ * owner's organization membership. */
+function membershipFailingCommunityDb() {
+  const db = fakeFirestore();
+  const doc = db.doc;
+  db.doc = (path) =>
+    path.includes("/organizationMemberships/")
+      ? {
+          async set() {
+            throw new Error("membership write refused");
+          },
+        }
+      : doc(path);
+  return db;
 }
 
 function deps(overrides = {}) {
   const projects = [];
   return {
-    groups: fakeGroupsApi(),
-    communityDb: fakeCommunityDb(),
-    customer: CUSTOMER,
+    communityDb: fakeFirestore(),
     projects,
     async createStandardProject(id, ownerEmail) {
       projects.push([id, ownerEmail]);
@@ -283,7 +166,7 @@ describe("createOrganization (Community) - Unit Test Suite", () => {
     assert.equal(doc.createdAt.toISOString(), NOW.toISOString());
   });
 
-  test("Happy Path: creates the root group, applies the settings and adds the owner", async () => {
+  test("Happy Path: makes the owner an administrator in the Community project", async () => {
     // 1. Arrange
     const db = fakeFirestore();
     const d = deps();
@@ -292,12 +175,22 @@ describe("createOrganization (Community) - Unit Test Suite", () => {
     await create(db, d);
 
     // 3. Assert
-    const writes = d.groups.calls.filter(([op]) => op !== "lookup");
-    assert.deepEqual(writes, [
-      ["create", ROOT, "Rota Sul", CUSTOMER],
-      ["setMonAmieSettings", ROOT],
-      ["addMember", `groups/${ROOT}`, "dono@x.com"],
-    ]);
+    assert.deepEqual(d.communityDb.store.get(`organizations/rotasul/organizationMemberships/${OWNER_KEY}`), {
+      email: "dono@x.com",
+      role: "admin",
+      addedAt: NOW,
+    });
+  });
+
+  test("Happy Path: adds the organization to the owner's accounts entry", async () => {
+    // 1. Arrange
+    const db = fakeFirestore({ [`accounts/${OWNER_KEY}`]: { email: "dono@x.com", organizationIds: ["outra"] } });
+
+    // 2. Act
+    await create(db, deps());
+
+    // 3. Assert
+    assert.deepEqual(db.store.get(`accounts/${OWNER_KEY}`).organizationIds, ["outra", "rotasul"]);
   });
 
   test("Happy Path: writes branding and plan to the Community project", async () => {
@@ -318,26 +211,18 @@ describe("createOrganization (Community) - Unit Test Suite", () => {
     });
   });
 
-  test("Edge Case: an existing root group is not created again, the owner is still added", async () => {
-    // 1. Arrange
-    const db = fakeFirestore();
-    const d = deps({ groups: fakeGroupsApi({ existing: [ROOT] }) });
-
-    // 2. Act
-    await create(db, d);
-
-    // 3. Assert
-    const writes = d.groups.calls.filter(([op]) => op !== "lookup");
-    assert.deepEqual(writes, [["addMember", `groups/${ROOT}`, "dono@x.com"]]);
-  });
-
   const failures = [
-    ["group creation", () => deps({ groups: fakeGroupsApi({ failCreate: true }) }), "group", "cloud identity refused"],
     [
       "the Community Firestore write",
-      () => deps({ communityDb: fakeCommunityDb({ failing: true }) }),
+      () => deps({ communityDb: failingCommunityDb() }),
       "data",
       "community firestore unavailable",
+    ],
+    [
+      "the owner's membership write",
+      () => deps({ communityDb: membershipFailingCommunityDb() }),
+      "membership",
+      "membership write refused",
     ],
   ];
   for (const [why, makeDeps, step, message] of failures) {
@@ -441,7 +326,6 @@ describe("createOrganization (refusals) - Unit Test Suite", () => {
       await create(db, deps(), overrides).catch(() => {});
 
       // 3. Assert
-      assert.equal(db.transactions, 0);
       assert.equal(db.store.size, 0);
     });
   }
@@ -463,7 +347,7 @@ describe("createOrganization (refusals) - Unit Test Suite", () => {
     });
   }
 
-  test("Sad Path: a taken id leaves the existing registry entry and groups untouched", async () => {
+  test("Sad Path: a taken id leaves the existing registry entry untouched", async () => {
     // 1. Arrange
     const db = fakeFirestore({ "organizations/rotasul": { status: "active", ownerEmail: "outro@x.com" } });
     const d = deps();
@@ -473,7 +357,7 @@ describe("createOrganization (refusals) - Unit Test Suite", () => {
 
     // 3. Assert
     assert.deepEqual(db.store.get("organizations/rotasul"), { status: "active", ownerEmail: "outro@x.com" });
-    assert.deepEqual(d.groups.calls, []);
+    assert.equal(d.communityDb.store.size, 0);
   });
 });
 
@@ -487,7 +371,7 @@ describe("myCreations - Unit Test Suite", () => {
       ownerEmail: "dono@x.com",
       name: "Ddd",
       plan: "community",
-      failure: { step: "group", message: "boom" },
+      failure: { step: "data", message: "boom" },
     },
     "organizations/eee": { status: "active", ownerEmail: "dono@x.com", name: "Eee", plan: "community" },
     "organizations/fff": { status: "reserved", ownerEmail: "outro@x.com", name: "Fff", plan: "community" },
@@ -512,7 +396,7 @@ describe("myCreations - Unit Test Suite", () => {
     const result = await myCreations(db, "dono@x.com");
 
     // 3. Assert
-    assert.equal(result.find((c) => c.id === "ddd").failureStep, "group");
+    assert.equal(result.find((c) => c.id === "ddd").failureStep, "data");
   });
 
   test("Edge Case: the e-mail is matched case-insensitively", async () => {
@@ -535,5 +419,18 @@ describe("myCreations - Unit Test Suite", () => {
 
     // 3. Assert
     assert.deepEqual(result, []);
+  });
+});
+
+describe("createOrganization (owner's access) - Unit Test Suite", () => {
+  test("Edge Case: a failed membership write adds nothing to the owner's accounts entry", async () => {
+    // 1. Arrange
+    const db = fakeFirestore();
+
+    // 2. Act
+    await create(db, deps({ communityDb: membershipFailingCommunityDb() }));
+
+    // 3. Assert
+    assert.equal(db.store.has(`accounts/${OWNER_KEY}`), false);
   });
 });

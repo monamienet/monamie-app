@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/group_member.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 
 bool evaluateMarkerVisibility({
@@ -26,8 +26,8 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(email: 'user1@monamienet.org', name: 'User 1'),
-          GoogleGroupMember(email: 'user2@monamienet.org', name: 'User 2'),
+          GroupMember(email: 'user1@monamienet.org', name: 'User 1'),
+          GroupMember(email: 'user2@monamienet.org', name: 'User 2'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
@@ -58,7 +58,7 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(email: 'user1@monamienet.org', name: 'User 1'),
+          GroupMember(email: 'user1@monamienet.org', name: 'User 1'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
@@ -89,7 +89,7 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(email: 'user1@monamienet.org', name: 'User 1'),
+          GroupMember(email: 'user1@monamienet.org', name: 'User 1'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
@@ -117,7 +117,7 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(email: 'user2@monamienet.org', name: 'User 2'),
+          GroupMember(email: 'user2@monamienet.org', name: 'User 2'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
@@ -186,42 +186,5 @@ void main() {
     // -------------------------------------------------------------
     // Carga Imediata de Posição ao Iniciar Rastreamento
     // -------------------------------------------------------------
-    test(
-      'Happy Path: Início de serviço gera payload imediato completo com coordenadas e grupo ativo',
-      () {
-        // 1. Arrange
-        const email = 'operador@monamienet.org';
-        const nome = 'Operador 1';
-        const lat = -22.9041;
-        const lng = -43.1329;
-        final now = DateTime.now();
-        const activeGroup = 'equipe-alfa@monamienet.org';
-
-        // 2. Act
-        final updateData = <String, dynamic>{
-          'email': email,
-          'name': nome,
-          'lat': lat,
-          'lng': lng,
-          'capturedAt': now,
-          'groupId': activeGroup,
-        };
-
-        final trackedData = <String, dynamic>{
-          'isPublishing': true,
-          'groupId': activeGroup,
-        };
-
-        // 3. Assert
-        expect(updateData['email'], email);
-        expect(updateData['lat'], lat);
-        expect(updateData['lng'], lng);
-        expect(updateData['capturedAt'], now);
-        expect(updateData['groupId'], activeGroup);
-
-        expect(trackedData['isPublishing'], isTrue);
-        expect(trackedData['groupId'], activeGroup);
-      },
-    );
   });
 }

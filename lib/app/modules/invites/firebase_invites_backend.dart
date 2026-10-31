@@ -1,6 +1,6 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:monamie_app/app/data/firebase/central_firebase.dart';
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 
 import 'invite.dart';
 import 'invites_backend.dart';
@@ -39,20 +39,20 @@ class FirebaseInvitesBackend implements InvitesBackend {
   Future<InviteSendResult> send(
     String organizationId, {
     required String organizationName,
-    String? team,
-    String? firstTeamName,
-    required List<({String email, Set<TeamRole> roles})> invites,
+    String? groupId,
+    String? firstGroupName,
+    required List<({String email, Set<GroupRole> roles})> invites,
   }) async {
     final data = await _call('sendInvites', {
       'organizationId': organizationId,
       'organizationName': organizationName,
-      'team': ?team,
-      'firstTeamName': ?firstTeamName,
+      'groupId': ?groupId,
+      'firstGroupName': ?firstGroupName,
       'invites': [
         for (final i in invites)
           {
             'email': i.email,
-            'roles': [for (final r in i.roles) r.name],
+            'roles': [for (final r in i.roles) r.id],
           },
       ],
     });
@@ -62,8 +62,8 @@ class FirebaseInvitesBackend implements InvitesBackend {
         if (s is Map && s['email'] is String) s,
     ];
     return InviteSendResult(
-      team: '${map['team'] ?? team ?? ''}',
-      teamName: '${map['teamName'] ?? ''}',
+      groupId: '${map['groupId'] ?? groupId ?? ''}',
+      groupName: '${map['groupName'] ?? firstGroupName ?? ''}',
       sent: [for (final s in sent) s['email'] as String],
       notEmailed: [
         for (final s in sent)
@@ -77,13 +77,15 @@ class FirebaseInvitesBackend implements InvitesBackend {
   }
 
   @override
-  Future<List<Invite>> listForTeam(String organizationId, String team) async =>
-      _invites(
-        await _call('listInvites', {
-          'organizationId': organizationId,
-          'team': team,
-        }),
-      );
+  Future<List<Invite>> listForGroup(
+    String organizationId,
+    String groupId,
+  ) async => _invites(
+    await _call('listInvites', {
+      'organizationId': organizationId,
+      'groupId': groupId,
+    }),
+  );
 
   @override
   Future<void> resend(String organizationId, String inviteId) => _call(

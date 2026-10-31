@@ -8,9 +8,22 @@
 /** Root of every organization's data in its project. */
 const ORGANIZATIONS = "organizations";
 
+/** Who belongs to an organization, keyed by personKey. */
+const ORGANIZATION_MEMBERSHIPS = "organizationMemberships";
+
 /** `organizations/{id}/config/branding`: the organization's name and look. */
 function brandingPath(organizationId) {
   return `${ORGANIZATIONS}/${organizationId}/config/branding`;
 }
 
-module.exports = { ORGANIZATIONS, brandingPath };
+/** `organizations/{id}/organizationMemberships/{personKey}`. */
+function organizationMembershipPath(organizationId, key) {
+  return `${ORGANIZATIONS}/${organizationId}/${ORGANIZATION_MEMBERSHIPS}/${key}`;
+}
+
+module.exports = {
+  ORGANIZATIONS,
+  ORGANIZATION_MEMBERSHIPS,
+  brandingPath,
+  organizationMembershipPath,
+};

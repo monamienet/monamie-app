@@ -21,7 +21,6 @@ void main() {
           lng: -43.1329,
           capturedAt: dataHora,
           isPublishing: true,
-          groupId: 'ti-suporte@monamienet.org',
         );
 
         // 3. Assert
@@ -31,7 +30,6 @@ void main() {
         expect(user.lng, -43.1329);
         expect(user.capturedAt, dataHora);
         expect(user.isPublishing, isTrue);
-        expect(user.groupId, 'ti-suporte@monamienet.org');
       },
     );
 
@@ -51,7 +49,6 @@ void main() {
         expect(user.lng, isNull);
         expect(user.capturedAt, isNull);
         expect(user.isPublishing, isNull);
-        expect(user.groupId, isNull);
       },
     );
 
@@ -84,7 +81,6 @@ void main() {
           lng: -43.1300,
           capturedAt: dataHora,
           isPublishing: true,
-          groupId: 'vigilancia-praia-vermelha@monamienet.org',
         );
 
         // 2. Act
@@ -98,27 +94,7 @@ void main() {
           'lng': -43.1300,
           'capturedAt': dataHora,
           'isPublishing': true,
-          'groupId': 'vigilancia-praia-vermelha@monamienet.org',
         });
-      },
-    );
-
-    test(
-      'Edge Case: toMap() NÃO deve incluir o campo groupId quando for nulo',
-      () {
-        // 1. Arrange
-        final user = UserModel(
-          email: 'gestor@monamienet.org',
-          name: 'Gestor Teste',
-          isPublishing: false,
-          groupId: null,
-        );
-
-        // 2. Act
-        final map = user.toMap();
-
-        // 3. Assert
-        expect(map.containsKey('groupId'), isFalse);
       },
     );
 
@@ -151,7 +127,6 @@ void main() {
           'lng': -43.1200,
           'capturedAt': Timestamp.fromDate(timestampEsperado),
           'isPublishing': true,
-          'groupId': 'transporte-vans@monamienet.org',
         };
 
         // 2. Act
@@ -164,44 +139,6 @@ void main() {
         expect(user.lng, -43.1200);
         expect(user.capturedAt, timestampEsperado);
         expect(user.isPublishing, isTrue);
-        expect(user.groupId, 'transporte-vans@monamienet.org');
-      },
-    );
-
-    test(
-      'Edge Case: fromMap() deve tratar ausência de groupId atribuindo nulo',
-      () {
-        // 1. Arrange
-        final mapSemGrupo = {
-          'email': 'usuario.sem.grupo@monamienet.org',
-          'name': 'Usuário Sem Grupo',
-          'lat': -22.9050,
-          'lng': -43.1310,
-          'isPublishing': false,
-        };
-
-        // 2. Act
-        final user = UserModel.fromMap(mapSemGrupo);
-
-        // 3. Assert
-        expect(user.groupId, isNull);
-      },
-    );
-
-    test(
-      'Edge Case: fromMap() deve converter valor numérico para String no groupId',
-      () {
-        // 1. Arrange
-        final mapComTipoInesperado = {
-          'email': 'teste@monamienet.org',
-          'groupId': 12345,
-        };
-
-        // 2. Act
-        final user = UserModel.fromMap(mapComTipoInesperado);
-
-        // 3. Assert
-        expect(user.groupId, '12345');
       },
     );
 
@@ -268,7 +205,6 @@ void main() {
           'lat': -22.9100,
           'lng': -43.1400,
           'isPublishing': true,
-          'groupId': 'seguranca-valonguinho@monamienet.org',
         };
 
         // 2. Act
@@ -280,7 +216,6 @@ void main() {
         expect(reconstruido.lat, mapaOriginal['lat']);
         expect(reconstruido.lng, mapaOriginal['lng']);
         expect(reconstruido.isPublishing, mapaOriginal['isPublishing']);
-        expect(reconstruido.groupId, mapaOriginal['groupId']);
       },
     );
   });

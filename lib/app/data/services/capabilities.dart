@@ -1,98 +1,103 @@
-import 'package:monamie_app/app/config/organization/group_address.dart';
+import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
 
-/// What the signed-in person may do in the bound organization, from the custom
-/// claims `syncClaims` sets (see `firestore.rules`).
+/// What the signed-in person may do in the bound organization, read from
+/// their own membership documents (the same ones `firestore.rules` reads):
+/// `organizationMemberships/{personKey}` (belongs, and whether as an
+/// administrator) and `groups/{groupId}/groupMemberships/{personKey}`
+/// (their roles in each group).
 class Capabilities {
   const Capabilities({
-    this.share = const {},
-    this.watch = const {},
-    this.admin = const {},
+    this.isMember = false,
+    this.isAdmin = false,
+    this.rolesByGroup = const {},
   });
 
-  /// Reads the claims `share`, `watch` and `admin` (lists of strings). A
-  /// missing or malformed claim is an empty set, never an error.
-  factory Capabilities.fromClaims(Map<String, Object?> claims) {
-    Set<String> list(String name) => switch (claims[name]) {
-      final List<Object?> values => {
-        for (final value in values)
-          if (value is String && value.isNotEmpty) value.toLowerCase(),
-      },
-      _ => const {},
-    };
+  /// Reads the documents. [organizationMembership] is the data of
+  /// `organizationMemberships/{personKey}`, `null` when it does not exist;
+  /// [groupRoles] the raw `roles` of each of the person's group memberships,
+  /// by group id. Without an organization membership the person belongs to
+  /// nothing there, whatever group memberships are left. A malformed field
+  /// counts as absent, never as an error; unknown roles are kept but grant
+  /// nothing.
+  factory Capabilities.fromMemberships({
+    required Map<String, Object?>? organizationMembership,
+    required Map<String, Object?> groupRoles,
+  }) {
+    if (organizationMembership == null) return const Capabilities();
     return Capabilities(
-      share: list('share'),
-      watch: list('watch'),
-      admin: list('admin'),
+      isMember: true,
+      isAdmin:
+          organizationMembership[OrganizationMembershipFields.role] ==
+          OrganizationRoles.admin,
+      rolesByGroup: {
+        for (final MapEntry(:key, :value) in groupRoles.entries)
+          if (rolesOf(value) case final roles when roles.isNotEmpty) key: roles,
+      },
     );
   }
 
-  /// Team keys (`rotasul01`) where the person shares their location.
-  final Set<String> share;
+  /// Whether the person belongs to the organization at all.
+  final bool isMember;
 
-  /// Team keys whose map the person sees.
-  final Set<String> watch;
+  /// Whether the person administers the organization (the *administrador*):
+  /// they manage it and see every group.
+  final bool isAdmin;
 
-  /// Organizations the person administers (member of their root group): they
-  /// watch every team of these and manage them.
-  final Set<String> admin;
+  /// The person's roles ([GroupRoles]) in each of their groups, by group id.
+  final Map<String, Set<String>> rolesByGroup;
 
-  /// No capability at all: the person was removed from every group.
-  bool get isEmpty => share.isEmpty && watch.isEmpty && admin.isEmpty;
+  /// The groups where the person publishes their location, sorted.
+  List<String> get publisherGroupIds => _groupsWith(GroupRoles.publisher);
 
-  /// Whether the person shares their location in some team.
-  bool get canShare => share.isNotEmpty;
+  /// The groups whose map the person receives as a subscriber, sorted
+  /// (administrators see every group besides these).
+  List<String> get subscriberGroupIds => _groupsWith(GroupRoles.subscriber);
 
-  /// Whether the person administers [organizationId] (the *administrador*).
-  bool isAdminOf(String organizationId) => admin.contains(organizationId);
+  /// Whether the person shares their location in some group.
+  bool get canPublish => publisherGroupIds.isNotEmpty;
 
-  /// Whether the person sees any map of [organizationId]: they watch one of its
-  /// teams, or administer it.
-  bool canWatchIn(String organizationId) =>
-      isAdminOf(organizationId) ||
-      watch.any(
-        (key) =>
-            parseGroupAddress(teamEmailForKey(key))?.organizationId ==
-            organizationId,
-      );
+  /// Whether the person sees some group's map. A person who only publishes
+  /// sees just their own position.
+  bool get canWatch => isAdmin || subscriberGroupIds.isNotEmpty;
 
-  /// Whether the person sees the map of team [teamKey].
-  bool canWatchTeam(String teamKey) {
-    final organizationId = parseGroupAddress(
-      teamEmailForKey(teamKey),
-    )?.organizationId;
-    return watch.contains(teamKey) ||
-        (organizationId != null && isAdminOf(organizationId));
-  }
+  /// Whether the person sees the map of group [groupId].
+  bool canWatchGroup(String groupId) =>
+      isAdmin ||
+      (rolesByGroup[groupId]?.contains(GroupRoles.subscriber) ?? false);
 
-  /// The team keys of [organizationId] where the person shares, sorted.
-  List<String> shareTeamsIn(String organizationId) => [
-    for (final key in share)
-      if (parseGroupAddress(teamEmailForKey(key))?.organizationId ==
-          organizationId)
-        key,
+  List<String> _groupsWith(String role) => [
+    for (final MapEntry(:key, :value) in rolesByGroup.entries)
+      if (value.contains(role)) key,
   ]..sort();
 
-  /// The keys of the teams of [organizationId] the person sees on the map,
-  /// sorted. An administrator sees every team in [allTeamKeys] (the organization's team
-  /// groups); anyone else sees the teams they watch.
-  List<String> watchTeamsIn(
-    String organizationId,
-    Iterable<String> allTeamKeys,
-  ) {
-    final keys = isAdminOf(organizationId)
-        ? {
-            ...allTeamKeys.where(
-              (key) =>
-                  parseGroupAddress(teamEmailForKey(key))?.organizationId ==
-                  organizationId,
-            ),
-          }
-        : {
-            for (final key in watch)
-              if (parseGroupAddress(teamEmailForKey(key))?.organizationId ==
-                  organizationId)
-                key,
-          };
-    return keys.toList()..sort();
-  }
+  @override
+  bool operator ==(Object other) =>
+      other is Capabilities &&
+      other.isMember == isMember &&
+      other.isAdmin == isAdmin &&
+      other.rolesByGroup.length == rolesByGroup.length &&
+      rolesByGroup.entries.every(
+        (e) =>
+            other.rolesByGroup[e.key]?.length == e.value.length &&
+            other.rolesByGroup[e.key]!.containsAll(e.value),
+      );
+
+  @override
+  int get hashCode => Object.hash(isMember, isAdmin, rolesByGroup.length);
 }
+
+/// The role names in a raw `roles` field: the strings of a list, anything
+/// else none.
+Set<String> rolesOf(Object? raw) => {
+  if (raw is List)
+    for (final role in raw)
+      if (role is String && role.isNotEmpty) role,
+};
+
+/// The ids in [groupRoles] (raw `roles` by group id) whose roles include
+/// [role], sorted. The background service uses it for the groups it
+/// publishes to.
+List<String> groupsWithRole(Map<String, Object?> groupRoles, String role) => [
+  for (final MapEntry(:key, :value) in groupRoles.entries)
+    if (rolesOf(value).contains(role)) key,
+]..sort();

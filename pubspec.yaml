@@ -55,6 +55,7 @@ dependencies:
   hive_flutter: ^1.1.0
   flutter_background_service: ^5.1.0
   http: ^1.6.0
+  crypto: ^3.0.7
   cloud_functions: ^6.3.3
   latlong2: ^0.10.1
   intl: ^0.20.3

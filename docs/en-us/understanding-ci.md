@@ -246,12 +246,11 @@ There are two safeguards:
 
 Debug builds (`flutter run`) are not affected and work without a keystore.
 
-### What about `google_config.dart`?
+### What about the OAuth client IDs?
 
-[lib/app/config/google_config.dart](../../lib/app/config/google_config.dart) is versioned like any
-other file because its values are **not secrets**: the groups gateway address and paths. The OAuth client
-IDs are no longer in the code: they come from the central project's config, fetched at build time. Anything compiled into the app can be extracted from the binary by anyone. The gateway
-is protected by the Google token (`Bearer`) the app sends with each request.
+They are not in the code: they come from the central project's config (`google-services.json`), fetched at
+build time. They are **not secrets** either: anything compiled into the app can be extracted from the binary
+by anyone. What protects the data is the person's sign-in, checked by the Firebase security rules.
 
 ## 5. How the versionCode is set
 

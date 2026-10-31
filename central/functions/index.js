@@ -4,37 +4,38 @@ const { defineString } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { GoogleAuth } = require("google-auth-library");
-const { organizationIdsFromGroups } = require("./organization_groups");
 const {
   COMMUNITY_PROJECT_ID,
   OrganizationOptionsReader,
   projectIdFor,
 } = require("./organization_options");
-const { TtlCache } = require("./ttl_cache");
-const { GROUPS_SCOPES, GroupsApi } = require("./groups_api");
-const { TeamError } = require("./teams");
-const { isOrganizationAdmin } = require("./organization_admin");
-const { teamNames } = require("./team_names");
+const { administeredOrganization } = require("./organization_admin");
 const { InviteError } = require("./invites");
 const { GmailMailer } = require("./mailer");
 const {
   acceptInvite,
+  cancelGroupInvites,
   cancelInvite,
-  cancelTeamInvites,
   listInvites,
   myInvites,
   resendInvite,
   sendInvites,
 } = require("./invite_service");
 const {
-  createTeam,
-  deleteTeam,
-  deletionImpact,
-  listTeams,
-  removePerson,
-  renameTeam,
-  setRoles,
-} = require("./team_service");
+  GroupError,
+  createGroup,
+  deleteGroup,
+  groupDeletionImpact,
+  listGroups,
+  removeMember,
+  renameGroup,
+  setMemberRoles,
+} = require("./group_service");
+const {
+  accountOrganizationIds,
+  organizationOpener,
+  removeOrganizationFromAccounts,
+} = require("./membership_store");
 const { ORGANIZATIONS, organizationPath } = require("./firestore_paths");
 const {
   BINDABLE,
@@ -42,15 +43,11 @@ const {
   dueOrganizationIds,
   retireOrganization,
 } = require("./organization_status");
-const { isValidOrganizationId } = require("./group_address");
+const { isValidOrganizationId } = require("./organization_id");
 
 admin.initializeApp();
 
-// Host of the workspace-groups-gateway, shared with the organization projects.
-const GATEWAY_HOST = defineString("GROUPS_GATEWAY_HOST");
-
 const PLATFORMS = new Set(["android", "web"]);
-const GATEWAY_TIMEOUT_MS = 10000;
 
 const auth = new GoogleAuth({
   scopes: ["https://www.googleapis.com/auth/firebase.readonly"],
@@ -60,27 +57,57 @@ const options = new OrganizationOptionsReader(async (url) => {
   const response = await client.request({ url });
   return response.data;
 });
-// Absorbs retry storms (a user tapping sign-in again) without spending the
-// Directory API quota shared by all organizations. Kept short (#78): a removal
-// must not keep routing someone to an organization for long. Each instance has
-// its own cache, so a removed user may still be listed for up to a minute;
-// the organization's syncClaims then grants nothing and the app shows
-// *Sem organização*.
-const groupsByEmail = new TtlCache(60 * 1000);
+
+/**
+ * The Admin app of another project (an organization's own project, or the
+ * shared Community project), created once per instance. It runs with the
+ * function's service account, which needs roles/datastore.user there (and
+ * roles/firebaseauth.admin for the erase).
+ */
+function projectApp(projectId) {
+  const name = `project-${projectId}`;
+  return (
+    admin.apps.find((a) => a?.name === name) ?? admin.initializeApp({ projectId }, name)
+  );
+}
+
+/** Firestore of an organization project. */
+function projectFirestore(projectId) {
+  return projectApp(projectId).firestore();
+}
+
+/** Firestore of the shared Community project. */
+function communityFirestore() {
+  return projectFirestore(COMMUNITY_PROJECT_ID);
+}
+
+/** Opens an organization's Firestore from its registry entry. */
+const openOrganization = organizationOpener(admin.firestore(), projectFirestore);
+
+/** The caller's lowercased, verified e-mail. */
+function signedInEmail(request) {
+  const email = request.auth?.token?.email;
+  if (!email || request.auth.token.email_verified !== true) {
+    throw new HttpsError("unauthenticated", "Sign in first.");
+  }
+  return email.toLowerCase();
+}
 
 /**
  * Finds the organizations the signed-in user belongs to.
  *
- * The user signed in to this central project with Google. Their organizations
- * are derived from the names of their groups (`<id>00@`, `<id>NNr@`,
- * `<id>NNw@`; see group_address.js),
- * kept when their registry entry `organizations/{id}` has a status the app shows
- * (every status but `reserved`), and returned with that status. Organizations
- * the app binds (`active`, `migrating`, `deleting`) also carry the
- * FirebaseOptions of their project for the caller's platform. `owner` says
- * whether the caller is the organization's owner (`ownerEmail`, who created it),
- * which only matters for deleting their account; the organization's own
- * syncClaims decides what the user may access there.
+ * Their organizations come from their entry in this project,
+ * `accounts/{personKey}.organizationIds`, written by the central functions
+ * after each membership change in the organization project. They are kept
+ * when their registry entry `organizations/{id}` has a status the app shows
+ * (every status but `reserved`), and returned with that status.
+ * Organizations the app binds (`active`, `migrating`, `deleting`) also carry
+ * the FirebaseOptions of their project for the caller's platform. `owner`
+ * says whether the caller is the organization's owner (`ownerEmail`, who
+ * created it), which only matters for deleting their account. The
+ * organization's own memberships decide what the user may access there; an
+ * id left in `accounts` after a removal is dropped by the app when it finds
+ * no membership.
  *
  * Request: `{platform: "android" | "web"}`.
  * Response: `{organizations: [{id, status, owner, options?}]}`, sorted by id.
@@ -98,14 +125,9 @@ exports.resolveOrganizations = onCall({ invoker: "public" }, async (request) => 
     throw new HttpsError("invalid-argument", "platform must be android or web.");
   }
 
-  // `fresh` skips the cache right after accepting an invite, when the new
-  // membership must show at once.
   const key = email.toLowerCase();
-  if (request.data?.fresh === true) groupsByEmail.delete(key);
-  const groups = await groupsByEmail.getOrCompute(key, () =>
-    fetchUserGroups(bearerToken(request), email)
-  );
-  const entries = await visibleOrganizations(organizationIdsFromGroups(groups));
+  const ids = await accountOrganizationIds(admin.firestore(), key);
+  const entries = await visibleOrganizations(ids.filter(isValidOrganizationId));
 
   const organizations = [];
   for (const { id, status, plan, ownerEmail } of entries) {
@@ -129,33 +151,6 @@ exports.resolveOrganizations = onCall({ invoker: "public" }, async (request) => 
   return { organizations };
 });
 
-/**
- * The raw Firebase ID token of the caller, forwarded to the gateway like
- * syncClaims does.
- */
-function bearerToken(request) {
-  const header = request.rawRequest?.headers?.authorization ?? "";
-  const match = /^Bearer (.+)$/.exec(header);
-  if (!match) throw new HttpsError("unauthenticated", "Missing ID token.");
-  return match[1];
-}
-
-async function fetchUserGroups(idToken, email) {
-  const url = `https://${GATEWAY_HOST.value()}/groups?email=${encodeURIComponent(
-    email
-  )}`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${idToken}` },
-    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
-  });
-  if (!response.ok) {
-    logger.error(`[groups] Gateway answered ${response.status}.`);
-    throw new HttpsError("unavailable", "Could not read your groups.");
-  }
-  const body = await response.json();
-  return Array.isArray(body?.groups) ? body.groups : [];
-}
-
 async function visibleOrganizations(ids) {
   if (ids.length === 0) return [];
   const db = admin.firestore();
@@ -167,7 +162,8 @@ async function visibleOrganizations(ids) {
       status: doc.get("status"),
       plan: doc.get("plan"),
       ownerEmail: String(doc.get("ownerEmail") ?? "").toLowerCase(),
-    }));
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 // Runs as its own service account: it is the only identity allowed to
@@ -184,7 +180,8 @@ const cloudPlatform = new GoogleAuth({
 /**
  * Retires organizations whose timed exit is due: 7 days in `awaiting_billing`
  * (billing never linked) or 30 days in `deleting` (the grace period ended).
- * Each one loses its project and its registry entry, and its id is retired.
+ * Each one loses its project (or Community subtree), its id in every
+ * `accounts` entry and its registry entry, and its id is retired.
  */
 exports.expireOrganizations = onSchedule(
   {
@@ -202,7 +199,15 @@ exports.expireOrganizations = onSchedule(
     const docs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     for (const id of dueOrganizationIds(docs, now)) {
       try {
-        await retireOrganization(db, id, eraseOrganizationData, { now });
+        await retireOrganization(
+          db,
+          id,
+          async (organizationId, registry) => {
+            await eraseOrganizationData(organizationId, registry);
+            await removeOrganizationFromAccounts(db, organizationId);
+          },
+          { now }
+        );
         logger.info(`[expireOrganizations] Retired ${id}.`);
       } catch (error) {
         // The next run retries; one organization must not block the others.
@@ -226,18 +231,6 @@ async function eraseOrganizationData(id, registry) {
 }
 
 /**
- * Firestore of the shared Community project, through a second Admin app.
- * The function's service account needs roles/datastore.user there.
- */
-function communityFirestore() {
-  const name = "community";
-  const app =
-    admin.apps.find((a) => a?.name === name) ??
-    admin.initializeApp({ projectId: COMMUNITY_PROJECT_ID }, name);
-  return app.firestore();
-}
-
-/**
  * Deletes organization `id`'s Google Cloud project. Google keeps it restorable
  * for up to 30 days, then erases it with all its data; its id can never be
  * used again. A project already waiting for deletion counts as deleted.
@@ -256,131 +249,106 @@ async function deleteOrganizationProject(id) {
   }
 }
 
-// ── Teams (#98) ────────────────────────────────────────────────────────────
-// Run as groups-admin@, which holds the Workspace "Groups Administrator"
-// admin role. Every call checks that the caller administers the organization
-// (a direct member of its root group `<id>00@`, not `ownerEmail`) and only
-// touches that organization's groups.
-const GROUPS_ADMIN_SERVICE_ACCOUNT =
+// ── Groups ─────────────────────────────────────────────────────────────────
+// Every call that writes memberships runs as groups-admin@ (it keeps its
+// first name; replacing it with a dedicated account is a follow-up), which
+// needs roles/datastore.user on the central project, on the Community
+// project and on each Standard organization project. Organization-scoped
+// calls check that the caller administers the organization: their
+// `organizationMemberships/{personKey}` there has `role: "admin"`.
+const MEMBERSHIP_SERVICE_ACCOUNT =
   "groups-admin@monamienet-app.iam.gserviceaccount.com";
 
-const groupsAuth = new GoogleAuth({ scopes: GROUPS_SCOPES });
-const groupsApi = new GroupsApi(async (options) => {
-  const client = await groupsAuth.getClient();
-  return (await client.request(options)).data;
-});
-
 /**
- * The organization id of a team call, once the caller is known to administer it.
+ * The organization of an administrator's call: `{organizationId, db}`.
  *
- * @throws {HttpsError} unauthenticated / permission-denied
+ * @throws {HttpsError} unauthenticated / invalid-argument / permission-denied
  */
-async function administeredOrganizationId(request) {
-  if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+async function administered(request) {
+  const email = signedInEmail(request);
   const organizationId = request.data?.organizationId;
-  const email = String(request.auth.token.email ?? "").toLowerCase();
-  if (typeof organizationId !== "string" || !email) {
-    throw new HttpsError("invalid-argument", "organizationId is required.");
+  if (!isValidOrganizationId(organizationId)) {
+    throw new HttpsError("invalid-argument", "organizationId is required.", {
+      field: "organizationId",
+    });
   }
-  if (!(await isOrganizationAdmin(admin.firestore(), groupsApi, organizationId, email))) {
-    throw new HttpsError("permission-denied", "Só um administrador gerencia equipes.");
+  const db = await administeredOrganization(openOrganization, organizationId, email);
+  if (!db) {
+    throw new HttpsError("permission-denied", "Só um administrador gerencia grupos.");
   }
-  return organizationId;
+  return { organizationId, db, email };
 }
 
-/** Wraps a team operation: administrator check, then TeamError →
- * invalid-argument. */
-function teamCall(operation) {
+/** Wraps an administrator's call: the check, then GroupError / InviteError →
+ * invalid-argument (`full` → failed-precondition) with `{field}`. */
+function adminCall(operation) {
   return onCall(
-    { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT },
+    { invoker: "public", serviceAccount: MEMBERSHIP_SERVICE_ACCOUNT },
     async (request) => {
-      const organizationId = await administeredOrganizationId(request);
+      const context = await administered(request);
       try {
-        return await operation(organizationId, request.data ?? {}, request);
+        return await operation(context, request.data ?? {}, request);
       } catch (error) {
-        if (error instanceof TeamError || error instanceof InviteError) {
+        if (error instanceof GroupError || error instanceof InviteError) {
           throw new HttpsError(
             error.code === "full" ? "failed-precondition" : "invalid-argument",
             error.message,
             { field: error.code }
           );
         }
-        logger.error(`[teams] ${organizationId}: ${error.message}`);
-        throw new HttpsError("unavailable", "Não foi possível falar com os grupos agora.");
+        logger.error(`[groups] ${context.organizationId}: ${error.message}`);
+        throw new HttpsError("unavailable", "Não foi possível falar com o servidor agora.");
       }
     }
   );
 }
 
-exports.listTeams = teamCall(async (organizationId) => ({
-  teams: await listTeams(groupsApi, organizationId),
+/** Response: `{groups: [{id, name, createdAt, people: [{email, roles}]}]}`. */
+exports.listGroups = adminCall(async ({ db, organizationId }) => ({
+  groups: await listGroups(db, organizationId),
 }));
 
-/**
- * The display names of the teams the caller sees in an organization, for the
- * team menu: every team for an administrator, otherwise the teams of the
- * caller's leaves. Open to everyone in the organization, not only its
- * administrators: the caller's direct groups (one gateway call, cached like
- * resolveOrganizations) decide which teams are named.
- *
- * Request: `{organizationId}`.
- * Response: `{names: {<teamKey>: displayName}}`; a team without a display
- * name is left out.
- */
-exports.teamNames = onCall(
-  { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT },
-  async (request) => {
-    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
-    const { email, email_verified: emailVerified } = request.auth.token;
-    if (!email || emailVerified !== true) {
-      throw new HttpsError("failed-precondition", "A verified email is required.");
-    }
-    const organizationId = request.data?.organizationId;
-    if (!isValidOrganizationId(organizationId)) {
-      throw new HttpsError("invalid-argument", "organizationId is required.");
-    }
-    const groups = await groupsByEmail.getOrCompute(email.toLowerCase(), () =>
-      fetchUserGroups(bearerToken(request), email)
-    );
-    const [entry] = await visibleOrganizations([organizationId]);
-    if (!entry || !BINDABLE.includes(entry.status)) return { names: {} };
-    try {
-      return { names: await teamNames(groupsApi, organizationId, groups) };
-    } catch (error) {
-      logger.error(`[teamNames] ${organizationId}: ${error.message}`);
-      throw new HttpsError("unavailable", "Não foi possível falar com os grupos agora.");
-    }
-  }
+/** Request: `{organizationId, name}`. Response: `{id, name}`. */
+exports.createGroup = adminCall(({ db, organizationId }, data) =>
+  createGroup(db, organizationId, data.name)
 );
 
-exports.createTeam = teamCall((organizationId, data) =>
-  createTeam(groupsApi, organizationId, data.name)
+/** Request: `{organizationId, groupId, name}`. Response: `{id, name}`. */
+exports.renameGroup = adminCall(({ db, organizationId }, data) =>
+  renameGroup(db, organizationId, String(data.groupId ?? ""), data.name)
 );
 
-exports.renameTeam = teamCall((organizationId, data) =>
-  renameTeam(groupsApi, organizationId, String(data.team ?? ""), data.name)
+/** Request: `{organizationId, groupId}`. Response: `{loses, stays}`. */
+exports.groupDeletionImpact = adminCall(({ db, organizationId }, data) =>
+  groupDeletionImpact(db, organizationId, String(data.groupId ?? ""))
 );
 
-exports.teamDeletionImpact = teamCall((organizationId, data) =>
-  deletionImpact(groupsApi, organizationId, String(data.team ?? ""))
-);
-
-// Groups first: if that fails, nothing changed. Invites left pending by a
-// failure after it cannot be accepted (`acceptInvite` checks the team's age).
-exports.deleteTeam = teamCall(async (organizationId, data) => {
-  const team = String(data.team ?? "");
-  await deleteTeam(groupsApi, organizationId, team);
-  await cancelTeamInvites(admin.firestore(), organizationId, team);
+/** Request: `{organizationId, groupId}`. Response: `{deleted: true}`. */
+exports.deleteGroup = adminCall(async ({ db, organizationId }, data) => {
+  const groupId = String(data.groupId ?? "");
+  const centralDb = admin.firestore();
+  await deleteGroup(db, centralDb, organizationId, groupId, () =>
+    cancelGroupInvites(centralDb, organizationId, groupId)
+  );
   return { deleted: true };
 });
 
-exports.setMemberRoles = teamCall((organizationId, data) =>
-  setRoles(groupsApi, organizationId, String(data.team ?? ""), String(data.email ?? ""), data.roles)
+/** Request: `{organizationId, groupId, email, roles}`. Response: `{roles}`. */
+exports.setMemberRoles = adminCall(({ db, organizationId }, data) =>
+  setMemberRoles(db, organizationId, String(data.groupId ?? ""), data.email, data.roles)
 );
 
-exports.removeMember = teamCall(async (organizationId, data) => {
-  await removePerson(groupsApi, organizationId, String(data.team ?? ""), String(data.email ?? ""));
-  return { removed: true };
+/** Request: `{organizationId, groupId, email}`. Response: `{removed: true,
+ * leftOrganization}`. */
+exports.removeMember = adminCall(async ({ db, organizationId }, data) => {
+  const { leftOrganization } = await removeMember(
+    db,
+    admin.firestore(),
+    organizationId,
+    String(data.groupId ?? ""),
+    data.email
+  );
+  return { removed: true, leftOrganization };
 });
 
 // ── Invites (#99) ──────────────────────────────────────────────────────────
@@ -410,54 +378,56 @@ function mailer() {
   });
 }
 
-exports.sendInvites = teamCall((organizationId, data, request) =>
-  sendInvites(admin.firestore(), groupsApi, mailer(), {
+/**
+ * Request: `{organizationId, organizationName, groupId?, firstGroupName?,
+ * invites: [{email, roles}]}`. Response: `{groupId, groupName, sent, skipped}`.
+ */
+exports.sendInvites = adminCall(({ db, organizationId, email }, data, request) =>
+  sendInvites(admin.firestore(), db, mailer(), {
     organizationId,
     organizationName: String(data.organizationName ?? organizationId).slice(0, 60),
-    inviter: {
-      email: String(request.auth.token.email).toLowerCase(),
-      name: request.auth.token.name,
-    },
-    team: data.team ? String(data.team) : undefined,
-    firstTeamName: data.firstTeamName,
+    inviter: { email, name: request.auth.token.name },
+    groupId: data.groupId ? String(data.groupId) : undefined,
+    firstGroupName: data.firstGroupName,
     invites: data.invites,
   })
 );
 
-exports.listInvites = teamCall(async (organizationId, data) => ({
-  invites: await listInvites(admin.firestore(), organizationId, data.team ? String(data.team) : null),
+/** Request: `{organizationId, groupId?}`. Response: `{invites}`. */
+exports.listInvites = adminCall(async ({ organizationId }, data) => ({
+  invites: await listInvites(
+    admin.firestore(),
+    organizationId,
+    data.groupId ? String(data.groupId) : null
+  ),
 }));
 
-exports.resendInvite = teamCall((organizationId, data) =>
+exports.resendInvite = adminCall(({ organizationId }, data) =>
   resendInvite(admin.firestore(), mailer(), String(data.inviteId ?? ""), organizationId)
 );
 
-exports.cancelInvite = teamCall(async (organizationId, data) => {
+exports.cancelInvite = adminCall(async ({ organizationId }, data) => {
   await cancelInvite(admin.firestore(), String(data.inviteId ?? ""), organizationId);
   return { cancelled: true };
 });
 
 /** The signed-in person's pending invites (they may belong to nothing yet). */
-exports.myInvites = onCall({ invoker: "public" }, async (request) => {
-  const email = request.auth?.token?.email;
-  if (!email || request.auth.token.email_verified !== true) {
-    throw new HttpsError("unauthenticated", "Sign in first.");
-  }
-  return { invites: await myInvites(admin.firestore(), email) };
-});
+exports.myInvites = onCall({ invoker: "public" }, async (request) => ({
+  invites: await myInvites(admin.firestore(), signedInEmail(request)),
+}));
 
-/** Accepts an invite addressed to the signed-in account. */
+/**
+ * Accepts an invite addressed to the signed-in account. Response:
+ * `{organizationId, groupId, organizationName, groupName, roles, inviterName}`.
+ */
 exports.acceptInvite = onCall(
-  { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT },
+  { invoker: "public", serviceAccount: MEMBERSHIP_SERVICE_ACCOUNT },
   async (request) => {
-    const email = request.auth?.token?.email;
-    if (!email || request.auth.token.email_verified !== true) {
-      throw new HttpsError("unauthenticated", "Sign in first.");
-    }
+    const email = signedInEmail(request);
     try {
       return await acceptInvite(
         admin.firestore(),
-        groupsApi,
+        openOrganization,
         String(request.data?.inviteId ?? ""),
         email
       );
@@ -474,30 +444,15 @@ exports.acceptInvite = onCall(
 const { THEMES_URL, activeThemeIdsFrom } = require("./branding_catalog");
 
 // ── Creating an organization (#93) ─────────────────────────────────────────
-// Runs as groups-admin@: it creates the root group and writes the registry
-// (and, for Community, the shared project's Firestore, where the account
-// needs roles/datastore.user).
+// Runs as groups-admin@: it writes the registry and, for Community, the
+// shared project's Firestore (the owner's admin membership included) and the
+// owner's `accounts` entry.
 const {
   checkOrganizationId,
   createOrganization,
   myCreations,
 } = require("./creation_service");
 const { CreationError } = require("./organization_creation");
-
-function signedInEmail(request) {
-  const email = request.auth?.token?.email;
-  if (!email || request.auth.token.email_verified !== true) {
-    throw new HttpsError("unauthenticated", "Sign in first.");
-  }
-  return email.toLowerCase();
-}
-
-/** The Workspace customer (`customers/…`) new groups belong to, read from
- * an existing group of the domain. */
-async function workspaceCustomer() {
-  const known = await groupsApi.lookup(MAIL_FROM.value());
-  return known ? (await groupsApi.get(known)).parent : null;
-}
 
 /** "Disponível" at the name step: format, never retired, not taken. */
 exports.checkOrganizationId = onCall({ invoker: "public" }, async (request) => {
@@ -508,7 +463,7 @@ exports.checkOrganizationId = onCall({ invoker: "public" }, async (request) => {
 /** Creates the caller's organization (they become its owner and first
  * administrator). */
 exports.createOrganization = onCall(
-  { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT, timeoutSeconds: 120 },
+  { invoker: "public", serviceAccount: MEMBERSHIP_SERVICE_ACCOUNT, timeoutSeconds: 120 },
   async (request) => {
     const ownerEmail = signedInEmail(request);
     try {
@@ -517,8 +472,6 @@ exports.createOrganization = onCall(
       return await createOrganization(
         admin.firestore(),
         {
-          groups: groupsApi,
-          customer: await workspaceCustomer(),
           communityDb: communityFirestore(),
           // Standard needs a provisioning identity that can create projects
           // in the organization, and the billing wait (Cloud Workflows).
@@ -547,10 +500,10 @@ exports.myCreations = onCall({ invoker: "public" }, async (request) => ({
 }));
 
 // ── Deleting an account (#82) ──────────────────────────────────────────────
-// Runs as groups-admin@: it leaves (and on cancel rejoins) the person's
-// teams. The erase runs as partner-expirer@, which needs
-// roles/datastore.user and roles/firebaseauth.admin on each organization project
-// (and on the Community project) and roles/firebaseauth.admin here.
+// Runs as groups-admin@: it removes (and on cancel writes back) the person's
+// memberships. The erase runs as partner-expirer@, which needs
+// roles/datastore.user and roles/firebaseauth.admin on each organization
+// project (and on the Community project) and roles/firebaseauth.admin here.
 const {
   DeletionError,
   cancelAccountDeletion,
@@ -560,9 +513,14 @@ const {
 } = require("./account_deletion");
 const { OrganizationStatusError } = require("./organization_status");
 
+/** Opens an organization's Firestore for the deletion service. */
+const deletionDeps = {
+  organizationDb: async (organizationId) => (await openOrganization(organizationId))?.db ?? null,
+};
+
 function deletionCall(operation) {
   return onCall(
-    { invoker: "public", serviceAccount: GROUPS_ADMIN_SERVICE_ACCOUNT },
+    { invoker: "public", serviceAccount: MEMBERSHIP_SERVICE_ACCOUNT },
     async (request) => {
       const email = signedInEmail(request);
       try {
@@ -590,15 +548,11 @@ exports.requestAccountDeletion = deletionCall(async (email, request) => {
   const confirmIds = Array.isArray(request.data?.confirmIds)
     ? request.data.confirmIds.map(String)
     : [];
-  const result = await requestAccountDeletion(
-    admin.firestore(),
-    {
-      groups: groupsApi,
-      directGroups: (address) => fetchUserGroups(bearerToken(request), address),
-    },
-    { email, uid: request.auth.uid, confirmIds }
-  );
-  groupsByEmail.delete(email);
+  const result = await requestAccountDeletion(admin.firestore(), deletionDeps, {
+    email,
+    uid: request.auth.uid,
+    confirmIds,
+  });
   return {
     deleteAt: result.deleteAt.toISOString(),
     ownedOrganizationIds: result.ownedOrganizationIds,
@@ -608,8 +562,7 @@ exports.requestAccountDeletion = deletionCall(async (email, request) => {
 
 /** Cancels the caller's pending deletion within its 30 days. */
 exports.cancelAccountDeletion = deletionCall(async (email) => {
-  await cancelAccountDeletion(admin.firestore(), { groups: groupsApi }, email);
-  groupsByEmail.delete(email);
+  await cancelAccountDeletion(admin.firestore(), deletionDeps, email);
   return { cancelled: true };
 });
 
@@ -638,11 +591,7 @@ exports.eraseAccounts = onSchedule(
       organization: async (organizationId) => {
         const registry = await db.doc(organizationPath(organizationId)).get();
         if (!registry.exists) return null;
-        const projectId = projectIdFor(organizationId, registry.get("plan"));
-        const name = `erase-${projectId}`;
-        const app =
-          admin.apps.find((a) => a?.name === name) ??
-          admin.initializeApp({ projectId }, name);
+        const app = projectApp(projectIdFor(organizationId, registry.get("plan")));
         return { db: app.firestore(), auth: app.auth() };
       },
       deleteAuthUser: (uid) => admin.auth().deleteUser(uid),

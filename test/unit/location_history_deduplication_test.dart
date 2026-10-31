@@ -222,26 +222,5 @@ void main() {
         expect(simulator.lastRecordedPosition, newSessionInitialPos);
       },
     );
-
-    test(
-      'Contrato de Responsabilidade Única: TrackingController atualiza isPublishing sem gravar no histórico',
-      () {
-        // Valida o contrato em que o controller de UI emite apenas o payload de ativação de rastreamento
-        const email = 'usuario@monamienet.org';
-        const groupId = 'equipe-bravo@monamienet.org';
-
-        final trackingActivationPayload = <String, dynamic>{
-          'email': email,
-          'isPublishing': true,
-          'groupId': groupId,
-        };
-
-        // O payload de ativação de tracking não contém arrays ou escritas em subcoleções
-        expect(trackingActivationPayload.containsKey('lat'), isFalse);
-        expect(trackingActivationPayload.containsKey('lng'), isFalse);
-        expect(trackingActivationPayload['isPublishing'], isTrue);
-        expect(trackingActivationPayload['groupId'], groupId);
-      },
-    );
   });
 }

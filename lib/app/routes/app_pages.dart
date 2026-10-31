@@ -1,4 +1,3 @@
-import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/bindings/monamie_bindings.dart';
 import 'package:monamie_app/app/modules/monamie/ui/monamie_page.dart';
 import 'package:get/get.dart';
@@ -10,9 +9,9 @@ import 'package:monamie_app/app/modules/admin/appearance_controller.dart';
 import 'package:monamie_app/app/modules/admin/tracking_settings_edit_controller.dart';
 import 'package:monamie_app/app/modules/admin/tracking_settings_view.dart';
 import 'package:monamie_app/app/modules/admin/appearance_view.dart';
-import 'package:monamie_app/app/modules/admin/teams/firebase_teams_backend.dart';
-import 'package:monamie_app/app/modules/admin/teams/teams_controller.dart';
-import 'package:monamie_app/app/modules/admin/teams/teams_views.dart';
+import 'package:monamie_app/app/modules/admin/groups/firebase_groups_backend.dart';
+import 'package:monamie_app/app/modules/admin/groups/groups_controller.dart';
+import 'package:monamie_app/app/modules/admin/groups/groups_views.dart';
 import 'package:monamie_app/app/modules/admin/firebase_appearance_backend.dart';
 
 import 'package:monamie_app/app/modules/account/deletion_pending_view.dart';
@@ -83,19 +82,12 @@ class AppPages {
       ),
     ),
     GetPage(
-      name: _Paths.TEAMS,
-      page: () => TeamsView(
+      name: _Paths.GROUPS,
+      page: () => GroupsView(
         controller: Get.put(
-          TeamsController(
+          GroupsController(
             organizationId: Organization.current!.id,
-            backend: const FirebaseTeamsBackend(),
-            // The map under this screen follows the teams made here.
-            onTeamsChanged: (teams) {
-              if (!Get.isRegistered<GoogleGroupsController>()) return;
-              Get.find<GoogleGroupsController>().adoptOrganizationTeams({
-                for (final team in teams) team.key: team.name,
-              });
-            },
+            backend: const FirebaseGroupsBackend(),
           ),
         ),
       ),

@@ -17,8 +17,8 @@ class InviteError extends Error {
 
 /**
  * Validates the people of one send: e-mails (normalized to lower case and
- * trimmed, no duplicates) and roles (one or both of share/watch, never
- * none).
+ * trimmed, no duplicates) and roles (one or both of `publisher` and
+ * `subscriber`, never none).
  *
  * @param {unknown} invites - `[{email, roles}]`
  * @returns {Array<{email: string, roles: string[]}>}
@@ -46,7 +46,7 @@ function validateInvites(invites) {
     }
     seen.add(email);
     const roles = [...new Set(Array.isArray(invite.roles) ? invite.roles : [])];
-    if (roles.length === 0 || roles.some((r) => r !== "share" && r !== "watch")) {
+    if (roles.length === 0 || roles.some((r) => r !== "publisher" && r !== "subscriber")) {
       throw new InviteError("roles", `Marque pelo menos uma opção para ${email}.`);
     }
     return { email, roles: roles.sort() };
@@ -89,29 +89,11 @@ function inviteState(invite, now) {
   return "ok";
 }
 
-/**
- * Whether `invite` was sent before its team's group was created, that is,
- * to an earlier team that was deleted and whose number was then reused
- * (`nextTeamNumber` hands out the lowest free one). An unreadable time
- * counts as older, so such an invite is refused.
- *
- * @param {{createdAt?: Date|string|{toDate(): Date}}} invite
- * @param {string|Date|undefined} teamCreateTime - The team group's
- *   `createTime` (Cloud Identity)
- * @returns {boolean}
- */
-function predatesTeam(invite, teamCreateTime) {
-  const sent = toDate(invite?.createdAt);
-  const created = toDate(teamCreateTime);
-  return !sent || !created || sent.getTime() < created.getTime();
-}
-
 module.exports = {
   INVITE_TTL_MS,
   InviteError,
   MAX_INVITES_PER_SEND,
   inviteExpiry,
   inviteState,
-  predatesTeam,
   validateInvites,
 };

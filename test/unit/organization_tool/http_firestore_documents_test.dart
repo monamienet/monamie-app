@@ -573,4 +573,138 @@ void main() {
       await expectLater(updating, throwsA(isA<OrganizationToolException>()));
     });
   });
+
+  group('arrays in Firestore fields - Unit Test Suite', () {
+    test('Happy Path: a list of strings round-trips', () {
+      // 1. Arrange
+      final data = <String, Object?>{
+        'organizationIds': ['acme', 'beta'],
+      };
+      final fields = jsonDecode(jsonEncode(encodeFirestoreFields(data))) as Map;
+
+      // 2. Act
+      final decoded = decodeFirestoreFields(fields);
+
+      // 3. Assert
+      expect(decoded, data);
+    });
+
+    test('Edge Case: an arrayValue without values is an empty list', () {
+      // 1. Arrange
+      final fields = {
+        'organizationIds': {'arrayValue': <String, Object?>{}},
+      };
+
+      // 2. Act
+      final decoded = decodeFirestoreFields(fields);
+
+      // 3. Assert
+      expect(decoded, {'organizationIds': <Object?>[]});
+    });
+
+    test('Sad Path: nulls inside a list are left out when encoding', () {
+      // 1. Arrange
+      final data = <String, Object?>{
+        'ids': ['acme', null],
+      };
+
+      // 2. Act
+      final fields = encodeFirestoreFields(data);
+
+      // 3. Assert
+      expect(fields, {
+        'ids': {
+          'arrayValue': {
+            'values': [
+              {'stringValue': 'acme'},
+            ],
+          },
+        },
+      });
+    });
+  });
+
+  group('HttpFirestoreDocuments.list - Unit Test Suite', () {
+    test('Happy Path: returns every document of every page by id', () async {
+      // 1. Arrange
+      var page = 0;
+      final documents = HttpFirestoreDocuments(
+        client: MockClient((request) async {
+          page++;
+          final body = page == 1
+              ? {
+                  'documents': [
+                    {
+                      'name': 'projects/p/databases/(default)/documents/c/b',
+                      'fields': {
+                        'role': {'stringValue': 'member'},
+                      },
+                    },
+                  ],
+                  'nextPageToken': 'next',
+                }
+              : {
+                  'documents': [
+                    {'name': 'projects/p/databases/(default)/documents/c/a'},
+                  ],
+                };
+          return http.Response(jsonEncode(body), 200);
+        }),
+      );
+
+      // 2. Act
+      final listed = await documents.list(
+        projectId: 'p',
+        collectionPath: 'c',
+        accessToken: 'token',
+      );
+
+      // 3. Assert
+      expect(
+        [
+          for (final d in listed) [d.id, d.data],
+        ],
+        [
+          ['a', <String, Object?>{}],
+          [
+            'b',
+            {'role': 'member'},
+          ],
+        ],
+      );
+    });
+
+    test('Edge Case: an empty collection answers no documents', () async {
+      // 1. Arrange
+      final requests = <http.Request>[];
+      final documents = HttpFirestoreDocuments(client: answering(requests));
+
+      // 2. Act
+      final listed = await documents.list(
+        projectId: 'monamienet-acme',
+        collectionPath: 'organizations/acme/organizationMemberships',
+        accessToken: 'token',
+      );
+
+      // 3. Assert
+      expect(listed, isEmpty);
+    });
+
+    test('Sad Path: a refused listing (403) throws', () async {
+      // 1. Arrange
+      final documents = HttpFirestoreDocuments(
+        client: answering([], status: 403),
+      );
+
+      // 2. Act
+      final listing = documents.list(
+        projectId: 'monamienet-acme',
+        collectionPath: 'organizations/acme/organizationMemberships',
+        accessToken: 'token',
+      );
+
+      // 3. Assert
+      await expectLater(listing, throwsA(isA<OrganizationToolException>()));
+    });
+  });
 }

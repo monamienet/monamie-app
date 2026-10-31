@@ -1,6 +1,23 @@
-const { parseGroupAddress } = require("./group_address");
 const { OrganizationStatusError, transitionOrganizationStatus } = require("./organization_status");
-const { ACCOUNT_DELETIONS, ORGANIZATIONS, POSITIONS, organizationPath } = require("./firestore_paths");
+const {
+  ACCOUNT_DELETIONS,
+  ORGANIZATIONS,
+  accountDeletionPath,
+  accountPath,
+  groupMembershipPath,
+  organizationMembershipPath,
+} = require("./firestore_paths");
+const {
+  accountOrganizationIds,
+  addToAccount,
+  erasePerson,
+  groupExists,
+  leaveGroup,
+  leaveOrganization,
+  organizationMembership,
+  personGroupMemberships,
+} = require("./membership_store");
+const { personKey } = require("./person_key");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -16,66 +33,70 @@ class DeletionError extends Error {
 }
 
 /**
- * Which of a person's direct groups they leave at once, grouped by
- * organization: every leaf (`<id>NNr` / `<id>NNw`) and the root group `<id>00`
- * of an organization they administer without owning it. The root group of a
- * organization they own is kept: the organization itself goes to `deleting`.
+ * Takes the person out of one organization when they ask to delete their
+ * account: every group membership (positions marked `removedAt`, so they
+ * disappear from the maps) and, unless they own it, their organization
+ * membership and its `accounts` entry. An owner stays an administrator of
+ * the organization, which goes to `deleting` instead.
  *
- * @param {string[]} groupEmails - The person's direct groups
- * @param {string[]} [ownedOrganizationIds] - The organizations they own
- * @returns {Map<string, string[]>} organizationId → group e-mails
+ * @returns {Promise<{organizationId: string, role: string|null,
+ *   groups: Array<{groupId: string, roles: string[]}>}>} What was removed,
+ *   for `cancelAccountDeletion`; `role` null when the organization
+ *   membership was kept (or missing)
  */
-function leavesByOrganization(groupEmails, ownedOrganizationIds = []) {
-  const byOrganization = new Map();
-  for (const email of groupEmails) {
-    const address = parseGroupAddress(email);
-    if (!address || address.level === 1) continue;
-    if (address.level === 0 && ownedOrganizationIds.includes(address.organizationId)) continue;
-    const group = `${address.teamKey}${address.leaf ?? ""}@monamienet.org`;
-    byOrganization.set(address.organizationId, [...(byOrganization.get(address.organizationId) ?? []), group]);
+async function leaveForDeletion(db, centralDb, organizationId, email, { owner, now }) {
+  const groups = await personGroupMemberships(db, organizationId, email);
+  for (const { groupId } of groups) {
+    await leaveGroup(db, organizationId, groupId, email, now);
   }
-  return byOrganization;
+  let role = null;
+  if (!owner) {
+    role = (await organizationMembership(db, organizationId, email))?.role ?? null;
+    await leaveOrganization(db, centralDb, organizationId, email);
+  }
+  return { organizationId, role, groups };
 }
 
 /**
- * Schedules the deletion of `email`'s account: leaves every team, and the
- * root group of every organization they administer without owning it, now
- * (so they disappear from the maps), puts every organization they own in
- * `deleting` (nobody uses it meanwhile), and records what to restore if
- * they cancel within 30 days. An owner must confirm by typing the id of
- * each organization they own (`confirmIds`).
+ * Schedules the deletion of `email`'s account: leaves every group of every
+ * organization in their `accounts` entry now (so they disappear from the
+ * maps), and every organization they do not own; puts every `active`
+ * organization they own in `deleting` (nobody uses it meanwhile), and
+ * records what to restore if they cancel within 30 days. An owner must
+ * confirm by typing the id of each organization they own (`confirmIds`).
  *
- * @param {object} deps - `{groups: GroupsApi, directGroups: (email) =>
- *   Promise<string[]>}`
+ * @param {FirebaseFirestore.Firestore} db - Central Firestore
+ * @param {{organizationDb: (organizationId: string) =>
+ *   Promise<FirebaseFirestore.Firestore|null>}} deps
  * @returns {Promise<{deleteAt: Date, ownedOrganizationIds: string[],
  *   ownedOrganizationNames: Object<string, string>}>}
  */
 async function requestAccountDeletion(db, deps, { email, uid, confirmIds = [] }, now = new Date()) {
   email = email.toLowerCase();
-  const owned = await db
-    .collection(ORGANIZATIONS)
-    .where("ownerEmail", "==", email)
-    .where("status", "==", "active")
-    .get();
-  const ownedOrganizationIds = owned.docs.map((d) => d.id).sort();
+  const owned = await db.collection(ORGANIZATIONS).where("ownerEmail", "==", email).get();
+  const ownedIds = new Set(owned.docs.map((d) => d.id));
+  const ownedActive = owned.docs.filter((d) => d.get("status") === "active");
+  const ownedOrganizationIds = ownedActive.map((d) => d.id).sort();
   // Shown on *Em exclusão* after the person signs out. Entries made before
   // in-app creation have no name; the app then shows the id.
   const ownedOrganizationNames = Object.fromEntries(
-    owned.docs.filter((d) => typeof d.get("name") === "string").map((d) => [d.id, d.get("name")])
+    ownedActive.filter((d) => typeof d.get("name") === "string").map((d) => [d.id, d.get("name")])
   );
   for (const id of ownedOrganizationIds) {
     if (!confirmIds.includes(id)) {
       throw new DeletionError("confirm", `Para confirmar, digite ${id}.`);
     }
   }
-  const leaves = leavesByOrganization(await deps.directGroups(email), ownedOrganizationIds);
   const memberships = [];
-  for (const [organizationId, groups] of leaves) {
-    for (const leaf of groups) {
-      const name = await deps.groups.lookup(leaf);
-      if (name) await deps.groups.removeMember(name, email);
-    }
-    memberships.push({ organizationId, groups });
+  for (const organizationId of await accountOrganizationIds(db, email)) {
+    const organizationDb = await deps.organizationDb(organizationId);
+    if (!organizationDb) continue;
+    memberships.push(
+      await leaveForDeletion(organizationDb, db, organizationId, email, {
+        owner: ownedIds.has(organizationId),
+        now,
+      })
+    );
   }
   for (const id of ownedOrganizationIds) {
     await transitionOrganizationStatus(db, id, "deleting", {
@@ -84,7 +105,7 @@ async function requestAccountDeletion(db, deps, { email, uid, confirmIds = [] },
     });
   }
   const deleteAt = new Date(now.getTime() + ACCOUNT_GRACE_MS);
-  await db.doc(`${ACCOUNT_DELETIONS}/${email}`).set({
+  await db.doc(accountDeletionPath(personKey(email))).set({
     email,
     uid,
     requestedAt: now,
@@ -99,7 +120,7 @@ async function requestAccountDeletion(db, deps, { email, uid, confirmIds = [] },
 
 /** The pending deletion of `email`, or null. */
 async function pendingDeletion(db, email) {
-  const doc = await db.doc(`${ACCOUNT_DELETIONS}/${email.toLowerCase()}`).get();
+  const doc = await db.doc(accountDeletionPath(personKey(email))).get();
   if (!doc.exists || doc.get("status") !== "pending") return null;
   return {
     requestedAt: doc.get("requestedAt")?.toDate?.() ?? doc.get("requestedAt"),
@@ -110,13 +131,14 @@ async function pendingDeletion(db, email) {
 }
 
 /**
- * Cancels a pending deletion within its 30 days: rejoins the recorded
- * groups (teams and administered root groups) and brings the owned
+ * Cancels a pending deletion within its 30 days: writes back the recorded
+ * memberships (the organization ones with their role and `accounts`
+ * entry, and those of groups that still exist) and brings the owned
  * organizations back to `active`.
  */
 async function cancelAccountDeletion(db, deps, email, now = new Date()) {
   email = email.toLowerCase();
-  const ref = db.doc(`${ACCOUNT_DELETIONS}/${email}`);
+  const ref = db.doc(accountDeletionPath(personKey(email)));
   const doc = await ref.get();
   if (!doc.exists || doc.get("status") !== "pending") {
     throw new DeletionError("none", "Não há exclusão para cancelar.");
@@ -125,10 +147,21 @@ async function cancelAccountDeletion(db, deps, email, now = new Date()) {
   if (deleteAt && deleteAt.getTime() <= now.getTime()) {
     throw new DeletionError("late", "O prazo para cancelar já terminou.");
   }
-  for (const { groups } of doc.get("memberships") ?? []) {
-    for (const leaf of groups) {
-      const name = await deps.groups.lookup(leaf);
-      if (name) await deps.groups.addMember(name, email);
+  const key = personKey(email);
+  for (const { organizationId, role, groups } of doc.get("memberships") ?? []) {
+    const organizationDb = await deps.organizationDb(organizationId);
+    if (!organizationDb) continue;
+    if (role) {
+      await organizationDb
+        .doc(organizationMembershipPath(organizationId, key))
+        .set({ email, role, addedAt: now });
+      await addToAccount(db, email, organizationId);
+    }
+    for (const { groupId, roles } of groups ?? []) {
+      if (!(await groupExists(organizationDb, organizationId, groupId))) continue;
+      await organizationDb
+        .doc(groupMembershipPath(organizationId, groupId, key))
+        .set({ email, organizationId, roles, addedAt: now });
     }
   }
   for (const id of doc.get("ownedOrganizationIds") ?? []) {
@@ -142,13 +175,14 @@ async function cancelAccountDeletion(db, deps, email, now = new Date()) {
 }
 
 /**
- * Erases the accounts whose 30 days are over. In each organization they belonged
- * to: `organizations/{id}/positions/{email}` with its trail and day
- * summaries, and their sign-in in that project.
- * Then their central sign-in, and the record itself, so nothing of them is
- * left. An organization already retired (its data gone with it) is skipped. Owned
- * organizations are erased by `expireOrganizations` when their own `deleting`
- * period ends.
+ * Erases the accounts whose 30 days are over. In each organization they
+ * belonged to when they asked (and any still in their `accounts` entry):
+ * their memberships, their positions in every group with trails and day
+ * summaries, and their sign-in in that project. Then their `accounts`
+ * entry, their central sign-in, and the record itself, so nothing of them
+ * is left. An organization already retired (its data gone with it) is
+ * skipped. Owned organizations are erased by `expireOrganizations` when
+ * their own `deleting` period ends.
  *
  * @param {object} deps - `{organization: (organizationId) => Promise<{db: Firestore,
  *   auth: Auth}|null>, deleteAuthUser: (uid) => Promise<void>}`
@@ -162,14 +196,18 @@ async function eraseDueAccounts(db, deps, now = new Date()) {
     if (doc.get("status") !== "pending") continue;
     const email = doc.get("email");
     const uid = doc.get("uid");
-    for (const { organizationId } of doc.get("memberships") ?? []) {
+    const organizationIds = new Set([
+      ...(doc.get("memberships") ?? []).map((m) => m.organizationId),
+      ...(await accountOrganizationIds(db, email)),
+    ]);
+    for (const organizationId of [...organizationIds].sort()) {
       const organization = await deps.organization(organizationId);
       if (!organization) continue;
-      const root = organization.db.doc(organizationPath(organizationId));
-      await organization.db.recursiveDelete(root.collection(POSITIONS).doc(email));
+      await erasePerson(organization.db, organizationId, email);
       await deleteUserByEmail(organization.auth, email);
     }
     if (uid) await ignoreNotFound(deps.deleteAuthUser(uid));
+    await db.doc(accountPath(personKey(email))).delete();
     await doc.ref.delete();
     erased.push(email);
   }
@@ -198,7 +236,6 @@ module.exports = {
   DeletionError,
   cancelAccountDeletion,
   eraseDueAccounts,
-  leavesByOrganization,
   pendingDeletion,
   requestAccountDeletion,
 };

@@ -13,7 +13,7 @@ import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/app/data/firebase/organization_firebase.dart';
-import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
+import 'package:monamie_app/app/data/groups/organization_membership_check.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:monamie_app/app/data/organization/organization_binding.dart';
 import 'package:monamie_app/app/data/organization/organization_binding_store.dart';
@@ -53,20 +53,6 @@ const _kVerdeMar = OrganizationCandidate(
     messagingSenderId: '222',
   ),
 );
-
-/// Claims `syncClaims` returns for a person with no capability left.
-const Map<String, Object?> _kNoClaims = {
-  'share': <String>[],
-  'watch': <String>[],
-  'admin': <String>[],
-};
-
-/// Claims of a person who shares their location in one team.
-const Map<String, Object?> _kShareClaims = {
-  'share': ['rotasul01'],
-  'watch': <String>[],
-  'admin': <String>[],
-};
 
 // ---------------------------------------------------------------------------
 // Fakes
@@ -133,9 +119,6 @@ class _FakeAuthGoogleService implements AuthGoogleService {
       UserGoogleModel(id: 'uid-123', name: 'Ana Souza', email: _kCentralEmail);
 
   @override
-  Future<String?> getFirebaseIdToken() async => null;
-
-  @override
   Stream<String?> get onWebSignIn => const Stream<String?>.empty();
 
   @override
@@ -158,9 +141,7 @@ class _FakeOrganizationDirectory implements OrganizationDirectory {
   int calls = 0;
 
   @override
-  Future<List<OrganizationCandidate>> organizationsOfSignedInUser({
-    bool fresh = false,
-  }) async {
+  Future<List<OrganizationCandidate>> organizationsOfSignedInUser() async {
     calls++;
     log?.add('directory');
     final failure = error;
@@ -196,24 +177,18 @@ class _MemoryBindingStore implements OrganizationBindingStore {
 }
 
 /// [OrganizationSession] that binds without creating a real [FirebaseApp]: it
-/// sets [Organization.current] and a fake [OrganizationFirebase] whose `syncClaims`
-/// returns [claims] (or fails when [syncError] is set).
+/// sets [Organization.current] and a fake [OrganizationFirebase].
 class _FakeOrganizationSession extends OrganizationSession {
-  _FakeOrganizationSession(this.log, {this.claims, this.syncError})
-    : super(store: _MemoryBindingStore());
+  _FakeOrganizationSession(this.log) : super(store: _MemoryBindingStore());
 
   final List<String> log;
-  final Map<String, Object?>? claims;
-  final Object? syncError;
   int forgetCalls = 0;
 
   @override
   Future<void> bind(OrganizationBinding binding, {bool remember = true}) async {
     log.add('bind');
     Organization.bind(binding.organization);
-    CurrentOrganizationFirebase.set(
-      _FakeOrganizationFirebase(claims: claims ?? const {}, error: syncError),
-    );
+    CurrentOrganizationFirebase.set(_FakeOrganizationFirebase());
   }
 
   @override
@@ -225,16 +200,11 @@ class _FakeOrganizationSession extends OrganizationSession {
 }
 
 class _FakeOrganizationFirebase implements OrganizationFirebase {
-  _FakeOrganizationFirebase({required this.claims, this.error});
-
-  final Map<String, Object?> claims;
-  final Object? error;
+  @override
+  FirebaseAuth get auth => throw UnimplementedError();
 
   @override
-  FirebaseAuth get auth => _FakeFirebaseAuth();
-
-  @override
-  FirebaseFunctions get functions => _FakeFunctions(claims, error);
+  FirebaseFunctions get functions => throw UnimplementedError();
 
   @override
   FirebaseFirestore get firestore => throw UnimplementedError();
@@ -247,59 +217,15 @@ class _FakeOrganizationFirebase implements OrganizationFirebase {
       throw UnimplementedError();
 }
 
-class _FakeFirebaseAuth implements FirebaseAuth {
-  @override
-  User? get currentUser => _FakeUser();
+/// Answers [member] for every organization: `true` belongs, `false` was
+/// removed, `null` could not be read.
+class _FakeMembershipCheck implements OrganizationMembershipCheck {
+  _FakeMembershipCheck(this.member);
+
+  final bool? member;
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeUser implements User {
-  @override
-  Future<String?> getIdToken([bool forceRefresh = false]) async =>
-      'organization-id-token';
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeFunctions implements FirebaseFunctions {
-  _FakeFunctions(this.claims, this.error);
-
-  final Map<String, Object?> claims;
-  final Object? error;
-
-  @override
-  HttpsCallable httpsCallable(String name, {HttpsCallableOptions? options}) =>
-      _FakeCallable(claims, error);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeCallable implements HttpsCallable {
-  _FakeCallable(this.claims, this.error);
-
-  final Map<String, Object?> claims;
-  final Object? error;
-
-  @override
-  Future<HttpsCallableResult<T>> call<T>([dynamic parameters]) async {
-    final failure = error;
-    if (failure != null) throw failure;
-    return _FakeCallableResult<T>(claims as T);
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _FakeCallableResult<T> implements HttpsCallableResult<T> {
-  _FakeCallableResult(this.data);
-
-  @override
-  final T data;
+  Future<bool?> isMemberOf(String organizationId) async => member;
 }
 
 class _FakeTrackingStopper implements BackgroundTrackingStopper {
@@ -330,10 +256,6 @@ class _FakeUserGoogleRepository implements UserGoogleRepository {
   Future<String> saveUserGoogleModel(UserGoogleModel user) async => 'ok';
 
   @override
-  Future<GdiGroupsGoogle> getGdiGroupsGoogle(String token, String email) =>
-      throw StateError('groups gateway unavailable in tests');
-
-  @override
   Future<UserGoogleModel> saveGoogleProfile(
     String email,
     String name,
@@ -357,8 +279,7 @@ class _Harness {
   _Harness({
     List<OrganizationCandidate> organizations = const [],
     Object? directoryError,
-    Map<String, Object?>? claims,
-    Object? syncError,
+    bool? member = false,
     String? idToken = _kIdToken,
     String? refreshedToken = _kIdToken,
     Object? signInError,
@@ -376,11 +297,8 @@ class _Harness {
       error: directoryError,
       log: log,
     );
-    session = _FakeOrganizationSession(
-      log,
-      claims: claims,
-      syncError: syncError,
-    );
+    session = _FakeOrganizationSession(log);
+    membershipCheck = _FakeMembershipCheck(member);
     controller = AuthGoogleController(
       authGoogleService: authService,
       userRepository: _FakeUserGoogleRepository(),
@@ -389,11 +307,13 @@ class _Harness {
       brandingLoader: _FakeBrandingLoader(),
       organizationSession: session,
       organizationLocalData: _FakeOrganizationLocalData(),
+      membershipCheck: membershipCheck,
       refreshTheme: () => log.add('refreshTheme'),
     );
   }
 
   final List<String> log = <String>[];
+  late final _FakeMembershipCheck membershipCheck;
   late final _FakeAuthGoogleService authService;
   late final _FakeOrganizationDirectory directory;
   late final _FakeOrganizationSession session;
@@ -568,10 +488,7 @@ void main() {
         'Happy Path: Deve abrir o seletor com a única organização da pessoa',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kShareClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: true);
           await _pumpApp(tester);
 
           // 2. Act
@@ -598,7 +515,7 @@ void main() {
           // 1. Arrange
           final harness = _Harness(
             organizations: [_kRotaSul, _kVerdeMar],
-            claims: _kShareClaims,
+            member: true,
           );
           await _pumpApp(tester);
 
@@ -624,10 +541,7 @@ void main() {
         'Edge Case: Não deve vincular nem entrar na única organização antes da escolha',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kShareClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: true);
           await _pumpApp(tester);
 
           // 2. Act
@@ -648,10 +562,7 @@ void main() {
         'Edge Case: Deve abrir o seletor com a única organização ao verificar de novo em Sem organização',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kShareClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: true);
           await _pumpApp(tester);
 
           // 2. Act
@@ -703,10 +614,7 @@ void main() {
         'Happy Path: Deve explicar em noAccessReason que a conta não tem mais acesso à organização',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kNoClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: false);
           await _pumpApp(tester);
           await _run(
             tester,
@@ -732,13 +640,10 @@ void main() {
       );
 
       testWidgets(
-        'Happy Path: Deve navegar para Routes.NO_ORGANIZATION quando as claims não derem acesso',
+        'Happy Path: Deve navegar para Routes.NO_ORGANIZATION quando a pessoa não tiver mais matrícula',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kNoClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: false);
           await _pumpApp(tester);
           await _run(
             tester,
@@ -761,13 +666,10 @@ void main() {
       );
 
       testWidgets(
-        'Happy Path: Deve esquecer a organização quando as claims não derem acesso',
+        'Happy Path: Deve esquecer a organização quando a pessoa não tiver mais matrícula',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kNoClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: false);
           await _pumpApp(tester);
           await _run(
             tester,
@@ -791,13 +693,10 @@ void main() {
       );
 
       testWidgets(
-        'Happy Path: Deve sair apenas do projeto da organização quando as claims não derem acesso',
+        'Happy Path: Deve sair apenas do projeto da organização quando a pessoa não tiver mais matrícula',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kNoClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: false);
           await _pumpApp(tester);
           await _run(
             tester,
@@ -820,13 +719,10 @@ void main() {
       );
 
       testWidgets(
-        'Edge Case: Não deve exibir snackbar de erro de login quando as claims não derem acesso',
+        'Edge Case: Não deve exibir snackbar de erro de login quando a pessoa não tiver mais matrícula',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kNoClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: false);
           await _pumpApp(tester);
           await _run(
             tester,
@@ -852,10 +748,7 @@ void main() {
         'Edge Case: Não deve aplicar o tema da organização antes de decidir que a conta não tem acesso',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kNoClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: false);
           await _pumpApp(tester);
           await _run(
             tester,
@@ -881,13 +774,10 @@ void main() {
       );
 
       testWidgets(
-        'Edge Case: Não deve definir noAccessReason nem ir para Sem organização quando as claims derem acesso',
+        'Edge Case: Não deve definir noAccessReason nem ir para Sem organização quando a pessoa tiver matrícula',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            claims: _kShareClaims,
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: true);
           await _pumpApp(tester);
           await _run(
             tester,
@@ -911,13 +801,10 @@ void main() {
       );
 
       testWidgets(
-        'Sad Path: Não deve tratar uma falha do syncClaims como perda de acesso',
+        'Sad Path: Não deve tratar uma falha na leitura da matrícula como perda de acesso',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(
-            organizations: [_kRotaSul],
-            syncError: Exception('functions indisponível'),
-          );
+          final harness = _Harness(organizations: [_kRotaSul], member: null);
           await _pumpApp(tester);
           await _run(
             tester,
@@ -1273,7 +1160,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness(
           organizations: [_kRotaSul],
-          claims: _kShareClaims,
+          member: true,
           idToken: _jwtExpiringIn(const Duration(hours: 1)),
           refreshedToken: null,
         );
@@ -1299,10 +1186,7 @@ void main() {
       'Edge Case: Deve pedir um token novo quando o token guardado não for um JWT válido',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(
-          organizations: [_kRotaSul],
-          claims: _kShareClaims,
-        );
+        final harness = _Harness(organizations: [_kRotaSul], member: true);
         await _pumpApp(tester);
         await _run(tester, harness.controller, harness.controller.loginGoogle);
         harness.log.clear();
@@ -1326,7 +1210,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness(
           organizations: [_kRotaSul],
-          claims: _kShareClaims,
+          member: true,
           idToken: _jwtExpiringIn(const Duration(hours: -1)),
         );
         await _pumpApp(tester);

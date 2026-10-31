@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 
@@ -19,8 +19,8 @@ class InviteCard extends StatelessWidget {
     // Entering an organization from the picker also locks the card.
     final busy =
         controller.acceptingInvite.value != null || controller.isLoading.value;
-    final shares = invite.roles.contains(TeamRole.share);
-    final watches = invite.roles.contains(TeamRole.watch);
+    final shares = invite.roles.contains(GroupRole.publisher);
+    final watches = invite.roles.contains(GroupRole.subscriber);
     final role = shares && watches
         ? 'em campo e vendo o mapa'
         : shares
@@ -56,8 +56,8 @@ class InviteCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            '${invite.invitedByName.isEmpty ? 'Alguém' : invite.invitedByName} '
-            'chamou você para a ${invite.teamName}, $role.'
+            '${invite.inviterName.isEmpty ? 'Alguém' : invite.inviterName} '
+            'chamou você para o grupo ${invite.groupName}, $role.'
             '${invite.expiresAt == null ? '' : ' Vale até ${dayMonth(invite.expiresAt!)}.'}',
             style: const TextStyle(
               fontSize: 15,

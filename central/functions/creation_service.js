@@ -10,9 +10,12 @@ const {
   CONFIG,
   ORGANIZATIONS,
   PLAN,
+  organizationMembershipPath,
   organizationPath,
   retiredOrganizationPath,
 } = require("./firestore_paths");
+const { addToAccount } = require("./membership_store");
+const { personKey } = require("./person_key");
 
 /** Statuses of an organization still being created, for its owner. */
 const CREATING = ["reserved", "awaiting_billing", "provisioning", "failed"];
@@ -42,17 +45,21 @@ async function checkOrganizationId(db, id) {
  * (`null → reserved`, a transaction that also refuses retired ids), then
  * provisions it by plan.
  *
- * - Community: `provisioning`, then the root group `<id>00@` with the owner
- *   as its only member, and `organizations/{id}/config/branding` and
- *   `config/plan` in the shared Community project; `active` when done.
+ * - Community: `provisioning`, then, in the shared Community project,
+ *   `organizations/{id}/config/branding`, `config/plan` and the owner's
+ *   `organizationMemberships/{personKey}` with `role: "admin"`, then the
+ *   organization in the owner's `accounts` entry (central); `active` when
+ *   done.
  * - Standard: `deps.createStandardProject` creates `monamienet-<id>` and
- *   grants the owner billing.projectManager, then `awaiting_billing`.
+ *   grants the owner billing.projectManager, then `awaiting_billing`. The
+ *   owner's membership is written when the project is ready (today by hand,
+ *   `tool/organization.dart add-admin`).
  *
  * A failing step leaves the organization `failed` with
  * `failure: {step, message}` (MonAmieNet is alerted through the log); the
  * id stays reserved.
  *
- * @param {object} deps - `{groups, communityDb, customer, createStandardProject}`
+ * @param {object} deps - `{communityDb, createStandardProject}`
  * @returns {Promise<{id: string, status: string}>}
  */
 async function createOrganization(db, deps, request, activeThemeIds, now = new Date()) {
@@ -82,16 +89,19 @@ async function createOrganization(db, deps, request, activeThemeIds, now = new D
   }
 
   await transitionOrganizationStatus(db, id, "provisioning", { now });
-  let step = "group";
+  let step = "data";
   try {
-    await provisionRootGroup(deps.groups, deps.customer, id, name, ownerEmail);
-    step = "data";
     const organization = deps.communityDb.doc(organizationPath(id));
     await organization.collection(CONFIG).doc(BRANDING).set({ name, themeId, updatedAt: now });
     await organization
       .collection(CONFIG)
       .doc(PLAN)
       .set({ minIntervalMinutes: COMMUNITY_MIN_INTERVAL_MINUTES });
+    step = "membership";
+    await deps.communityDb
+      .doc(organizationMembershipPath(id, personKey(ownerEmail)))
+      .set({ email: ownerEmail, role: "admin", addedAt: now });
+    await addToAccount(db, ownerEmail, id);
     await transitionOrganizationStatus(db, id, "active", { now });
     return { id, status: "active" };
   } catch (error) {
@@ -106,18 +116,6 @@ async function fail(db, id, step, error, now) {
     fields: { failure: { step, message: String(error.message).slice(0, 300) } },
   });
   return { id, status: "failed" };
-}
-
-/** The root group `<id>00@` with `ownerEmail` as its first administrator (a
- * plain member); idempotent. */
-async function provisionRootGroup(groups, customer, id, name, ownerEmail) {
-  const email = `${id}00@monamienet.org`;
-  let root = await groups.lookup(email);
-  if (!root) {
-    root = await groups.create(email, name, customer);
-    await groups.setMonAmieSettings(email);
-  }
-  await groups.addMember(root, ownerEmail);
 }
 
 /**

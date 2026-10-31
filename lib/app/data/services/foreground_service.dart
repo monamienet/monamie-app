@@ -7,8 +7,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
+import 'package:monamie_app/app/data/groups/firestore_membership_source.dart';
 import 'package:monamie_app/app/data/organization/organization_session.dart';
+import 'package:monamie_app/app/data/services/capabilities.dart';
 import 'package:monamie_app/app/data/tracking/firestore_tracking_settings_repository.dart';
+import 'package:monamie_app/app/data/tracking/group_publisher.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
@@ -23,6 +26,12 @@ StreamSubscription<User?>? _authSubscription;
 TrackingSettings _settings = TrackingSettings.defaults;
 StreamSubscription<TrackingSettings>? _settingsSubscription;
 Position? _lastRecordedPosition;
+
+/// The groups where the person is a `publisher`, followed live from their
+/// own `groupMemberships` (this isolate cannot ask the screen): every
+/// position goes to all of them, one batch per group.
+List<String> _publisherGroupIds = const [];
+StreamSubscription<Map<String, Object?>>? _membershipSubscription;
 
 /// The plan's minimum period (*período mínimo*: the least time between two
 /// positions, Community), read from
@@ -71,22 +80,15 @@ void onStart(ServiceInstance service) async {
     return;
   }
 
-  // Verificar se o auth state está disponível no isolate do background.
-  // No Android, o Firebase Auth persiste credenciais via SharedPreferences
-  // no nível nativo, que são compartilhadas entre Flutter engines no
-  // mesmo processo. Forçamos um refresh do token para garantir que os
-  // custom claims (share, watch, admin) estejam presentes.
+  // On Android, Firebase Auth keeps its credentials natively, shared by the
+  // Flutter engines of the process, so the person signed in on the screen
+  // is signed in here too.
   final currentUser = CurrentOrganizationFirebase.instance.auth.currentUser;
   if (currentUser != null) {
-    try {
-      await currentUser.getIdToken(true);
-      debugPrint(
-        '[ForegroundService] Auth disponível no background: '
-        '${currentUser.email}',
-      );
-    } catch (e) {
-      debugPrint('[ForegroundService] Erro ao refresh token: $e');
-    }
+    debugPrint(
+      '[ForegroundService] Auth disponível no background: '
+      '${currentUser.email}',
+    );
   } else {
     debugPrint(
       '[ForegroundService] AVISO: currentUser é nulo no background isolate. '
@@ -121,12 +123,7 @@ void onStart(ServiceInstance service) async {
 
   service.on('setUserInfo').listen((event) async {
     if (event != null) {
-      await updateLocation(
-        service,
-        event['email'],
-        event['name'],
-        event['groupId'] as String?,
-      );
+      await updateLocation(service, event['email'], event['name']);
     }
   });
 
@@ -138,6 +135,9 @@ void _stopTracking(ServiceInstance service) {
   _authSubscription = null;
   _settingsSubscription?.cancel();
   _settingsSubscription = null;
+  _membershipSubscription?.cancel();
+  _membershipSubscription = null;
+  _publisherGroupIds = const [];
   _heartbeatTimer?.cancel();
   _heartbeatTimer = null;
   _positionSubscription?.cancel();
@@ -152,18 +152,75 @@ Future<bool> onIosBackground(ServiceInstance service) async {
   return true;
 }
 
-/// Contagem de erros consecutivos de permissão, usada para evitar
-/// spam de tentativas quando os claims não estão disponíveis.
+/// Rounds in a row where every group refused the position for lack of
+/// permission; past the limit the service stops trying until the person's
+/// groups change.
 int _consecutivePermissionErrors = 0;
 const int _maxConsecutivePermissionErrors = 3;
 
-// TODO: passar UserModel para essa função em vez de email, nome.
+/// Follows the person's publisher groups; completes once the first answer
+/// arrives (or after a few seconds without one).
+Future<void> _followPublisherGroups(String email) async {
+  if (_membershipSubscription != null) return;
+  final first = Completer<void>();
+  _membershipSubscription = const FirestoreMembershipSource()
+      .groupRoles(
+        CurrentOrganizationFirebase.instance.organizationData.id,
+        email,
+      )
+      .listen(
+        (roles) {
+          _publisherGroupIds = groupsWithRole(roles, GroupRoles.publisher);
+          // New groups deserve new attempts.
+          _consecutivePermissionErrors = 0;
+          debugPrint('[ForegroundService] Publishing in: $_publisherGroupIds');
+          if (!first.isCompleted) first.complete();
+        },
+        onError: (Object e) {
+          debugPrint('[ForegroundService] Could not read the groups: $e');
+          if (!first.isCompleted) first.complete();
+        },
+      );
+  await first.future.timeout(const Duration(seconds: 5), onTimeout: () {});
+}
+
+/// Publishes [position] in every publisher group; returns whether some group
+/// took it.
+Future<bool> _publish(String email, String name, Position position) async {
+  final published = PublishedPosition(
+    email: email,
+    name: name,
+    lat: position.latitude,
+    lng: position.longitude,
+    capturedAt: DateTime.now(),
+  );
+  final writer = FirebaseProvider();
+  final outcome = await publishToGroups(
+    _publisherGroupIds,
+    (groupId) => writer.publish(groupId, published),
+  );
+  for (final MapEntry(:key, :value) in outcome.failed.entries) {
+    debugPrint('[ForegroundService] Not published in $key: $value');
+  }
+  if (!outcome.noneSucceeded) {
+    _consecutivePermissionErrors = 0;
+    return true;
+  }
+  if (outcome.anyPermissionDenied) {
+    _consecutivePermissionErrors++;
+    debugPrint(
+      '[ForegroundService] PERMISSION_DENIED em todos os grupos '
+      '(tentativa $_consecutivePermissionErrors/$_maxConsecutivePermissionErrors).',
+    );
+  }
+  return false;
+}
+
 Future<void> updateLocation(
   ServiceInstance service,
   String email,
-  String name, [
-  String? groupId,
-]) async {
+  String name,
+) async {
   _lastRecordedPosition = null;
 
   // Follow the administrators' settings: the first value applies now, later ones
@@ -182,7 +239,7 @@ Future<void> updateLocation(
                 '[ForegroundService] New settings: every '
                 '${settings.periodMinutes} min, ${settings.radiusMeters} m.',
               );
-              updateLocation(service, email, name, groupId);
+              updateLocation(service, email, name);
             }
           },
           onError: (Object e) {
@@ -192,6 +249,16 @@ Future<void> updateLocation(
         );
     await first.future.timeout(const Duration(seconds: 5), onTimeout: () {});
   }
+  await _followPublisherGroups(email);
+
+  // Sharing is on in every group, even before a new position is accepted
+  // (the plan's interval may hold it back). A group where the person never
+  // published has no position to update yet: the first publish creates it.
+  await publishToGroups(
+    _publisherGroupIds,
+    (groupId) => FirebaseProvider().setPublishing(groupId, email, true),
+  );
+
   final period = _settings.periodMinutes;
   final radius = _settings.radiusMeters;
 
@@ -221,12 +288,14 @@ Future<void> updateLocation(
 
   _heartbeatTimer?.cancel();
   _heartbeatTimer = Timer.periodic(heartbeat, (timer) async {
-    if (await FirebaseProvider().doesDocumentExist(email)) {
-      try {
-        await FirebaseProvider().updateHeartbeat(email);
-      } catch (e) {
-        debugPrint('[ForegroundService] Erro no heartbeat: $e');
-      }
+    final outcome = await publishToGroups(
+      _publisherGroupIds,
+      (groupId) => FirebaseProvider().heartbeat(groupId, email),
+    );
+    if (outcome.failed.isNotEmpty) {
+      debugPrint(
+        '[ForegroundService] Heartbeat failed in ${outcome.failed.keys}',
+      );
     }
   });
 
@@ -238,24 +307,9 @@ Future<void> updateLocation(
       locationSettings: locationSettings,
     );
     if (_minPeriodElapsed(DateTime.now()) &&
-        await FirebaseProvider().doesDocumentExist(email)) {
-      try {
-        await FirebaseProvider().updateLocationAndTimestamp(
-          email: email,
-          name: name,
-          lat: initialPosition.latitude,
-          lng: initialPosition.longitude,
-          capturedAt: DateTime.now(),
-          groupId: groupId,
-        );
-        _lastRecordedPosition = initialPosition;
-        _lastPositionWriteAt = DateTime.now();
-        _consecutivePermissionErrors = 0;
-      } catch (e) {
-        debugPrint(
-          '[ForegroundService] Erro ao sincronizar posição inicial no Firestore: $e',
-        );
-      }
+        await _publish(email, name, initialPosition)) {
+      _lastRecordedPosition = initialPosition;
+      _lastPositionWriteAt = DateTime.now();
     }
     service.invoke('updateLocationLocally', {'position': initialPosition});
   } catch (e) {
@@ -269,7 +323,6 @@ Future<void> updateLocation(
       Geolocator.getPositionStream(locationSettings: locationSettings).listen((
         Position position,
       ) async {
-        // print("\n\n${position.accuracy}\n\n");
         // TODO: Filtro de precisão: Se o erro for maior que 20 metros, ignorar
         // e.g.: if (position.accuracy > 20) return;
 
@@ -303,40 +356,9 @@ Future<void> updateLocation(
           return;
         }
 
-        // Atualiza firebase
-        if (await FirebaseProvider().doesDocumentExist(email)) {
-          try {
-            await FirebaseProvider().updateLocationAndTimestamp(
-              email: email,
-              name: name,
-              lat: position.latitude,
-              lng: position.longitude,
-              capturedAt: DateTime.now(),
-              groupId: groupId,
-            );
-            _lastRecordedPosition = position;
-            _lastPositionWriteAt = DateTime.now();
-            // Reset do contador em caso de sucesso
-            _consecutivePermissionErrors = 0;
-          } catch (e) {
-            if (e.toString().contains('permission-denied')) {
-              _consecutivePermissionErrors++;
-              debugPrint(
-                '[ForegroundService] PERMISSION_DENIED ao atualizar localização '
-                '(tentativa $_consecutivePermissionErrors/$_maxConsecutivePermissionErrors). '
-                'O claim share pode estar ausente no token.',
-              );
-              // Tentar refresh do token para recuperar claims
-              try {
-                await CurrentOrganizationFirebase.instance.auth.currentUser
-                    ?.getIdToken(true);
-              } catch (_) {}
-            } else {
-              debugPrint(
-                '[ForegroundService] Erro ao atualizar localização: $e',
-              );
-            }
-          }
+        if (await _publish(email, name, position)) {
+          _lastRecordedPosition = position;
+          _lastPositionWriteAt = DateTime.now();
         }
 
         // Envia para o app principal

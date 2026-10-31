@@ -6,7 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 /// The Firebase services of the organization the user is bound to.
 ///
 /// Every read and write of organization data (sessions, locations, groups,
-/// claims) goes through this contract instead of `FirebaseAuth.instance`
+/// memberships) goes through this contract instead of `FirebaseAuth.instance`
 /// and friends, which always point to the `[DEFAULT]` app.
 abstract interface class OrganizationFirebase {
   FirebaseAuth get auth;

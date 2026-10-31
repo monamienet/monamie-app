@@ -83,9 +83,21 @@ function activeThemeIdsFrom(listing) {
   return ids;
 }
 
+/**
+ * Whether `id` has the shape of an organization id (lowercase letters,
+ * at least three), so it can be put in a document path.
+ *
+ * @param {unknown} id
+ * @returns {boolean}
+ */
+function isOrganizationId(id) {
+  return typeof id === "string" && /^[a-z]{3,}$/.test(id);
+}
+
 module.exports = {
   BrandingError,
   THEMES_URL,
   activeThemeIdsFrom,
+  isOrganizationId,
   validateBranding,
 };

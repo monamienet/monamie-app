@@ -102,113 +102,7 @@ void main() {
     });
   });
 
-  group('organizationIdFromGroupEmail - Unit Test Suite', () {
-    const cases = <({String label, String email, String? expected})>[
-      (
-        label: 'Happy Path: a share leaf gives its organization id',
-        email: 'aquariustur01w@monamienet.org',
-        expected: 'aquariustur',
-      ),
-      (
-        label: 'Happy Path: the root group (00) gives its organization id',
-        email: 'aquariustur00@monamienet.org',
-        expected: 'aquariustur',
-      ),
-      (
-        label: 'Edge Case: upper case letters are normalized',
-        email: 'AquariusTur01W@MonAmieNet.ORG',
-        expected: 'aquariustur',
-      ),
-      (
-        label: 'Edge Case: surrounding whitespace is ignored',
-        email: '  aquariustur01r@monamienet.org \n',
-        expected: 'aquariustur',
-      ),
-      (
-        label: 'Sad Path: the reserved id "app" gives null',
-        email: 'app01@monamienet.org',
-        expected: null,
-      ),
-      (
-        label: 'Sad Path: another domain gives null',
-        email: 'aquariustur01@gmail.com',
-        expected: null,
-      ),
-      (
-        label: 'Sad Path: a subdomain of the group domain gives null',
-        email: 'aquariustur01@sub.monamienet.org',
-        expected: null,
-      ),
-      (
-        label: 'Sad Path: a local part without a suffix gives null',
-        email: 'aquariustur@monamienet.org',
-        expected: null,
-      ),
-      (
-        label: 'Sad Path: a one-digit suffix gives null',
-        email: 'aquariustur1@monamienet.org',
-        expected: null,
-      ),
-      (
-        label: 'Sad Path: a local part shorter than 3 characters gives null',
-        email: '01@monamienet.org',
-        expected: null,
-      ),
-      (
-        label: 'Sad Path: an id that is not valid gives null',
-        email: '2tur01@monamienet.org',
-        expected: null,
-      ),
-      (
-        label: 'Sad Path: an id with a hyphen gives null',
-        email: 'ti-suporte01@monamienet.org',
-        expected: null,
-      ),
-      (
-        label: 'Sad Path: a text without @ gives null',
-        email: 'aquariustur01',
-        expected: null,
-      ),
-      (label: 'Sad Path: an empty text gives null', email: '', expected: null),
-    ];
-
-    for (final c in cases) {
-      test('${c.label} ("${c.email.trim()}")', () {
-        // 1. Arrange
-        final email = c.email;
-
-        // 2. Act
-        final id = organizationIdFromGroupEmail(email);
-
-        // 3. Assert
-        expect(id, c.expected);
-      });
-    }
-  });
-
-  group('rootGroupEmailFor / firebaseProjectIdFor - Unit Test Suite', () {
-    test('Happy Path: the root group is <id>00@monamienet.org', () {
-      // 1. Arrange
-      const id = 'aquariustur';
-
-      // 2. Act
-      final email = rootGroupEmailFor(id);
-
-      // 3. Assert
-      expect(email, 'aquariustur00@monamienet.org');
-    });
-
-    test('Edge Case: the root group maps back to its organization id', () {
-      // 1. Arrange
-      final email = rootGroupEmailFor('rotasul');
-
-      // 2. Act
-      final id = organizationIdFromGroupEmail(email);
-
-      // 3. Assert
-      expect(id, 'rotasul');
-    });
-
+  group('firebaseProjectIdFor - Unit Test Suite', () {
     test('Happy Path: the Firebase project is monamienet-<id>', () {
       // 1. Arrange
       const id = 'aquariustur';
@@ -273,7 +167,7 @@ void main() {
       ]);
     });
 
-    test('Happy Path: derived names use the id', () {
+    test('Happy Path: the derived project uses the id', () {
       // 1. Arrange
       final data = fullBranding();
 
@@ -281,10 +175,7 @@ void main() {
       final config = OrganizationConfig.fromBranding('aquariustur', data);
 
       // 3. Assert
-      expect(
-        [config.rootGroupEmail, config.firebaseProjectId],
-        ['aquariustur00@monamienet.org', 'monamienet-aquariustur'],
-      );
+      expect(config.firebaseProjectId, 'monamienet-aquariustur');
     });
 
     test('Happy Path: keeps the given theme', () {

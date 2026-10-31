@@ -7,9 +7,6 @@ import 'package:monamie_app/app/config/organization/organization_theme.dart';
 
 /// Everything the app remembers about the organization a user is bound to: the
 /// organization and its branding, and the options of its Firebase project.
-///
-/// The root group is not stored: it is derived from the id
-/// ([OrganizationConfig.rootGroupEmail]).
 class OrganizationBinding {
   const OrganizationBinding({
     required this.organization,

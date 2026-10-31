@@ -7,57 +7,6 @@ void main() {
     // Escrita de Usuário
     // -------------------------------------------------------------
     test(
-      'Happy Path: Contrato de escrita de posição e groupId com campos válidos',
-      () {
-        // 1. Arrange
-        const email = 'servidor1@monamienet.org';
-        const nome = 'Servidor Silva';
-        const lat = -22.9035;
-        const lng = -43.1320;
-        final timestamp = DateTime(2026, 9, 16, 21, 0, 0);
-        const groupId = 'seguranca-operacional@monamienet.org';
-
-        // 2. Act
-        final userUpdates = <String, dynamic>{
-          'email': email,
-          'name': nome,
-          'lat': lat,
-          'lng': lng,
-          'capturedAt': timestamp,
-          if (groupId.isNotEmpty) 'groupId': groupId,
-        };
-
-        // 3. Assert
-        expect(userUpdates, {
-          'email': email,
-          'name': nome,
-          'lat': lat,
-          'lng': lng,
-          'capturedAt': timestamp,
-          'groupId': groupId,
-        });
-      },
-    );
-
-    test(
-      'Edge Case: Contrato de escrita omite groupId quando este for vazio',
-      () {
-        // 1. Arrange
-        const email = 'servidor1@monamienet.org';
-        const grupoAtivoVazio = '';
-
-        // 2. Act
-        final userUpdates = <String, dynamic>{
-          'email': email,
-          if (grupoAtivoVazio.isNotEmpty) 'groupId': grupoAtivoVazio,
-        };
-
-        // 3. Assert
-        expect(userUpdates.containsKey('groupId'), isFalse);
-      },
-    );
-
-    test(
       'Sad Path: Rejeita chaves não permitidas no contrato de escrita do usuário',
       () {
         // 1. Arrange
@@ -68,7 +17,8 @@ void main() {
           'lng',
           'capturedAt',
           'isPublishing',
-          'groupId',
+          'receivedAt',
+          'removedAt',
         };
         final payloadComCampoInvalido = {
           'email': 'teste@monamienet.org',
@@ -89,37 +39,10 @@ void main() {
     // Histórico de Posições
     // -------------------------------------------------------------
     test(
-      'Happy Path: Contrato de gravação de ponto histórico inclui groupId e coordenadas',
-      () {
-        // 1. Arrange
-        const lat = -22.9035;
-        const lng = -43.1320;
-        final timestamp = DateTime(2026, 9, 16, 21, 0, 0);
-        const groupId = 'seguranca-operacional@monamienet.org';
-
-        // 2. Act
-        final pointData = <String, dynamic>{
-          'lat': lat,
-          'lng': lng,
-          'receivedAt': timestamp,
-          'groupId': groupId,
-        };
-
-        // 3. Assert
-        expect(pointData, {
-          'lat': lat,
-          'lng': lng,
-          'receivedAt': timestamp,
-          'groupId': groupId,
-        });
-      },
-    );
-
-    test(
       'Sad Path: Rejeita chaves não permitidas na subcoleção de histórico de posições',
       () {
         // 1. Arrange
-        final allowedHistoryKeys = {'lat', 'lng', 'receivedAt', 'groupId'};
+        final allowedHistoryKeys = {'lat', 'lng', 'receivedAt'};
         final historicoComCampoInvalido = {
           'lat': -22.90,
           'campo_desconhecido': 'valor',
@@ -139,27 +62,7 @@ void main() {
     // Ativação e Desativação de Rastreamento
     // -------------------------------------------------------------
     test(
-      'Happy Path: Payload de ativação de rastreamento deve conter isPublishing true e groupId',
-      () {
-        // 1. Arrange
-        const activeGroup = 'transporte-vans@monamienet.org';
-
-        // 2. Act
-        final payloadIniciar = <String, dynamic>{
-          'isPublishing': true,
-          'groupId': activeGroup,
-        };
-
-        // 3. Assert
-        expect(payloadIniciar, {
-          'isPublishing': true,
-          'groupId': 'transporte-vans@monamienet.org',
-        });
-      },
-    );
-
-    test(
-      'Happy Path: Payload de desativação de rastreamento deve conter isPublishing false sem groupId',
+      'Happy Path: Payload de desativação de rastreamento deve conter só isPublishing false',
       () {
         // 1. Arrange
         const isPublishing = false;
@@ -186,7 +89,6 @@ void main() {
           lng: -43.13,
           capturedAt: now.subtract(const Duration(minutes: 1)),
           isPublishing: true,
-          groupId: 'seguranca@monamienet.org',
         );
         final limit = now.subtract(const Duration(minutes: 5));
 

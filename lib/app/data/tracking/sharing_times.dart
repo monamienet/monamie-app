@@ -13,7 +13,7 @@ const heartbeat = Duration(minutes: 5);
 /// update. The one freshness threshold of the app.
 const validity = Duration(minutes: 12);
 
-/// How often the map re-applies [validity] to the team it already has, with
+/// How often the map re-applies [validity] to the group it already has, with
 /// no new document (*recheck*): a dead device never writes again, so only the
 /// clock can tell it went quiet.
 const recheck = Duration(seconds: 30);

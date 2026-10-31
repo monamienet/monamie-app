@@ -127,4 +127,3 @@ O `web.png` deve mostrar a barra "MonAmie", o logo da MonAmie (antes do login ne
 | :--- | :--- | :--- |
 | `Erro 400: origin_mismatch` na janela do Google | porta diferente de 5000 | sirva em `localhost:5000` ou cadastre a origem (passo 2) |
 | Screenshot em branco | foto tirada antes de o Flutter desenhar | capture pelo CDP depois de esperar (passo 4) |
-| "Nenhum grupo disponível" com `ClientException: Failed to fetch` | o `workspace-groups-gateway` não envia cabeçalhos CORS, e o navegador bloqueia a resposta (no Android funciona) | aguarde a correção no gateway: #49 |

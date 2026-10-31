@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_palette.dart';
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 
 import 'invite.dart';
 import 'invite_controller.dart';
@@ -13,8 +13,8 @@ const _muted = Color(0xFF4A4858);
 const _soft = Color(0xFFF1F0F4);
 const _error = Color(0xFFB3261E);
 
-/// *Convidar pessoas*: e-mails, one or both roles each, to a team (or to a
-/// first team created in the same step).
+/// *Convidar pessoas*: e-mails, one or both roles each, to a group (or to a
+/// first group created in the same step).
 class InviteView extends StatefulWidget {
   const InviteView({super.key, required this.controller});
 
@@ -66,15 +66,15 @@ class _InviteViewState extends State<InviteView> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
             children: [
-              if (c.firstTeamMode) ...[
+              if (c.firstGroupMode) ...[
                 const Text(
-                  'Crie sua primeira equipe',
+                  'Crie seu primeiro grupo',
                   style: TextStyle(fontWeight: FontWeight.w800, color: _ink),
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Toda pessoa entra numa equipe. Dê um nome para a primeira; '
-                  'você cria outras depois, em Equipes.',
+                  'Toda pessoa entra num grupo. Dê um nome para o primeiro; '
+                  'você cria outros depois, em Grupos.',
                   style: TextStyle(fontSize: 13, color: _muted),
                 ),
                 const SizedBox(height: 8),
@@ -82,33 +82,33 @@ class _InviteViewState extends State<InviteView> {
                   enabled: !sending,
                   maxLength: 40,
                   decoration: InputDecoration(
-                    hintText: 'Ex.: Equipe Norte',
+                    hintText: 'Ex.: Motoristas',
                     border: const OutlineInputBorder(),
-                    errorText: c.firstTeamName.value.isEmpty
+                    errorText: c.firstGroupName.value.isEmpty
                         ? null
-                        : c.firstTeamProblem,
+                        : c.firstGroupProblem,
                   ),
-                  onChanged: (v) => c.firstTeamName.value = v,
+                  onChanged: (v) => c.firstGroupName.value = v,
                 ),
               ] else ...[
                 const Text(
-                  'Para qual equipe?',
+                  'Para qual grupo?',
                   style: TextStyle(fontWeight: FontWeight.w800, color: _ink),
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  initialValue: c.team.value,
+                  initialValue: c.groupId.value,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                   ),
                   items: [
-                    for (final team in c.teams)
+                    for (final group in c.groups)
                       DropdownMenuItem(
-                        value: team.number,
-                        child: Text('${team.name} · ${team.peopleLabel}'),
+                        value: group.id,
+                        child: Text('${group.name} · ${group.peopleLabel}'),
                       ),
                   ],
-                  onChanged: sending ? null : (v) => c.team.value = v,
+                  onChanged: sending ? null : (v) => c.groupId.value = v,
                 ),
               ],
               const SizedBox(height: 20),
@@ -266,7 +266,7 @@ class _InviteViewState extends State<InviteView> {
         Wrap(
           spacing: 8,
           children: [
-            for (final role in TeamRole.values)
+            for (final role in GroupRole.values)
               FilterChip(
                 label: Text(role.label),
                 selected: person.roles.contains(role),
@@ -305,7 +305,7 @@ class _InviteViewState extends State<InviteView> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Para a ${result.teamName}. Vale por 14 dias; acompanhe em Equipes.',
+          'Para ${result.groupName}. Vale por 14 dias; acompanhe em Grupos.',
           style: const TextStyle(fontSize: 15, color: _muted),
         ),
         const SizedBox(height: 16),

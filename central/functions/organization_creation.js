@@ -1,4 +1,4 @@
-const { isValidOrganizationId } = require("./group_address");
+const { isValidOrganizationId } = require("./organization_id");
 
 const MAX_ID_LENGTH = 20;
 const PLANS = new Set(["community", "standard"]);

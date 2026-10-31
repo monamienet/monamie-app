@@ -12,19 +12,15 @@ class OrganizationCandidate {
   final FirebaseOptions options;
 
   /// Whether the signed-in user is the organization's owner (*titular*, who
-  /// created it). It grants no powers: those come from the root group. It
-  /// only means that deleting their account deletes the organization.
+  /// created it). It grants no powers: those come from the person's
+  /// `organizationMemberships` document. It only means that deleting their
+  /// account deletes the organization.
   final bool owner;
 }
 
 /// Finds the organizations of the user signed in to the central project.
 abstract interface class OrganizationDirectory {
   /// The user's organizations whose status is `active`, sorted by id; empty
-  /// when none.
-  ///
-  /// [fresh] skips the server's short groups cache (right after accepting
-  /// an invite, when the new membership must show at once).
-  Future<List<OrganizationCandidate>> organizationsOfSignedInUser({
-    bool fresh = false,
-  });
+  /// when none. An accepted invite or a new organization is listed at once.
+  Future<List<OrganizationCandidate>> organizationsOfSignedInUser();
 }

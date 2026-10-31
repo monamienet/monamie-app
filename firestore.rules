@@ -5,48 +5,24 @@ rules_version = '2';
 // (one organization) and the shared Community project (many organizations),
 // so no rule depends on the plan except the location interval below.
 //
-// What a person may do comes from the custom claims set by `syncClaims`
-// (functions/index.js) from *which* Google Groups they are in:
-//   share:         ["rotasul01"]  team keys where they share their own
-//                                 location (member of rotasul01w@)
-//   watch:         ["rotasul01"]  team keys whose map they see
-//                                 (member of rotasul01r@monamienet.org)
-//   admin:         ["rotasul"]    organizations they administer (member of
-//                                 rotasul00@), which means watching every
-//                                 team of that organization
-//   organizations: ["rotasul"]    organizations where they have any of the
-//                                 above
-// A team key is the local part of the team group, `<organization id><NN>`.
-// Position documents name their team by the team group's e-mail
-// (`groupId`, e.g. "rotasul01@monamienet.org").
+// What a person may do comes from membership documents in this project,
+// written only by the central functions (central/functions/) and
+// `tool/organization.dart add-admin`, never by a client:
+//   organizations/{id}/organizationMemberships/{personKey}
+//       {email, role: 'admin' | 'member', addedAt}: who belongs; an
+//       administrator manages the organization and sees every group
+//   organizations/{id}/groups/{groupId}/groupMemberships/{personKey}
+//       {email, organizationId, roles, addedAt}: roles in a group,
+//       'publisher' (shares their own location there), 'subscriber' (sees
+//       the group's map) and 'maintainer' (#165, grants nothing extra yet)
+// personKey() is the lowercase-hex SHA-256 of the lowercased e-mail, so no
+// e-mail appears in a document name; each document also stores `email`.
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAuthenticated() {
       return request.auth != null && request.auth.token.email != null;
     }
-
-    function claimList(name) {
-      return isAuthenticated() && name in request.auth.token
-        && request.auth.token[name] is list
-        ? request.auth.token[name]
-        : [];
-    }
-
-    /// `rotasul01@monamienet.org` → `rotasul01`.
-    function teamKeyOf(groupEmail) {
-      return groupEmail.lower().split('@')[0];
-    }
-
-    function isDocOwner(docEmail) {
-      return isAuthenticated() && request.auth.token.email == docEmail;
-    }
-
-    // ── Memberships in Firestore (#159, phase 1 of the migration) ────────
-    // The documents below replace Google Groups and the claims above. No
-    // client uses them yet. They are keyed by personKey(): the
-    // lowercase-hex SHA-256 of the lowercased e-mail, so no e-mail appears
-    // in a document name. Each one also stores the `email` field.
 
     function isVerified() {
       return isAuthenticated() && request.auth.token.email_verified == true;
@@ -80,10 +56,19 @@ service cloud.firestore {
           && organizationMembership().data.role == 'admin';
       }
 
+      function groupMembership(groupId) {
+        return get(/databases/$(database)/documents/organizations/$(organizationId)/groups/$(groupId)/groupMemberships/$(personKey()));
+      }
+
+      /// The caller has a membership (any role) in group [groupId].
+      function isInGroup(groupId) {
+        return isVerified() && groupMembership(groupId) != null;
+      }
+
       /// The caller holds [role] in group [groupId].
       function hasGroupRole(groupId, role) {
-        let membership = get(/databases/$(database)/documents/organizations/$(organizationId)/groups/$(groupId)/groupMemberships/$(personKey()));
-        return isVerified() && membership != null && role in membership.data.roles;
+        return isVerified() && groupMembership(groupId) != null
+          && role in groupMembership(groupId).data.roles;
       }
 
       /// The caller receives the positions published in [groupId]. The
@@ -92,9 +77,9 @@ service cloud.firestore {
         return hasGroupRole(groupId, 'subscriber') || isOrganizationAdmin();
       }
 
-      /// Like positionTimingOk(), for the new positions: a new position
-      /// carries `receivedAt` = the server's time, at least the plan's
-      /// interval after the previous one.
+      /// A new position carries `receivedAt` = the server's time, at least
+      /// the plan's interval after the previous one. Heartbeats and other
+      /// updates leave `receivedAt` alone.
       function publishTimingOk() {
         return positionChanged()
           ? request.resource.data.get('receivedAt', null) == request.time
@@ -125,7 +110,10 @@ service cloud.firestore {
       // ── groups/{groupId}: a group of this organization ────────────────
       // Fields: name, createdAt. Auto ids, never reused.
       match /groups/{groupId} {
-        allow read: if isOrganizationMember();
+        // Administrators list them all; a person reads the groups they
+        // belong to (any role).
+        allow get: if isOrganizationAdmin() || isInGroup(groupId);
+        allow list: if isOrganizationAdmin();
         allow write: if false;
 
         // Fields: email, organizationId, roles ('maintainer', 'publisher',
@@ -189,31 +177,6 @@ service cloud.firestore {
         }
       }
 
-      /// The caller has some capability in this organization.
-      function isMember() {
-        return claimList('organizations').hasAny([organizationId]);
-      }
-
-      /// [groupEmail] is a team of this organization (never another's).
-      function isTeamHere(groupEmail) {
-        return groupEmail is string
-          && teamKeyOf(groupEmail).matches(organizationId + '[0-9]{2}');
-      }
-
-      /// The caller shares their location in this team.
-      function canShareIn(groupEmail) {
-        return isTeamHere(groupEmail)
-          && claimList('share').hasAny([teamKeyOf(groupEmail)]);
-      }
-
-      /// The caller sees this team's map: they watch it, or administer the
-      /// organization.
-      function canWatch(groupEmail) {
-        return isTeamHere(groupEmail)
-          && (claimList('watch').hasAny([teamKeyOf(groupEmail)])
-            || claimList('admin').hasAny([organizationId]));
-      }
-
       /// Minimum minutes between two positions: the plan's limit on
       /// Community (config/plan, written only by MonAmieNet), none on
       /// Standard. Enforced here because hiding presets in the app would
@@ -232,111 +195,6 @@ service cloud.firestore {
             || request.resource.data.get('lng', null) != resource.data.get('lng', null);
       }
 
-      /// A new position must carry `receivedAt` = the server's time, at
-      /// least the plan's interval after the previous one. Heartbeats and
-      /// other updates leave `receivedAt` alone.
-      function positionTimingOk() {
-        return positionChanged()
-          ? request.resource.data.get('receivedAt', null) == request.time
-            && (resource == null
-              || resource.data.get('receivedAt', null) == null
-              || request.time > resource.data.receivedAt
-                   + duration.value(minIntervalMinutes(), 'm'))
-          : request.resource.data.get('receivedAt', null)
-              == (resource == null ? null : resource.data.get('receivedAt', null));
-      }
-
-      // ── positions/{email}: the live position of a person in the field ─
-      // Fields: email, name, lat, lng, capturedAt (device clock),
-      // receivedAt (server clock), isPublishing, groupId (the team they
-      // share with)
-      match /positions/{email} {
-
-        // Their own document (as a member of this organization), or the people
-        // who watch the team it is shared with. A field-only person reads
-        // only their own.
-        allow read: if (isMember() && isDocOwner(email))
-          || canWatch(resource.data.groupId);
-
-        // Only members who share somewhere write, only their own document,
-        // and only towards a team of this organization where they share.
-        allow create, update: if isMember()
-          && claimList('share').size() > 0
-          && isDocOwner(email)
-          && request.resource.data.email == request.auth.token.email
-          && (resource == null || request.resource.data.email == resource.data.email)
-          && request.resource.data.keys().hasOnly(
-               ['email', 'name', 'lat', 'lng', 'capturedAt', 'receivedAt',
-                'isPublishing', 'groupId']
-             )
-          && (
-            !('groupId' in request.resource.data)
-            || request.resource.data.groupId == null
-            || canShareIn(request.resource.data.groupId)
-          )
-          && positionTimingOk();
-
-        // Location data is kept.
-        allow delete: if false;
-
-        // ── trailDays/{yyyy-mm-dd}: one summary per day with trails ─────
-        // Fields: lastAt, pointCount, groupId. Written in the same batch as
-        // a position, so it follows the same interval; read like the trail.
-        // The history calendar reads a month of these, not every point.
-        match /trailDays/{day} {
-          allow read: if (isMember() && isDocOwner(email))
-            || canWatch(
-                 get(/databases/$(database)/documents/organizations/$(organizationId)/positions/$(email)).data.groupId
-               );
-
-          allow create, update: if isMember()
-            && claimList('share').size() > 0
-            && isDocOwner(email)
-            && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-            && request.resource.data.keys().hasOnly(['lastAt', 'pointCount', 'groupId'])
-            && request.resource.data.lastAt == request.time
-            && request.resource.data.pointCount is int
-            && getAfter(/databases/$(database)/documents/organizations/$(organizationId)/positions/$(email)).data.receivedAt == request.time
-            && (
-              !('groupId' in request.resource.data)
-              || request.resource.data.groupId == null
-              || canShareIn(request.resource.data.groupId)
-            );
-
-          allow delete: if false;
-        }
-
-        // ── trail/{pointId}: append-only trail points ───────────────────
-        // Fields: lat, lng, receivedAt (server clock), groupId
-        match /trail/{pointId} {
-
-          // Read by the owner, or by whoever watches the team the person
-          // currently shares with (a rule that does not depend on each
-          // point, so a time-range query over the trail is allowed).
-          allow read: if (isMember() && isDocOwner(email))
-            || canWatch(
-                 get(/databases/$(database)/documents/organizations/$(organizationId)/positions/$(email)).data.groupId
-               );
-
-          // A point is written in the same batch as the position update it
-          // records, so the interval above also limits the trail.
-          allow create: if isMember()
-            && isDocOwner(email)
-            && request.resource.data.keys().hasOnly(['lat', 'lng', 'receivedAt', 'groupId'])
-            && request.resource.data.lat is number
-            && request.resource.data.lng is number
-            && request.resource.data.receivedAt == request.time
-            && getAfter(/databases/$(database)/documents/organizations/$(organizationId)/positions/$(email)).data.receivedAt == request.time
-            && (
-              !('groupId' in request.resource.data)
-              || request.resource.data.groupId == null
-              || canShareIn(request.resource.data.groupId)
-            );
-
-          allow update, delete: if false;
-        }
-      }
-
       // ── config/branding: the organization's name and look ───────────────────
       // Public: the app shows the brand in the organization picker and
       // while entering, before signing in to this project.
@@ -351,8 +209,8 @@ service cloud.firestore {
       // administrator writes it, with the values the app offers and never
       // below the plan's minimum interval.
       match /config/tracking {
-        allow read: if isMember();
-        allow write: if claimList('admin').hasAny([organizationId])
+        allow read: if isOrganizationMember();
+        allow write: if isOrganizationAdmin()
           && request.resource.data.keys().hasOnly(
                ['intervalMinutes', 'distanceMeters', 'updatedAt', 'updatedBy'])
           && request.resource.data.intervalMinutes in [1, 2, 3, 5, 10, 15, 20, 30]
@@ -364,7 +222,7 @@ service cloud.firestore {
 
       // ── config/plan: the plan's limits (Community: minIntervalMinutes) ─
       match /config/plan {
-        allow read: if isMember();
+        allow read: if isOrganizationMember();
         allow write: if false;
       }
     }

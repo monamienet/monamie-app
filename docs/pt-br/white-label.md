@@ -10,26 +10,25 @@ Este guia explica como isso funciona, o que a MonAmie configura uma única vez e
 |---|---|---|
 | O que é | um cliente da MonAmie | uma pessoa |
 | Exemplo | AquariusTur | Maria |
-| O que tem | marca, projeto Firebase `monamienet-<id>`, grupo raiz `<id>00@monamienet.org` | uma conta Google |
+| O que tem | marca, projeto Firebase `monamienet-<id>` (ou sua parte do `monamienet-community`), seus grupos | uma conta Google |
 | Faz login? | não | sim |
 
-A conta Google não diz nada sobre a organização. A ponte são os **grupos**, em três níveis, com todo mundo como `MEMBER` simples:
+A conta Google não diz nada sobre a organização. A ponte são **fichas de participação** no projeto da organização, com a chave `personKey(email)`: o SHA-256 em hexadecimal minúsculo do e-mail sem espaços nas pontas e em minúsculas (por exemplo, `ana@example.com` → `8e43ca37…a018e11`), para que nenhum e-mail apareça no nome de um documento:
 
-- `<id>00@monamienet.org`, o **grupo raiz**: seus membros são os **administradores** da organização, que acompanham todas as equipes e gerenciam a organização (o titular, que a criou, é o primeiro);
-- `<id>01@` … `<id>99@`, um por **equipe**: guarda o nome da equipe, sem membros diretos;
-- `<id>NNr@` (**vê o mapa** da equipe) e `<id>NNw@` (**em campo**: compartilha a própria localização na equipe), as duas folhas de cada equipe. Estar nas duas é "os dois".
+- `organizations/<id>/organizationMemberships/<personKey>` = `{email, role, addedAt}`. Ter essa ficha é pertencer à organização. O `role` é `admin` (um **administrador**: gerencia a organização e vê todos os grupos; o titular, que a criou, é o primeiro) ou `member`;
+- `organizations/<id>/groups/<groupId>` = `{name, createdAt}`, um por **grupo** (id automático do Firestore, nunca reaproveitado), e dentro dele `groupMemberships/<personKey>` = `{email, organizationId, roles, addedAt}`. `publisher` compartilha a própria localização no grupo e `subscriber` vê o mapa do grupo; ter os dois é "os dois". (`maintainer` fica reservado para a #165.)
 
-Pôr o e-mail de uma pessoa numa folha (ou na raiz) é o que a torna usuária daquela organização; o que ela pode fazer vem de qual grupo é. Um endereço de grupo se divide por `^([a-z]+)(\d{2})([rw])?$`, o que funciona porque o id da organização só tem letras minúsculas: `aquariustur01w@monamienet.org` → organização `aquariustur`, equipe `01`, em campo.
+Só as funções centrais (convites, grupos, criação, exclusão de conta) e o `dart run tool/organization.dart add-admin` gravam essas fichas; as regras não deixam nenhum cliente gravar. O projeto central guarda um índice, `accounts/<personKey>` = `{email, organizationIds}`, para o login achar as organizações de uma pessoa sem abrir todos os projetos. Ele é gravado depois do projeto da organização, então, quando os dois discordam, vale o projeto da organização: o app descarta um id para o qual não acha ficha, e o `check` aponta uma ficha que falta no índice.
 
 ## 2. O que acontece no login
 
 1. **Login Google** no projeto central `monamienet-app`. A tela tem a marca MonAmie: ainda não se sabe a organização.
-2. **`resolveOrganizations`** (função central) pede ao gateway os grupos do usuário, transforma os nomes em ids de organização, mantém os que têm, no registro central `organizations/{id}`, um status diferente de `reserved` e devolve o status de cada um e, para os que o app pode vincular, as opções do Firebase. O app só entra em organizações `active` (seção 7).
+2. **`resolveOrganizations`** (função central) lê o `accounts/<personKey>` do usuário no projeto central, mantém as organizações que têm, no registro central `organizations/{id}`, um status diferente de `reserved` e devolve o status de cada um e, para os que o app pode vincular, as opções do Firebase. O app só entra em organizações `active` (seção 7).
 3. O app lê o **`organizations/<id>/config/branding`** (público) de cada organização. Sem organização, o usuário cai em *Sem organização*, ainda conectado à MonAmie, onde pode criar sua organização ou verificar de novo depois de ser convidado; com uma ou mais, *Escolher organização* mostra o nome e o logo de cada uma, abaixo dos convites pendentes. Essas telas são da própria MonAmie (identidade "Encontro": marinho, creme e coral); a marca da organização só aparece quando se sabe que o usuário pertence a ela.
-4. **Ligação:** o projeto Firebase da organização (um app Firebase nomeado `organization-<id>`), o grupo raiz e a marca são ligados juntos. O app entra no projeto da organização com o mesmo ID token do Google (o projeto aceita o cliente web central) e chama a `syncClaims` da organização, que decide o que o usuário pode ver, como antes.
+4. **Ligação:** o projeto Firebase da organização (um app Firebase nomeado `organization-<id>`) e a marca são ligados juntos. O app entra no projeto da organização com o mesmo ID token do Google (o projeto aceita o cliente web central). Dali em diante, as regras de segurança leem as fichas da pessoa a cada pedido para decidir o que ela pode ver e gravar; não há claims para atualizar.
 5. **Lembrança:** a ligação fica salva no aparelho. As próximas aberturas já começam com a marca da organização, sem consultar o projeto central.
 
-O app **esquece** a organização quando a pessoa sai (volta ao login), em *Trocar de organização* (sai, abre o seletor de contas e depois o de organizações) e quando o acesso acaba: uma atualização de grupos não encontra mais nenhum grupo da organização, ou a `syncClaims` não devolve nenhuma capacidade. Perder o acesso, no login ou depois, sempre leva a *Sem organização* com uma mensagem que nomeia a organização, nunca ao login com um erro genérico (#78). A `resolveOrganizations` guarda os grupos de cada usuário por só 60 segundos, então um usuário removido é levado à organização por no máximo um minuto, e mesmo assim não recebe nenhuma capacidade.
+O app **esquece** a organização quando a pessoa sai (volta ao login), em *Trocar de organização* (sai, abre o seletor de contas e depois o de organizações) e quando o acesso acaba: o `organizationMemberships/<personKey>` da pessoa some (o app fica ouvindo essa ficha). Perder o acesso, no login ou depois, sempre leva a *Sem organização* com uma mensagem que nomeia a organização, nunca ao login com um erro genérico (#78). Não há cache: uma remoção vale a partir da próxima leitura.
 
 O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa são sempre MonAmie: o Android os lê do pacote instalado. Os dois nomes nunca aparecem lado a lado: as telas da própria MonAmie dizem "MonAmie" e, depois que a organização é vinculada, o app mostra só o nome dela ("AquariusTur", nunca "MonAmie AquariusTur").
 
@@ -40,7 +39,8 @@ O ícone e o nome na tela inicial do celular, a ficha na Play e a splash nativa 
 | Escolha da organização | nome (obrigatório), tema do catálogo, logo (opcional) | `organizations/<id>/config/branding` no projeto da organização (seção 9) |
 | Escolha da MonAmie | status da organização (seção 7) | `organizations/{id}` em `monamienet-app` |
 | Escolha da MonAmie | catálogo de temas (seção 8) | `themes/{id}` em `monamienet-app` |
-| Derivado por regra | `monamienet-<id>`, `<id>00@monamienet.org`, id a partir do nome do grupo | código |
+| Derivado por regra | `monamienet-<id>`, `personKey(email)` | código |
+| Gravado só pelas funções centrais (e pelo `add-admin`) | fichas de participação e grupos (seção 1) | o projeto da organização; o índice `accounts/{personKey}` no `monamienet-app` |
 | Buscado no build | `google-services.json` central | `android/app/google-services.json` (ignorado pelo git) |
 | Buscado em tempo de execução | opções do Firebase da organização | `resolveOrganizations`, depois o aparelho |
 
@@ -57,7 +57,7 @@ Feita para o `monamienet-app` em 21/10/2026; o registro está na issue #65. Fica
    firebase projects:addfirebase monamienet-app
    ```
    Uma conta de cobrança aceita poucos projetos; "Cloud billing quota exceeded" quer dizer desligar um projeto dela ou pedir aumento ao Google. O id `app` é reservado: nenhuma organização pode usá-lo.
-2. Ative as APIs e crie o Firestore em `us-central1`, a região de todas as funções deste app (ele só guarda `organizations/{id}`, sem dados pessoais):
+2. Ative as APIs e crie o Firestore em `us-central1`, a região de todas as funções deste app (ele guarda o registro, o catálogo de temas, os convites, as exclusões de conta agendadas e o índice `accounts`; só as funções centrais leem os três últimos):
    ```sh
    gcloud services enable firestore.googleapis.com identitytoolkit.googleapis.com cloudfunctions.googleapis.com \
      cloudbuild.googleapis.com artifactregistry.googleapis.com run.googleapis.com eventarc.googleapis.com \
@@ -82,50 +82,55 @@ Feita para o `monamienet-app` em 21/10/2026; o registro está na issue #65. Fica
    ```
 7. CI: vincule `firebaseAppConfigReader` à conta `wlif-monamie-app-config@ci-cd-management.iam.gserviceaccount.com` no `monamienet-app`. Remova o vínculo dela no `monamienet-aquariustur` **só depois** do merge do PR #74: até lá, a `main` ainda gera o app antigo a partir desse projeto.
 8. Play Console: crie o app `org.monamienet.app`, envie o primeiro bundle manualmente (`--build-number=100`), preencha a Segurança dos dados e a declaração de **localização em segundo plano**, e dê acesso a ele à conta de serviço de publicação. Depois, despublique o `org.monamienet.aquariustur`.
-9. Confira se o gateway de grupos aceita ID tokens do Firebase de `monamienet-app` (veja a issue #72).
 
 ## 5. Cadastro de uma organização (sem nova versão do app)
 
-Os passos 1 a 9 cuidam dos três obrigatórios: projeto, grupo raiz e nome. O passo 10 é o portão.
+Os passos 1 a 8 cuidam dos três obrigatórios: projeto, um administrador e nome. O passo 9 é o portão.
 
 **Projeto Firebase da organização**
 1. Crie `monamienet-<id>` na conta de cobrança da organização.
 2. Ative o Firestore e o provedor de login Google. Em **Allowed client IDs** (só pelo console), adicione o client id web central: projeto central → Authentication → Google → Configuração do SDK da Web.
 3. Registre o app Android `org.monamienet.app` **sem SHA-1** (o par pacote + SHA-1 só pode ter cliente OAuth num projeto: o central) e **exatamente um** app web. O `flutterfire configure` cria um app web por plataforma (ex.: "windows"); remova os extras, senão `check`, `activate` e `resolveOrganizations` falham.
-4. Dê à conta da função (`<número do projeto da organização>-compute@developer.gserviceaccount.com`) `roles/firebaseauth.admin` (a `syncClaims` grava claims), `roles/datastore.user` (a `setBranding` grava a marca), `roles/cloudbuild.builds.builder` e `roles/logging.logWriter`. Ative o Cloud Storage (o bucket padrão guarda o logo) e publique o `storage.rules` junto com o resto.
-5. Publique as regras e a `syncClaims` a partir da raiz do repositório (no primeiro deploy, responda **1** dia à pergunta de limpeza):
+4. Dê à conta da função (`<número do projeto da organização>-compute@developer.gserviceaccount.com`) `roles/datastore.user` (a `setBranding` lê a ficha de quem chama e grava a marca), `roles/cloudbuild.builds.builder` e `roles/logging.logWriter`. Dê `roles/datastore.user` neste projeto às contas centrais: `groups-admin@monamienet-app.iam.gserviceaccount.com` (as funções centrais gravam aqui as fichas e os grupos) e `partner-expirer@monamienet-app.iam.gserviceaccount.com` (com `roles/firebaseauth.admin` também: apagar contas, seção 12). Ative o Cloud Storage (o bucket padrão guarda o logo).
+5. Publique as regras, os índices, as regras do Storage e a `setBranding` a partir da raiz do repositório (no primeiro deploy, responda **1** dia à pergunta de limpeza):
    ```sh
    (cd functions && npm ci)
-   firebase deploy --project monamienet-<id> --only firestore:rules,storage,functions
+   firebase deploy --project monamienet-<id> --only firestore:rules,firestore:indexes,storage,functions
    ```
+   No **primeiro** deploy do `storage.rules`, a CLI pede para deixar o Cloud Storage ler o Firestore, porque a regra do logo lê a ficha de quem envia (uma regra "entre serviços"). Responda **sim**: isso dá ao agente de serviço do Cloud Storage do projeto um papel para ler o Firestore (a CLI diz qual). Sem isso, todo envio de logo é recusado. O console oferece a mesma permissão em Storage → Regras. Os índices de `groupMemberships` e `positions` levam alguns minutos para ficar prontos depois do deploy; até lá, a consulta "meus grupos" do app e a exclusão de contas falham com "index not ready".
 
-**Grupos e acesso**
+**Administradores**
 
-6. Crie o grupo raiz `<id>00@monamienet.org` com o titular (seu primeiro administrador) e, para cada equipe `<id>NN@` (dentro da raiz), as folhas `<id>NNr@` e `<id>NNw@` (dentro da equipe), com as pessoas nas folhas. Todos como `MEMBER`; permita membros de fora do Workspace em todos os grupos. Uma organização criada antes do modelo de três níveis é migrada com `dart run tool/organization.dart migrate-groups <id>` (mostra o plano; `--apply` executa).
-7. Se o gateway de grupos mantiver uma lista de projetos aceitos, inclua `monamienet-<id>`.
-8. Conceda `firebaseAppConfigReader` à conta da função central **só neste projeto**.
+6. Crie o primeiro administrador (o titular):
+   ```sh
+   dart run tool/organization.dart add-admin <id> <e-mail>
+   ```
+   Ele grava a ficha `admin` da pessoa no projeto da organização e depois põe a organização no `accounts` dela no `monamienet-app`, as mesmas duas gravações das funções centrais. Use `--community` enquanto uma organização Community ainda não tiver entrada no registro. Todos os outros entram por convite no app, e os grupos são criados no app (seção 10); nenhum Google Group entra nisso.
+7. Conceda `firebaseAppConfigReader` à conta da função central **só neste projeto**.
 
 **Marca e ativação**
 
-9. Publique o nome e o tema (um administrador põe o logo depois, no app):
+8. Publique o nome e o tema (um administrador põe o logo depois, no app):
    ```sh
    dart run tool/organization.dart publish <id> --name "<Nome>" --theme <themeId>
    ```
    O `--theme` é um dos ids do catálogo (seção 8); use `--dry-run` para conferir antes. Publicar de novo atualiza a marca na próxima abertura de cada aparelho e também remove os campos do formato antigo (`colors`, `logoSvg`, `iconSvg`).
-10. Confira e ative (a ativação roda as mesmas conferências e recusa se alguma falhar):
+9. Confira e ative (a ativação roda as mesmas conferências e recusa se alguma falhar):
     ```sh
     dart run tool/organization.dart check <id>
     dart run tool/organization.dart activate <id>
     ```
     O `activate` põe o status da organização em `active` (seção 7). Ele recusa um identificador aposentado e uma organização em `awaiting_billing`, `migrating` ou `deleting`.
 
-A ferramenta usa as contas do seu `firebase login` e `gcloud auth login`. Ler o grupo raiz exige a função de administrador do Google Workspace **Leitor de grupos** na sua conta (admin.google.com → Conta → Funções de administrador); ser administrador da organização do Google Cloud não basta, e sem ela o `check` diz que o grupo não existe. A mesma mensagem enganosa aparece quando a `cloudidentity.googleapis.com` está desligada no `monamienet-app`, o projeto que paga as consultas de grupos da ferramenta.
+O `check` lista todos os problemas de uma vez: os dois apps, pelo menos um administrador, cada ficha presente no `accounts` da pessoa (cada problema mostra o e-mail ao lado da chave, porque a chave sozinha é um hash) e o nome da marca.
+
+A ferramenta usa as contas do seu `firebase login` e `gcloud auth login`. O `check` e o `add-admin` leem e gravam fichas e `accounts`, que nenhum cliente pode ler, então sua conta precisa de acesso ao Firestore (`roles/datastore.user`, ou proprietário) no projeto da organização e no `monamienet-app`.
 
 ## 6. Build e deploy
 
 - **Android:** `flutter build apk` (sem `--flavor`). O build busca o `google-services.json` central quando ele não existe; `REFRESH_FIREBASE_CONFIG=1` força a atualização.
 - **Web:** `dart run tool/organization.dart web` grava `web/central/firebase.json` (opções do Firebase central e o client id do Google); depois, `flutter build web`. Veja `rodar-web-localmente.md`.
-- **Funções:** a CI só publica o app. Depois de um merge que mude `central/`, publique de novo o projeto central (seção 4, passo 6); depois de um que mude `functions/` ou `firestore.rules`, publique de novo **todos** os projetos de organização (seção 5, passo 5).
+- **Funções:** a CI só publica o app. Depois de um merge que mude `central/`, publique de novo o projeto central (seção 4, passo 6); depois de um que mude `functions/`, `firestore.rules`, `firestore.indexes.json` ou `storage.rules`, publique de novo **todos** os projetos de organização e o `monamienet-community` (seção 5, passo 5).
 
 ## 7. Status da organização
 
@@ -152,13 +157,13 @@ stateDiagram-v2
 | :--- | :--- | :--- |
 | `reserved` | identificador reservado, criação começando (segundos) | nada ainda (`resolveOrganizations` não o devolve) |
 | `awaiting_billing` | só Standard: projeto criado, esperando a organização vincular o faturamento | *Ativar faturamento* |
-| `provisioning` | configurando Firestore, regras, funções e grupos | *Ativar faturamento*, parte do andamento |
+| `provisioning` | configurando Firestore, regras, funções e a ficha do titular | *Ativar faturamento*, parte do andamento |
 | `active` | funcionando | o mapa |
 | `migrating` | cópia de Community para Standard em andamento | o mapa, só leitura; compartilhamento pausado |
 | `failed` | uma etapa da criação falhou depois das novas tentativas; a MonAmieNet é avisada | *Falha na criação* |
 | `deleting` | o titular excluiu a conta; `deleteAt` = pedido + 30 dias | *Em exclusão* |
 
-**O fim é um documento apagado, não um status.** Entrar em `awaiting_billing` ou `deleting` grava `deleteAt` (7 ou 30 dias depois); sair deles remove o campo. Todo dia às 03:00 (São Paulo), a função agendada `expireOrganizations` pega as organizações cujo `deleteAt` já passou, apaga o projeto do Google Cloud, apaga `organizations/{id}` e grava `retiredOrganizationIds/{id}` só com `retiredAt`. O id de um projeto apagado nunca pode ser reutilizado, então um identificador aposentado é recusado para sempre: a criação confere isso na etapa do nome, e o `activate` também recusa. O Google ainda deixa um projeto apagado recuperável por até 30 dias antes de apagá-lo de vez.
+**O fim é um documento apagado, não um status.** Entrar em `awaiting_billing` ou `deleting` grava `deleteAt` (7 ou 30 dias depois); sair deles remove o campo. Todo dia às 03:00 (São Paulo), a função agendada `expireOrganizations` pega as organizações cujo `deleteAt` já passou, apaga o projeto do Google Cloud (ou a subárvore no Community), tira o id de todo `accounts`, apaga `organizations/{id}` e grava `retiredOrganizationIds/{id}` só com `retiredAt`. O id de um projeto apagado nunca pode ser reutilizado, então um identificador aposentado é recusado para sempre: a criação confere isso na etapa do nome, e o `activate` também recusa. O Google ainda deixa um projeto apagado recuperável por até 30 dias antes de apagá-lo de vez.
 
 A `expireOrganizations` roda com uma conta de serviço própria, `partner-expirer@monamienet-app.iam.gserviceaccount.com`, com `roles/datastore.user` no `monamienet-app`. Ela só consegue apagar projetos onde tem `roles/resourcemanager.projectDeleter`, papel que a criação pelo app concede nos projetos que cria. Nunca dê esse papel numa organização cadastrada à mão: essas não expiram.
 
@@ -201,21 +206,24 @@ As organizações escolhem um tema de um conjunto fixo, nunca cores livres. O ca
 organizations/{organizationId}/config/branding      público: nome e aparência
 organizations/{organizationId}/config/plan          só Community: {minIntervalMinutes: 15}
 organizations/{organizationId}/config/tracking      escolha dos administradores: {intervalMinutes, distanceMeters}; padrão 15 min, 100 m (Economia)
-organizations/{organizationId}/positions/{email}    última posição (receivedAt = hora do servidor da última posição)
-organizations/{organizationId}/positions/{email}/trail/{pointId}
-organizations/{organizationId}/positions/{email}/trailDays/{yyyy-mm-dd}  um resumo por dia com trajetos (pontos do calendário do histórico)
+organizations/{organizationId}/organizationMemberships/{personKey}   quem participa: {email, role}
+organizations/{organizationId}/groups/{groupId}                      um grupo: {name, createdAt}
+organizations/{organizationId}/groups/{groupId}/groupMemberships/{personKey}   {email, organizationId, roles}
+organizations/{organizationId}/groups/{groupId}/positions/{personKey}          última posição no grupo (receivedAt = hora do servidor; removedAt gravado quando a pessoa deixa de publicar ali)
+organizations/{organizationId}/groups/{groupId}/positions/{personKey}/trail/{pointId}
+organizations/{organizationId}/groups/{groupId}/positions/{personKey}/trailDays/{yyyy-mm-dd}  um resumo por dia com trajetos (pontos do calendário do histórico)
 ```
 
-- **Regras** separam todo caminho por organização. Para ler ou gravar qualquer coisa, a claim `organizations` da pessoa precisa conter a organização (a `syncClaims` a calcula pelos grupos); posições também exigem `watch`/`share` numa equipe **daquela organização**. No projeto Community a `syncClaims` só considera as organizações cujo `organizations/{id}/config/branding` existe lá.
+- **Regras** separam todo caminho por organização: leem o `organizationMemberships/<personKey>` de quem chama **naquela organização** (e, nas posições, o `groupMemberships/<personKey>` daquele grupo). Membros leem `config/tracking` e `config/plan`; administradores gravam `config/tracking` e leem todos os grupos; as posições, o trajeto e o calendário de um grupo exigem `subscriber` nele (ou ser administrador); gravar a própria posição exige `publisher`. Cada pessoa só lê os grupos de que participa.
 - **Intervalo do Community, garantido pelas regras**: uma posição nova precisa ter `receivedAt == request.time` e vir pelo menos `minIntervalMinutes` depois da anterior; um ponto do trajeto só é aceito no mesmo batch da posição que ele registra (`getAfter`). O app lê o mesmo valor e não tenta antes.
 - **`resolveOrganizations`** devolve as opções do Firebase do projeto Community para as organizações Community (cada uma continua com seu app nomeado `organization-<id>` no aparelho).
 - **Expiração** (seção 7) apaga `organizations/{id}/**` de uma organização Community no projeto compartilhado, em vez de um projeto; a conta `partner-expirer` precisa de `roles/datastore.user` no `monamienet-community`.
 
-**Configurar o `monamienet-community`** (uma vez): crie o projeto na conta de faturamento da MonAmieNet (precisa de uma vaga livre nela), adicione o Firebase, o Firestore em `southamerica-east1`, o provedor Google com o cliente web central em *IDs de cliente permitidos*, o app Android `org.monamienet.app` sem SHA-1 e exatamente um app web, o mesmo IAM de um projeto de organização (seção 5, passos 4 e 8) mais `roles/datastore.user` para `partner-expirer@monamienet-app.iam.gserviceaccount.com`, e publique o `firestore.rules` e o `functions/` nele. Crie um **alerta de orçamento**: a cota gratuita do Firestore (50.000 leituras e 20.000 gravações por dia) é dividida entre todas as organizações Community.
+**Configurar o `monamienet-community`** (uma vez): crie o projeto na conta de faturamento da MonAmieNet (precisa de uma vaga livre nela), adicione o Firebase, o Firestore em `southamerica-east1`, o provedor Google com o cliente web central em *IDs de cliente permitidos*, o app Android `org.monamienet.app` sem SHA-1 e exatamente um app web, o mesmo IAM de um projeto de organização (seção 5, passos 4 e 7; `groups-admin@` e `partner-expirer@` incluídas), e publique o `firestore.rules`, o `firestore.indexes.json`, o `storage.rules` e o `functions/` nele. Crie um **alerta de orçamento**: a cota gratuita do Firestore (50.000 leituras e 20.000 gravações por dia) é dividida entre todas as organizações Community.
 
 **Levar uma organização Standard para o Community** (à mão; ainda não há ferramenta). Como os dois planos usam o mesmo layout, a mudança é uma cópia para os mesmos caminhos em outro projeto, mais um campo no registro:
 
-1. Copie todo documento de `organizations/<id>/` do `monamienet-<id>` para o mesmo caminho no `monamienet-community`, mantendo campos e tipos (`batchWrite` da API REST do Firestore).
+1. Copie todo documento de `organizations/<id>/` do `monamienet-<id>` (fichas e grupos incluídos) para o mesmo caminho no `monamienet-community`, mantendo campos e tipos (`batchWrite` da API REST do Firestore).
 2. Grave `organizations/<id>/config/plan` = `{minIntervalMinutes: 15}` e, se `config/tracking.intervalMinutes` for menor que 15, suba para 15 (as regras recusam um valor menor no próximo salvamento; use 15 min / 100 m, *Economia*).
 3. Copie `organizations/<id>/logo.png` para o bucket do Community com tipo `image/png`. Um projeto sem faturamento responde HTTP 402 até no link público da logo; se o faturamento foi removido, ligue-o antes.
 4. Compare a cópia com a origem documento por documento e só então grave `plan: "community"` no registro central `organizations/<id>` (`monamienet-app`). A `resolveOrganizations` lê o plano a cada chamada, então a próxima escolha de organização já recebe o projeto Community.
@@ -224,31 +232,30 @@ organizations/{organizationId}/positions/{email}/trailDays/{yyyy-mm-dd}  um resu
 
 **Aqui o id não tem volta**: o projeto de uma organização Standard é sempre `monamienet-<id>` (`projectIdFor` em `central/functions/organization_options.js`), e o id de um projeto apagado nunca pode ser reaproveitado. Depois do passo 6 a organização não volta ao Standard com o mesmo id, a não ser que essa regra mude (#104). `aquariustur` e `monamietest` foram levados assim em 30/10/2026.
 
-## 10. Equipes e convites (pelo app)
+## 10. Grupos e convites (pelo app)
 
-Os administradores gerenciam equipes e convites no app (*Equipes*, *Criar equipe*, *Equipe*, *Convidar pessoas*). O trabalho acontece nas funções do projeto central, nunca no aparelho:
+Os administradores gerenciam grupos e convites no app. O trabalho acontece nas funções do projeto central, nunca no aparelho:
 
-- **Quem pode chamar**: só os administradores da organização, os membros diretos do grupo raiz `<id>00@` (conferido com uma consulta de associação no Cloud Identity), enquanto a entrada `organizations/{id}` do registro estiver `active`. O `ownerEmail` (o titular) não dá poder nenhum aqui. Cada chamada só mexe nos grupos daquela organização.
-- **Identidade**: `groups-admin@monamienet-app.iam.gserviceaccount.com`, com o papel de administrador do Workspace **Administrador de grupos** atribuído à própria conta de serviço (admin.google.com → Conta → Funções de administrador → Administrador de grupos → Atribuir contas de serviço), **sem** delegação em todo o domínio; e `roles/datastore.user` no `monamienet-app` (lê o registro e grava convites). Esse papel muda qualquer grupo do monamienet.org, por isso as funções recusam qualquer grupo fora da organização de quem chama.
-- **Equipes**: criar uma escolhe o próximo número livre (01–99), cria `<id>NN` (o nome da equipe é o nome de exibição) dentro de `<id>00` e depois `<id>NNr` e `<id>NNw` dentro dela, cada um aceitando membros externos e com a moderação de membros desligada (API Groups Settings); se uma etapa falha, o que foi criado é apagado. Renomear muda só o nome de exibição. Excluir tira as duas folhas e a equipe, depois de mostrar quem perde o acesso (quem não está em outra equipe; nunca um administrador), e então cancela os convites pendentes da equipe, porque a próxima equipe criada reaproveita o número. O `acceptInvite` também recusa um convite enviado antes do `createTime` (Cloud Identity) do grupo da equipe, para que um convite que sobrou de uma equipe excluída nunca entre na nova.
-- **Nomes das equipes no mapa**: o menu de equipes pede à `teamNames` (mesma identidade), a única função de equipes aberta a todos da organização, não só aos administradores. Ela lê no gateway os grupos diretos de quem chama (guardados por 60 segundos, como na `resolveOrganizations`) e devolve o nome de exibição de cada grupo de equipe `<id>NN@` que a pessoa vê: todas as equipes para um administrador; senão, as equipes das suas folhas. O gateway não tem como dar esses nomes (os recursos de membro não trazem nome, e ninguém é membro direto de um grupo de equipe), e o nome das folhas fica desatualizado depois de renomear. O app pergunta a cada carga dos grupos, então um nome novo aparece na próxima abertura ou atualização; se a chamada falha, o menu mostra "Equipe NN" (#117).
-- **Convites**: `invites/{id}` no projeto central (a pessoa convidada ainda não tem grupo, então o projeto da organização não pode guardá-lo): `{organizationId, team, email, roles, invitedBy, expiresAt, status}`. Valem **14 dias** (*Reenviar* recomeça os 14 dias; *Cancelar* anula). **A participação começa no aceite**: a pessoa entra com a conta convidada, vê o convite em *Sem organização* ou, se já participa de alguma organização, no alto de *Escolher organização* (também depois de *Trocar de organização*), toca em *Aceitar e entrar* e só então entra nas folhas dos seus papéis; o app pergunta de novo à `resolveOrganizations`, sem o cache dela (e tenta por alguns segundos, porque o diretório de grupos do Google demora um pouco para mostrar a participação nova), entra direto na organização do convite, sem passar pelo seletor, e mostra *Boas-vindas* uma vez. Quem já está dentro de uma organização só vê um convite novo na próxima vez que passar por uma dessas telas.
+- **Quem pode chamar**: só os administradores da organização (o `organizationMemberships/<personKey>` deles no projeto da organização tem `role: "admin"`), enquanto a entrada `organizations/{id}` do registro estiver `active`. Cada chamada só mexe naquela organização. `listGroups`, `createGroup`, `renameGroup`, `groupDeletionImpact`, `deleteGroup`, `setMemberRoles`, `removeMember`, `sendInvites`, `listInvites`, `resendInvite` e `cancelInvite` recebem `{organizationId}`; os erros voltam como `invalid-argument` com `{field}` (`name`, `duplicate`, `roles`, `group`, `member`, …), `failed-precondition` para `full` (99 grupos) e `permission-denied` para quem não é administrador.
+- **Identidade**: `groups-admin@monamienet-app.iam.gserviceaccount.com` (nome antigo; uma conta dedicada fica para depois), com `roles/datastore.user` no `monamienet-app` (registro, convites, `accounts`), no `monamienet-community` e em cada projeto Standard (fichas e grupos). Ela chega ao projeto de cada organização por um segundo app do Admin SDK apontado para aquele projeto, escolhido pelo `plan` do registro.
+- **Grupos**: um documento do Firestore com id automático; o nome tem de 2 a 40 caracteres, pelo menos 2 letras, e não pode repetir outro ignorando maiúsculas, acentos e espaços. Renomear muda só o nome. Excluir primeiro mostra quem sai da organização (quem não está em outro grupo; nunca um administrador), tira essas pessoas dela, cancela os convites pendentes do grupo e então apaga o grupo com tudo o que há dentro (fichas, posições, trajetos); repetir termina uma exclusão que parou no meio. Mudar os papéis de alguém mantém um papel `maintainer`; perder `publisher` (ou sair do grupo) marca a posição dela ali com `removedAt`, então o mapa a esconde e o histórico a guarda. Tirar alguém do último grupo também o tira da organização, a menos que seja administrador. O app lê os nomes dos grupos direto do Firestore.
+- **Convites**: `invites/{id}` no projeto central (a pessoa convidada ainda não participa de nada, então o projeto da organização não pode guardá-lo): `{organizationId, organizationName, groupId, groupName, email, roles, inviterEmail, inviterName, createdAt, expiresAt, status}`, com papéis entre `publisher` e `subscriber`. Valem **14 dias** (*Reenviar* recomeça os 14 dias; *Cancelar* anula). **A participação começa no aceite**: a pessoa entra com a conta convidada, vê o convite em *Sem organização* ou no alto de *Escolher organização*, toca em *Aceitar e entrar*, e o `acceptInvite` grava, num só batch no projeto da organização, a ficha da organização (`member`, se ela ainda não tiver uma) e a ficha do grupo (os papéis do convite somados aos dela), e depois a organização no `accounts` dela. Vale na hora: as regras leem essas fichas, então não há o que esperar. Um convite cujo grupo foi excluído é recusado.
 - **E-mail**: enviado pela API do Gmail do Workspace como a caixa `MAIL_SENDER_SUBJECT`, aparecendo como `MAIL_FROM` (um alias "enviar e-mail como" dessa caixa), os dois em `central/functions/.env`. As funções assinam o JWT da delegação pela API IAM Credentials como `mail-sender@monamienet-app.iam.gserviceaccount.com` (sem chave; o `groups-admin@` tem `roles/iam.serviceAccountTokenCreator` nela). No Admin console, Segurança → Controle de acesso e dados → Controles de API → Delegação em todo o domínio, o ID do cliente do `mail-sender@` deve ter **só** `https://www.googleapis.com/auth/gmail.send`. A delegação vale para o domínio inteiro no Workspace; o código só usa a caixa configurada. Sem ela o convite funciona (a pessoa o vê ao entrar) e o administrador é avisado de que o e-mail não saiu.
 
 ## 11. Criar uma organização pelo app
 
-Qualquer pessoa conectada pode criar uma organização a partir de *Sem organização* ou *Escolher organização*: *Nome* (com o identificador sugerido a partir do nome e conferido enquanto se digita: só letras, de 3 a 20, livre e nunca aposentado), *Tema*, *Plano*, *Revisão*. A função central `createOrganization` (rodando como `groups-admin@`) confere tudo de novo, reserva o identificador no registro (`null → reserved`, que recusa identificadores em uso ou aposentados) e grava quem criou como `ownerEmail`. Quem cria vira o titular e o primeiro membro do grupo raiz, ou seja, o primeiro administrador: os administradores gerenciam equipes, convites e aparência. Titular e administrador são papéis separados: os poderes vêm só do grupo raiz (Google Groups), e ser titular só quer dizer que excluir a própria conta exclui a organização.
+Qualquer pessoa conectada pode criar uma organização a partir de *Sem organização* ou *Escolher organização*: *Nome* (com o identificador sugerido a partir do nome e conferido enquanto se digita: só letras, de 3 a 20, livre e nunca aposentado), *Tema*, *Plano*, *Revisão*. A função central `createOrganization` (rodando como `groups-admin@`) confere tudo de novo, reserva o identificador no registro (`null → reserved`, que recusa identificadores em uso ou aposentados) e grava quem criou como `ownerEmail`. Quem cria vira o titular e o primeiro administrador: os administradores gerenciam grupos, convites e aparência. O titular é sempre administrador, e nenhuma função o rebaixa nem o tira; ser titular também quer dizer que excluir a própria conta exclui a organização.
 
-- **Community**: `provisioning`, depois o grupo raiz `<id>00@` com o titular como membro simples (seu primeiro administrador), depois `organizations/<id>/config/branding` e `config/plan` (mínimo de 15 minutos) no `monamienet-community`, e então `active`; o app entra na organização nova na hora. A conta da função precisa de `roles/datastore.user` no `monamienet-community`.
-- **Standard**: ainda não automatizado. Criar um projeto na organização do Google Cloud, dar ao titular `roles/billing.projectManager`, esperar o faturamento (Cloud Workflows com a verificação agendada de `getBillingInfo`) e publicar regras e funções exigem uma identidade de provisionamento que a MonAmieNet ainda não configurou. Até lá, uma criação Standard para em `failed` (etapa `project`) com o identificador reservado, e a MonAmieNet termina à mão com as seções 5 e 7.
+- **Community**: `provisioning`, depois `organizations/<id>/config/branding` e `config/plan` (mínimo de 15 minutos) no `monamienet-community`, depois a ficha `organizationMemberships/<personKey>` do titular com `role: "admin"` e a organização no `accounts` dele, e então `active`; o app entra na organização nova na hora. Uma falha nas primeiras gravações é a etapa `data`; na da ficha, `membership`.
+- **Standard**: ainda não automatizado. Criar um projeto na organização do Google Cloud, dar ao titular `roles/billing.projectManager`, esperar o faturamento (Cloud Workflows com a verificação agendada de `getBillingInfo`) e publicar regras e funções exigem uma identidade de provisionamento que a MonAmieNet ainda não configurou. Até lá, uma criação Standard para em `failed` (etapa `project`) com o identificador reservado, e a MonAmieNet termina à mão com as seções 5 e 7 (o `add-admin` faz do titular o administrador).
 - **Falha**: qualquer etapa que falhe deixa `failed` com `failure: {step, message}` no registro e o erro no log da função; o app mostra *Falha na criação* ("a MonAmieNet foi avisada"), e o identificador continua reservado. Tentar de novo (`failed → provisioning`) é, por enquanto, uma ação da MonAmieNet.
 
 ## 12. Excluir uma conta
 
 Qualquer pessoa pode excluir a própria conta pelo app (*Minha conta* → *Excluir conta*). Nada é apagado na hora: há **30 dias** para cancelar, e o app mostra *Em exclusão* (com *Cancelar exclusão*) sempre que a pessoa entra nesse período. Quem faz o trabalho são as funções centrais:
 
-- **`requestAccountDeletion`** (como `groups-admin@`): tira a pessoa de todas as folhas de equipe (`<id>NNr`, `<id>NNw`), e do grupo raiz de toda organização que ela administra sem ser titular, na hora, então ela sai dos mapas; guarda o que restaurar em `accountDeletions/{email}` (`deleteAt`, `memberships`, `ownedOrganizationIds`). O **titular** exclui a organização junto com a conta (ela não pode ficar sem titular) e confirma digitando o identificador: a organização passa de `active` para `deleting`, ninguém mais entra nela, e o `expireOrganizations` a apaga quando terminam os 30 dias dela (seção 7).
-- **`cancelAccountDeletion`**: dentro dos 30 dias, devolve a pessoa às folhas guardadas, traz as organizações dela de volta a `active` e apaga o registro.
-- **`eraseAccounts`** (diário, como `partner-expirer@`): para cada registro com `deleteAt` vencido, apaga os dados da pessoa em cada organização de que fazia parte (`organizations/<id>/positions/<email>` com a trilha e os resumos por dia, e o login naquele projeto), depois o login central e o próprio registro. O `partner-expirer@` precisa de `roles/datastore.user` e `roles/firebaseauth.admin` em cada projeto de organização e no `monamienet-community`, e de `roles/firebaseauth.admin` no `monamienet-app`.
+- **`requestAccountDeletion`** (como `groups-admin@`): em cada organização do `accounts` da pessoa, tira as fichas de grupo dela (as posições ficam marcadas com `removedAt`, então ela sai dos mapas) e, se não for a titular, a ficha da organização e aquele id do `accounts`, na hora; guarda o que tirou em `accountDeletions/{personKey}` (`email`, `deleteAt`, `memberships`: `[{organizationId, role, groups: [{groupId, roles}]}]`, `ownedOrganizationIds`). O **titular** exclui a organização junto com a conta (ela não pode ficar sem titular) e confirma digitando o identificador: continua administrador dela, a organização passa de `active` para `deleting`, ninguém mais entra nela, e o `expireOrganizations` a apaga quando terminam os 30 dias dela (seção 7).
+- **`cancelAccountDeletion`**: dentro dos 30 dias, grava de volta as fichas guardadas (pulando grupos excluídos no meio tempo), traz as organizações dela de volta a `active` e apaga o registro.
+- **`eraseAccounts`** (diário, como `partner-expirer@`): para cada registro com `deleteAt` vencido, apaga em cada organização de que a pessoa fazia parte as fichas dela, as posições dela em todos os grupos com o trajeto e os resumos por dia (uma consulta de grupo de coleções em `positions` pelo `email`) e o login naquele projeto; depois o `accounts` dela, o login central e o próprio registro. O `partner-expirer@` precisa de `roles/datastore.user` e `roles/firebaseauth.admin` em cada projeto de organização e no `monamienet-community`, e de `roles/firebaseauth.admin` no `monamienet-app`.
 
 A página pública de pedido de exclusão exigida pelo Google Play (para quem não tem o app instalado) fica no site, não neste repositório.

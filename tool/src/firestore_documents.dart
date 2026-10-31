@@ -1,3 +1,6 @@
+/// A document read from a collection: its [id] and decoded [data].
+typedef FirestoreDocument = ({String id, Map<String, Object?> data});
+
 /// Reads and writes single Firestore documents of any project.
 ///
 /// Implementations throw a `OrganizationToolException` on failure.
@@ -9,6 +12,14 @@ abstract interface class FirestoreDocuments {
     required String projectId,
     required String path,
     String? accessToken,
+  });
+
+  /// Every document of the collection at [collectionPath] in [projectId],
+  /// by id.
+  Future<List<FirestoreDocument>> list({
+    required String projectId,
+    required String collectionPath,
+    required String accessToken,
   });
 
   /// Replaces the document at [path] in [projectId] with [data].

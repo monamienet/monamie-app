@@ -1,162 +1,74 @@
 const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
-const { FieldValue } = require("firebase-admin/firestore");
 
 const {
   ACCOUNT_GRACE_MS,
   DeletionError,
   cancelAccountDeletion,
   eraseDueAccounts,
-  leavesByOrganization,
   pendingDeletion,
   requestAccountDeletion,
 } = require("../account_deletion");
+const { personKey } = require("../person_key");
+const { fakeFirestore } = require("./fake_firestore");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = new Date("2026-10-26T12:00:00.000Z");
 const THIRTY_DAYS_LATER = new Date("2026-11-25T12:00:00.000Z");
-const EMAIL = "ana@x.com";
+const ANA = "ana@x.com";
+const ANA_KEY = personKey(ANA);
+const ROTASUL = "organizations/rotasul";
+const OUTRO = "organizations/outro";
 
-const isDelete = (value) =>
-  value !== null && typeof value?.isEqual === "function" && value.isEqual(FieldValue.delete());
-
-const comparable = (value) => (value instanceof Date ? value.getTime() : value);
-
-/**
- * An in-memory Firestore keyed by document path, with what the deletion
- * service and `transitionOrganizationStatus` use: `doc(path)` refs
- * (`get/set/delete/collection`), `collection(path).doc(id)` and
- * `.where(f, "==" | "<=", v)...get()`, `runTransaction` with
- * `tx.get/create/update` (a `FieldValue.delete()` removes the field) and
- * `recursiveDelete(ref)`.
- */
-function fakeFirestore(docs = {}) {
-  const store = new Map(Object.entries(docs).map(([path, data]) => [path, { ...data }]));
-  const ref = (path) => ({
-    path,
-    id: path.split("/").pop(),
-    async get() {
-      return snapshot(path);
+/** Rota Sul's project: Ana is a member, publishes in guias and subscribes
+ * to recepcao, with a position and trail in guias. */
+function rotasulDb() {
+  return fakeFirestore({
+    [`${ROTASUL}/organizationMemberships/${ANA_KEY}`]: { email: ANA, role: "member" },
+    [`${ROTASUL}/groups/guias`]: { name: "Guias" },
+    [`${ROTASUL}/groups/recepcao`]: { name: "Recepção" },
+    [`${ROTASUL}/groups/guias/groupMemberships/${ANA_KEY}`]: {
+      email: ANA,
+      organizationId: "rotasul",
+      roles: ["publisher"],
     },
-    async set(data) {
-      store.set(path, { ...data });
+    [`${ROTASUL}/groups/recepcao/groupMemberships/${ANA_KEY}`]: {
+      email: ANA,
+      organizationId: "rotasul",
+      roles: ["subscriber"],
     },
-    async delete() {
-      store.delete(path);
-    },
-    collection: (name) => collection(`${path}/${name}`),
+    [`${ROTASUL}/groups/guias/positions/${ANA_KEY}`]: { email: ANA, removedAt: null },
+    [`${ROTASUL}/groups/guias/positions/${ANA_KEY}/trail/p1`]: { lat: 1, lng: 2 },
   });
-  const snapshot = (path) => {
-    const data = store.get(path);
-    return {
-      id: path.split("/").pop(),
-      ref: ref(path),
-      exists: data !== undefined,
-      data: () => (data === undefined ? undefined : { ...data }),
-      get: (field) => data?.[field],
-    };
-  };
-  const query = (path, filters) => ({
-    where(field, op, value) {
-      assert.ok(op === "==" || op === "<=", `the fake only supports == and <=, got ${op}`);
-      return query(path, [...filters, [field, op, value]]);
-    },
-    async get() {
-      const depth = path.split("/").length + 1;
-      const docs = [...store.keys()]
-        .filter((p) => p.startsWith(`${path}/`) && p.split("/").length === depth)
-        .filter((p) =>
-          filters.every(([f, op, v]) => {
-            const actual = store.get(p)[f];
-            if (op === "==") return actual === v;
-            return actual !== undefined && comparable(actual) <= comparable(v);
-          })
-        )
-        .map(snapshot);
-      return { empty: docs.length === 0, docs };
+}
+
+/** Outro's project: Ana owns and administers it, in group vendas. */
+function outroDb() {
+  return fakeFirestore({
+    [`${OUTRO}/organizationMemberships/${ANA_KEY}`]: { email: ANA, role: "admin" },
+    [`${OUTRO}/groups/vendas`]: { name: "Vendas" },
+    [`${OUTRO}/groups/vendas/groupMemberships/${ANA_KEY}`]: {
+      email: ANA,
+      organizationId: "outro",
+      roles: ["publisher", "subscriber"],
     },
   });
-  const collection = (path) => ({ ...query(path, []), doc: (id) => ref(`${path}/${id}`) });
-  return {
-    store,
-    doc: ref,
-    collection,
-    async recursiveDelete(target) {
-      for (const p of [...store.keys()]) {
-        if (p === target.path || p.startsWith(`${target.path}/`)) store.delete(p);
-      }
-    },
-    async runTransaction(fn) {
-      const writes = [];
-      const tx = {
-        async get(r) {
-          return snapshot(r.path);
-        },
-        create(r, data) {
-          writes.push(() => store.set(r.path, { ...data }));
-        },
-        update(r, data) {
-          assert.ok(store.has(r.path), `update of missing ${r.path}`);
-          writes.push(() => {
-            const next = { ...store.get(r.path) };
-            for (const [field, value] of Object.entries(data)) {
-              if (isDelete(value)) delete next[field];
-              else next[field] = value;
-            }
-            store.set(r.path, next);
-          });
-        },
-      };
-      const result = await fn(tx);
-      for (const write of writes) write();
-      return result;
-    },
-  };
 }
 
-/** A GroupsApi that knows `existing` group e-mails and records every call. */
-function fakeGroups(existing = []) {
-  const known = new Set(existing);
-  const calls = [];
-  return {
-    calls,
-    async lookup(email) {
-      calls.push(["lookup", email]);
-      return known.has(email) ? `groups/${email}` : null;
-    },
-    async removeMember(name, email) {
-      calls.push(["removeMember", name, email]);
-    },
-    async addMember(name, email) {
-      calls.push(["addMember", name, email]);
-    },
-  };
+/** The central project: Ana's accounts entry and both registry entries. */
+function centralDb(extra = {}) {
+  return fakeFirestore({
+    [`accounts/${ANA_KEY}`]: { email: ANA, organizationIds: ["outro", "rotasul"] },
+    "organizations/rotasul": { status: "active", ownerEmail: "dono@x.com" },
+    "organizations/outro": { status: "active", ownerEmail: ANA, name: "Outro" },
+    ...extra,
+  });
 }
 
-function requestDeps({ groups = fakeGroups(), direct = [] } = {}) {
-  return { groups, directGroups: async () => direct };
+function depsOf(projects) {
+  return { organizationDb: async (id) => projects[id] ?? null };
 }
 
-/** An organization sign-in store: `getUserByEmail` / `deleteUser`, with a
- * `failure` code thrown by `getUserByEmail` when set. */
-function fakeAuth({ users = {}, failure = null } = {}) {
-  const deleted = [];
-  return {
-    deleted,
-    async getUserByEmail(email) {
-      if (failure) throw Object.assign(new Error(failure), { code: failure });
-      if (!users[email]) {
-        throw Object.assign(new Error("no user"), { code: "auth/user-not-found" });
-      }
-      return { uid: users[email] };
-    },
-    async deleteUser(uid) {
-      deleted.push(uid);
-    },
-  };
-}
-
-/** Awaits `act` and returns the DeletionError it rejects with. */
 async function deletionErrorOf(act) {
   try {
     await act();
@@ -167,24 +79,8 @@ async function deletionErrorOf(act) {
   assert.fail("expected a DeletionError");
 }
 
-const activeOwned = (overrides = {}) => ({
-  status: "active",
-  ownerEmail: EMAIL,
-  name: "Rota Sul",
-  ...overrides,
-});
-
-const pendingRecord = (overrides = {}) => ({
-  email: EMAIL,
-  uid: "central-uid",
-  requestedAt: NOW,
-  deleteAt: THIRTY_DAYS_LATER,
-  memberships: [{ organizationId: "rotasul", groups: ["rotasul01w@monamienet.org"] }],
-  ownedOrganizationIds: [],
-  ownedOrganizationNames: {},
-  status: "pending",
-  ...overrides,
-});
+const ask = (db, projects, confirmIds = ["outro"]) =>
+  requestAccountDeletion(db, depsOf(projects), { email: ANA, uid: "u1", confirmIds }, NOW);
 
 describe("ACCOUNT_GRACE_MS - Unit Test Suite", () => {
   test("Happy Path: the grace period is 30 days", () => {
@@ -199,379 +95,111 @@ describe("ACCOUNT_GRACE_MS - Unit Test Suite", () => {
   });
 });
 
-describe("leavesByOrganization - Unit Test Suite", () => {
-  test("Happy Path: leaves are grouped by organization", () => {
-    // 1. Arrange
-    const groups = [
-      "rotasul01r@monamienet.org",
-      "rotasul01w@monamienet.org",
-      "frota02w@monamienet.org",
-    ];
-
-    // 2. Act
-    const result = leavesByOrganization(groups);
-
-    // 3. Assert
-    assert.deepEqual(
-      result,
-      new Map([
-        ["rotasul", ["rotasul01r@monamienet.org", "rotasul01w@monamienet.org"]],
-        ["frota", ["frota02w@monamienet.org"]],
-      ])
-    );
-  });
-
-  test("Edge Case: an upper-case leaf comes out in lower case", () => {
-    // 1. Arrange
-    const groups = ["RotaSul13R@MonAmieNet.org"];
-
-    // 2. Act
-    const result = leavesByOrganization(groups);
-
-    // 3. Assert
-    assert.deepEqual(result, new Map([["rotasul", ["rotasul13r@monamienet.org"]]]));
-  });
-
-  test("Edge Case: no groups give an empty map", () => {
-    // 1. Arrange
-    const groups = [];
-
-    // 2. Act
-    const result = leavesByOrganization(groups);
-
-    // 3. Assert
-    assert.equal(result.size, 0);
-  });
-
-  test("Happy Path: the root group of an administered organization is left with its leaves", () => {
-    // 1. Arrange
-    const groups = ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"];
-
-    // 2. Act
-    const result = leavesByOrganization(groups, ["frota"]);
-
-    // 3. Assert
-    assert.deepEqual(
-      result,
-      new Map([["rotasul", ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"]]])
-    );
-  });
-
-  test("Edge Case: the root group of an owned organization is kept", () => {
-    // 1. Arrange
-    const groups = ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"];
-
-    // 2. Act
-    const result = leavesByOrganization(groups, ["rotasul"]);
-
-    // 3. Assert
-    assert.deepEqual(result, new Map([["rotasul", ["rotasul01w@monamienet.org"]]]));
-  });
-
-  test("Edge Case: owning one organization does not keep another organization's root group", () => {
-    // 1. Arrange
-    const groups = ["rotasul00@monamienet.org", "frota00@monamienet.org"];
-
-    // 2. Act
-    const result = leavesByOrganization(groups, ["rotasul"]);
-
-    // 3. Assert
-    assert.deepEqual(result, new Map([["frota", ["frota00@monamienet.org"]]]));
-  });
-
-  test("Edge Case: without owned organizations every root group is left", () => {
-    // 1. Arrange
-    const groups = ["RotaSul00@MonAmieNet.org"];
-
-    // 2. Act
-    const result = leavesByOrganization(groups);
-
-    // 3. Assert
-    assert.deepEqual(result, new Map([["rotasul", ["rotasul00@monamienet.org"]]]));
-  });
-
-  const ignored = [
-    ["a team group", "rotasul01@monamienet.org"],
-    ["a root leaf that never exists", "rotasul00r@monamienet.org"],
-    ["another domain", "rotasul01r@gmail.com"],
-    ["a reserved id", "community01w@monamienet.org"],
-    ["a two-letter id", "ab01w@monamienet.org"],
-    ["an rw leaf", "rotasul01rw@monamienet.org"],
-    ["garbage", "not an e-mail"],
-  ];
-  for (const [label, email] of ignored) {
-    test(`Sad Path: ${label} is ignored`, () => {
-      // 1. Arrange
-      const groups = [email];
-
-      // 2. Act
-      const result = leavesByOrganization(groups);
-
-      // 3. Assert
-      assert.equal(result.size, 0);
-    });
-  }
-});
-
 describe("requestAccountDeletion - Unit Test Suite", () => {
-  test("Happy Path: a member leaves every leaf and a pending record is written", async () => {
+  test("Happy Path: a member leaves the groups and the organization, and the record lists them", async () => {
     // 1. Arrange
-    const db = fakeFirestore();
-    const groups = fakeGroups(["rotasul01w@monamienet.org", "rotasul02r@monamienet.org"]);
-    const deps = requestDeps({
-      groups,
-      direct: ["rotasul01w@monamienet.org", "rotasul02r@monamienet.org"],
-    });
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
 
     // 2. Act
-    const result = await requestAccountDeletion(db, deps, { email: EMAIL, uid: "u1" }, NOW);
+    await ask(db, projects);
 
     // 3. Assert
-    assert.deepEqual(result, { deleteAt: THIRTY_DAYS_LATER, ownedOrganizationIds: [], ownedOrganizationNames: {} });
-    assert.deepEqual(
-      groups.calls.filter(([op]) => op === "removeMember"),
-      [
-        ["removeMember", "groups/rotasul01w@monamienet.org", EMAIL],
-        ["removeMember", "groups/rotasul02r@monamienet.org", EMAIL],
-      ]
-    );
-    assert.deepEqual(db.store.get(`accountDeletions/${EMAIL}`), {
-      email: EMAIL,
-      uid: "u1",
-      requestedAt: NOW,
-      deleteAt: THIRTY_DAYS_LATER,
-      memberships: [
-        {
-          organizationId: "rotasul",
-          groups: ["rotasul01w@monamienet.org", "rotasul02r@monamienet.org"],
-        },
-      ],
-      ownedOrganizationIds: [],
-      ownedOrganizationNames: {},
-      status: "pending",
-    });
-  });
-
-  test("Happy Path: a confirmed owner's organizations go to deleting", async () => {
-    // 1. Arrange
-    const db = fakeFirestore({
-      "organizations/rotasul": activeOwned(),
-      "organizations/frota": activeOwned({ name: undefined }),
-    });
-    const deps = requestDeps();
-
-    // 2. Act
-    const result = await requestAccountDeletion(
-      db,
-      deps,
-      { email: EMAIL, uid: "u1", confirmIds: ["rotasul", "frota"] },
-      NOW
-    );
-
-    // 3. Assert
-    assert.deepEqual(result.ownedOrganizationIds, ["frota", "rotasul"]);
-    assert.deepEqual(result.ownedOrganizationNames, { rotasul: "Rota Sul" });
-    const registry = db.store.get("organizations/rotasul");
-    assert.equal(registry.status, "deleting");
-    assert.deepEqual(registry.deleteAt, THIRTY_DAYS_LATER);
-    assert.equal(registry.deletionRequestedBy, EMAIL);
-    assert.equal(db.store.get("organizations/frota").status, "deleting");
-    assert.deepEqual(db.store.get(`accountDeletions/${EMAIL}`).ownedOrganizationIds, [
-      "frota",
-      "rotasul",
-    ]);
-  });
-
-  test("Happy Path: an administrator who does not own the organization leaves its root group", async () => {
-    // 1. Arrange
-    const db = fakeFirestore({ "organizations/rotasul": activeOwned({ ownerEmail: "bia@x.com" }) });
-    const groups = fakeGroups(["rotasul00@monamienet.org", "rotasul01w@monamienet.org"]);
-    const deps = requestDeps({
-      groups,
-      direct: ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"],
-    });
-
-    // 2. Act
-    const result = await requestAccountDeletion(db, deps, { email: EMAIL, uid: "u1" }, NOW);
-
-    // 3. Assert
-    assert.deepEqual(result.ownedOrganizationIds, []);
-    assert.deepEqual(
-      groups.calls.filter(([op]) => op === "removeMember"),
-      [
-        ["removeMember", "groups/rotasul00@monamienet.org", EMAIL],
-        ["removeMember", "groups/rotasul01w@monamienet.org", EMAIL],
-      ]
-    );
-    assert.deepEqual(db.store.get(`accountDeletions/${EMAIL}`).memberships, [
+    assert.deepEqual(db.store.get(`accountDeletions/${ANA_KEY}`).memberships, [
+      { organizationId: "outro", role: null, groups: [{ groupId: "vendas", roles: ["publisher", "subscriber"] }] },
       {
         organizationId: "rotasul",
-        groups: ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"],
+        role: "member",
+        groups: [
+          { groupId: "guias", roles: ["publisher"] },
+          { groupId: "recepcao", roles: ["subscriber"] },
+        ],
       },
     ]);
-    assert.equal(db.store.get("organizations/rotasul").status, "active");
   });
 
-  test("Edge Case: an owner who administers the organization keeps its root group", async () => {
+  test("Happy Path: the positions are marked removedAt and the non-owned organization leaves the accounts entry", async () => {
     // 1. Arrange
-    const db = fakeFirestore({ "organizations/rotasul": activeOwned() });
-    const groups = fakeGroups(["rotasul00@monamienet.org", "rotasul01w@monamienet.org"]);
-    const deps = requestDeps({
-      groups,
-      direct: ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"],
-    });
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
 
     // 2. Act
-    await requestAccountDeletion(
-      db,
-      deps,
-      { email: EMAIL, uid: "u1", confirmIds: ["rotasul"] },
-      NOW
-    );
+    await ask(db, projects);
 
     // 3. Assert
     assert.deepEqual(
-      groups.calls.filter(([op]) => op === "removeMember"),
-      [["removeMember", "groups/rotasul01w@monamienet.org", EMAIL]]
+      [
+        projects.rotasul.store.get(`${ROTASUL}/groups/guias/positions/${ANA_KEY}`).removedAt,
+        projects.rotasul.store.has(`${ROTASUL}/organizationMemberships/${ANA_KEY}`),
+        db.store.get(`accounts/${ANA_KEY}`).organizationIds,
+      ],
+      [NOW, false, ["outro"]]
     );
-    assert.equal(db.store.get("organizations/rotasul").status, "deleting");
   });
 
-  test("Edge Case: the e-mail is lower-cased before matching and recording", async () => {
+  test("Edge Case: the owner stays an administrator and the owned organization goes to deleting", async () => {
     // 1. Arrange
-    const db = fakeFirestore({ "organizations/rotasul": activeOwned() });
-    const groups = fakeGroups(["rotasul01w@monamienet.org"]);
-    const deps = requestDeps({ groups, direct: ["rotasul01w@monamienet.org"] });
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
 
     // 2. Act
-    await requestAccountDeletion(
-      db,
-      deps,
-      { email: "Ana@X.com", uid: "u1", confirmIds: ["rotasul"] },
-      NOW
-    );
-
-    // 3. Assert
-    assert.equal(db.store.get(`accountDeletions/${EMAIL}`).email, EMAIL);
-    assert.equal(db.store.get("organizations/rotasul").status, "deleting");
-    assert.deepEqual(groups.calls.at(-1), [
-      "removeMember",
-      "groups/rotasul01w@monamienet.org",
-      EMAIL,
-    ]);
-  });
-
-  test("Edge Case: a leaf whose group is not found is skipped but still recorded", async () => {
-    // 1. Arrange
-    const db = fakeFirestore();
-    const groups = fakeGroups([]);
-    const deps = requestDeps({ groups, direct: ["rotasul01w@monamienet.org"] });
-
-    // 2. Act
-    await requestAccountDeletion(db, deps, { email: EMAIL, uid: "u1" }, NOW);
+    const result = await ask(db, projects);
 
     // 3. Assert
     assert.deepEqual(
-      groups.calls.filter(([op]) => op === "removeMember"),
-      []
+      [
+        result.ownedOrganizationIds,
+        db.store.get("organizations/outro").status,
+        projects.outro.store.get(`${OUTRO}/organizationMemberships/${ANA_KEY}`).role,
+        result.deleteAt.getTime(),
+      ],
+      [["outro"], "deleting", "admin", THIRTY_DAYS_LATER.getTime()]
     );
-    assert.deepEqual(db.store.get(`accountDeletions/${EMAIL}`).memberships, [
-      { organizationId: "rotasul", groups: ["rotasul01w@monamienet.org"] },
-    ]);
-  });
-
-  test("Edge Case: organizations not active or owned by others are not touched", async () => {
-    // 1. Arrange
-    const db = fakeFirestore({
-      "organizations/frota": activeOwned({ status: "failed" }),
-      "organizations/outra": activeOwned({ ownerEmail: "bia@x.com" }),
-    });
-    const deps = requestDeps();
-
-    // 2. Act
-    const result = await requestAccountDeletion(db, deps, { email: EMAIL, uid: "u1" }, NOW);
-
-    // 3. Assert
-    assert.deepEqual(result.ownedOrganizationIds, []);
-    assert.equal(db.store.get("organizations/frota").status, "failed");
-    assert.equal(db.store.get("organizations/outra").status, "active");
   });
 
   test("Sad Path: an owner who did not confirm is refused before anything changes", async () => {
     // 1. Arrange
-    const db = fakeFirestore({
-      "organizations/rotasul": activeOwned(),
-      "organizations/frota": activeOwned(),
-    });
-    const groups = fakeGroups(["rotasul01w@monamienet.org"]);
-    const deps = requestDeps({ groups, direct: ["rotasul01w@monamienet.org"] });
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
 
     // 2. Act
-    const error = await deletionErrorOf(() =>
-      requestAccountDeletion(db, deps, { email: EMAIL, uid: "u1", confirmIds: ["rotasul"] }, NOW)
-    );
+    const error = await deletionErrorOf(() => ask(db, projects, []));
 
     // 3. Assert
-    assert.equal(error.code, "confirm");
-    assert.equal(db.store.get("organizations/rotasul").status, "active");
-    assert.equal(db.store.get("organizations/frota").status, "active");
-    assert.equal(db.store.has(`accountDeletions/${EMAIL}`), false);
     assert.deepEqual(
-      groups.calls.filter(([op]) => op === "removeMember"),
-      []
+      [error.code, projects.rotasul.store.has(`${ROTASUL}/organizationMemberships/${ANA_KEY}`)],
+      ["confirm", true]
     );
   });
 });
 
 describe("pendingDeletion - Unit Test Suite", () => {
-  test("Happy Path: a pending record is returned", async () => {
+  test("Happy Path: a pending record is found by the e-mail's key", async () => {
     // 1. Arrange
     const db = fakeFirestore({
-      [`accountDeletions/${EMAIL}`]: pendingRecord({
-        ownedOrganizationIds: ["rotasul"],
-        ownedOrganizationNames: { rotasul: "Rota Sul" },
-      }),
+      [`accountDeletions/${ANA_KEY}`]: {
+        status: "pending",
+        deleteAt: THIRTY_DAYS_LATER,
+        ownedOrganizationIds: ["outro"],
+      },
     });
 
     // 2. Act
-    const result = await pendingDeletion(db, EMAIL);
+    const deletion = await pendingDeletion(db, "Ana@X.com");
 
     // 3. Assert
-    assert.deepEqual(result, {
-      requestedAt: NOW,
-      deleteAt: THIRTY_DAYS_LATER,
-      ownedOrganizationIds: ["rotasul"],
-      ownedOrganizationNames: { rotasul: "Rota Sul" },
-    });
-  });
-
-  test("Edge Case: Firestore Timestamps are converted to Dates", async () => {
-    // 1. Arrange
-    const timestamp = (date) => ({ toDate: () => date });
-    const db = fakeFirestore({
-      [`accountDeletions/${EMAIL}`]: pendingRecord({
-        requestedAt: timestamp(NOW),
-        deleteAt: timestamp(THIRTY_DAYS_LATER),
-      }),
-    });
-
-    // 2. Act
-    const result = await pendingDeletion(db, EMAIL);
-
-    // 3. Assert
-    assert.deepEqual(result.requestedAt, NOW);
-    assert.deepEqual(result.deleteAt, THIRTY_DAYS_LATER);
+    assert.deepEqual(deletion.ownedOrganizationIds, ["outro"]);
   });
 
   test("Edge Case: a record that is no longer pending reads as null", async () => {
     // 1. Arrange
-    const db = fakeFirestore({ [`accountDeletions/${EMAIL}`]: pendingRecord({ status: "done" }) });
+    const db = fakeFirestore({ [`accountDeletions/${ANA_KEY}`]: { status: "done" } });
 
     // 2. Act
-    const result = await pendingDeletion(db, EMAIL);
+    const deletion = await pendingDeletion(db, ANA);
 
     // 3. Assert
-    assert.equal(result, null);
+    assert.equal(deletion, null);
   });
 
   test("Sad Path: no record reads as null", async () => {
@@ -579,275 +207,314 @@ describe("pendingDeletion - Unit Test Suite", () => {
     const db = fakeFirestore();
 
     // 2. Act
-    const result = await pendingDeletion(db, EMAIL);
+    const deletion = await pendingDeletion(db, ANA);
 
     // 3. Assert
-    assert.equal(result, null);
+    assert.equal(deletion, null);
   });
 });
 
 describe("cancelAccountDeletion - Unit Test Suite", () => {
-  test("Happy Path: rejoins the leaves, reactivates the organization and drops the record", async () => {
+  test("Happy Path: the memberships come back and the owned organization is active again", async () => {
     // 1. Arrange
-    const db = fakeFirestore({
-      "organizations/rotasul": activeOwned({ status: "deleting", deleteAt: THIRTY_DAYS_LATER }),
-      [`accountDeletions/${EMAIL}`]: pendingRecord({ ownedOrganizationIds: ["rotasul"] }),
-    });
-    const groups = fakeGroups(["rotasul01w@monamienet.org"]);
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
+    await ask(db, projects);
 
     // 2. Act
-    await cancelAccountDeletion(db, { groups }, EMAIL, NOW);
+    await cancelAccountDeletion(db, depsOf(projects), ANA, NOW);
 
     // 3. Assert
     assert.deepEqual(
-      groups.calls.filter(([op]) => op === "addMember"),
-      [["addMember", "groups/rotasul01w@monamienet.org", EMAIL]]
-    );
-    const registry = db.store.get("organizations/rotasul");
-    assert.equal(registry.status, "active");
-    assert.equal("deleteAt" in registry, false);
-    assert.equal(db.store.has(`accountDeletions/${EMAIL}`), false);
-  });
-
-  test("Happy Path: a recorded root group is rejoined like the leaves", async () => {
-    // 1. Arrange
-    const db = fakeFirestore({
-      [`accountDeletions/${EMAIL}`]: pendingRecord({
-        memberships: [
-          {
-            organizationId: "rotasul",
-            groups: ["rotasul00@monamienet.org", "rotasul01w@monamienet.org"],
-          },
-        ],
-      }),
-    });
-    const groups = fakeGroups(["rotasul00@monamienet.org", "rotasul01w@monamienet.org"]);
-
-    // 2. Act
-    await cancelAccountDeletion(db, { groups }, EMAIL, NOW);
-
-    // 3. Assert
-    assert.deepEqual(
-      groups.calls.filter(([op]) => op === "addMember"),
       [
-        ["addMember", "groups/rotasul00@monamienet.org", EMAIL],
-        ["addMember", "groups/rotasul01w@monamienet.org", EMAIL],
-      ]
+        projects.rotasul.store.get(`${ROTASUL}/organizationMemberships/${ANA_KEY}`).role,
+        projects.rotasul.store.get(`${ROTASUL}/groups/guias/groupMemberships/${ANA_KEY}`).roles,
+        projects.outro.store.get(`${OUTRO}/groups/vendas/groupMemberships/${ANA_KEY}`).roles,
+        [...db.store.get(`accounts/${ANA_KEY}`).organizationIds].sort(),
+        db.store.get("organizations/outro").status,
+        db.store.has(`accountDeletions/${ANA_KEY}`),
+      ],
+      ["member", ["publisher"], ["publisher", "subscriber"], ["outro", "rotasul"], "active", false]
     );
   });
 
-  test("Edge Case: a recorded leaf whose group is gone is skipped", async () => {
+  test("Edge Case: a group deleted meanwhile is not written back", async () => {
     // 1. Arrange
-    const db = fakeFirestore({ [`accountDeletions/${EMAIL}`]: pendingRecord() });
-    const groups = fakeGroups([]);
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
+    await ask(db, projects);
+    projects.rotasul.store.delete(`${ROTASUL}/groups/recepcao`);
 
     // 2. Act
-    await cancelAccountDeletion(db, { groups }, EMAIL, NOW);
+    await cancelAccountDeletion(db, depsOf(projects), ANA, NOW);
 
     // 3. Assert
-    assert.deepEqual(
-      groups.calls.filter(([op]) => op === "addMember"),
-      []
-    );
-    assert.equal(db.store.has(`accountDeletions/${EMAIL}`), false);
-  });
-
-  test("Edge Case: an owned organization that can no longer be reactivated is skipped", async () => {
-    // 1. Arrange
-    const db = fakeFirestore({
-      "organizations/frota": activeOwned({ status: "failed" }),
-      [`accountDeletions/${EMAIL}`]: pendingRecord({ ownedOrganizationIds: ["gone", "frota"] }),
-    });
-    const groups = fakeGroups([]);
-
-    // 2. Act
-    await cancelAccountDeletion(db, { groups }, EMAIL, NOW);
-
-    // 3. Assert
-    assert.equal(db.store.get("organizations/frota").status, "failed");
-    assert.equal(db.store.has("organizations/gone"), false);
-    assert.equal(db.store.has(`accountDeletions/${EMAIL}`), false);
-  });
-
-  test("Edge Case: an upper-case e-mail finds the record", async () => {
-    // 1. Arrange
-    const db = fakeFirestore({ [`accountDeletions/${EMAIL}`]: pendingRecord() });
-    const groups = fakeGroups(["rotasul01w@monamienet.org"]);
-
-    // 2. Act
-    await cancelAccountDeletion(db, { groups }, "ANA@x.com", NOW);
-
-    // 3. Assert
-    assert.equal(db.store.has(`accountDeletions/${EMAIL}`), false);
-  });
-
-  test("Sad Path: nothing pending is refused with code none", async () => {
-    // 1. Arrange
-    const db = fakeFirestore();
-    const groups = fakeGroups();
-
-    // 2. Act
-    const error = await deletionErrorOf(() => cancelAccountDeletion(db, { groups }, EMAIL, NOW));
-
-    // 3. Assert
-    assert.equal(error.code, "none");
+    assert.equal(projects.rotasul.store.has(`${ROTASUL}/groups/recepcao/groupMemberships/${ANA_KEY}`), false);
   });
 
   test("Sad Path: a deadline that has passed is refused with code late", async () => {
     // 1. Arrange
     const db = fakeFirestore({
-      [`accountDeletions/${EMAIL}`]: pendingRecord({ deleteAt: NOW }),
+      [`accountDeletions/${ANA_KEY}`]: { status: "pending", deleteAt: NOW, memberships: [] },
     });
-    const groups = fakeGroups(["rotasul01w@monamienet.org"]);
 
     // 2. Act
-    const error = await deletionErrorOf(() => cancelAccountDeletion(db, { groups }, EMAIL, NOW));
+    const error = await deletionErrorOf(() => cancelAccountDeletion(db, depsOf({}), ANA, NOW));
 
     // 3. Assert
     assert.equal(error.code, "late");
-    assert.equal(db.store.has(`accountDeletions/${EMAIL}`), true);
-    assert.deepEqual(groups.calls, []);
   });
 });
 
+/** A sign-in store: `getUserByEmail` / `deleteUser`, recording deletions. */
+function fakeAuth(users = {}) {
+  const deleted = [];
+  return {
+    deleted,
+    async getUserByEmail(email) {
+      if (!users[email]) throw Object.assign(new Error("no user"), { code: "auth/user-not-found" });
+      return { uid: users[email] };
+    },
+    async deleteUser(uid) {
+      deleted.push(uid);
+    },
+  };
+}
+
 describe("eraseDueAccounts - Unit Test Suite", () => {
-  /** An organization project holding Ana's position, trail and a day summary. */
-  function organizationWithAna() {
-    const db = fakeFirestore({
-      [`organizations/rotasul/positions/${EMAIL}`]: { name: "Ana" },
-      [`organizations/rotasul/positions/${EMAIL}/trail/p1`]: { lat: 1 },
-      [`organizations/rotasul/positions/${EMAIL}/trailDays/2026-10-01`]: { pointCount: 3 },
-      "organizations/rotasul/positions/bia@x.com": { name: "Bia" },
-    });
-    const auth = fakeAuth({ users: { [EMAIL]: "organization-uid-ana" } });
-    return { db, auth };
-  }
+  const dueRecord = (extra = {}) => ({
+    [`accountDeletions/${ANA_KEY}`]: {
+      email: ANA,
+      uid: "central-uid",
+      status: "pending",
+      deleteAt: NOW,
+      memberships: [{ organizationId: "rotasul", role: "member", groups: [] }],
+      ...extra,
+    },
+  });
 
-  test("Happy Path: a due account is erased everywhere", async () => {
+  test("Happy Path: a due account is erased in its organizations and centrally", async () => {
     // 1. Arrange
-    const central = fakeFirestore({ [`accountDeletions/${EMAIL}`]: pendingRecord({ deleteAt: NOW }) });
-    const organization = organizationWithAna();
+    const db = centralDb(dueRecord());
+    const rotasul = rotasulDb();
+    const auth = fakeAuth({ [ANA]: "org-uid" });
     const deletedCentral = [];
-    const deps = {
-      organization: async (id) => (id === "rotasul" ? organization : null),
-      deleteAuthUser: async (uid) => deletedCentral.push(uid),
-    };
 
     // 2. Act
-    const erased = await eraseDueAccounts(central, deps, NOW);
-
-    // 3. Assert
-    assert.deepEqual(erased, [EMAIL]);
-    assert.deepEqual(
-      [...organization.db.store.keys()].sort(),
-      ["organizations/rotasul/positions/bia@x.com"]
+    await eraseDueAccounts(
+      db,
+      {
+        organization: async (id) => (id === "rotasul" ? { db: rotasul, auth } : null),
+        deleteAuthUser: async (uid) => deletedCentral.push(uid),
+      },
+      NOW
     );
-    assert.deepEqual(organization.auth.deleted, ["organization-uid-ana"]);
-    assert.deepEqual(deletedCentral, ["central-uid"]);
-    assert.equal(central.store.has(`accountDeletions/${EMAIL}`), false);
-  });
-
-  test("Edge Case: accounts not yet due or not pending are left alone", async () => {
-    // 1. Arrange
-    const central = fakeFirestore({
-      [`accountDeletions/${EMAIL}`]: pendingRecord(),
-      "accountDeletions/bia@x.com": pendingRecord({
-        email: "bia@x.com",
-        deleteAt: NOW,
-        status: "cancelled",
-      }),
-    });
-    const organization = organizationWithAna();
-    const deps = { organization: async () => organization, deleteAuthUser: async () => {} };
-
-    // 2. Act
-    const erased = await eraseDueAccounts(central, deps, NOW);
 
     // 3. Assert
-    assert.deepEqual(erased, []);
-    assert.equal(central.store.size, 2);
-    assert.equal(organization.db.store.size, 4);
+    assert.deepEqual(
+      [
+        [...rotasul.store.keys()].filter((p) => p.includes(ANA_KEY)),
+        auth.deleted,
+        deletedCentral,
+        db.store.has(`accounts/${ANA_KEY}`),
+        db.store.has(`accountDeletions/${ANA_KEY}`),
+      ],
+      [[], ["org-uid"], ["central-uid"], false, false]
+    );
   });
 
-  test("Edge Case: an organization that no longer exists is skipped", async () => {
+  test("Edge Case: another person's position in the same project is kept", async () => {
     // 1. Arrange
-    const central = fakeFirestore({ [`accountDeletions/${EMAIL}`]: pendingRecord({ deleteAt: NOW }) });
-    const deps = { organization: async () => null, deleteAuthUser: async () => {} };
+    const db = centralDb(dueRecord());
+    const rotasul = rotasulDb();
+    const other = `${ROTASUL}/groups/guias/positions/${personKey("vera@x.com")}`;
+    rotasul.store.set(other, { email: "vera@x.com" });
 
     // 2. Act
-    const erased = await eraseDueAccounts(central, deps, NOW);
-
-    // 3. Assert
-    assert.deepEqual(erased, [EMAIL]);
-    assert.equal(central.store.has(`accountDeletions/${EMAIL}`), false);
-  });
-
-  test("Edge Case: sign-ins already gone are ignored", async () => {
-    // 1. Arrange
-    const central = fakeFirestore({ [`accountDeletions/${EMAIL}`]: pendingRecord({ deleteAt: NOW }) });
-    const organization = { db: fakeFirestore(), auth: fakeAuth() };
-    const notFound = Object.assign(new Error("gone"), { code: "auth/user-not-found" });
-    const deps = {
-      organization: async () => organization,
-      deleteAuthUser: async () => {
-        throw notFound;
+    await eraseDueAccounts(
+      db,
+      {
+        organization: async (id) => (id === "rotasul" ? { db: rotasul, auth: fakeAuth() } : null),
+        deleteAuthUser: async () => {},
       },
-    };
-
-    // 2. Act
-    const erased = await eraseDueAccounts(central, deps, NOW);
+      NOW
+    );
 
     // 3. Assert
-    assert.deepEqual(erased, [EMAIL]);
-    assert.equal(central.store.has(`accountDeletions/${EMAIL}`), false);
+    assert.ok(rotasul.store.has(other));
   });
 
-  test("Edge Case: without a uid the central sign-in is not deleted", async () => {
+  test("Sad Path: a record not yet due is left alone", async () => {
     // 1. Arrange
-    const central = fakeFirestore({
-      [`accountDeletions/${EMAIL}`]: pendingRecord({ deleteAt: NOW, uid: null }),
-    });
-    const deletedCentral = [];
-    const deps = {
-      organization: async () => null,
-      deleteAuthUser: async (uid) => deletedCentral.push(uid),
-    };
+    const db = centralDb(dueRecord({ deleteAt: new Date(NOW.getTime() + DAY_MS) }));
 
     // 2. Act
-    await eraseDueAccounts(central, deps, NOW);
+    const erased = await eraseDueAccounts(
+      db,
+      { organization: async () => null, deleteAuthUser: async () => {} },
+      NOW
+    );
 
     // 3. Assert
-    assert.deepEqual(deletedCentral, []);
+    assert.deepEqual([erased, db.store.has(`accountDeletions/${ANA_KEY}`)], [[], true]);
   });
+});
 
-  test("Sad Path: another organization sign-in error propagates and keeps the record", async () => {
+describe("requestAccountDeletion (more) - Unit Test Suite", () => {
+  test("Happy Path: the owner loses their group memberships in the owned organization", async () => {
     // 1. Arrange
-    const central = fakeFirestore({ [`accountDeletions/${EMAIL}`]: pendingRecord({ deleteAt: NOW }) });
-    const organization = { db: fakeFirestore(), auth: fakeAuth({ failure: "auth/internal-error" }) };
-    const deps = { organization: async () => organization, deleteAuthUser: async () => {} };
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
 
     // 2. Act
-    const act = eraseDueAccounts(central, deps, NOW);
+    await ask(db, projects);
 
     // 3. Assert
-    await assert.rejects(act, { code: "auth/internal-error" });
-    assert.equal(central.store.has(`accountDeletions/${EMAIL}`), true);
+    assert.equal(projects.outro.store.has(`${OUTRO}/groups/vendas/groupMemberships/${ANA_KEY}`), false);
   });
 
-  test("Sad Path: another central sign-in error propagates", async () => {
+  test("Edge Case: an organization whose project cannot be opened is skipped", async () => {
     // 1. Arrange
-    const central = fakeFirestore({ [`accountDeletions/${EMAIL}`]: pendingRecord({ deleteAt: NOW }) });
-    const deps = {
-      organization: async () => null,
-      deleteAuthUser: async () => {
-        throw Object.assign(new Error("boom"), { code: "auth/internal-error" });
+    const db = centralDb();
+    const projects = { outro: outroDb() };
+
+    // 2. Act
+    await ask(db, projects);
+
+    // 3. Assert
+    assert.deepEqual(
+      db.store.get(`accountDeletions/${ANA_KEY}`).memberships.map((m) => m.organizationId),
+      ["outro"]
+    );
+  });
+
+  test("Sad Path: the wrong id typed by an owner is refused with confirm", async () => {
+    // 1. Arrange
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
+
+    // 2. Act
+    const error = await deletionErrorOf(() => ask(db, projects, ["rotasul"]));
+
+    // 3. Assert
+    assert.deepEqual(
+      [error.code, db.store.get("organizations/outro").status, db.store.has(`accountDeletions/${ANA_KEY}`)],
+      ["confirm", "active", false]
+    );
+  });
+});
+
+describe("cancelAccountDeletion (more) - Unit Test Suite", () => {
+  test("Happy Path: the owner's kept admin membership is not written back over", async () => {
+    // 1. Arrange
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
+    await ask(db, projects);
+
+    // 2. Act
+    await cancelAccountDeletion(db, depsOf(projects), ANA, NOW);
+
+    // 3. Assert
+    assert.equal(projects.outro.store.get(`${OUTRO}/organizationMemberships/${ANA_KEY}`).role, "admin");
+  });
+
+  test("Edge Case: an organization whose project cannot be opened is skipped and the rest restored", async () => {
+    // 1. Arrange
+    const db = centralDb();
+    const projects = { rotasul: rotasulDb(), outro: outroDb() };
+    await ask(db, projects);
+
+    // 2. Act
+    await cancelAccountDeletion(db, depsOf({ outro: projects.outro }), ANA, NOW);
+
+    // 3. Assert
+    assert.deepEqual(
+      [
+        projects.rotasul.store.has(`${ROTASUL}/organizationMemberships/${ANA_KEY}`),
+        projects.outro.store.has(`${OUTRO}/groups/vendas/groupMemberships/${ANA_KEY}`),
+        db.store.has(`accountDeletions/${ANA_KEY}`),
+      ],
+      [false, true, false]
+    );
+  });
+
+  test("Sad Path: without a pending deletion it is refused with code none", async () => {
+    // 1. Arrange
+    const db = fakeFirestore();
+
+    // 2. Act
+    const error = await deletionErrorOf(() => cancelAccountDeletion(db, depsOf({}), ANA, NOW));
+
+    // 3. Assert
+    assert.equal(error.code, "none");
+  });
+});
+
+describe("eraseDueAccounts (more) - Unit Test Suite", () => {
+  const record = {
+    [`accountDeletions/${ANA_KEY}`]: {
+      email: ANA,
+      uid: "central-uid",
+      status: "pending",
+      deleteAt: NOW,
+      memberships: [],
+    },
+  };
+
+  test("Happy Path: an organization still in the accounts entry is erased too", async () => {
+    // 1. Arrange
+    const db = centralDb(record);
+    const rotasul = rotasulDb();
+
+    // 2. Act
+    await eraseDueAccounts(
+      db,
+      {
+        organization: async (id) => (id === "rotasul" ? { db: rotasul, auth: fakeAuth() } : null),
+        deleteAuthUser: async () => {},
       },
-    };
-
-    // 2. Act
-    const act = eraseDueAccounts(central, deps, NOW);
+      NOW
+    );
 
     // 3. Assert
-    await assert.rejects(act, { code: "auth/internal-error" });
+    assert.deepEqual([...rotasul.store.keys()].filter((p) => p.includes(ANA_KEY)), []);
+  });
+
+  test("Edge Case: a retired organization is skipped and the account is still erased centrally", async () => {
+    // 1. Arrange
+    const db = centralDb(record);
+
+    // 2. Act
+    const erased = await eraseDueAccounts(
+      db,
+      { organization: async () => null, deleteAuthUser: async () => {} },
+      NOW
+    );
+
+    // 3. Assert
+    assert.deepEqual(
+      [erased, db.store.has(`accounts/${ANA_KEY}`), db.store.has(`accountDeletions/${ANA_KEY}`)],
+      [[ANA], false, false]
+    );
+  });
+
+  test("Sad Path: a central sign-in already gone does not stop the erasure", async () => {
+    // 1. Arrange
+    const db = centralDb(record);
+
+    // 2. Act
+    const erased = await eraseDueAccounts(
+      db,
+      {
+        organization: async () => null,
+        deleteAuthUser: async () => {
+          throw Object.assign(new Error("gone"), { code: "auth/user-not-found" });
+        },
+      },
+      NOW
+    );
+
+    // 3. Assert
+    assert.deepEqual(erased, [ANA]);
   });
 });

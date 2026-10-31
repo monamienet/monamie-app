@@ -6,7 +6,6 @@ import 'access_token_source.dart';
 import 'check_command.dart';
 import 'firebase_cli.dart';
 import 'firestore_documents.dart';
-import 'group_directory.dart';
 import 'organization_check.dart';
 import 'organizations.dart';
 import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
@@ -36,7 +35,7 @@ String? activationProblem(
   required bool retired,
 }) {
   if (retired) {
-    return "Organization id '$id' is retired: its project and groups were "
+    return "Organization id '$id' is retired: its project and data were "
         'deleted, and the id can never be used again.';
   }
   final status = registry?['status'];
@@ -54,18 +53,17 @@ String? activationProblem(
 /// registry, but only after `check` passes and only from the statuses in
 /// [manualActivationStatuses].
 class ActivateCommand extends Command<void> {
-  ActivateCommand(this._cli, this._groups, this._firestore, this._tokens) {
+  ActivateCommand(this._cli, this._firestore, this._tokens) {
     argParser.addOption(
       'owner',
       help:
           "E-mail of the organization's owner (titular), who created it; "
           'deleting their account deletes the organization. Administration powers '
-          'come from the root group, not from this.',
+          'come from the Firestore memberships (`add-admin`), not from this.',
     );
   }
 
   final FirebaseCli _cli;
-  final GroupDirectory _groups;
   final FirestoreDocuments _firestore;
   final AccessTokenSource _tokens;
 
@@ -106,8 +104,8 @@ class ActivateCommand extends Command<void> {
     final results = await checkOrganization(
       id: id,
       cli: _cli,
-      groups: _groups,
       firestore: _firestore,
+      accessToken: accessToken,
       plan: plan is String ? plan : null,
     );
     printCheckResults(results);

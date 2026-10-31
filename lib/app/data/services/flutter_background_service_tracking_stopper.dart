@@ -19,7 +19,7 @@ class FlutterBackgroundServiceTrackingStopper
   }) : _injectedService = service,
        _markUntracked =
            markUntracked ??
-           ((email) => FirebaseProvider().updateIsPublishing(email, false));
+           ((email) => FirebaseProvider().markNotPublishing(email));
 
   final FlutterBackgroundService? _injectedService;
   final Future<void> Function(String email) _markUntracked;

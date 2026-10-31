@@ -128,4 +128,3 @@ button.
 | :--- | :--- | :--- |
 | `Error 400: origin_mismatch` in the Google window | port other than 5000 | serve on `localhost:5000` or add the origin (step 2) |
 | Blank screenshot | captured before Flutter painted | capture through CDP after waiting (step 4) |
-| "Nenhum grupo disponível" with `ClientException: Failed to fetch` | `workspace-groups-gateway` sends no CORS headers, so the browser blocks the response (Android works) | wait for the gateway fix: #49 |

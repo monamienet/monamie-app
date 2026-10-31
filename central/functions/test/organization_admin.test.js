@@ -1,181 +1,64 @@
 const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { isOrganizationAdmin } = require("../organization_admin");
+const { administeredOrganization } = require("../organization_admin");
+const { personKey } = require("../person_key");
+const { fakeFirestore } = require("./fake_firestore");
 
-const EMAIL = "ana@x.com";
-const ROOT = "rotasul00@monamienet.org";
+const OLGA = "olga@x.com";
 
-/** An in-memory Firestore with `doc(path).get()` only. */
-function fakeFirestore(docs = {}) {
+/** An opener for organization `rotasul` with `status`, whose project holds `docs`. */
+function opener(docs, status = "active") {
+  const db = fakeFirestore(docs);
   return {
-    doc: (path) => ({
-      async get() {
-        const data = docs[path];
-        return { exists: data !== undefined, get: (field) => data?.[field] };
-      },
-    }),
+    db,
+    open: async (id) => (id === "rotasul" ? { db, registry: { status } } : null),
   };
 }
 
-/**
- * A GroupsApi where `groups` maps each existing group e-mail to its direct
- * members. A group's resource name is `groups/<e-mail>`.
- */
-function fakeGroups(groups = {}) {
-  const calls = [];
-  return {
-    calls,
-    async lookup(email) {
-      calls.push(["lookup", email]);
-      return email in groups ? `groups/${email}` : null;
-    },
-    async isMember(name, email) {
-      calls.push(["isMember", name, email]);
-      const members = groups[name.replace(/^groups\//, "")] ?? [];
-      return members.includes(email);
-    },
-  };
-}
-
-const activeRegistry = (overrides = {}) => ({
-  "organizations/rotasul": { status: "active", ownerEmail: "bia@x.com", ...overrides },
+const membership = (email, role) => ({
+  [`organizations/rotasul/organizationMemberships/${personKey(email)}`]: { email, role },
 });
 
-describe("isOrganizationAdmin - Unit Test Suite", () => {
-  test("Happy Path: a direct member of the root group of an active organization is an administrator", async () => {
+describe("administeredOrganization - Unit Test Suite", () => {
+  test("Happy Path: an admin membership of an active organization gives its Firestore", async () => {
     // 1. Arrange
-    const db = fakeFirestore(activeRegistry());
-    const groups = fakeGroups({ [ROOT]: [EMAIL] });
+    const { db, open } = opener(membership(OLGA, "admin"));
 
     // 2. Act
-    const result = await isOrganizationAdmin(db, groups, "rotasul", EMAIL);
+    const result = await administeredOrganization(open, "rotasul", OLGA);
 
     // 3. Assert
-    assert.equal(result, true);
+    assert.equal(result, db);
   });
 
-  test("Edge Case: the e-mail is lower-cased before checking the membership", async () => {
+  test("Edge Case: the e-mail is matched ignoring case", async () => {
     // 1. Arrange
-    const db = fakeFirestore(activeRegistry());
-    const groups = fakeGroups({ [ROOT]: [EMAIL] });
+    const { db, open } = opener(membership(OLGA, "admin"));
 
     // 2. Act
-    const result = await isOrganizationAdmin(db, groups, "rotasul", "Ana@X.com");
+    const result = await administeredOrganization(open, "rotasul", "Olga@X.com");
 
     // 3. Assert
-    assert.equal(result, true);
-    assert.deepEqual(groups.calls.at(-1), ["isMember", `groups/${ROOT}`, EMAIL]);
+    assert.equal(result, db);
   });
 
-  test("Edge Case: an administrator without ownerEmail in the registry is still an administrator", async () => {
-    // 1. Arrange
-    const db = fakeFirestore(activeRegistry({ ownerEmail: undefined }));
-    const groups = fakeGroups({ [ROOT]: [EMAIL] });
-
-    // 2. Act
-    const result = await isOrganizationAdmin(db, groups, "rotasul", EMAIL);
-
-    // 3. Assert
-    assert.equal(result, true);
-  });
-
-  test("Edge Case: the owner who is not in the root group is not an administrator", async () => {
-    // 1. Arrange
-    const db = fakeFirestore(activeRegistry({ ownerEmail: EMAIL }));
-    const groups = fakeGroups({ [ROOT]: ["bia@x.com"] });
-
-    // 2. Act
-    const result = await isOrganizationAdmin(db, groups, "rotasul", EMAIL);
-
-    // 3. Assert
-    assert.equal(result, false);
-  });
-
-  test("Sad Path: a person who is not in the root group is not an administrator", async () => {
-    // 1. Arrange
-    const db = fakeFirestore(activeRegistry());
-    const groups = fakeGroups({ [ROOT]: ["bia@x.com"] });
-
-    // 2. Act
-    const result = await isOrganizationAdmin(db, groups, "rotasul", EMAIL);
-
-    // 3. Assert
-    assert.equal(result, false);
-  });
-
-  test("Sad Path: an organization without a root group has no administrators", async () => {
-    // 1. Arrange
-    const db = fakeFirestore(activeRegistry());
-    const groups = fakeGroups({});
-
-    // 2. Act
-    const result = await isOrganizationAdmin(db, groups, "rotasul", EMAIL);
-
-    // 3. Assert
-    assert.equal(result, false);
-  });
-
-  test("Sad Path: an organization missing from the registry has no administrators", async () => {
-    // 1. Arrange
-    const db = fakeFirestore({});
-    const groups = fakeGroups({ [ROOT]: [EMAIL] });
-
-    // 2. Act
-    const result = await isOrganizationAdmin(db, groups, "rotasul", EMAIL);
-
-    // 3. Assert
-    assert.equal(result, false);
-  });
-
-  for (const status of ["reserved", "provisioning", "deleting", "failed", undefined]) {
-    test(`Sad Path: an organization whose status is ${status} has no administrators`, async () => {
-      // 1. Arrange
-      const db = fakeFirestore(activeRegistry({ status }));
-      const groups = fakeGroups({ [ROOT]: [EMAIL] });
-
-      // 2. Act
-      const result = await isOrganizationAdmin(db, groups, "rotasul", EMAIL);
-
-      // 3. Assert
-      assert.equal(result, false);
-    });
-  }
-
-  const invalidIds = [
-    ["a two-letter id", "ab"],
-    ["a reserved id", "community"],
-    ["an id with digits", "rota1"],
-    ["an upper-case id", "RotaSul"],
-    ["a non-string id", 42],
-    ["a missing id", undefined],
+  const refused = [
+    ["a plain member", membership(OLGA, "member"), "active", "rotasul"],
+    ["someone without a membership", {}, "active", "rotasul"],
+    ["an administrator of a deleting organization", membership(OLGA, "admin"), "deleting", "rotasul"],
+    ["an organization missing from the registry", membership(OLGA, "admin"), "active", "outro"],
   ];
-  for (const [label, organizationId] of invalidIds) {
-    test(`Sad Path: ${label} is refused without touching Firestore or the groups`, async () => {
+  for (const [label, docs, status, id] of refused) {
+    test(`Sad Path: ${label} is not an administrator`, async () => {
       // 1. Arrange
-      const db = fakeFirestore({ [`organizations/${organizationId}`]: { status: "active" } });
-      const groups = fakeGroups({ [`${organizationId}00@monamienet.org`]: [EMAIL] });
+      const { open } = opener(docs, status);
 
       // 2. Act
-      const result = await isOrganizationAdmin(db, groups, organizationId, EMAIL);
+      const result = await administeredOrganization(open, id, OLGA);
 
       // 3. Assert
-      assert.equal(result, false);
-      assert.deepEqual(groups.calls, []);
-    });
-  }
-
-  for (const email of ["", undefined, null]) {
-    test(`Sad Path: a caller without an e-mail (${JSON.stringify(email)}) is not an administrator`, async () => {
-      // 1. Arrange
-      const db = fakeFirestore(activeRegistry());
-      const groups = fakeGroups({ [ROOT]: [EMAIL] });
-
-      // 2. Act
-      const result = await isOrganizationAdmin(db, groups, "rotasul", email);
-
-      // 3. Assert
-      assert.equal(result, false);
+      assert.equal(result, null);
     });
   }
 });

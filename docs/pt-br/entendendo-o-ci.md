@@ -249,12 +249,11 @@ proteções:
 
 Builds debug (`flutter run`) não são afetados e funcionam sem keystore.
 
-### E o `google_config.dart`?
+### E os IDs de cliente OAuth?
 
-O [lib/app/config/google_config.dart](../../lib/app/config/google_config.dart) é versionado
-normalmente porque seus valores **não são segredos**: o endereço e os caminhos do gateway de grupos. Os
-IDs de cliente OAuth não estão mais no código: vêm da config do projeto central, buscada no build. Tudo o que é compilado no app pode ser extraído do binário por qualquer
-pessoa. A proteção do gateway é o token Google (`Bearer`) que o app envia em cada requisição.
+Eles não estão no código: vêm da config do projeto central (`google-services.json`), buscada no build.
+Também **não são segredos**: tudo o que é compilado no app pode ser extraído do binário por qualquer pessoa.
+O que protege os dados é o login da pessoa, conferido pelas regras de segurança do Firebase.
 
 ## 5. Como o versionCode é definido
 

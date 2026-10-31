@@ -185,17 +185,6 @@ class AuthGoogleService {
     if (CurrentOrganizationFirebase.isSet) await _organizationAuth.signOut();
   }
 
-  Future<String?> getFirebaseIdToken() async {
-    // Pega o usuário logado atualmente no Firebase
-    final user = _organizationAuth.currentUser;
-
-    if (user != null) {
-      // getIdToken(true) força a atualização do token caso ele esteja expirado
-      return await user.getIdToken(true);
-    }
-    return null;
-  }
-
   void dispose() {
     _webSignInController.close();
   }

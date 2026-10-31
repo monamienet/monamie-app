@@ -19,9 +19,9 @@ revisões e código.
 | **período mínimo** | o menor tempo permitido entre duas posições gravadas | MonAmieNet, pelo plano | Community: 15 min; Standard: nenhum | `minPeriodMinutes`, `_minPeriod` | `config/plan.minIntervalMinutes` |
 | **período** | o tempo que um administrador pede entre duas posições; nunca menor que o **período mínimo** | administrador, em *Ajustes de acompanhamento* | 1 a 30 min | `periodMinutes` | `config/tracking.intervalMinutes` |
 | **raio** | quanto a pessoa precisa se afastar da última posição gravada para gravar outra | administrador | 5 a 500 m | `radiusMeters` | `config/tracking.distanceMeters` |
-| **capturedAt** | quando o aparelho de quem compartilha atualizou o documento dele pela última vez | o aparelho | data e hora | `capturedAt` | `positions/{email}.capturedAt` |
+| **capturedAt** | quando o aparelho de quem compartilha atualizou o documento dele pela última vez | o aparelho | data e hora | `capturedAt` | `groups/{groupId}/positions/{personKey}.capturedAt` |
 | **idade** | quanto tempo passou desde o **capturedAt** | calculada por quem observa | agora − **capturedAt** | `now.difference(capturedAt)` | — |
-| **isPublishing** | se a pessoa quer compartilhar | a própria pessoa, pelo botão | ligado ou desligado | `isPublishing` | `positions/{email}.isPublishing` |
+| **isPublishing** | se a pessoa quer compartilhar | a própria pessoa, pelo botão | ligado ou desligado | `isPublishing` | `groups/{groupId}/positions/{personKey}.isPublishing` |
 | **heartbeat** | a renovação do **capturedAt** sem gravar posição nova, repetida a intervalo constante | código | a cada 5 min | `heartbeat` | — |
 | **validade** | por quanto tempo um **capturedAt** mantém a pessoa no mapa | código | 12 min | `validity` | — |
 | **recheck** | a repetição da conferência do mapa sem nenhuma mudança no Firestore | código | a cada 30 s | `recheck` | — |
@@ -29,20 +29,26 @@ revisões e código.
 Os três valores fixos ficam em [`sharing_times.dart`](../../lib/app/data/tracking/sharing_times.dart).
 O **capturedAt** vem do relógio do aparelho; o `receivedAt` do mesmo documento é a hora do servidor em que a última posição chegou, usada pelas regras para conferir o **período mínimo**.
 
+Cada pessoa tem **um documento de posição por grupo** em que é `publisher` (quem publica a própria localização naquele grupo): `organizations/{id}/groups/{groupId}/positions/{personKey}`, onde `personKey` é o hash do e-mail. Não existe "grupo ativo": com o compartilhamento ligado, a mesma posição vai para todos esses grupos, e o **isPublishing** liga e desliga em todos juntos.
+
 Na tela de *Ajustes*, o **período** também aparece como frequência ("até 4 posições por hora"). É só outra
 forma de mostrar o mesmo número: a frequência é o inverso do **período**.
 
 ## 2. O caminho de uma posição
 
 Quem compartilha tem, no próprio aparelho, um serviço em segundo plano (um *isolate*, uma parte do app que
-roda separada da tela). Ele faz duas coisas:
+roda separada da tela). Como não pode perguntar à tela, ele mesmo acompanha, no Firestore, em quais grupos a
+pessoa é `publisher`. Ele faz duas coisas:
 
 1. **Grava posições.** O GPS entrega um ponto mais ou menos a cada **período**. O serviço só grava se a
    pessoa saiu do **raio** em volta da última posição gravada e, no Community, se já passou o **período
-   mínimo** desde a última posição gravada. As regras do Firestore conferem o **período mínimo** de novo,
-   com o relógio do servidor, então um app modificado não consegue burlar o plano.
-2. **Bate o heartbeat.** A cada **heartbeat**, ele renova só o **capturedAt**, sem tocar na posição. Por não
-   mudar a posição, o **heartbeat** não esbarra no **período mínimo**.
+   mínimo** desde a última posição gravada. Cada posição vai para **todos** os grupos em que a pessoa é
+   `publisher`, num lote (*batch*) por grupo: a posição, um ponto do trajeto (`trail`) e o resumo do dia
+   (`trailDays`). Se um grupo recusar (por exemplo, porque a pessoa acabou de perder o papel nele), os
+   outros seguem. As regras do Firestore conferem o **período mínimo** de novo, com o relógio do servidor,
+   então um app modificado não consegue burlar o plano.
+2. **Bate o heartbeat.** A cada **heartbeat**, ele renova só o **capturedAt**, em cada grupo, sem tocar na
+   posição. Por não mudar a posição, o **heartbeat** não esbarra no **período mínimo**.
 
 Uma posição nova também renova o **capturedAt**. Por isso, enquanto o aparelho está vivo e conectado, a
 **idade** nunca passa de um **heartbeat** (5 minutos), esteja a pessoa andando ou parada.
@@ -53,14 +59,16 @@ internet.
 
 ## 3. Quem aparece no mapa
 
-O aparelho de quem observa recebe do Firestore os documentos da equipe selecionada e confere, pessoa por
+O aparelho de quem observa (quem é `subscriber` do grupo, ou administra a organização) recebe do Firestore
+os documentos de posição do grupo selecionado que não têm `removedAt` (quem perdeu o papel `publisher` ou
+saiu do grupo tem `removedAt` preenchido pelas funções centrais e some na hora) e confere, pessoa por
 pessoa:
 
 > a pessoa aparece no mapa se o **isPublishing** estiver ligado **e** a **idade** for menor que a **validade**.
 
 Essa conferência roda em dois momentos:
 
-- quando o Firestore avisa que algum documento da equipe mudou;
+- quando o Firestore avisa que algum documento do grupo mudou;
 - a cada **recheck**, com os documentos que o aparelho já tem e o horário atual.
 
 O **recheck** existe por causa do aparelho que morre. Bateria acabou ou o sistema fechou o app: ninguém
@@ -73,8 +81,8 @@ pessoa sai do mapa quando passa da **validade**.
 
 | Como parou | Quem grava **isPublishing** desligado | Quando some do mapa |
 |---|---|---|
-| Botão de compartilhamento | o próprio app, na hora | assim que o Firestore avisa quem observa |
-| Logout, troca de organização, exclusão da conta | o próprio app, antes de sair | assim que o Firestore avisa quem observa |
+| Botão de compartilhamento | o próprio app, na hora, em cada grupo em que a pessoa publica | assim que o Firestore avisa quem observa |
+| Logout, troca de organização, exclusão da conta | o próprio app, antes de sair, em cada grupo | assim que o Firestore avisa quem observa |
 | Aparelho morto (bateria, sistema, sem internet) | ninguém | até uma **validade** mais um **recheck** depois do último **capturedAt** |
 
 No último caso, o documento continua com **isPublishing** ligado no Firestore. Só a tela de quem observa

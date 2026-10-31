@@ -1,6 +1,6 @@
 {
   "name": "monamie-functions",
-  "description": "MonAmie organization functions: custom claims (share, watch, admin) from Google Groups",
+  "description": "MonAmie organization functions: administrators change the organization's branding",
   "engines": {
     "node": "22"
   },

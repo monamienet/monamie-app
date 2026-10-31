@@ -1,9 +1,9 @@
-import 'package:monamie_app/app/config/organization/group_address.dart';
+import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
 
 import 'branding.dart';
 import 'firebase_cli.dart';
 import 'firestore_documents.dart';
-import 'group_directory.dart';
+import 'memberships.dart';
 import 'organizations.dart';
 
 /// The outcome of one readiness check: [problem] is `null` when it passed.
@@ -16,17 +16,19 @@ class CheckResult {
   bool get passed => problem == null;
 }
 
-/// Checks that organization [id] has the three things the app needs before it can
-/// be activated: its Firebase project with the MonAmie apps registered, its
-/// root group with subgroups named `<id>NN`, and a branding name.
+/// Checks that organization [id] has what the app needs before it can be
+/// activated: its Firebase project with the MonAmie apps registered, at
+/// least one administrator whose memberships agree with the central
+/// `accounts` index, and a branding name. [accessToken] reads the
+/// memberships and `accounts`, which no client may read.
 ///
 /// Every check runs even when an earlier one fails, so one run lists
 /// everything left to do.
 Future<List<CheckResult>> checkOrganization({
   required String id,
   required FirebaseCli cli,
-  required GroupDirectory groups,
   required FirestoreDocuments firestore,
+  required String accessToken,
   String? plan,
 }) async {
   checkOrganizationId(id);
@@ -47,16 +49,21 @@ Future<List<CheckResult>> checkOrganization({
           : 'expected exactly one, found ${apps.length}: '
                 '${apps.isEmpty ? '(none)' : apps.join(', ')}.';
     }),
-    await _check('Root group ${rootGroupEmail(id)}', () async {
-      final members = await groups.members(rootGroupEmail(id));
-      final misnamed = [
-        for (final member in members)
-          if (member.isGroup && !_isSubgroupOf(id, member.email)) member.email,
-      ];
-      return misnamed.isEmpty
-          ? null
-          : 'subgroups not named ${id}NN@monamienet.org (a team), so the app '
-                'cannot find their members: ${misnamed.join(', ')}.';
+    await _check('Memberships (${organizationMembershipsPath(id)})', () async {
+      final memberships = await firestore.list(
+        projectId: projectId,
+        collectionPath: organizationMembershipsPath(id),
+        accessToken: accessToken,
+      );
+      final accounts = {
+        for (final membership in memberships)
+          membership.id: await firestore.get(
+            projectId: centralProjectId,
+            path: FirestorePaths.account(membership.id),
+            accessToken: accessToken,
+          ),
+      };
+      return membershipProblem(id, memberships, accounts);
     }),
     await _check('Branding name (${brandingDocumentPath(id)})', () async {
       final branding = await firestore.get(
@@ -69,14 +76,6 @@ Future<List<CheckResult>> checkOrganization({
           : 'missing. Run `dart run tool/organization.dart publish $id --name ...`.';
     }),
   ];
-}
-
-/// Whether [email] is a team group of organization [id]: `<id>NN@`, 01–99.
-bool _isSubgroupOf(String id, String email) {
-  final address = parseGroupAddress(email);
-  return address != null &&
-      address.organizationId == id &&
-      address.level == GroupLevel.team;
 }
 
 Future<CheckResult> _check(String label, Future<String?> Function() run) async {

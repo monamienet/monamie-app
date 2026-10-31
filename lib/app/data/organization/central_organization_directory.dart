@@ -16,19 +16,14 @@ class CentralOrganizationDirectory implements OrganizationDirectory {
   final String _platform;
 
   @override
-  Future<List<OrganizationCandidate>> organizationsOfSignedInUser({
-    bool fresh = false,
-  }) async {
+  Future<List<OrganizationCandidate>> organizationsOfSignedInUser() async {
     final functions = this.functions ?? CentralFirebase.functions;
     final result = await functions
         .httpsCallable(
           'resolveOrganizations',
           options: HttpsCallableOptions(timeout: const Duration(seconds: 30)),
         )
-        .call<Object?>({
-          'platform': _platform,
-          'fresh': ?(fresh ? true : null),
-        });
+        .call<Object?>({'platform': _platform});
     return parseOrganizationCandidates(result.data);
   }
 }

@@ -60,7 +60,7 @@ class OrganizationPickerView extends GetView<AuthGoogleController> {
                   child: ListView(
                     children: [
                       // Someone already in an organization can be invited to
-                      // another one (or another team): the invites come first.
+                      // another one (or another group): the invites come first.
                       for (final invite in controller.pendingInvites) ...[
                         InviteCard(invite: invite, controller: controller),
                         const SizedBox(height: 12),

@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
 
-/// A person's last position: `organizations/{id}/positions/{email}`.
+/// A person's last position in a group:
+/// `organizations/{id}/groups/{groupId}/positions/{personKey}`.
 class UserModel {
   String email;
   String? name;
@@ -12,9 +13,6 @@ class UserModel {
   DateTime? capturedAt;
   bool? isPublishing;
 
-  /// The team group's e-mail the person shares with.
-  String? groupId;
-
   UserModel({
     required this.email,
     this.name,
@@ -22,7 +20,6 @@ class UserModel {
     this.lng,
     this.capturedAt,
     this.isPublishing,
-    this.groupId,
   });
 
   UserModel.fromMap(Map<String, dynamic> json)
@@ -31,8 +28,7 @@ class UserModel {
       lat = (json[PositionFields.lat] as num?)?.toDouble(),
       lng = (json[PositionFields.lng] as num?)?.toDouble(),
       capturedAt = (json[PositionFields.capturedAt] as Timestamp?)?.toDate(),
-      isPublishing = json[PositionFields.isPublishing] as bool?,
-      groupId = json[PositionFields.groupId]?.toString();
+      isPublishing = json[PositionFields.isPublishing] as bool?;
 
   Map<String, dynamic> toMap() {
     return {
@@ -42,7 +38,6 @@ class UserModel {
       if (lng != null) PositionFields.lng: lng,
       if (capturedAt != null) PositionFields.capturedAt: capturedAt,
       if (isPublishing != null) PositionFields.isPublishing: isPublishing,
-      if (groupId != null) PositionFields.groupId: groupId,
     };
   }
 }

@@ -10,7 +10,7 @@ abstract class Routes {
   static const NO_ORGANIZATION = _Paths.NO_ORGANIZATION;
   static const WELCOME = _Paths.WELCOME;
   static const APPEARANCE = _Paths.APPEARANCE;
-  static const TEAMS = _Paths.TEAMS;
+  static const GROUPS = _Paths.GROUPS;
   static const TRACKING_SETTINGS = _Paths.TRACKING_SETTINGS;
   static const MY_ACCOUNT = _Paths.MY_ACCOUNT;
   static const DELETION_PENDING = _Paths.DELETION_PENDING;
@@ -24,7 +24,7 @@ abstract class _Paths {
   static const NO_ORGANIZATION = '/sem-organizacao';
   static const WELCOME = '/boas-vindas';
   static const APPEARANCE = '/admin/appearance';
-  static const TEAMS = '/admin/teams';
+  static const GROUPS = '/admin/groups';
   static const TRACKING_SETTINGS = '/admin/tracking';
   static const MY_ACCOUNT = '/minha-conta';
   static const DELETION_PENDING = '/em-exclusao';

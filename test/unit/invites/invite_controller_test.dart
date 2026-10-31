@@ -2,27 +2,17 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invite_controller.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
 
-const norte = Team(
-  number: '01',
-  key: 'rotasul01',
-  name: 'Equipe Norte',
-  people: [],
-);
-const leste = Team(
-  number: '03',
-  key: 'rotasul03',
-  name: 'Equipe Leste',
-  people: [],
-);
+const norte = Group(id: '01', name: 'Equipe Norte', people: []);
+const leste = Group(id: '03', name: 'Equipe Leste', people: []);
 
 const _result = InviteSendResult(
-  team: '01',
-  teamName: 'Equipe Norte',
+  groupId: '01',
+  groupName: 'Equipe Norte',
   sent: ['ana@x.com'],
   notEmailed: [],
   skipped: {},
@@ -32,9 +22,9 @@ const _result = InviteSendResult(
 typedef SendCall = ({
   String organizationId,
   String organizationName,
-  String? team,
-  String? firstTeamName,
-  List<({String email, Set<TeamRole> roles})> invites,
+  String? groupId,
+  String? firstGroupName,
+  List<({String email, Set<GroupRole> roles})> invites,
 });
 
 /// [InvitesBackend] that records `send`, optionally waits on [gate] and
@@ -48,15 +38,15 @@ class FakeInvitesBackend implements InvitesBackend {
   Future<InviteSendResult> send(
     String organizationId, {
     required String organizationName,
-    String? team,
-    String? firstTeamName,
-    required List<({String email, Set<TeamRole> roles})> invites,
+    String? groupId,
+    String? firstGroupName,
+    required List<({String email, Set<GroupRole> roles})> invites,
   }) async {
     sends.add((
       organizationId: organizationId,
       organizationName: organizationName,
-      team: team,
-      firstTeamName: firstTeamName,
+      groupId: groupId,
+      firstGroupName: firstGroupName,
       invites: invites,
     ));
     await gate?.future;
@@ -65,7 +55,7 @@ class FakeInvitesBackend implements InvitesBackend {
   }
 
   @override
-  Future<List<Invite>> listForTeam(String organizationId, String team) =>
+  Future<List<Invite>> listForGroup(String organizationId, String groupId) =>
       throw UnimplementedError();
 
   @override
@@ -86,14 +76,14 @@ class FakeInvitesBackend implements InvitesBackend {
 late FakeInvitesBackend backend;
 
 InviteController controllerWith({
-  List<Team> teams = const [norte, leste],
-  String? team,
+  List<Group> groups = const [norte, leste],
+  String? groupId,
 }) => InviteController(
   organizationId: 'rotasul',
   organizationName: 'Rota Sul',
-  teams: teams,
+  groups: groups,
   backend: backend,
-  team: team,
+  groupId: groupId,
 );
 
 /// A controller for team 01 with ana (share) in the list.
@@ -115,11 +105,11 @@ void main() {
       const teams = [norte, leste];
 
       // 2. Act
-      final controller = controllerWith(teams: teams);
+      final controller = controllerWith(groups: teams);
 
       // 3. Assert
-      expect(controller.team.value, '01');
-      expect(controller.firstTeamMode, isFalse);
+      expect(controller.groupId.value, '01');
+      expect(controller.firstGroupMode, isFalse);
     });
 
     test('Edge Case: a given team wins over the first one', () {
@@ -127,21 +117,21 @@ void main() {
       const team = '03';
 
       // 2. Act
-      final controller = controllerWith(team: team);
+      final controller = controllerWith(groupId: team);
 
       // 3. Assert
-      expect(controller.team.value, '03');
+      expect(controller.groupId.value, '03');
     });
 
     test('Edge Case: with no teams it is in first-team mode', () {
       // 1. Arrange
-      const teams = <Team>[];
+      const teams = <Group>[];
 
       // 2. Act
-      final controller = controllerWith(teams: teams);
+      final controller = controllerWith(groups: teams);
 
       // 3. Assert
-      expect(controller.firstTeamMode, isTrue);
+      expect(controller.firstGroupMode, isTrue);
     });
 
     final names = <String, bool>{
@@ -156,13 +146,13 @@ void main() {
         '${valid ? 'Happy Path' : 'Sad Path'}: first team name "$name" is ${valid ? 'valid' : 'refused'}',
         () {
           // 1. Arrange
-          final controller = controllerWith(teams: const []);
+          final controller = controllerWith(groups: const []);
 
           // 2. Act
-          controller.firstTeamName.value = name;
+          controller.firstGroupName.value = name;
 
           // 3. Assert
-          expect(controller.firstTeamProblem == null, valid);
+          expect(controller.firstGroupProblem == null, valid);
         },
       );
     }
@@ -179,7 +169,7 @@ void main() {
       // 3. Assert
       expect(added, isTrue);
       expect(controller.people.map((p) => p.email), ['ana@x.com']);
-      expect(controller.people.single.roles, {TeamRole.share});
+      expect(controller.people.single.roles, {GroupRole.publisher});
       expect(controller.draftError.value, isEmpty);
     });
 
@@ -230,23 +220,23 @@ void main() {
       final ana = controller.people.single;
 
       // 2. Act
-      controller.toggle(ana, TeamRole.watch);
+      controller.toggle(ana, GroupRole.subscriber);
 
       // 3. Assert
-      expect(ana.roles, {TeamRole.share, TeamRole.watch});
+      expect(ana.roles, {GroupRole.publisher, GroupRole.subscriber});
     });
 
     test('Edge Case: toggling share again removes it', () {
       // 1. Arrange
       final controller = readyController();
       final ana = controller.people.single;
-      controller.toggle(ana, TeamRole.watch);
+      controller.toggle(ana, GroupRole.subscriber);
 
       // 2. Act
-      controller.toggle(ana, TeamRole.share);
+      controller.toggle(ana, GroupRole.publisher);
 
       // 3. Assert
-      expect(ana.roles, {TeamRole.watch});
+      expect(ana.roles, {GroupRole.subscriber});
     });
 
     test('Sad Path: a person left with no role blocks the send', () {
@@ -255,7 +245,7 @@ void main() {
       final ana = controller.people.single;
 
       // 2. Act
-      controller.toggle(ana, TeamRole.share);
+      controller.toggle(ana, GroupRole.publisher);
 
       // 3. Assert
       expect(controller.canSend, isFalse);
@@ -274,20 +264,20 @@ void main() {
       expect(sent, isTrue);
       final call = backend.sends.single;
       expect(call.organizationId, 'rotasul');
-      expect(call.team, '01');
-      expect(call.firstTeamName, isNull);
+      expect(call.groupId, '01');
+      expect(call.firstGroupName, isNull);
       expect(call.invites.map((p) => p.email), ['ana@x.com']);
-      expect(call.invites.single.roles, {TeamRole.share});
+      expect(call.invites.single.roles, {GroupRole.publisher});
       expect(controller.result.value, same(_result));
       expect(controller.isSending.value, isFalse);
     });
 
     test(
-      'Edge Case: in first-team mode sends firstTeamName instead of team',
+      'Edge Case: in first-team mode sends firstGroupName instead of team',
       () async {
         // 1. Arrange
-        final controller = controllerWith(teams: const []);
-        controller.firstTeamName.value = 'Equipe Serra';
+        final controller = controllerWith(groups: const []);
+        controller.firstGroupName.value = 'Equipe Serra';
         controller.add('ana@x.com');
 
         // 2. Act
@@ -295,8 +285,8 @@ void main() {
 
         // 3. Assert
         expect(sent, isTrue);
-        expect(backend.sends.single.team, isNull);
-        expect(backend.sends.single.firstTeamName, 'Equipe Serra');
+        expect(backend.sends.single.groupId, isNull);
+        expect(backend.sends.single.firstGroupName, 'Equipe Serra');
       },
     );
 

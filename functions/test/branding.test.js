@@ -1,7 +1,12 @@
 const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { BrandingError, activeThemeIdsFrom, validateBranding } = require("../branding");
+const {
+  BrandingError,
+  activeThemeIdsFrom,
+  isOrganizationId,
+  validateBranding,
+} = require("../branding");
 
 const themes = new Set(["grafite", "oceano"]);
 
@@ -174,6 +179,43 @@ describe("activeThemeIdsFrom - Unit Test Suite", () => {
 
       // 3. Assert
       assert.equal(ids.size, 0);
+    });
+  }
+});
+
+describe("isOrganizationId - Unit Test Suite", () => {
+  test("Happy Path: lowercase letters are an organization id", () => {
+    // 1. Arrange
+    const id = "rotasul";
+
+    // 2. Act
+    const valid = isOrganizationId(id);
+
+    // 3. Assert
+    assert.equal(valid, true);
+  });
+
+  test("Edge Case: three letters are enough", () => {
+    // 1. Arrange
+    const id = "abc";
+
+    // 2. Act
+    const valid = isOrganizationId(id);
+
+    // 3. Assert
+    assert.equal(valid, true);
+  });
+
+  for (const id of ["ab", "Rota", "rota/x", "", null, 42]) {
+    test(`Sad Path: ${JSON.stringify(id)} is not an organization id`, () => {
+      // 1. Arrange
+      const input = id;
+
+      // 2. Act
+      const valid = isOrganizationId(input);
+
+      // 3. Assert
+      assert.equal(valid, false);
     });
   }
 });
