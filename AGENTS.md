@@ -30,8 +30,6 @@ Onboarding an organization needs no app release: see `docs/en-us/white-label.md`
 
 ### Organizations, Groups and Users
 
-> **Migration complete (#159).** Groups and roles moved from Google Groups to Firestore membership documents; the plan, which keeps the reasons behind each decision, is [docs/pt-br/migracao-grupos-firestore.md](docs/pt-br/migracao-grupos-firestore.md). No code reads Google Groups, the groups gateway or custom claims, and none of them exists any more: the old Google Groups, the gateway's project, its Workspace delegation, the `groups-admin@` Workspace role and the old `partners/` data were deleted on 2026-10-31 (#164).
-
 Who belongs where lives in Firestore documents of the organization's project, **written only by the central functions** (`central/functions/`, Admin SDK) and by `dart run tool/organization.dart add-admin`; the rules let no client write them.
 
 - **personKey**: every document about a person is keyed by `personKey(email)`, the lowercase-hex SHA-256 of the trimmed, lowercased e-mail, so no e-mail appears in a document name; each document also stores `email`. Twins that must agree: `person_key.js` in `central/functions/` and `functions/`, `lib/app/data/organization/person_key.dart` (also used by `tool/`), and `personKey()` in `firestore.rules` and `storage.rules`. Fixed test vector: `ana@example.com` → `8e43ca37…a018e11`.
