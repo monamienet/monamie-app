@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 
 import 'account_deletion.dart';
@@ -45,7 +45,7 @@ class DeletionPendingView extends GetView<AuthGoogleController> {
                 ? 'Em ${longDate(deletion.deleteAt)} apagamos de vez sua '
                       'conta e seus dados no MonAmie.'
                 : 'Em ${longDate(deletion.deleteAt)} apagamos de vez a $name, '
-                      'as equipes, o histórico de todos e a sua conta. Até lá '
+                      'os grupos, o histórico de todos e a sua conta. Até lá '
                       'ninguém usa a organização.';
             final error = controller.deletionError.value;
             return Column(
@@ -98,7 +98,7 @@ class DeletionPendingView extends GetView<AuthGoogleController> {
                     onPressed: busy
                         ? null
                         : restored
-                        ? controller.recheckPartners
+                        ? controller.recheckOrganizations
                         : controller.cancelAccountDeletion,
                     child: busy
                         ? const SizedBox(

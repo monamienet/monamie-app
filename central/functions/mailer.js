@@ -16,26 +16,26 @@ function escapeHtml(text) {
 
 /**
  * The invite e-mail of the canvas (*E-mail de convite*), in pt-BR. It uses
- * the partner's name; MonAmie appears only as the app to install (#89).
+ * the organization's name; MonAmie appears only as the app to install (#89).
  *
- * @param {{partnerName: string, teamName: string, invitedByName: string,
- *   invitedByEmail: string, email: string, roles: string[],
+ * @param {{organizationName: string, groupName: string, inviterName: string,
+ *   inviterEmail: string, email: string, roles: string[],
  *   expiresAt: Date}} invite
  * @returns {{subject: string, text: string, html: string}}
  */
 function inviteEmail(invite) {
-  const shares = invite.roles.includes("share");
+  const shares = invite.roles.includes("publisher");
   const lines = [
-    ...(shares ? ["Compartilhar sua localização com a equipe"] : []),
-    ...(invite.roles.includes("watch") ? ["Ver no mapa quem está em campo"] : []),
+    ...(shares ? ["Compartilhar sua localização com o grupo"] : []),
+    ...(invite.roles.includes("subscriber") ? ["Ver no mapa quem está em campo"] : []),
   ];
   const until = `${invite.expiresAt.getUTCDate()} de ${MONTHS[invite.expiresAt.getUTCMonth()]}`;
   const privacy = shares
     ? "Sua localização só é compartilhada depois que você ativar no app, e você pode desligar quando quiser. "
     : "";
-  const subject = `${invite.invitedByName} convidou você para a ${invite.partnerName}`;
+  const subject = `${invite.inviterName} convidou você para a ${invite.organizationName}`;
   const text = [
-    `${invite.invitedByName} chamou você para a ${invite.teamName} da ${invite.partnerName}.`,
+    `${invite.inviterName} chamou você para o grupo ${invite.groupName} da ${invite.organizationName}.`,
     "",
     "No app, você vai:",
     ...lines.map((l) => `- ${l}`),
@@ -45,16 +45,16 @@ function inviteEmail(invite) {
     "",
     `${privacy}O convite vale até ${until}.`,
     "",
-    `Você recebeu este e-mail porque ${invite.invitedByEmail} convidou ${invite.email}. Se não reconhece o convite, é só ignorar.`,
+    `Você recebeu este e-mail porque ${invite.inviterEmail} convidou ${invite.email}. Se não reconhece o convite, é só ignorar.`,
   ].join("\n");
   const html = `<div style="font-family:system-ui,sans-serif;color:#1B1838;max-width:520px">
-<h2>${escapeHtml(invite.partnerName)}</h2>
-<p><strong>${escapeHtml(invite.invitedByName)}</strong> chamou você para a <strong>${escapeHtml(invite.teamName)}</strong> da ${escapeHtml(invite.partnerName)}.</p>
+<h2>${escapeHtml(invite.organizationName)}</h2>
+<p><strong>${escapeHtml(invite.inviterName)}</strong> chamou você para o grupo <strong>${escapeHtml(invite.groupName)}</strong> da ${escapeHtml(invite.organizationName)}.</p>
 <p><strong>No app, você vai</strong></p><ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul>
 <p><a href="${PLAY_URL}" style="display:inline-block;padding:14px 22px;border-radius:14px;background:#0B7F7B;color:#fff;text-decoration:none;font-weight:800">Aceitar convite</a></p>
 <ol><li>Instale o app MonAmie (o botão leva até a loja, se precisar).</li><li>Entre com <strong>${escapeHtml(invite.email)}</strong>, a conta que recebeu este convite.</li></ol>
 <p style="color:#4A4858">${escapeHtml(privacy)}O convite vale até ${until}.</p>
-<p style="color:#4A4858;font-size:12px">Você recebeu este e-mail porque ${escapeHtml(invite.invitedByEmail)} convidou ${escapeHtml(invite.email)}. Se não reconhece o convite, é só ignorar.</p>
+<p style="color:#4A4858;font-size:12px">Você recebeu este e-mail porque ${escapeHtml(invite.inviterEmail)} convidou ${escapeHtml(invite.email)}. Se não reconhece o convite, é só ignorar.</p>
 </div>`;
   return { subject, text, html };
 }

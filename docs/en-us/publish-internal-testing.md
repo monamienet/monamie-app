@@ -112,12 +112,12 @@ CONFIG_SA_EMAIL=$CONFIG_SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
 # App
 REPO=monamienet/monamie-app
 SUBJECT_PREFIX=$(gh api repos/$REPO/actions/oidc/customization/sub --jq .sub_claim_prefix)  # start of the token subject (C10)
-FIREBASE_PROJECT=monamienet-app        # central project: sign-in and the partner registry
+FIREBASE_PROJECT=monamienet-app        # central project: sign-in and the organization registry
 SA_NAME=wlif-monamie-app-play     # deploy service account (C9)
 SA_EMAIL=$SA_NAME@$GCP_PROJECT.iam.gserviceaccount.com
 ```
 
-There is a single app for every partner. Onboarding a partner needs no change here and no release:
+There is a single app for every organization. Onboarding an organization needs no change here and no release:
 see [white-label.md](white-label.md).
 
 ---
@@ -190,8 +190,8 @@ The expected result is the API listed, `state: ACTIVE` and the condition with th
 Every build fetches the central project's `google-services.json` (C4). CI does that with a role that has exactly the two permissions the Firebase CLI uses for it: listing the apps
 (`firebase.clients.list`) and reading an app's config (`firebase.clients.get`). The predefined
 `roles/firebase.viewer` is **not** used: it also reads product data, such as the Firestore documents with
-the teams' location history. The central `resolvePartners` function uses the same role, bound on each
-partner project, to read partners' Firebase options at runtime (white-label.md).
+the teams' location history. The central `resolveOrganizations` function uses the same role, bound on each
+organization project, to read organizations' Firebase options at runtime (white-label.md).
 
 The role already exists in the monamienet.org organization
 (`organizations/666407655233/roles/firebaseAppConfigReader`); the commands below only matter to rebuild it.
@@ -273,8 +273,8 @@ storeFile=<PATH>/upload.jks
 ### B2. Sign in to the Firebase CLI
 
 Every build needs the central project's `google-services.json` (`monamienet-app`, used for sign-in),
-which is not versioned: it holds API keys. Partners' projects are not involved: the app binds them at
-runtime. When the file is missing, Gradle fetches it with `dart run tool/partner.dart firebase`, which
+which is not versioned: it holds API keys. Organizations' projects are not involved: the app binds them at
+runtime. When the file is missing, Gradle fetches it with `dart run tool/organization.dart firebase`, which
 calls the Firebase CLI with **your own** account:
 
 ```bash
@@ -284,7 +284,7 @@ firebase login            # or firebase login --reauth when the credentials have
 
 The file is saved in `android/app/google-services.json` (gitignored) and reused by later builds, even
 offline. To fetch it again, for example after registering new SHAs (C3, C8), build with
-`REFRESH_FIREBASE_CONFIG=1` or run `dart run tool/partner.dart firebase`. The command checks the
+`REFRESH_FIREBASE_CONFIG=1` or run `dart run tool/organization.dart firebase`. The command checks the
 project, the package and the OAuth web client before writing, and only prints the app ID.
 
 ## C. Once for the app
@@ -344,7 +344,7 @@ In the Play Console, create a list of tester emails and associate it with the **
 Play only accepts uploads through the API after the app receives its first bundle through the Play
 Console, so **the first version is manual**.
 
-1. Fetch the central Firebase config: `dart run tool/partner.dart firebase`.
+1. Fetch the central Firebase config: `dart run tool/organization.dart firebase`.
 2. Build the bundle with a *versionCode* **below 101**, because numbers from 101 up are used by CI:
 
     ```bash

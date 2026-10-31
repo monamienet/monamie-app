@@ -35,11 +35,11 @@ ShareCardState shareCardState({required bool enabled, required bool loading}) {
       ? const ShareCardState(
           SharePhase.on,
           'Compartilhando sua localização',
-          'Sua equipe vê você no mapa',
+          'Seus grupos veem você no mapa',
         )
       : const ShareCardState(
           SharePhase.off,
           'Localização desligada',
-          'Sua equipe não vê você no mapa',
+          'Seus grupos não veem você no mapa',
         );
 }

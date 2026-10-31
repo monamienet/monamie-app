@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
-/// A rounded outline chip on the dark app bar: the team and the day.
+/// A rounded outline chip on the dark app bar: the group and the day.
 ///
 /// The visible chip is 36 px tall inside a 44 px touch target.
 class HomeChip extends StatelessWidget {

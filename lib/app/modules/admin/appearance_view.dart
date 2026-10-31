@@ -1,9 +1,9 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner_config.dart';
-import 'package:monamie_app/app/config/partner/partner_icon.dart';
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/organization_config.dart';
+import 'package:monamie_app/app/config/organization/organization_icon.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 
 import 'appearance_controller.dart';
 
@@ -56,17 +56,17 @@ class AppearanceView extends StatelessWidget {
     });
   }
 
-  PartnerConfig get _preview => PartnerConfig(
-    id: controller.partner.id,
+  OrganizationConfig get _preview => OrganizationConfig(
+    id: controller.organization.id,
     name: controller.name.value,
     theme: controller.pickedTheme,
     logoVersion: controller.logoPng.value == null ? null : 1,
     logoPng: controller.logoPng.value,
   );
 
-  Widget _header(PartnerTheme theme) => Row(
+  Widget _header(OrganizationTheme theme) => Row(
     children: [
-      PartnerIcon(partner: _preview, size: 56),
+      OrganizationIcon(organization: _preview, size: 56),
       const SizedBox(width: 16),
       Expanded(
         child: Column(
@@ -91,7 +91,7 @@ class AppearanceView extends StatelessWidget {
     ],
   );
 
-  Widget _identityCard(BuildContext context, PartnerTheme theme) {
+  Widget _identityCard(BuildContext context, OrganizationTheme theme) {
     final hasLogo = controller.logoPng.value != null;
     final link = TextButton.styleFrom(
       foregroundColor: theme.primary,
@@ -123,7 +123,7 @@ class AppearanceView extends StatelessWidget {
             label: 'Logo',
             value: !hasLogo
                 ? 'Sem logo · usamos a inicial'
-                : controller.logoPng.value == controller.partner.logoPng
+                : controller.logoPng.value == controller.organization.logoPng
                 ? 'PNG quadrado de 512 px'
                 : 'Novo logo · salve para aplicar',
             hint: hasLogo ? null : 'SVG, PNG, JPEG ou WebP',
@@ -188,7 +188,7 @@ class AppearanceView extends StatelessWidget {
     ),
   );
 
-  Widget _themes(PartnerTheme picked) => Column(
+  Widget _themes(OrganizationTheme picked) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Row(
@@ -269,7 +269,7 @@ class AppearanceView extends StatelessWidget {
     ),
   );
 
-  Widget _saveButton(PartnerTheme theme) {
+  Widget _saveButton(OrganizationTheme theme) {
     final saving = controller.isSaving.value;
     return SizedBox(
       height: 56,
@@ -361,7 +361,7 @@ class _ThemeSwatch extends StatelessWidget {
     required this.onTap,
   });
 
-  final PartnerTheme theme;
+  final OrganizationTheme theme;
   final bool selected;
   final VoidCallback? onTap;
 
@@ -392,7 +392,7 @@ class _LogoSheet extends StatelessWidget {
   const _LogoSheet({required this.controller, required this.theme});
 
   final AppearanceController controller;
-  final PartnerTheme theme;
+  final OrganizationTheme theme;
 
   @override
   Widget build(BuildContext context) {
@@ -492,8 +492,8 @@ class _LogoSheet extends StatelessWidget {
   }
 
   List<Widget> _preview() {
-    final partner = PartnerConfig(
-      id: controller.partner.id,
+    final organization = OrganizationConfig(
+      id: controller.organization.id,
       name: controller.name.value,
       theme: theme,
       logoVersion: 1,
@@ -509,11 +509,11 @@ class _LogoSheet extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            PartnerIcon(partner: partner, size: 96),
+            OrganizationIcon(organization: organization, size: 96),
             const SizedBox(width: 20),
-            PartnerIcon(partner: partner, size: 56),
+            OrganizationIcon(organization: organization, size: 56),
             const SizedBox(width: 20),
-            PartnerIcon(partner: partner, size: 30),
+            OrganizationIcon(organization: organization, size: 30),
           ],
         ),
       ),

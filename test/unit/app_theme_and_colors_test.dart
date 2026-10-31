@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_config.dart';
-import 'package:monamie_app/app/config/partner/partner_palette.dart';
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_config.dart';
+import 'package:monamie_app/app/config/organization/organization_palette.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:monamie_app/app/utils/app_theme.dart';
 
-import '../support/test_partner.dart';
+import '../support/test_organization.dart';
 
-/// A catalog theme with the AquariusTur tones, for the partner-switch tests.
-const aquariusTurTheme = PartnerTheme(
+/// A catalog theme with the AquariusTur tones, for the organization-switch tests.
+const aquariusTurTheme = OrganizationTheme(
   id: 'aquarius',
   name: 'Aquarius',
   primary: Color(0xFF0ABAB5),
@@ -20,8 +20,8 @@ const aquariusTurTheme = PartnerTheme(
   onDark: Color(0xFFFFFFFF),
 );
 
-/// A partner that picked [aquariusTurTheme].
-const aquariusTurPartner = PartnerConfig(
+/// An organization that picked [aquariusTurTheme].
+const aquariusTurOrganization = OrganizationConfig(
   id: 'aquariustur',
   name: 'AquariusTur',
   themeId: 'aquarius',
@@ -29,11 +29,12 @@ const aquariusTurPartner = PartnerConfig(
 );
 
 /// The palette [AppColors] is expected to delegate to.
-PartnerPalette currentPalette() => PartnerPalette.fromConfig(Partner.current);
+OrganizationPalette currentPalette() =>
+    OrganizationPalette.fromConfig(Organization.current);
 
 void main() {
-  group('AppColors (current partner palette) - Unit Test Suite', () {
-    test('Happy Path: primary is the theme primary of the current partner '
+  group('AppColors (current organization palette) - Unit Test Suite', () {
+    test('Happy Path: primary is the theme primary of the current organization '
         '(Grafite without a theme)', () {
       // 1. Arrange
       const expected = Color(0xFF3F4754);
@@ -89,7 +90,7 @@ void main() {
       expect(color, palette.background);
     });
 
-    test('Happy Path: background of the current partner is white', () {
+    test('Happy Path: background of the current organization is white', () {
       // 1. Arrange
       const expected = Color(0xFFFFFFFF);
 
@@ -250,28 +251,31 @@ void main() {
     });
   });
 
-  group('AppColors (partner switch) - Unit Test Suite', () {
-    setUp(Partner.debugReset);
+  group('AppColors (organization switch) - Unit Test Suite', () {
+    setUp(Organization.debugReset);
 
     tearDown(() {
-      Partner.debugReset();
-      Partner.bind(testPartner);
+      Organization.debugReset();
+      Organization.bind(testOrganization);
     });
 
-    test('Happy Path: primary follows the partner set with Partner.init', () {
-      // 1. Arrange
-      Partner.bind(aquariusTurPartner);
+    test(
+      'Happy Path: primary follows the organization set with Organization.init',
+      () {
+        // 1. Arrange
+        Organization.bind(aquariusTurOrganization);
 
-      // 2. Act
-      final color = AppColors.primary;
+        // 2. Act
+        final color = AppColors.primary;
 
-      // 3. Assert
-      expect(color, const Color(0xFF0ABAB5));
-    });
+        // 3. Assert
+        expect(color, const Color(0xFF0ABAB5));
+      },
+    );
 
     test('Happy Path: primaryDark of AquariusTur is #073B40', () {
       // 1. Arrange
-      Partner.bind(aquariusTurPartner);
+      Organization.bind(aquariusTurOrganization);
 
       // 2. Act
       final color = AppColors.primaryDark;
@@ -280,12 +284,12 @@ void main() {
       expect(color, const Color(0xFF073B40));
     });
 
-    test('Edge Case: the colors differ when the partner changes', () {
+    test('Edge Case: the colors differ when the organization changes', () {
       // 1. Arrange
-      Partner.bind(testPartner);
+      Organization.bind(testOrganization);
       final acmeDark = AppColors.darkBlue();
-      Partner.debugReset();
-      Partner.bind(aquariusTurPartner);
+      Organization.debugReset();
+      Organization.bind(aquariusTurOrganization);
 
       // 2. Act
       final aquariusTurDark = AppColors.darkBlue();
@@ -296,7 +300,7 @@ void main() {
   });
 
   group('AppTheme.lightTheme - Unit Test Suite', () {
-    test('Happy Path: uses Material 3 and the partner primary', () {
+    test('Happy Path: uses Material 3 and the organization primary', () {
       // 1. Arrange
       final primary = AppColors.primary;
 
@@ -374,7 +378,7 @@ void main() {
   });
 
   group('AppTheme.darkTheme - Unit Test Suite', () {
-    test('Happy Path: uses Material 3 and the partner primary', () {
+    test('Happy Path: uses Material 3 and the organization primary', () {
       // 1. Arrange
       final primary = AppColors.primary;
 
@@ -436,18 +440,18 @@ void main() {
     });
   });
 
-  group('AppTheme (partner switch) - Unit Test Suite', () {
-    setUp(Partner.debugReset);
+  group('AppTheme (organization switch) - Unit Test Suite', () {
+    setUp(Organization.debugReset);
 
     tearDown(() {
-      Partner.debugReset();
-      Partner.bind(testPartner);
+      Organization.debugReset();
+      Organization.bind(testOrganization);
     });
 
-    test('Happy Path: lightTheme follows the partner set with '
-        'Partner.init', () {
+    test('Happy Path: lightTheme follows the organization set with '
+        'Organization.init', () {
       // 1. Arrange
-      Partner.bind(aquariusTurPartner);
+      Organization.bind(aquariusTurOrganization);
 
       // 2. Act
       final theme = AppTheme.lightTheme;
@@ -456,10 +460,10 @@ void main() {
       expect(theme.appBarTheme.backgroundColor, const Color(0xFF073B40));
     });
 
-    test('Happy Path: darkTheme follows the partner set with '
-        'Partner.init', () {
+    test('Happy Path: darkTheme follows the organization set with '
+        'Organization.init', () {
       // 1. Arrange
-      Partner.bind(aquariusTurPartner);
+      Organization.bind(aquariusTurOrganization);
 
       // 2. Act
       final theme = AppTheme.darkTheme;

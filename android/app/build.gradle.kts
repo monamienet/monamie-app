@@ -26,10 +26,10 @@ android {
     }
 
     defaultConfig {
-        // One app for every partner: each partner's Firebase project and
+        // One app for every organization: each organization's Firebase project and
         // branding are bound at runtime, after sign-in. Permanent on Play.
         applicationId = "org.monamienet.app"
-        // The launcher and Play name; the partner's name shows inside the app.
+        // The launcher and Play name; the organization's name shows inside the app.
         manifestPlaceholders["appLabel"] = "MonAmie"
         // MonAmie ink, the splash background: drawable[-v21]/launch_background.xml
         // and the Android 12+ splash theme (values-v31).
@@ -97,10 +97,10 @@ tasks.configureEach {
 
 // The Firebase config (google-services.json) is never versioned: it holds API
 // keys and its source of truth is the central MonAmie project (monamienet-app),
-// used for sign-in. Partners' projects are bound at runtime, not here. Before
+// used for sign-in. Organizations' projects are bound at runtime, not here. Before
 // the google-services plugin reads it (it only checks for the file when its
 // process<Variant>GoogleServices task runs), fetch it with
-// `dart run tool/partner.dart firebase`, only when the file is missing or
+// `dart run tool/organization.dart firebase`, only when the file is missing or
 // REFRESH_FIREBASE_CONFIG=1.
 val flutterSdkPath = Properties().run {
     rootProject.file("local.properties").inputStream().use { load(it) }
@@ -112,7 +112,7 @@ val fetchFirebaseConfig by tasks.registering(Exec::class) {
     val configFile = file("google-services.json")
     description = "Fetches ${configFile.path} from the central Firebase project monamienet-app."
     workingDir = rootProject.file("..")
-    commandLine("$flutterSdkPath/bin/dart", "run", "tool/partner.dart", "firebase")
+    commandLine("$flutterSdkPath/bin/dart", "run", "tool/organization.dart", "firebase")
     onlyIf { refreshFirebaseConfig || !configFile.isFile }
 }
 
@@ -152,7 +152,7 @@ flutter {
 }
 
 dependencies {
-    // MonAmieApplication.kt creates the partner FirebaseApp natively. Same
+    // MonAmieApplication.kt creates the organization FirebaseApp natively. Same
     // BoM as firebase_core 4.15.0 (its android/gradle.properties); Gradle
     // picks the higher one if the plugin moves ahead.
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))

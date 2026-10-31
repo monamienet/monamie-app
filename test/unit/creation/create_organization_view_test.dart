@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/data/theme/theme_catalog.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_view.dart';
@@ -11,7 +11,7 @@ import 'package:monamie_app/app/modules/creation/creation_backend.dart';
 
 const _white = Color(0xFFFFFFFF);
 
-final oceano = PartnerTheme(
+final oceano = OrganizationTheme(
   id: 'oceano',
   name: 'Oceano',
   primary: const Color(0xFF0B7F7B),
@@ -56,8 +56,8 @@ class FakeCreationBackend implements CreationBackend {
 
 class FakeThemeCatalog implements ThemeCatalog {
   @override
-  Future<Map<String, PartnerTheme>> themes() async => {
-    for (final t in [defaultPartnerTheme, oceano]) t.id: t,
+  Future<Map<String, OrganizationTheme>> themes() async => {
+    for (final t in [defaultOrganizationTheme, oceano]) t.id: t,
   };
 }
 

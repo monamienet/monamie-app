@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/people_list.dart';
@@ -10,9 +10,9 @@ import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// The panel under the map: the sharing switch for people who share, the
-/// observed team for people who watch.
+/// observed group for people who watch.
 ///
-/// Dragging the grabber down hides the team's list so the map gets the
+/// Dragging the grabber down hides the group's list so the map gets the
 /// room; dragging it up (or tapping it) shows the list again.
 class HomeSheet extends StatefulWidget {
   const HomeSheet({super.key});
@@ -22,9 +22,9 @@ class HomeSheet extends StatefulWidget {
 }
 
 class _HomeSheetState extends State<HomeSheet> {
-  GoogleGroupsController get _groups => Get.find<GoogleGroupsController>();
+  GroupMapState get _groups => Get.find<GroupMapState>();
 
-  /// Whether the team's list is hidden.
+  /// Whether the group's list is hidden.
   bool _collapsed = false;
 
   /// How far the grabber moved in the current drag, down positive.
@@ -45,11 +45,11 @@ class _HomeSheetState extends State<HomeSheet> {
     final maxHeight = MediaQuery.sizeOf(context).height * 0.45;
     return Obx(() {
       final layout = HomeLayout.of(
-        canShare: _groups.capabilities.value.canShare,
+        canShare: _groups.canPublish,
         canWatch: _groups.canWatch,
         isWeb: kIsWeb,
       );
-      if (!layout.showShareCard && !layout.showTeam) {
+      if (!layout.showShareCard && !layout.showGroup) {
         return const SizedBox.shrink();
       }
       return Material(
@@ -63,7 +63,7 @@ class _HomeSheetState extends State<HomeSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (layout.showTeam)
+                if (layout.showGroup)
                   _grabber()
                 else
                   Padding(
@@ -74,7 +74,7 @@ class _HomeSheetState extends State<HomeSheet> {
                   const SizedBox(height: 4),
                   const ShareCard(),
                 ],
-                if (layout.showTeam)
+                if (layout.showGroup)
                   AnimatedSize(
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOutCubic,
@@ -83,7 +83,7 @@ class _HomeSheetState extends State<HomeSheet> {
                         ? const SizedBox(width: double.infinity)
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: _team(afterCard: layout.showShareCard),
+                            children: _group(afterCard: layout.showShareCard),
                           ),
                   ),
               ],
@@ -107,12 +107,12 @@ class _HomeSheetState extends State<HomeSheet> {
   );
 
   /// The bar with a touch area tall enough to drag or tap, which hides and
-  /// shows the team's list.
+  /// shows the group's list.
   Widget _grabber() => Semantics(
     button: true,
     label: _collapsed
-        ? 'Mostrar a lista da equipe'
-        : 'Recolher a lista da equipe',
+        ? 'Mostrar a lista do grupo'
+        : 'Recolher a lista do grupo',
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _collapsed = !_collapsed),
@@ -122,10 +122,10 @@ class _HomeSheetState extends State<HomeSheet> {
     ),
   );
 
-  /// The observed team's header and people. [afterCard] keeps the design's
+  /// The observed group's header and people. [afterCard] keeps the design's
   /// 12 px under the share card; right under the grabber it needs only 4.
-  List<Widget> _team({required bool afterCard}) {
-    final team = _groups.selectedGroup.value;
+  List<Widget> _group({required bool afterCard}) {
+    final group = _groups.selectedGroup.value;
     final count = _groups.observedMembers.length;
     return [
       SizedBox(height: afterCard ? 12 : 4),
@@ -137,7 +137,7 @@ class _HomeSheetState extends State<HomeSheet> {
           children: [
             Expanded(
               child: Text(
-                team?.name ?? 'Nenhuma equipe escolhida',
+                group?.name ?? 'Nenhum grupo escolhido',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -147,7 +147,7 @@ class _HomeSheetState extends State<HomeSheet> {
                 ),
               ),
             ),
-            if (team != null)
+            if (group != null)
               Text(
                 count == 1 ? '1 pessoa' : '$count pessoas',
                 style: const TextStyle(
@@ -159,20 +159,20 @@ class _HomeSheetState extends State<HomeSheet> {
           ],
         ),
       ),
-      if (team != null && count == 0)
-        _emptyTeam()
-      else if (team != null)
+      if (group != null && count == 0)
+        _emptyGroup()
+      else if (group != null)
         const PeopleList(),
     ];
   }
 
-  Widget _emptyTeam() {
+  Widget _emptyGroup() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
       child: Column(
         children: [
           const Text(
-            'Ninguém nesta equipe ainda. Convide quem vai trabalhar nela '
+            'Ninguém neste grupo ainda. Convide quem vai trabalhar nele '
             'para ver todos no mapa.',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -193,7 +193,7 @@ class _HomeSheetState extends State<HomeSheet> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              onPressed: () => Get.toNamed<void>(Routes.TEAMS),
+              onPressed: () => Get.toNamed<void>(Routes.GROUPS),
               child: const Text(
                 'Convidar pessoas',
                 style: TextStyle(fontWeight: FontWeight.w800),

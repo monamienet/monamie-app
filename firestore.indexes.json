@@ -1,0 +1,67 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "groupMemberships",
+      "fieldPath": "email",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "groupMemberships",
+      "fieldPath": "organizationId",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "positions",
+      "fieldPath": "email",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "positions",
+      "fieldPath": "lat",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "positions",
+      "fieldPath": "lng",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "trail",
+      "fieldPath": "lat",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "trail",
+      "fieldPath": "lng",
+      "indexes": []
+    }
+  ]
+}

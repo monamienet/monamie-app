@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_icon.dart';
-import 'package:monamie_app/app/config/partner/partner_palette.dart';
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_icon.dart';
+import 'package:monamie_app/app/config/organization/organization_palette.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 
 /// *Boas-vindas*: shown once, after accepting an invite: the organization,
-/// the team and what the person does in the app. People in the field go on
+/// the group and what the person does in the app. People in the field go on
 /// to the existing location disclosure on the map.
 class WelcomeView extends GetView<AuthGoogleController> {
   const WelcomeView({super.key});
@@ -16,9 +16,9 @@ class WelcomeView extends GetView<AuthGoogleController> {
   @override
   Widget build(BuildContext context) {
     final invite = controller.welcome.value;
-    final partner = Partner.current;
-    final palette = PartnerPalette.fromConfig(partner);
-    final shares = invite?.roles.contains(TeamRole.share) ?? false;
+    final organization = Organization.current;
+    final palette = OrganizationPalette.fromConfig(organization);
+    final shares = invite?.roles.contains(GroupRole.publisher) ?? false;
     void open() {
       controller.welcome.value = null;
       Get.offAllNamed(Routes.MONAMIE);
@@ -40,10 +40,10 @@ class WelcomeView extends GetView<AuthGoogleController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PartnerIcon(partner: partner, size: 72),
+                OrganizationIcon(organization: organization, size: 72),
                 const SizedBox(height: 20),
                 Text(
-                  'Você entrou na ${partner?.name ?? invite?.partnerName ?? ''}',
+                  'Você entrou na ${organization?.name ?? invite?.organizationName ?? ''}',
                   style: TextStyle(
                     fontSize: 32,
                     height: 1.1,
@@ -54,9 +54,9 @@ class WelcomeView extends GetView<AuthGoogleController> {
                 if (invite != null) ...[
                   const SizedBox(height: 10),
                   Text(
-                    invite.invitedByName.isEmpty
-                        ? invite.teamName
-                        : '${invite.teamName} · convite de ${invite.invitedByName}',
+                    invite.inviterName.isEmpty
+                        ? invite.groupName
+                        : '${invite.groupName} · convite de ${invite.inviterName}',
                     style: TextStyle(fontSize: 16, color: palette.light),
                   ),
                 ],
@@ -72,7 +72,7 @@ class WelcomeView extends GetView<AuthGoogleController> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 16),
-                for (final role in TeamRole.values)
+                for (final role in GroupRole.everyday)
                   if (invite?.roles.contains(role) ?? false)
                     Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -85,7 +85,7 @@ class WelcomeView extends GetView<AuthGoogleController> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
-                            role == TeamRole.share
+                            role == GroupRole.publisher
                                 ? Icons.place_outlined
                                 : Icons.visibility_outlined,
                             color: palette.dark,
@@ -104,12 +104,12 @@ class WelcomeView extends GetView<AuthGoogleController> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  role == TeamRole.share
-                                      ? 'Sua equipe vê onde você está enquanto o '
+                                  role == GroupRole.publisher
+                                      ? 'Seus grupos veem onde você está enquanto o '
                                             'compartilhamento estiver ligado. Você '
                                             'liga e desliga quando quiser.'
                                       : 'Você acompanha no mapa quem está em campo '
-                                            'na ${invite!.teamName}.',
+                                            'em ${invite!.groupName}.',
                                   style: TextStyle(color: palette.dark),
                                 ),
                               ],

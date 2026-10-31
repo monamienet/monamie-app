@@ -3,24 +3,25 @@ import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/data/theme/theme_catalog.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
 import 'package:monamie_app/app/modules/creation/creation_backend.dart';
 
 const _white = Color(0xFFFFFFFF);
 
-PartnerTheme _theme(String id, int order, {bool active = true}) => PartnerTheme(
-  id: id,
-  name: id,
-  primary: const Color(0xFF0B7F7B),
-  dark: const Color(0xFF0A3D3B),
-  light: const Color(0xFFD3EEEC),
-  onPrimary: _white,
-  onDark: _white,
-  order: order,
-  active: active,
-);
+OrganizationTheme _theme(String id, int order, {bool active = true}) =>
+    OrganizationTheme(
+      id: id,
+      name: id,
+      primary: const Color(0xFF0B7F7B),
+      dark: const Color(0xFF0A3D3B),
+      light: const Color(0xFFD3EEEC),
+      onPrimary: _white,
+      onDark: _white,
+      order: order,
+      active: active,
+    );
 
 final sol = _theme('sol', 0);
 final lava = _theme('lava', 1, active: false);
@@ -72,10 +73,10 @@ class FakeThemeCatalog implements ThemeCatalog {
   final bool failing;
 
   @override
-  Future<Map<String, PartnerTheme>> themes() async {
+  Future<Map<String, OrganizationTheme>> themes() async {
     if (failing) throw Exception('catalog unavailable');
     return {
-      for (final t in [oceano, lava, defaultPartnerTheme, sol]) t.id: t,
+      for (final t in [oceano, lava, defaultOrganizationTheme, sol]) t.id: t,
     };
   }
 }
@@ -109,7 +110,7 @@ void main() {
     backend = FakeCreationBackend();
   });
 
-  group('suggestPartnerId - Unit Test Suite', () {
+  group('suggestOrganizationId - Unit Test Suite', () {
     final cases = [
       ('Happy Path', 'Rota Sul Turismo', 'rotasulturismo'),
       ('Edge Case', 'São João 2', 'saojoao'),
@@ -122,7 +123,7 @@ void main() {
         final input = name;
 
         // 2. Act
-        final id = suggestPartnerId(input);
+        final id = suggestOrganizationId(input);
 
         // 3. Assert
         expect(id, expected);
@@ -568,7 +569,7 @@ void main() {
       expect(controller.themes.map((t) => t.id), [
         'sol',
         'oceano',
-        defaultPartnerTheme.id,
+        defaultOrganizationTheme.id,
       ]);
     });
 
@@ -582,7 +583,7 @@ void main() {
       await settle();
 
       // 3. Assert
-      expect(controller.themes.map((t) => t.id), [defaultPartnerTheme.id]);
+      expect(controller.themes.map((t) => t.id), [defaultOrganizationTheme.id]);
     });
   });
 }

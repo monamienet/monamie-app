@@ -16,22 +16,20 @@ void main() {
         // 2. Act
         final user = UserModel(
           email: 'servidor.ti@monamienet.org',
-          nome: 'Servidor Teste',
+          name: 'Servidor Teste',
           lat: -22.9041,
           lng: -43.1329,
-          timestamp: dataHora,
-          isTracked: true,
-          grupoAtivo: 'ti-suporte@monamienet.org',
+          capturedAt: dataHora,
+          isPublishing: true,
         );
 
         // 3. Assert
         expect(user.email, 'servidor.ti@monamienet.org');
-        expect(user.nome, 'Servidor Teste');
+        expect(user.name, 'Servidor Teste');
         expect(user.lat, -22.9041);
         expect(user.lng, -43.1329);
-        expect(user.timestamp, dataHora);
-        expect(user.isTracked, isTrue);
-        expect(user.grupoAtivo, 'ti-suporte@monamienet.org');
+        expect(user.capturedAt, dataHora);
+        expect(user.isPublishing, isTrue);
       },
     );
 
@@ -46,12 +44,11 @@ void main() {
 
         // 3. Assert
         expect(user.email, email);
-        expect(user.nome, isNull);
+        expect(user.name, isNull);
         expect(user.lat, isNull);
         expect(user.lng, isNull);
-        expect(user.timestamp, isNull);
-        expect(user.isTracked, isNull);
-        expect(user.grupoAtivo, isNull);
+        expect(user.capturedAt, isNull);
+        expect(user.isPublishing, isNull);
       },
     );
 
@@ -79,12 +76,11 @@ void main() {
         final dataHora = DateTime(2026, 9, 16, 21, 0, 0);
         final user = UserModel(
           email: 'seguranca@monamienet.org',
-          nome: 'Vigilante Silva',
+          name: 'Vigilante Silva',
           lat: -22.9000,
           lng: -43.1300,
-          timestamp: dataHora,
-          isTracked: true,
-          grupoAtivo: 'vigilancia-praia-vermelha@monamienet.org',
+          capturedAt: dataHora,
+          isPublishing: true,
         );
 
         // 2. Act
@@ -93,32 +89,12 @@ void main() {
         // 3. Assert
         expect(map, {
           'email': 'seguranca@monamienet.org',
-          'nome': 'Vigilante Silva',
+          'name': 'Vigilante Silva',
           'lat': -22.9000,
           'lng': -43.1300,
-          'timestamp': dataHora,
-          'isTracked': true,
-          'grupo_ativo': 'vigilancia-praia-vermelha@monamienet.org',
+          'capturedAt': dataHora,
+          'isPublishing': true,
         });
-      },
-    );
-
-    test(
-      'Edge Case: toMap() NÃO deve incluir o campo grupo_ativo quando for nulo',
-      () {
-        // 1. Arrange
-        final user = UserModel(
-          email: 'gestor@monamienet.org',
-          nome: 'Gestor Teste',
-          isTracked: false,
-          grupoAtivo: null,
-        );
-
-        // 2. Act
-        final map = user.toMap();
-
-        // 3. Assert
-        expect(map.containsKey('grupo_ativo'), isFalse);
       },
     );
 
@@ -146,12 +122,11 @@ void main() {
         final timestampEsperado = DateTime(2026, 9, 16, 15, 0);
         final mapFirestore = {
           'email': 'motorista@monamienet.org',
-          'nome': 'Motorista Santos',
+          'name': 'Motorista Santos',
           'lat': -22.8900,
           'lng': -43.1200,
-          'timestamp': Timestamp.fromDate(timestampEsperado),
-          'isTracked': true,
-          'grupo_ativo': 'transporte-vans@monamienet.org',
+          'capturedAt': Timestamp.fromDate(timestampEsperado),
+          'isPublishing': true,
         };
 
         // 2. Act
@@ -159,49 +134,11 @@ void main() {
 
         // 3. Assert
         expect(user.email, 'motorista@monamienet.org');
-        expect(user.nome, 'Motorista Santos');
+        expect(user.name, 'Motorista Santos');
         expect(user.lat, -22.8900);
         expect(user.lng, -43.1200);
-        expect(user.timestamp, timestampEsperado);
-        expect(user.isTracked, isTrue);
-        expect(user.grupoAtivo, 'transporte-vans@monamienet.org');
-      },
-    );
-
-    test(
-      'Edge Case: fromMap() deve tratar ausência de grupo_ativo atribuindo nulo',
-      () {
-        // 1. Arrange
-        final mapSemGrupo = {
-          'email': 'usuario.sem.grupo@monamienet.org',
-          'nome': 'Usuário Sem Grupo',
-          'lat': -22.9050,
-          'lng': -43.1310,
-          'isTracked': false,
-        };
-
-        // 2. Act
-        final user = UserModel.fromMap(mapSemGrupo);
-
-        // 3. Assert
-        expect(user.grupoAtivo, isNull);
-      },
-    );
-
-    test(
-      'Edge Case: fromMap() deve converter valor numérico para String no grupo_ativo',
-      () {
-        // 1. Arrange
-        final mapComTipoInesperado = {
-          'email': 'teste@monamienet.org',
-          'grupo_ativo': 12345,
-        };
-
-        // 2. Act
-        final user = UserModel.fromMap(mapComTipoInesperado);
-
-        // 3. Assert
-        expect(user.grupoAtivo, '12345');
+        expect(user.capturedAt, timestampEsperado);
+        expect(user.isPublishing, isTrue);
       },
     );
 
@@ -239,12 +176,12 @@ void main() {
     );
 
     test(
-      'Sad Path: fromMap() deve lançar TypeError quando isTracked não for booleano',
+      'Sad Path: fromMap() deve lançar TypeError quando isPublishing não for booleano',
       () {
         // 1. Arrange
         final mapComTrackedInvalido = {
           'email': 'teste.invalido@monamienet.org',
-          'isTracked': 'nao_e_booleano',
+          'isPublishing': 'nao_e_booleano',
         };
 
         // 2. Act
@@ -264,11 +201,10 @@ void main() {
         // 1. Arrange
         final mapaOriginal = {
           'email': 'ronda.noturna@monamienet.org',
-          'nome': 'Ronda Noturna',
+          'name': 'Ronda Noturna',
           'lat': -22.9100,
           'lng': -43.1400,
-          'isTracked': true,
-          'grupo_ativo': 'seguranca-valonguinho@monamienet.org',
+          'isPublishing': true,
         };
 
         // 2. Act
@@ -276,11 +212,10 @@ void main() {
 
         // 3. Assert
         expect(reconstruido.email, mapaOriginal['email']);
-        expect(reconstruido.nome, mapaOriginal['nome']);
+        expect(reconstruido.name, mapaOriginal['name']);
         expect(reconstruido.lat, mapaOriginal['lat']);
         expect(reconstruido.lng, mapaOriginal['lng']);
-        expect(reconstruido.isTracked, mapaOriginal['isTracked']);
-        expect(reconstruido.grupoAtivo, mapaOriginal['grupo_ativo']);
+        expect(reconstruido.isPublishing, mapaOriginal['isPublishing']);
       },
     );
   });

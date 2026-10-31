@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_palette.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_palette.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 
 import 'history_month.dart';
@@ -43,7 +43,7 @@ class HistoryCalendarSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<CalendarController>();
-    final palette = PartnerPalette.fromConfig(Partner.current);
+    final palette = OrganizationPalette.fromConfig(Organization.current);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),

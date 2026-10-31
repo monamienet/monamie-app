@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 
 import 'widgets/invite_card.dart';
@@ -104,7 +104,7 @@ class NoOrganizationView extends GetView<AuthGoogleController> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    onPressed: busy ? null : controller.recheckPartners,
+                    onPressed: busy ? null : controller.recheckOrganizations,
                     child: busy
                         ? const Row(
                             mainAxisSize: MainAxisSize.min,

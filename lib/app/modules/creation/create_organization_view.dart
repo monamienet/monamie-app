@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
-import 'package:monamie_app/app/config/partner/partner_config.dart';
-import 'package:monamie_app/app/config/partner/partner_icon.dart';
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/organization_config.dart';
+import 'package:monamie_app/app/config/organization/organization_icon.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 
 import 'create_organization_controller.dart';
 import 'id_input_formatter.dart';
@@ -367,30 +367,14 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                 ),
               ],
               const SizedBox(height: 8),
-              Text.rich(
-                TextSpan(
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 19 / 13,
-                    fontWeight: FontWeight.w500,
-                    color: _muted,
-                  ),
-                  children: [
-                    const TextSpan(
-                      text:
-                          'Só letras minúsculas, sem acentos, espaços ou números. '
-                          'Ele aparece nos endereços dos grupos, como ',
-                    ),
-                    TextSpan(
-                      text:
-                          '${id.isEmpty ? 'identificador' : id}01@monamienet.org',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: _navy,
-                      ),
-                    ),
-                    const TextSpan(text: '.'),
-                  ],
+              const Text(
+                'Só letras minúsculas, sem acentos, espaços ou números. '
+                'É o código da organização no MonAmie.',
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 19 / 13,
+                  fontWeight: FontWeight.w500,
+                  color: _muted,
                 ),
               ),
               const SizedBox(height: 8),
@@ -517,7 +501,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     };
   }
 
-  PartnerConfig get _preview => PartnerConfig(
+  OrganizationConfig get _preview => OrganizationConfig(
     id: c.id.value.length >= 3 ? c.id.value : 'nova',
     name: c.name.value.trim().isEmpty ? 'Organização' : c.name.value.trim(),
     theme: c.pickedTheme,
@@ -602,7 +586,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                     ),
                   ),
                   Text(
-                    'Equipe Norte',
+                    'Motoristas',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -716,7 +700,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     );
   }
 
-  Widget _themeChip(PartnerTheme theme, bool selected) => Semantics(
+  Widget _themeChip(OrganizationTheme theme, bool selected) => Semantics(
     label: theme.name,
     selected: selected,
     button: true,
@@ -951,7 +935,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                           const SizedBox(height: 4),
                           Text(
                             '${widget.ownerEmail} vai administrar a organização: '
-                            'convidar pessoas, criar equipes, mudar a aparência e '
+                            'convidar pessoas, criar grupos, mudar a aparência e '
                             'adicionar o logo. Depois, outras pessoas também '
                             'podem administrar.',
                             style: const TextStyle(
@@ -1012,7 +996,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                   children: [
                     TextSpan(text: 'Li e aceito os '),
                     TextSpan(
-                      text: 'Termos para parceiros',
+                      text: 'Termos para organizações',
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                     TextSpan(text: '.'),
@@ -1113,7 +1097,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Os dois têm o mapa, as equipes e a aparência da $name. Muda '
+                'Os dois têm o mapa, os grupos e a aparência da $name. Muda '
                 'onde os dados ficam e quem paga.',
                 style: const TextStyle(
                   fontSize: 15,
@@ -1175,7 +1159,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Dá para passar do Community para o Standard depois, sem perder equipes nem histórico.',
+                        'Dá para passar do Community para o Standard depois, sem perder grupos nem histórico.',
                         style: TextStyle(
                           fontSize: 13,
                           height: 19 / 13,
@@ -1337,7 +1321,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
       'active' => (
         'A $name está pronta',
         'O app já aparece com o nome e o tema de vocês. O logo você adiciona '
-            'quando quiser, em Aparência. Próximo passo: chame sua equipe em Equipes.',
+            'quando quiser, em Aparência. Próximo passo: chame sua equipe em Grupos.',
         'Entrar na $name',
       ),
       'awaiting_billing' => (
@@ -1363,7 +1347,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: PartnerIcon(partner: _preview, size: 72),
+            child: OrganizationIcon(organization: _preview, size: 72),
           ),
           const SizedBox(height: 24),
           Text(

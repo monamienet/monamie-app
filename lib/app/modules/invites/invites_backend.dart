@@ -1,19 +1,20 @@
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 
 import 'invite.dart';
 
 /// The outcome of one send.
 class InviteSendResult {
   const InviteSendResult({
-    required this.team,
-    required this.teamName,
+    required this.groupId,
+    required this.groupName,
     required this.sent,
     required this.notEmailed,
     required this.skipped,
   });
 
-  final String team;
-  final String teamName;
+  /// The group invited to (just created, in first-group mode).
+  final String groupId;
+  final String groupName;
 
   /// E-mails invited (a pending invite exists for each).
   final List<String> sent;
@@ -22,7 +23,7 @@ class InviteSendResult {
   /// invite when they sign in.
   final List<String> notEmailed;
 
-  /// Not invited, with the reason ("Já está na equipe.").
+  /// Not invited, with the reason ("Já está no grupo.").
   final Map<String, String> skipped;
 }
 
@@ -30,16 +31,16 @@ class InviteSendResult {
 /// tested with a fake. Throws [InvitesException] with a message.
 abstract interface class InvitesBackend {
   Future<InviteSendResult> send(
-    String partnerId, {
-    required String partnerName,
-    String? team,
-    String? firstTeamName,
-    required List<({String email, Set<TeamRole> roles})> invites,
+    String organizationId, {
+    required String organizationName,
+    String? groupId,
+    String? firstGroupName,
+    required List<({String email, Set<GroupRole> roles})> invites,
   });
 
-  Future<List<Invite>> listForTeam(String partnerId, String team);
-  Future<void> resend(String partnerId, String inviteId);
-  Future<void> cancel(String partnerId, String inviteId);
+  Future<List<Invite>> listForGroup(String organizationId, String groupId);
+  Future<void> resend(String organizationId, String inviteId);
+  Future<void> cancel(String organizationId, String inviteId);
 
   /// The signed-in account's pending invites.
   Future<List<Invite>> mine();

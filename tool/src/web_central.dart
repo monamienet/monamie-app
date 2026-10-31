@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 
 import 'android_firebase_config.dart';
 import 'firebase_cli.dart';
-import 'partners.dart';
+import 'organizations.dart';
 
 /// Path, relative to the repository root, of the staged central web config.
 ///
@@ -28,7 +28,7 @@ const _optionalWebFields = ['authDomain', 'storageBucket'];
 /// options and the OAuth web client id for Google sign-in.
 ///
 /// Everything is fetched and validated before writing, so a failed run keeps
-/// the previous file. Throws a [PartnerToolException] on failure; messages
+/// the previous file. Throws a [OrganizationToolException] on failure; messages
 /// never include the config contents.
 Future<void> stageCentralWebConfig({
   required Directory repoRoot,
@@ -37,7 +37,7 @@ Future<void> stageCentralWebConfig({
   const projectId = centralProjectId;
   final webApps = await cli.listWebApps(projectId);
   if (webApps.length != 1) {
-    throw PartnerToolException(
+    throw OrganizationToolException(
       "Expected exactly one web app in '$projectId', found "
       "${webApps.length}: ${webApps.isEmpty ? '(none)' : webApps.join(', ')}. "
       'Remove the stale ones in the Firebase console.',
@@ -51,7 +51,7 @@ Future<void> stageCentralWebConfig({
   for (final field in _requiredWebFields) {
     final value = sdkConfig[field];
     if (value is! String || value.isEmpty) {
-      throw PartnerToolException(
+      throw OrganizationToolException(
         "The web config of '$projectId' has no '$field'.",
       );
     }
@@ -66,7 +66,7 @@ Future<void> stageCentralWebConfig({
   final androidApps = await cli.listAndroidApps(projectId);
   final android = androidApps.where((a) => a.packageName == appPackageName);
   if (android.length != 1) {
-    throw PartnerToolException(
+    throw OrganizationToolException(
       "Expected one Android app '$appPackageName' in '$projectId' to read the "
       'OAuth web client from, found ${android.length}.',
     );

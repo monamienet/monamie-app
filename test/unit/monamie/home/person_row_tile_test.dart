@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/group_member.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/person_row_tile.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/presence.dart';
-import 'package:monamie_app/app/modules/monamie/ui/home/team_rows.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/group_rows.dart';
 
-TeamRow rowOf(Presence presence, {String name = 'Ana Souza'}) => TeamRow(
-  member: GoogleGroupMember(name: name, email: 'ana@x.org'),
+GroupRow rowOf(Presence presence, {String name = 'Ana Souza'}) => GroupRow(
+  member: GroupMember(name: name, email: 'ana@x.org'),
   user: null,
   presence: presence,
 );
@@ -23,7 +23,7 @@ class Taps {
 
 Future<void> pumpTile(
   WidgetTester tester, {
-  required TeamRow row,
+  required GroupRow row,
   required Taps taps,
   bool highlighted = false,
   bool selected = false,

@@ -6,7 +6,7 @@ import 'firestore_tracking_settings_repository.dart';
 import 'tracking_settings.dart';
 import 'tracking_settings_repository.dart';
 
-/// The bound partner's tracking settings in the UI isolate, kept current for
+/// The bound organization's tracking settings in the UI isolate, kept current for
 /// the *Ajustes de acompanhamento* screen.
 class TrackingSettingsController extends GetxController {
   TrackingSettingsController({TrackingSettingsRepository? repository})

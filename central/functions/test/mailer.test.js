@@ -3,19 +3,19 @@ const assert = require("node:assert/strict");
 
 const { inviteEmail, rawMessage } = require("../mailer");
 
-const SHARE_LINE = "Compartilhar sua localização com a equipe";
+const SHARE_LINE = "Compartilhar sua localização com o grupo";
 const WATCH_LINE = "Ver no mapa quem está em campo";
 const PRIVACY = "Sua localização só é compartilhada";
 
-/** Rita invites ana to Equipe Norte of Rota Sul, valid until Nov 9. */
+/** Rita invites ana to the group Guias Norte of Rota Sul, valid until Nov 9. */
 function invite(overrides = {}) {
   return {
-    partnerName: "Rota Sul",
-    teamName: "Equipe Norte",
-    invitedByName: "Rita Lima",
-    invitedByEmail: "dono@x.com",
+    organizationName: "Rota Sul",
+    groupName: "Guias Norte",
+    inviterName: "Rita Lima",
+    inviterEmail: "dono@x.com",
     email: "ana@x.com",
-    roles: ["share"],
+    roles: ["publisher"],
     expiresAt: new Date("2026-11-09T12:00:00Z"),
     ...overrides,
   };
@@ -28,7 +28,7 @@ function headersOf(raw) {
 }
 
 describe("inviteEmail - Unit Test Suite", () => {
-  test("Happy Path: the subject names who invited and the partner", () => {
+  test("Happy Path: the subject names who invited and the organization", () => {
     // 1. Arrange
     const data = invite();
 
@@ -39,7 +39,7 @@ describe("inviteEmail - Unit Test Suite", () => {
     assert.equal(subject, "Rita Lima convidou você para a Rota Sul");
   });
 
-  test("Happy Path: the text mentions the team", () => {
+  test("Happy Path: the text mentions the group", () => {
     // 1. Arrange
     const data = invite();
 
@@ -47,7 +47,7 @@ describe("inviteEmail - Unit Test Suite", () => {
     const { text } = inviteEmail(data);
 
     // 3. Assert
-    assert.match(text, /Equipe Norte/);
+    assert.match(text, /o grupo Guias Norte/);
   });
 
   test("Happy Path: the text says until when the invite is valid", () => {
@@ -62,9 +62,9 @@ describe("inviteEmail - Unit Test Suite", () => {
   });
 
   const byRoles = [
-    ["Happy Path", ["share"], { share: true, watch: false, privacy: true }],
-    ["Edge Case", ["watch"], { share: false, watch: true, privacy: false }],
-    ["Edge Case", ["share", "watch"], { share: true, watch: true, privacy: true }],
+    ["Happy Path", ["publisher"], { share: true, watch: false, privacy: true }],
+    ["Edge Case", ["subscriber"], { share: false, watch: true, privacy: false }],
+    ["Edge Case", ["publisher", "subscriber"], { share: true, watch: true, privacy: true }],
   ];
   for (const [kind, roles, expected] of byRoles) {
     test(`${kind}: with roles ${roles.join("+")} the text lists only what the person will do`, () => {
@@ -100,9 +100,9 @@ describe("inviteEmail - Unit Test Suite", () => {
   test("Sad Path: the HTML escapes <, >, & and \" in the names", () => {
     // 1. Arrange
     const data = invite({
-      partnerName: 'A&B <Ltda> "Sul"',
-      invitedByName: "<script>x</script>",
-      teamName: "Equipe <b>",
+      organizationName: 'A&B <Ltda> "Sul"',
+      inviterName: "<script>x</script>",
+      groupName: "Guias <b>",
     });
 
     // 2. Act
@@ -111,7 +111,7 @@ describe("inviteEmail - Unit Test Suite", () => {
     // 3. Assert
     assert.ok(html.includes("A&amp;B &lt;Ltda&gt; &quot;Sul&quot;"), html);
     assert.ok(html.includes("&lt;script&gt;x&lt;/script&gt;"), html);
-    assert.ok(html.includes("Equipe &lt;b&gt;"), html);
+    assert.ok(html.includes("Guias &lt;b&gt;"), html);
     assert.ok(!html.includes("<script>"), html);
     assert.ok(!html.includes("<Ltda>"), html);
   });

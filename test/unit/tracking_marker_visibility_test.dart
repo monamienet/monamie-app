@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
+import 'package:monamie_app/app/modules/monamie/models/group_member.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 
 bool evaluateMarkerVisibility({
@@ -26,18 +26,18 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(email: 'user1@monamienet.org', name: 'User 1'),
-          GoogleGroupMember(email: 'user2@monamienet.org', name: 'User 2'),
+          GroupMember(email: 'user1@monamienet.org', name: 'User 1'),
+          GroupMember(email: 'user2@monamienet.org', name: 'User 2'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
         final activeUser = UserModel(
           email: 'user1@monamienet.org',
-          nome: 'User 1',
+          name: 'User 1',
           lat: -22.90,
           lng: -43.13,
-          isTracked: true,
-          timestamp: DateTime.now(),
+          isPublishing: true,
+          capturedAt: DateTime.now(),
         );
 
         // 2. Act
@@ -58,17 +58,17 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(email: 'user1@monamienet.org', name: 'User 1'),
+          GroupMember(email: 'user1@monamienet.org', name: 'User 1'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
         final outsideUser = UserModel(
           email: 'other_user@monamienet.org',
-          nome: 'Other',
+          name: 'Other',
           lat: -22.90,
           lng: -43.13,
-          isTracked: true,
-          timestamp: DateTime.now(),
+          isPublishing: true,
+          capturedAt: DateTime.now(),
         );
 
         // 2. Act
@@ -89,11 +89,11 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(email: 'user1@monamienet.org', name: 'User 1'),
+          GroupMember(email: 'user1@monamienet.org', name: 'User 1'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
-        final user = UserModel(email: 'user1@monamienet.org', nome: 'User 1');
+        final user = UserModel(email: 'user1@monamienet.org', name: 'User 1');
 
         final animatedMarkerPositions = <String, LatLng>{
           'user1@monamienet.org': const LatLng(-22.90, -43.13),
@@ -117,11 +117,11 @@ void main() {
       () {
         // 1. Arrange
         final observedMembers = [
-          GoogleGroupMember(email: 'user2@monamienet.org', name: 'User 2'),
+          GroupMember(email: 'user2@monamienet.org', name: 'User 2'),
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
-        final user = UserModel(email: 'user2@monamienet.org', nome: 'User 2');
+        final user = UserModel(email: 'user2@monamienet.org', name: 'User 2');
 
         final animatedMarkerPositions = <String, LatLng>{
           'user1@monamienet.org': const LatLng(-22.90, -43.13),
@@ -186,42 +186,5 @@ void main() {
     // -------------------------------------------------------------
     // Carga Imediata de Posição ao Iniciar Rastreamento
     // -------------------------------------------------------------
-    test(
-      'Happy Path: Início de serviço gera payload imediato completo com coordenadas e grupo ativo',
-      () {
-        // 1. Arrange
-        const email = 'operador@monamienet.org';
-        const nome = 'Operador 1';
-        const lat = -22.9041;
-        const lng = -43.1329;
-        final now = DateTime.now();
-        const activeGroup = 'equipe-alfa@monamienet.org';
-
-        // 2. Act
-        final updateData = <String, dynamic>{
-          'email': email,
-          'nome': nome,
-          'lat': lat,
-          'lng': lng,
-          'timestamp': now,
-          'grupo_ativo': activeGroup,
-        };
-
-        final trackedData = <String, dynamic>{
-          'isTracked': true,
-          'grupo_ativo': activeGroup,
-        };
-
-        // 3. Assert
-        expect(updateData['email'], email);
-        expect(updateData['lat'], lat);
-        expect(updateData['lng'], lng);
-        expect(updateData['timestamp'], now);
-        expect(updateData['grupo_ativo'], activeGroup);
-
-        expect(trackedData['isTracked'], isTrue);
-        expect(trackedData['grupo_ativo'], activeGroup);
-      },
-    );
   });
 }

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
-import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
@@ -26,8 +26,7 @@ class MonamiePage extends StatelessWidget {
   PermissionsController get permissionsCtrl =>
       Get.find<PermissionsController>();
   TrackingController get trackingCtrl => Get.find<TrackingController>();
-  GoogleGroupsController get googleGroupsController =>
-      Get.find<GoogleGroupsController>();
+  GroupMapState get groupMap => Get.find<GroupMapState>();
   AuthGoogleController get authCtrl => Get.find<AuthGoogleController>();
 
   @override
@@ -112,13 +111,13 @@ class MonamiePage extends StatelessWidget {
               trackingCtrl.position.latitude,
               trackingCtrl.position.longitude,
             ),
-            // A person who only shares has no team on the map: start on them.
+            // A person who only shares has no group on the map: start on them.
             onMapReady: () {
-              if (!googleGroupsController.canWatch) {
+              if (!groupMap.canWatch) {
                 trackingCtrl.centerMapOnCurrentLocation();
               }
             },
-            onTap: (_, _) => googleGroupsController.clearSelected(),
+            onTap: (_, _) => groupMap.clearSelected(),
             minZoom: 3.0,
             maxZoom: 19.0,
             cameraConstraint: CameraConstraint.contain(
@@ -134,19 +133,19 @@ class MonamiePage extends StatelessWidget {
             _centralizeButton(),
           ],
         ),
-        _switchingTeamPill(),
+        _switchingGroupPill(),
       ],
     );
   }
 
-  /// "Carregando `equipe`…" over the map while a team picked in the team
+  /// "Carregando `grupo`…" over the map while a group picked in the group
   /// menu loads, as on the design canvas.
-  Widget _switchingTeamPill() {
+  Widget _switchingGroupPill() {
     return Obx(() {
-      if (!googleGroupsController.switchingTeam.value) {
+      if (!groupMap.switchingGroup.value) {
         return const SizedBox.shrink();
       }
-      final team = googleGroupsController.selectedGroup.value?.name ?? '';
+      final group = groupMap.selectedGroup.value?.name ?? '';
       return Positioned(
         top: 14,
         left: 0,
@@ -194,7 +193,7 @@ class MonamiePage extends StatelessWidget {
                     const SizedBox(width: 10),
                     Flexible(
                       child: Text(
-                        'Carregando $team…',
+                        'Carregando $group…',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -371,7 +370,7 @@ class MonamiePage extends StatelessWidget {
   }
 
   /// Keeps 35% of the tiles' saturation (Rec. 709 luminance weights): the
-  /// default OSM style is loud, and the team's markers must stand out on it.
+  /// default OSM style is loud, and the group's markers must stand out on it.
   static const _softColors = ColorFilter.matrix(<double>[
     0.48819, 0.46488, 0.04693, 0, 0, //R
     0.13819, 0.81488, 0.04693, 0, 0, //G
@@ -401,9 +400,9 @@ class MonamiePage extends StatelessWidget {
     );
   }
 
-  /// The person's own place on the map while they share: the team's
-  /// documents only draw them when they also watch the team they share with.
-  /// Hidden while sharing is off, so the map never suggests the team sees
+  /// The person's own place on the map while they share: the group's
+  /// documents only draw them when they also watch a group they share with.
+  /// Hidden while sharing is off, so the map never suggests the group sees
   /// someone it does not.
   Widget _ownMarker() {
     const markerSize = 50.0;
@@ -416,10 +415,10 @@ class MonamiePage extends StatelessWidget {
           !trackingCtrl.isTrackingEnabled.value) {
         return const SizedBox.shrink();
       }
-      final drawnWithTheTeam =
-          googleGroupsController.observedMembers.any((m) => m.email == me) &&
+      final drawnWithTheGroup =
+          groupMap.observedMembers.any((m) => m.email == me) &&
           trackingCtrl.firebaseUsers.any((u) => u.email == me);
-      if (drawnWithTheTeam) return const SizedBox.shrink();
+      if (drawnWithTheGroup) return const SizedBox.shrink();
       return MarkerLayer(
         markers: [
           Marker(
@@ -455,9 +454,9 @@ class MonamiePage extends StatelessWidget {
         markers: trackingCtrl.firebaseUsers
             .where((user) {
               final isObservingToday = trackingCtrl.isObservingToday;
-              final observedMembersEmails = googleGroupsController
-                  .observedMembers
-                  .map((member) => member.email);
+              final observedMembersEmails = groupMap.observedMembers.map(
+                (member) => member.email,
+              );
               final isObservedMember = observedMembersEmails.contains(
                 user.email,
               );
@@ -489,8 +488,7 @@ class MonamiePage extends StatelessWidget {
                 height: isCurrentUser ? markerSize * 3 : markerSize,
                 alignment: Alignment.center,
                 child: GestureDetector(
-                  onTap: () =>
-                      googleGroupsController.toggleSelected(user.email),
+                  onTap: () => groupMap.toggleSelected(user.email),
                   child: Stack(
                     alignment: Alignment.center,
                     clipBehavior: Clip.none,
@@ -515,9 +513,9 @@ class MonamiePage extends StatelessWidget {
                         child: Container(
                           decoration: BoxDecoration(
                             color:
-                                user.isTracked == false ||
+                                user.isPublishing == false ||
                                     DateTime.now().difference(
-                                          user.timestamp!,
+                                          user.capturedAt!,
                                         ) >=
                                         validity
                                 ? trackingCtrl

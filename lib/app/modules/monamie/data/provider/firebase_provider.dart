@@ -1,187 +1,144 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
+import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
+import 'package:monamie_app/app/data/organization/person_key.dart';
+import 'package:monamie_app/app/data/services/capabilities.dart';
+import 'package:monamie_app/app/data/tracking/group_publisher.dart';
+import 'package:monamie_app/app/modules/monamie/data/group_positions_source.dart';
 import 'package:monamie_app/app/modules/monamie/history/history_month.dart';
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
-import 'package:monamie_app/app/utils/group_email.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
-class FirebaseProvider {
-  CollectionReference get collectionRef =>
-      CurrentPartnerFirebase.instance.partnerData.collection('usuarios');
+/// Positions, trails and day summaries of the bound organization's groups:
+/// `organizations/{id}/groups/{groupId}/positions/{personKey}` with `trail`
+/// and `trailDays` under each position. Used by the UI isolate and by the
+/// background tracking isolate (each binds its own organization Firebase).
+class FirebaseProvider implements GroupPositionWriter, GroupPositionsSource {
+  FirebaseFirestore get _firestore =>
+      CurrentOrganizationFirebase.instance.firestore;
 
-  Future<void> adicionarDados(UserModel userLocation) async {
-    try {
-      await collectionRef.doc(userLocation.email).set({
-        'email': userLocation.email,
-        'lat': userLocation.lat,
-        'lng': userLocation.lng,
-        'timestamp': userLocation.timestamp,
-        'nome': userLocation.nome,
-        'isTracked': userLocation.isTracked,
-      });
-      if (kDebugMode) {
-        print("Dados adicionados com sucesso!");
-      }
-    } catch (e) {
-      throw Exception("Erro ao adicionar dados: $e");
-    }
+  DocumentReference<Map<String, dynamic>> get _organization =>
+      CurrentOrganizationFirebase.instance.organizationData;
+
+  /// `groups/{groupId}/positions` of the bound organization.
+  CollectionReference<Map<String, dynamic>> positionsOf(String groupId) =>
+      _organization
+          .collection(FirestorePaths.groups)
+          .doc(groupId)
+          .collection(FirestorePaths.positions);
+
+  DocumentReference<Map<String, dynamic>> _position(
+    String groupId,
+    String email,
+  ) => positionsOf(groupId).doc(personKey(email));
+
+  /// The people who publish in [groupId] now (their position is not marked
+  /// `removedAt`), sharing or not, so the group list can say who turned the
+  /// location off. The map keeps only the live ones (see `liveUsers`).
+  @override
+  Stream<List<UserModel>> streamGroupPositions(String groupId) => positionsOf(
+    groupId,
+  ).where(PositionFields.removedAt, isNull: true).snapshots().map(_users);
+
+  /// Everyone who ever published in [groupId], including people who no
+  /// longer do: whose trails the history can show.
+  @override
+  Future<List<UserModel>> groupHistoryPeople(String groupId) async =>
+      _users(await positionsOf(groupId).get());
+
+  /// How many people publish in [groupId] now (one aggregate read).
+  @override
+  Future<int> countPublishers(String groupId) async {
+    final snapshot = await positionsOf(
+      groupId,
+    ).where(PositionFields.removedAt, isNull: true).count().get();
+    return snapshot.count ?? 0;
   }
 
-  Future<void> setUser(UserModel user) async {
-    try {
-      await collectionRef.doc(user.email).set(user.toMap());
-      debugPrint("Usuário criado com sucesso!");
-    } catch (e) {
-      throw Exception("Erro ao criar usuário!");
-    }
+  static List<UserModel> _users(QuerySnapshot<Map<String, dynamic>> query) => [
+    for (final doc in query.docs) UserModel.fromMap(doc.data()),
+  ];
+
+  /// One batch in [groupId]: the position, a trail point and the day
+  /// summary, all stamped with the server's time. The rules limit how often
+  /// a position may change (Community plan) and only accept a point and a
+  /// summary written together with the position they record.
+  @override
+  Future<void> publish(String groupId, PublishedPosition position) async {
+    final doc = _position(groupId, position.email);
+    final batch = _firestore.batch()
+      ..set(doc, positionData(position))
+      ..set(
+        doc.collection(FirestorePaths.trail).doc(),
+        trailPointData(position),
+      )
+      ..set(
+        doc.collection(FirestorePaths.trailDays).doc(dayKey(DateTime.now())),
+        trailDayData(),
+        SetOptions(merge: true),
+      );
+    await batch.commit();
   }
 
-  Stream<List<UserModel>> streamAllUsers() {
-    return collectionRef.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return UserModel.fromMap(doc.data() as Map<String, dynamic>);
-      }).toList();
-    });
+  /// Turns `isPublishing` on or off in [groupId], leaving the position as
+  /// it is. Fails when the person never published there.
+  @override
+  Future<void> setPublishing(String groupId, String email, bool isPublishing) =>
+      _position(
+        groupId,
+        email,
+      ).update({PositionFields.isPublishing: isPublishing});
+
+  /// Tells [groupId] the device is still sharing, without a new position.
+  @override
+  Future<void> heartbeat(String groupId, String email) => _position(
+    groupId,
+    email,
+  ).update({PositionFields.capturedAt: DateTime.now()});
+
+  /// The groups of the bound organization where [email] publishes, read once
+  /// from their own memberships.
+  Future<List<String>> publisherGroups(String email) async {
+    final snapshot = await _firestore
+        .collectionGroup(FirestorePaths.groupMemberships)
+        .where(
+          GroupMembershipFields.email,
+          isEqualTo: email.trim().toLowerCase(),
+        )
+        .where(
+          GroupMembershipFields.organizationId,
+          isEqualTo: _organization.id,
+        )
+        .get();
+    return groupsWithRole({
+      for (final doc in snapshot.docs)
+        if (doc.reference.parent.parent case final group?)
+          group.id: doc.data()[GroupMembershipFields.roles],
+    }, GroupRoles.publisher);
   }
 
-  /// Every person's live document that points at [groupEmail], sharing or
-  /// not, so the team list can say who turned the location off. The map keeps
-  /// only the live ones (see `liveUsers`).
-  Stream<List<UserModel>> streamUsersOfGroup(String groupEmail) {
-    try {
-      return collectionRef
-          .where('grupo_ativo', isEqualTo: normalizeGroupEmail(groupEmail))
-          .snapshots()
-          .map(
-            (QuerySnapshot query) => [
-              for (final doc in query.docs)
-                UserModel.fromMap(doc.data() as Map<String, dynamic>),
-            ],
-          );
-    } catch (e) {
-      throw Exception("Erro ao buscar usuários do grupo: $e");
-    }
-  }
-
-  Stream<List<UserModel>> getAllUsers() {
-    try {
-      return collectionRef.snapshots().map((QuerySnapshot query) {
-        List<UserModel> users = [];
-        for (var doc in query.docs) {
-          final user = UserModel.fromMap(doc.data() as Map<String, dynamic>);
-          if (user.timestamp == null) continue;
-          users.add(user);
-        }
-        return users;
-      });
-    } catch (e) {
-      throw Exception("Erro ao buscar todos os usuários: $e");
-    }
-  }
-
-  Future<UserModel?> getUserByEmail(String email) async {
-    try {
-      final DocumentSnapshot doc = await collectionRef.doc(email).get();
-      if (doc.exists) {
-        return UserModel.fromMap(doc.data() as Map<String, dynamic>);
-      } else {
-        //throw Exception("Documento não encontrado para o email: $email");
-        return null;
-      }
-    } catch (e) {
-      throw Exception(
-        "Erro ao buscar localização do usuário por id do dispositivo: $e",
+  /// Marks [email] as not sharing in every group where they publish. A group
+  /// that fails (never published there, no connection) does not stop the
+  /// others; throws only when the groups cannot be read.
+  Future<void> markNotPublishing(String email) async {
+    final outcome = await publishToGroups(
+      await publisherGroups(email),
+      (groupId) => setPublishing(groupId, email, false),
+    );
+    if (outcome.failed.isNotEmpty) {
+      debugPrint(
+        '[FirebaseProvider] isPublishing stayed on in '
+        '${outcome.failed.keys.join(', ')}',
       );
     }
   }
 
-  Future<void> updateIsTracked(
-    String email,
-    bool isTracked, {
-    String? grupoAtivo,
-  }) async {
-    try {
-      final Map<String, dynamic> data = {'isTracked': isTracked};
-      if (grupoAtivo != null) {
-        data['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
-      }
-      await collectionRef.doc(email).update(data);
-      debugPrint("Campo isTracked atualizado com sucesso!");
-    } catch (e) {
-      debugPrint("Erro ao atualizar isTracked: $e");
-      rethrow;
-    }
-  }
-
-  Future<void> updateHeartbeat(String email) async {
-    try {
-      await collectionRef.doc(email).update({'timestamp': DateTime.now()});
-      debugPrint("Heartbeat atualizado com sucesso!");
-    } catch (e) {
-      debugPrint("Erro ao atualizar heartbeat: $e");
-    }
-  }
-
-  Future<void> updateLocationAndTimestamp({
-    required String email,
-    required String nome,
-    required double lat,
-    required double lng,
-    required DateTime timestamp,
-    String? grupoAtivo,
-  }) async {
-    try {
-      // The position and its trail point go in one batch, both stamped
-      // with the server's time: the rules limit how often a position may
-      // change (Community plan) and only accept a point written together
-      // with the position it records.
-      final userDoc = collectionRef.doc(email);
-      final Map<String, dynamic> userUpdates = {
-        'email': email,
-        'nome': nome,
-        'lat': lat,
-        'lng': lng,
-        'timestamp': timestamp,
-        'positionAt': FieldValue.serverTimestamp(),
-      };
-      final Map<String, dynamic> pointData = {
-        'lat': lat,
-        'lng': lng,
-        'timestamp': FieldValue.serverTimestamp(),
-      };
-      if (grupoAtivo != null) {
-        userUpdates['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
-        pointData['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
-      }
-
-      // The day summary marks the day in the history calendar, so a month
-      // costs one read per person and day instead of every point.
-      final daySummary = <String, dynamic>{
-        'lastAt': FieldValue.serverTimestamp(),
-        'points': FieldValue.increment(1),
-        'grupo_ativo': ?pointData['grupo_ativo'],
-      };
-      final batch = CurrentPartnerFirebase.instance.firestore.batch()
-        ..update(userDoc, userUpdates)
-        ..set(userDoc.collection('historico_posicoes').doc(), pointData)
-        ..set(
-          userDoc.collection('dias').doc(dayKey(DateTime.now())),
-          daySummary,
-          SetOptions(merge: true),
-        );
-      await batch.commit();
-
-      if (kDebugMode) print("Dados atualizados no firestore com sucesso!");
-    } catch (e) {
-      debugPrint("Erro ao atualizar coordenadas e timestamp: $e");
-      rethrow;
-    }
-  }
-
-  /// The days of [month] when any of [emails] shared their location, read
-  /// from the day summaries (at most one read per person and day).
+  /// The days of [month] when any of [emails] shared their location in
+  /// [groupId], read from the day summaries (at most one read per person and
+  /// day).
   Future<Set<String>> trailDays(
+    String groupId,
     Iterable<String> emails,
     HistoryMonth month,
   ) async {
@@ -189,9 +146,8 @@ class FirebaseProvider {
     final days = <String>{};
     await Future.wait([
       for (final email in emails)
-        collectionRef
-            .doc(email)
-            .collection('dias')
+        _position(groupId, email)
+            .collection(FirestorePaths.trailDays)
             .where(FieldPath.documentId, isGreaterThanOrEqualTo: first)
             .where(FieldPath.documentId, isLessThanOrEqualTo: last)
             .get()
@@ -203,116 +159,58 @@ class FirebaseProvider {
     return days;
   }
 
-  /// Retorna um Stream com os últimos [limit] pontos da trajetória de um
-  /// usuário, das últimas 24 horas.
-  Stream<List<LocationPoint>> getRecentTrajectory(
-    String email, {
-    int limit = 100,
-  }) {
-    final twentyFourHoursAgo = DateTime.now().subtract(
-      const Duration(hours: 24),
-    );
-
-    return collectionRef
-        .doc(email)
-        .collection('historico_posicoes')
-        .where('timestamp', isGreaterThanOrEqualTo: twentyFourHoursAgo)
-        .orderBy('timestamp', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snapshot) {
-          final points = snapshot.docs
-              .map((doc) => LocationPoint.fromMap(doc.data()))
-              .toList();
-          // Inverte para que a ordem dos pontos no mapa seja consistente cronologicamente
-          return points.reversed.toList();
-        });
+  Query<Map<String, dynamic>> _trailOfDay(
+    String groupId,
+    String email,
+    DateTime day,
+  ) {
+    final startOfDay = DateTime(day.year, day.month, day.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    return _position(groupId, email)
+        .collection(FirestorePaths.trail)
+        .where(TrailPointFields.receivedAt, isGreaterThanOrEqualTo: startOfDay)
+        .where(TrailPointFields.receivedAt, isLessThan: endOfDay);
   }
 
-  /// Retorna o último ponto conhecido de um usuário em um dia específico.
-  ///
-  /// Útil para posicionar marcadores quando se observa um dia passado.
-  /// Retorna `null` quando não há registros para o dia informado.
+  /// The last point of [email] in [groupId] on [day], or `null` when there
+  /// is none: where their marker goes when a past day is observed.
   Future<LocationPoint?> getLastKnownPositionForDate(
+    String groupId,
     String email, {
     required DateTime day,
   }) async {
-    final startOfDay = DateTime(day.year, day.month, day.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
-    final snapshot = await collectionRef
-        .doc(email)
-        .collection('historico_posicoes')
-        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-        .where('timestamp', isLessThan: endOfDay)
-        .orderBy('timestamp', descending: true)
-        .limit(1)
-        .get();
-
+    final snapshot = await _trailOfDay(
+      groupId,
+      email,
+      day,
+    ).orderBy(TrailPointFields.receivedAt, descending: true).limit(1).get();
     if (snapshot.docs.isEmpty) return null;
-
     return LocationPoint.fromMap(snapshot.docs.first.data());
   }
 
-  /// Verifica se um usuário tem pelo menos um ponto registrado no dia informado.
-  Future<bool> hasPointsOnDate(String email, DateTime day) async {
-    final startOfDay = DateTime(day.year, day.month, day.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
+  /// Whether [email] has at least one point in [groupId] on [day].
+  Future<bool> hasPointsOnDate(
+    String groupId,
+    String email,
+    DateTime day,
+  ) async =>
+      (await _trailOfDay(groupId, email, day).limit(1).get()).docs.isNotEmpty;
 
-    final snapshot = await collectionRef
-        .doc(email)
-        .collection('historico_posicoes')
-        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-        .where('timestamp', isLessThan: endOfDay)
-        .limit(1)
-        .get();
-
-    return snapshot.docs.isNotEmpty;
-  }
-
-  /// Retorna um Stream com os últimos [limit] pontos da trajetória de um
-  /// usuário para um dia específico.
+  /// The last [limit] points of [email] in [groupId] on [day], oldest first,
+  /// then every change.
   Stream<List<LocationPoint>> getTrajectoryForDate(
+    String groupId,
     String email, {
     required DateTime day,
     int limit = 100,
-  }) {
-    final startOfDay = DateTime(day.year, day.month, day.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
-    return collectionRef
-        .doc(email)
-        .collection('historico_posicoes')
-        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-        .where('timestamp', isLessThan: endOfDay)
-        .orderBy('timestamp', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snapshot) {
-          final points = snapshot.docs
-              .map((doc) => LocationPoint.fromMap(doc.data()))
-              .toList();
-          return points.reversed.toList();
-        });
-  }
-
-  Future<bool> doesDocumentExist(String email) async {
-    try {
-      final DocumentSnapshot doc = await collectionRef.doc(email).get();
-      return doc.exists;
-    } catch (e) {
-      throw Exception("Erro ao verificar existência do documento: $e");
-    }
-  }
-
-  Future<void> deleteUserByEmail(String email) async {
-    try {
-      await collectionRef.doc(email).delete();
-      if (kDebugMode) {
-        print("Usuário deletado com sucesso!");
-      }
-    } catch (e) {
-      throw Exception("Erro ao deletar usuário: $e");
-    }
-  }
+  }) => _trailOfDay(groupId, email, day)
+      .orderBy(TrailPointFields.receivedAt, descending: true)
+      .limit(limit)
+      .snapshots()
+      .map(
+        (snapshot) => [
+          for (final doc in snapshot.docs.reversed)
+            LocationPoint.fromMap(doc.data()),
+        ],
+      );
 }

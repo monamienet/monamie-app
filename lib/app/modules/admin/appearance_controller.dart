@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner_config.dart';
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/organization_config.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 
 import 'appearance_backend.dart';
 import 'logo_converter.dart';
@@ -16,24 +16,24 @@ enum LogoSheet { closed, processing, preview, error }
 /// logo, saved together.
 class AppearanceController extends GetxController {
   AppearanceController({
-    required this.partner,
+    required this.organization,
     required AppearanceBackend backend,
     Future<Uint8List> Function(Uint8List bytes)? convertLogo,
-    Future<void> Function(PartnerConfig saved)? onSaved,
+    Future<void> Function(OrganizationConfig saved)? onSaved,
   }) : _backend = backend,
        _convertLogo = convertLogo ?? toSquareLogoPng,
        _onSaved = onSaved;
 
-  /// The partner as it is now (bound).
-  final PartnerConfig partner;
+  /// The organization as it is now (bound).
+  final OrganizationConfig organization;
   final AppearanceBackend _backend;
   final Future<Uint8List> Function(Uint8List bytes) _convertLogo;
-  final Future<void> Function(PartnerConfig saved)? _onSaved;
+  final Future<void> Function(OrganizationConfig saved)? _onSaved;
 
-  late final RxString name = partner.name.obs;
-  late final RxString themeId = partner.effectiveTheme.id.obs;
-  late final Rxn<Uint8List> logoPng = Rxn<Uint8List>(partner.logoPng);
-  final RxList<PartnerTheme> themes = <PartnerTheme>[].obs;
+  late final RxString name = organization.name.obs;
+  late final RxString themeId = organization.effectiveTheme.id.obs;
+  late final Rxn<Uint8List> logoPng = Rxn<Uint8List>(organization.logoPng);
+  final RxList<OrganizationTheme> themes = <OrganizationTheme>[].obs;
   final RxBool isLoadingThemes = true.obs;
   final RxBool isSaving = false.obs;
   final Rx<LogoSheet> sheet = LogoSheet.closed.obs;
@@ -56,23 +56,23 @@ class AppearanceController extends GetxController {
       themes.assignAll(await _backend.pickableThemes());
     } catch (e) {
       debugPrint('[Appearance] Could not load the themes: $e');
-      themes.assignAll([partner.effectiveTheme]);
+      themes.assignAll([organization.effectiveTheme]);
     } finally {
       isLoadingThemes.value = false;
     }
   }
 
   /// The theme currently picked, for the screen's colors.
-  PartnerTheme get pickedTheme =>
+  OrganizationTheme get pickedTheme =>
       themes.firstWhereOrNull((t) => t.id == themeId.value) ??
-      partner.effectiveTheme;
+      organization.effectiveTheme;
 
-  bool get _logoChanged => !identical(logoPng.value, partner.logoPng);
+  bool get _logoChanged => !identical(logoPng.value, organization.logoPng);
 
   /// Whether anything differs from what is saved.
   bool get hasChanges =>
-      name.value.trim() != partner.name ||
-      themeId.value != partner.effectiveTheme.id ||
+      name.value.trim() != organization.name ||
+      themeId.value != organization.effectiveTheme.id ||
       _logoChanged;
 
   /// Converts a picked file into the square PNG and shows the preview.
@@ -119,25 +119,25 @@ class AppearanceController extends GetxController {
       if (_logoChanged) {
         final png = logoPng.value;
         if (png == null) {
-          await _backend.deleteLogo(partner.id);
+          await _backend.deleteLogo(organization.id);
           logo = 'removed';
         } else {
-          await _backend.uploadLogo(partner.id, png);
+          await _backend.uploadLogo(organization.id, png);
           logo = 'set';
         }
       }
       final newName = name.value.trim();
       await _backend.saveBranding(
-        partner.id,
-        name: newName != partner.name ? newName : null,
-        themeId: themeId.value != partner.effectiveTheme.id
+        organization.id,
+        name: newName != organization.name ? newName : null,
+        themeId: themeId.value != organization.effectiveTheme.id
             ? themeId.value
             : null,
         logo: logo,
       );
       await _onSaved?.call(
-        PartnerConfig(
-          id: partner.id,
+        OrganizationConfig(
+          id: organization.id,
           name: newName,
           themeId: themeId.value,
           theme: pickedTheme,
@@ -145,7 +145,7 @@ class AppearanceController extends GetxController {
               ? null
               : (logo == 'set'
                     ? DateTime.now().millisecondsSinceEpoch
-                    : partner.logoVersion),
+                    : organization.logoVersion),
           logoPng: logoPng.value,
         ),
       );

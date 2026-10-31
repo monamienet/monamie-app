@@ -4,7 +4,7 @@ import 'package:args/command_runner.dart';
 
 import 'android_firebase_config.dart';
 import 'firebase_cli.dart';
-import 'partners.dart';
+import 'organizations.dart';
 
 /// `firebase`: fetches the Android Firebase config of the central project.
 class FirebaseCommand extends Command<void> {
@@ -25,7 +25,7 @@ class FirebaseCommand extends Command<void> {
   @override
   Future<void> run() async {
     if (argResults!.rest.isNotEmpty) {
-      usageException('Takes no arguments: partners are bound at runtime.');
+      usageException('Takes no arguments: organizations are bound at runtime.');
     }
     final appId = await fetchAndroidFirebaseConfig(
       repoRoot: _repoRoot,

@@ -20,9 +20,9 @@ class BrandingError extends Error {
  *
  * - `name` (optional): trimmed, inner spaces collapsed, 2 to 40 characters,
  *   never starting with "MonAmie " (it would read as MonAmie's own brand).
- * - `themeId` (optional): one of `activeThemeIds`. Partners pick a theme
+ * - `themeId` (optional): one of `activeThemeIds`. Organizations pick a theme
  *   from the central catalog, never free colors.
- * - `logo` (optional): "set" after uploading `partners/{id}/logo.png`,
+ * - `logo` (optional): "set" after uploading `organizations/{id}/logo.png`,
  *   "removed" after deleting it.
  * At least one of them must be present.
  *
@@ -83,9 +83,21 @@ function activeThemeIdsFrom(listing) {
   return ids;
 }
 
+/**
+ * Whether `id` has the shape of an organization id (lowercase letters,
+ * at least three), so it can be put in a document path.
+ *
+ * @param {unknown} id
+ * @returns {boolean}
+ */
+function isOrganizationId(id) {
+  return typeof id === "string" && /^[a-z]{3,}$/.test(id);
+}
+
 module.exports = {
   BrandingError,
   THEMES_URL,
   activeThemeIdsFrom,
+  isOrganizationId,
   validateBranding,
 };

@@ -106,7 +106,7 @@ jobs:
       - run: flutter test test/unit
 
       # The build fetches the central project's google-services.json with
-      # `tool/partner.dart firebase`. Partners' projects are bound at runtime.
+      # `tool/organization.dart firebase`. Organizations' projects are bound at runtime.
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@15.30.2
 

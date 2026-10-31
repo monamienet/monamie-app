@@ -32,9 +32,9 @@ class FirebaseWebApp {
   String toString() => '$appId ($displayName)';
 }
 
-/// The Firebase CLI calls the partner tool needs.
+/// The Firebase CLI calls the organization tool needs.
 ///
-/// Implementations throw a `PartnerToolException` on failure, and their
+/// Implementations throw a `OrganizationToolException` on failure, and their
 /// messages never include config contents (they hold API keys).
 abstract interface class FirebaseCli {
   /// Lists the Android apps of Firebase project [projectId].

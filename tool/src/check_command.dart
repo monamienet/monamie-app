@@ -2,33 +2,34 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 
+import 'access_token_source.dart';
 import 'firebase_cli.dart';
 import 'firestore_documents.dart';
-import 'group_directory.dart';
-import 'partner_check.dart';
-import 'partners.dart';
+import 'organization_check.dart';
+import 'organizations.dart';
 
-/// `check <id>`: reports whether a partner is ready to be activated.
+/// `check <id>`: reports whether an organization is ready to be activated.
 class CheckCommand extends Command<void> {
-  CheckCommand(this._cli, this._groups, this._firestore) {
+  CheckCommand(this._cli, this._firestore, this._tokens) {
     argParser.addFlag(
       'community',
       negatable: false,
-      help: 'The partner is on the Community plan ($communityProjectId).',
+      help: 'The organization is on the Community plan ($communityProjectId).',
     );
   }
 
   final FirebaseCli _cli;
-  final GroupDirectory _groups;
   final FirestoreDocuments _firestore;
+  final AccessTokenSource _tokens;
 
   @override
   String get name => 'check';
 
   @override
   String get description =>
-      'Check that a partner has its Firebase project, root group and '
-      'branding name, the three things required before activation.';
+      'Check that an organization has its Firebase project apps, an '
+      'administrator (with memberships matching the central accounts index) '
+      'and a branding name, the things required before activation.';
 
   @override
   String get invocation => '${runner!.executableName} $name <id>';
@@ -36,17 +37,21 @@ class CheckCommand extends Command<void> {
   @override
   Future<void> run() async {
     final rest = argResults!.rest;
-    if (rest.length != 1) usageException('Expected exactly one partner id.');
-    final results = await checkPartner(
+    if (rest.length != 1) {
+      usageException('Expected exactly one organization id.');
+    }
+    final results = await checkOrganization(
       id: rest.single,
       cli: _cli,
-      groups: _groups,
       firestore: _firestore,
+      accessToken: await _tokens.accessToken(),
       plan: argResults!.flag('community') ? 'community' : null,
     );
     printCheckResults(results);
     if (results.any((r) => !r.passed)) {
-      throw PartnerToolException("Partner '${rest.single}' is not ready.");
+      throw OrganizationToolException(
+        "Organization '${rest.single}' is not ready.",
+      );
     }
   }
 }

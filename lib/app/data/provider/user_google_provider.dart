@@ -1,63 +1,33 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:hive/hive.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
 
 enum UserRole { user }
 
+/// The signed-in person's Google profile, kept on the device (Hive): the
+/// login reads it back (for example, the e-mail of who signed in).
 class UserGoogleProvider {
-  DocumentReference<Map<String, dynamic>> get _partnerData =>
-      CurrentPartnerFirebase.instance.partnerData;
   final String _hiveBox = 'user_google_data';
   final String _hiveKey = 'current_user';
 
-  Future<UserGoogleModel> createUserDoc(
+  /// Builds the profile from the Google account and keeps it on the device.
+  Future<UserGoogleModel> saveGoogleProfile(
     String email,
     String name,
     String uid,
     String urlImage, {
     String? avatarBase64,
   }) async {
-    final docRef = _partnerData.collection('users').doc(uid);
-    final docSnapshot = await docRef.get();
-
-    UserGoogleModel user;
-    if (docSnapshot.exists) {
-      final data = docSnapshot.data() as Map<String, dynamic>;
-      user = UserGoogleModel(
-        id: docSnapshot.id,
-        name: data['name'] as String?,
-        email: data['email'] as String,
-        urlImage: data['urlImage'] as String?,
-        createdAt: data['createdAt'] != null
-            ? DateTime.tryParse(data['createdAt'] as String)
-            : null,
-        avatarBase64: data['avatarBase64'] as String? ?? avatarBase64,
-      );
-    } else {
-      user = UserGoogleModel(
-        name: name,
-        email: email,
-        id: uid,
-        urlImage: urlImage,
-        createdAt: DateTime.now(),
-        avatarBase64: avatarBase64,
-      );
-      await createUserDocInFirebase(user);
-    }
-
+    final user = UserGoogleModel(
+      name: name,
+      email: email,
+      id: uid,
+      urlImage: urlImage,
+      createdAt: DateTime.now(),
+      avatarBase64: avatarBase64,
+    );
     await saveUserGoogleModel(user);
     return user;
-  }
-
-  Future<void> createUserDocInFirebase(UserGoogleModel user) async {
-    await _partnerData.collection('users').doc(user.id).set({
-      'name': user.name,
-      'email': user.email,
-      'urlImage': user.urlImage,
-      'createdAt': user.createdAt?.toIso8601String(),
-    });
   }
 
   Future<String> saveUserGoogleModel(UserGoogleModel user) async {

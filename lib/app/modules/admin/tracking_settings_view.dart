@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_palette.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_palette.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 
@@ -20,8 +20,8 @@ class TrackingSettingsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = PartnerPalette.fromConfig(Partner.current);
-    final name = Partner.current?.name ?? '';
+    final palette = OrganizationPalette.fromConfig(Organization.current);
+    final name = Organization.current?.name ?? '';
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(

@@ -4,8 +4,8 @@ import 'package:monamie_app/app/modules/account/account_deletion.dart';
 /// A complete deletion as the central functions return it.
 Map<String, Object?> _json([Map<String, Object?> overrides = const {}]) => {
   'deleteAt': '2026-11-25T12:00:00.000Z',
-  'ownedPartners': ['rotasul'],
-  'ownedNames': {'rotasul': 'Rota Sul'},
+  'ownedOrganizationIds': ['rotasul'],
+  'ownedOrganizationNames': {'rotasul': 'Rota Sul'},
   ...overrides,
 };
 
@@ -21,8 +21,8 @@ void main() {
       // 3. Assert
       expect(deletion, isNotNull);
       expect(deletion!.deleteAt, DateTime.utc(2026, 11, 25, 12));
-      expect(deletion.ownedPartners, ['rotasul']);
-      expect(deletion.ownedNames, {'rotasul': 'Rota Sul'});
+      expect(deletion.ownedOrganizationIds, ['rotasul']);
+      expect(deletion.ownedOrganizationNames, {'rotasul': 'Rota Sul'});
     });
 
     test('Edge Case: a member without owned fields owns nothing', () {
@@ -33,53 +33,60 @@ void main() {
       final deletion = AccountDeletion.fromJson(json);
 
       // 3. Assert
-      expect(deletion!.ownedPartners, isEmpty);
-      expect(deletion.ownedNames, isEmpty);
+      expect(deletion!.ownedOrganizationIds, isEmpty);
+      expect(deletion.ownedOrganizationNames, isEmpty);
     });
 
     test('Edge Case: non-string owned ids are dropped', () {
       // 1. Arrange
       final json = _json({
-        'ownedPartners': ['rotasul', 7, null, 'frota'],
+        'ownedOrganizationIds': ['rotasul', 7, null, 'frota'],
       });
 
       // 2. Act
       final deletion = AccountDeletion.fromJson(json);
 
       // 3. Assert
-      expect(deletion!.ownedPartners, ['rotasul', 'frota']);
+      expect(deletion!.ownedOrganizationIds, ['rotasul', 'frota']);
     });
 
     test('Edge Case: only string-to-string names are kept', () {
       // 1. Arrange
       final json = _json({
-        'ownedNames': {'rotasul': 'Rota Sul', 'frota': 3, 4: 'Quatro'},
+        'ownedOrganizationNames': {
+          'rotasul': 'Rota Sul',
+          'frota': 3,
+          4: 'Quatro',
+        },
       });
 
       // 2. Act
       final deletion = AccountDeletion.fromJson(json);
 
       // 3. Assert
-      expect(deletion!.ownedNames, {'rotasul': 'Rota Sul'});
+      expect(deletion!.ownedOrganizationNames, {'rotasul': 'Rota Sul'});
     });
 
     test('Edge Case: owned fields of the wrong type read as empty', () {
       // 1. Arrange
-      final json = _json({'ownedPartners': 'rotasul', 'ownedNames': 'x'});
+      final json = _json({
+        'ownedOrganizationIds': 'rotasul',
+        'ownedOrganizationNames': 'x',
+      });
 
       // 2. Act
       final deletion = AccountDeletion.fromJson(json);
 
       // 3. Assert
-      expect(deletion!.ownedPartners, isEmpty);
-      expect(deletion.ownedNames, isEmpty);
+      expect(deletion!.ownedOrganizationIds, isEmpty);
+      expect(deletion.ownedOrganizationNames, isEmpty);
     });
 
     final notDeletions = <String, Object?>{
       'null': null,
       'a list': ['2026-11-25T12:00:00.000Z'],
       'a string': '2026-11-25T12:00:00.000Z',
-      'a map without deleteAt': {'ownedPartners': <String>[]},
+      'a map without deleteAt': {'ownedOrganizationIds': <String>[]},
       'a malformed deleteAt': _json({'deleteAt': 'amanhã'}),
     };
     for (final MapEntry(key: label, value: json) in notDeletions.entries) {
@@ -103,8 +110,8 @@ void main() {
       // 1. Arrange
       final deletion = AccountDeletion(
         deleteAt: deleteAt,
-        ownedPartners: const ['rotasul', 'frota'],
-        ownedNames: const {'rotasul': 'Rota Sul', 'frota': 'Frota'},
+        ownedOrganizationIds: const ['rotasul', 'frota'],
+        ownedOrganizationNames: const {'rotasul': 'Rota Sul', 'frota': 'Frota'},
       );
 
       // 2. Act
@@ -118,7 +125,7 @@ void main() {
       // 1. Arrange
       final deletion = AccountDeletion(
         deleteAt: deleteAt,
-        ownedPartners: const ['rotasul'],
+        ownedOrganizationIds: const ['rotasul'],
       );
 
       // 2. Act
@@ -132,7 +139,7 @@ void main() {
       // 1. Arrange
       final deletion = AccountDeletion(
         deleteAt: deleteAt,
-        ownedNames: const {'rotasul': 'Rota Sul'},
+        ownedOrganizationNames: const {'rotasul': 'Rota Sul'},
       );
 
       // 2. Act

@@ -6,11 +6,11 @@ const validity = Duration(minutes: 10);
 
 Presence presence({
   bool hasRecord = true,
-  bool? isTracked = true,
+  bool? isPublishing = true,
   DateTime? lastSeen,
 }) => presenceOf(
   hasRecord: hasRecord,
-  isTracked: isTracked,
+  isPublishing: isPublishing,
   lastSeen: lastSeen,
   now: now,
   validity: validity,
@@ -45,7 +45,7 @@ void main() {
       final lastSeen = now.subtract(const Duration(hours: 2));
 
       // 2. Act
-      final result = presence(isTracked: false, lastSeen: lastSeen);
+      final result = presence(isPublishing: false, lastSeen: lastSeen);
 
       // 3. Assert
       expect(
@@ -79,12 +79,12 @@ void main() {
       expect(result.kind, PresenceKind.live);
     });
 
-    test('Edge Case: a document without isTracked counts as sharing', () {
+    test('Edge Case: a document without isPublishing counts as sharing', () {
       // 1. Arrange
       final lastSeen = now.subtract(const Duration(minutes: 1));
 
       // 2. Act
-      final result = presence(isTracked: null, lastSeen: lastSeen);
+      final result = presence(isPublishing: null, lastSeen: lastSeen);
 
       // 3. Assert
       expect(result.kind, PresenceKind.live);
@@ -92,7 +92,7 @@ void main() {
 
     test('Edge Case: off without a known last position has no "visto"', () {
       // 1. Arrange / 2. Act
-      final result = presence(isTracked: false, lastSeen: null);
+      final result = presence(isPublishing: false, lastSeen: null);
 
       // 3. Assert
       expect(result, const Presence(PresenceKind.off, 'Localização desligada'));
@@ -103,7 +103,7 @@ void main() {
       final lastSeen = now.subtract(const Duration(days: 5));
 
       // 2. Act
-      final result = presence(isTracked: false, lastSeen: lastSeen);
+      final result = presence(isPublishing: false, lastSeen: lastSeen);
 
       // 3. Assert
       expect(result.kind, PresenceKind.off);
@@ -122,7 +122,7 @@ void main() {
 
     test('Sad Path: no document at all is "never"', () {
       // 1. Arrange / 2. Act
-      final result = presence(hasRecord: false, isTracked: null);
+      final result = presence(hasRecord: false, isPublishing: null);
 
       // 3. Assert
       expect(
@@ -131,9 +131,9 @@ void main() {
       );
     });
 
-    test('Sad Path: no document wins over a stray isTracked false', () {
+    test('Sad Path: no document wins over a stray isPublishing false', () {
       // 1. Arrange / 2. Act
-      final result = presence(hasRecord: false, isTracked: false);
+      final result = presence(hasRecord: false, isPublishing: false);
 
       // 3. Assert
       expect(result.kind, PresenceKind.never);
@@ -141,7 +141,7 @@ void main() {
 
     test('Sad Path: a document that never got a position is "never"', () {
       // 1. Arrange / 2. Act
-      final result = presence(isTracked: true, lastSeen: null);
+      final result = presence(isPublishing: true, lastSeen: null);
 
       // 3. Assert
       expect(result.kind, PresenceKind.never);
@@ -149,7 +149,7 @@ void main() {
 
     test('Sad Path: a document with neither flag nor position is "never"', () {
       // 1. Arrange / 2. Act
-      final result = presence(isTracked: null, lastSeen: null);
+      final result = presence(isPublishing: null, lastSeen: null);
 
       // 3. Assert
       expect(result.kind, PresenceKind.never);

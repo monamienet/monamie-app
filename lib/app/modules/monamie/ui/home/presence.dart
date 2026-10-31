@@ -1,7 +1,7 @@
 /// How fresh a person's last position is, which decides the line under their
-/// name and the color of their avatar in the team list.
+/// name and the color of their avatar in the group list.
 enum PresenceKind {
-  /// Updated within the partner's freshness threshold.
+  /// Updated within the organization's freshness threshold.
   live,
 
   /// Sharing, but silent for longer than the threshold.
@@ -31,14 +31,14 @@ class Presence {
   String toString() => 'Presence($kind, $label)';
 }
 
-/// The presence of one person from their live document in `usuarios`.
+/// The presence of one person from their live document in `positions`.
 ///
-/// [hasRecord] is false when the person has no document yet; [isTracked] and
-/// [lastSeen] are the document's `isTracked` and `timestamp`. A person is
+/// [hasRecord] is false when the person has no document yet; [isPublishing] and
+/// [lastSeen] are the document's `isPublishing` and `capturedAt`. A person is
 /// "live" until [validity] has passed since [lastSeen].
 Presence presenceOf({
   required bool hasRecord,
-  required bool? isTracked,
+  required bool? isPublishing,
   required DateTime? lastSeen,
   required DateTime now,
   required Duration validity,
@@ -46,7 +46,7 @@ Presence presenceOf({
   const never = Presence(PresenceKind.never, 'Ainda não ativou a localização');
   if (!hasRecord) return never;
 
-  if (isTracked == false) {
+  if (isPublishing == false) {
     final seen = lastSeen == null ? '' : ' · visto ${agoLabel(lastSeen, now)}';
     return Presence(PresenceKind.off, 'Localização desligada$seen');
   }

@@ -87,7 +87,7 @@ the push changes at least one of these paths, which are the inputs of the Androi
 | `lib/**` | the Dart code |
 | `android/**` | Gradle, manifest |
 | `assets/**` | images declared in `pubspec.yaml` |
-| `tool/**` | the partner tool: the build runs `tool/partner.dart firebase` to fetch `google-services.json` (section 6) |
+| `tool/**` | the organization tool: the build runs `tool/organization.dart firebase` to fetch `google-services.json` (section 6) |
 | `pubspec.yaml`, `pubspec.lock` | dependencies and the asset list |
 | `distribution/**` | not part of the `.aab`, but the release notes are uploaded with it (section 5.1) |
 | `.github/scripts/check-release-notes.sh`, `.github/workflows/deploy-play-internal.yml` | the pipeline itself: if it changes, it must run to prove it still works |
@@ -212,7 +212,7 @@ middle one is dropped and only the newest runs after the first. Nothing is lost,
 | 7 | `flutter test test/unit` | Runs the unit tests. If any fails, the deploy stops here. Integration tests are skipped because they need the Firebase emulators. |
 | 8 | `Install Firebase CLI` | Installs a pinned `firebase-tools` version. The build uses the CLI to fetch the central project's Firebase config. |
 | 9 | `google-github-actions/auth` (`auth-config`) | Trades GitHub's OIDC token for temporary credentials of a service account that **only reads** Firebase app configs (section 6). |
-| 10 | `flutter build appbundle` | Builds the release `.aab` of the single app `org.monamienet.app`, signed with the keystore from step 5, with the versionName from step 1c and with a new versionCode (section 5). Before compiling, Gradle fetches the central project's `google-services.json` with the credentials from step 9. Partners are bound at runtime, so no partner is chosen here. |
+| 10 | `flutter build appbundle` | Builds the release `.aab` of the single app `org.monamienet.app`, signed with the keystore from step 5, with the versionName from step 1c and with a new versionCode (section 5). Before compiling, Gradle fetches the central project's `google-services.json` with the credentials from step 9. Organizations are bound at runtime, so no organization is chosen here. |
 | 11 | `google-github-actions/auth` (`auth`) | Trades GitHub's OIDC token for temporary credentials of the publisher service account, with no key (section 6). |
 | 12 | `r0adkll/upload-google-play` | Uploads the `.aab` to the `internal` track with the credentials from step 11. `status: completed` releases it straight to testers. `whatsNewDirectory` uploads the release notes, and `releaseName` names the release after the versionName, which the promotion reads back. |
 | 13 | `tag` job | Only when the versionName is new: creates the `vX.Y.Z` tag on the commit. It is a separate job, the only one allowed to write to the repository, so the third-party code that runs in the build (Gradle, pub packages) never holds that permission. |
@@ -246,12 +246,11 @@ There are two safeguards:
 
 Debug builds (`flutter run`) are not affected and work without a keystore.
 
-### What about `google_config.dart`?
+### What about the OAuth client IDs?
 
-[lib/app/config/google_config.dart](../../lib/app/config/google_config.dart) is versioned like any
-other file because its values are **not secrets**: the groups gateway address and paths. The OAuth client
-IDs are no longer in the code: they come from the central project's config, fetched at build time. Anything compiled into the app can be extracted from the binary by anyone. The gateway
-is protected by the Google token (`Bearer`) the app sends with each request.
+They are not in the code: they come from the central project's config (`google-services.json`), fetched at
+build time. They are **not secrets** either: anything compiled into the app can be extracted from the binary
+by anyone. What protects the data is the person's sign-in, checked by the Firebase security rules.
 
 ## 5. How the versionCode is set
 

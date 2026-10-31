@@ -1,34 +1,41 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 
 import 'invite.dart';
 import 'invites_backend.dart';
 
-/// State of *Convidar pessoas*: the team (or the first team's name when the
-/// organization has none), the people with their roles, and the send.
+/// State of *Convidar pessoas*: the group (or the first group's name when
+/// the organization has none), the people with their roles, and the send.
 class InviteController extends GetxController {
   InviteController({
-    required this.partnerId,
-    required this.partnerName,
-    required List<Team> teams,
+    required this.organizationId,
+    required this.organizationName,
+    required List<Group> groups,
     required InvitesBackend backend,
-    String? team,
+    String? groupId,
+    this.canCreateFirstGroup = true,
   }) : _backend = backend,
-       teams = teams.obs,
-       team = RxnString(team ?? (teams.isEmpty ? null : teams.first.number));
+       groups = groups.obs,
+       groupId = RxnString(
+         groupId ?? (groups.isEmpty ? null : groups.first.id),
+       );
 
-  final String partnerId;
-  final String partnerName;
+  final String organizationId;
+  final String organizationName;
   final InvitesBackend _backend;
 
-  final RxList<Team> teams;
+  /// Whether an organization with no group may create its first one here
+  /// (administrators); a group's maintainer only invites to their groups.
+  final bool canCreateFirstGroup;
 
-  /// The chosen team's number, or `null` in first-team mode.
-  final RxnString team;
+  final RxList<Group> groups;
 
-  /// The first team's name, when the organization has no team yet.
-  final RxString firstTeamName = ''.obs;
+  /// The chosen group's id, or `null` in first-group mode.
+  final RxnString groupId;
+
+  /// The first group's name, when the organization has no group yet.
+  final RxString firstGroupName = ''.obs;
 
   final RxList<InviteDraft> people = <InviteDraft>[].obs;
   final RxString draftError = ''.obs;
@@ -36,12 +43,13 @@ class InviteController extends GetxController {
   final RxString errorMessage = ''.obs;
   final Rxn<InviteSendResult> result = Rxn<InviteSendResult>();
 
-  /// No team yet: the first one is created with the invites.
-  bool get firstTeamMode => teams.isEmpty;
+  /// No group yet: the first one is created with the invites (only by
+  /// someone who [canCreateFirstGroup]).
+  bool get firstGroupMode => groups.isEmpty && canCreateFirstGroup;
 
-  /// Why the first team's name is not valid yet, or `null`.
-  String? get firstTeamProblem =>
-      firstTeamMode ? teamNameProblem(firstTeamName.value, const []) : null;
+  /// Why the first group's name is not valid yet, or `null`.
+  String? get firstGroupProblem =>
+      firstGroupMode ? groupNameProblem(firstGroupName.value, const []) : null;
 
   /// Adds [email] with the default role (*Em campo*). Returns whether it
   /// was added.
@@ -60,7 +68,7 @@ class InviteController extends GetxController {
 
   /// Turns [role] on or off for [person] (a person may end up with none,
   /// which blocks the send until fixed).
-  void toggle(InviteDraft person, TeamRole role) {
+  void toggle(InviteDraft person, GroupRole role) {
     if (isSending.value) return;
     person.roles.contains(role)
         ? person.roles.remove(role)
@@ -72,7 +80,7 @@ class InviteController extends GetxController {
       !isSending.value &&
       people.isNotEmpty &&
       people.every((p) => p.roles.isNotEmpty) &&
-      (firstTeamMode ? firstTeamProblem == null : team.value != null);
+      (firstGroupMode ? firstGroupProblem == null : groupId.value != null);
 
   /// Sends the invites. Returns whether they were sent.
   Future<bool> send() async {
@@ -81,10 +89,10 @@ class InviteController extends GetxController {
     errorMessage.value = '';
     try {
       result.value = await _backend.send(
-        partnerId,
-        partnerName: partnerName,
-        team: firstTeamMode ? null : team.value,
-        firstTeamName: firstTeamMode ? firstTeamName.value.trim() : null,
+        organizationId,
+        organizationName: organizationName,
+        groupId: firstGroupMode ? null : groupId.value,
+        firstGroupName: firstGroupMode ? firstGroupName.value.trim() : null,
         invites: [
           for (final p in people) (email: p.email, roles: {...p.roles}),
         ],

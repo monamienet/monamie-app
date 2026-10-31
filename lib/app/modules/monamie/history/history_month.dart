@@ -3,7 +3,7 @@
 const historyMonthsBack = 12;
 
 /// `yyyy-mm-dd` of [day] (its local date): the id of a day summary
-/// (`usuarios/{email}/dias/{id}`) and the key of a calendar cell.
+/// (`positions/{email}/trailDays/{id}`) and the key of a calendar cell.
 String dayKey(DateTime day) =>
     '${day.year.toString().padLeft(4, '0')}-'
     '${day.month.toString().padLeft(2, '0')}-'

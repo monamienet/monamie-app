@@ -10,7 +10,7 @@ O objetivo é uma suíte pequena, rápida e que quebre só quando o comportament
 
 Teste código que **toma decisões**:
 
-- validação e conversão de dados (ex.: `PartnerConfig.fromBranding`, leitura de documentos do Firestore);
+- validação e conversão de dados (ex.: `OrganizationConfig.fromBranding`, leitura de documentos do Firestore);
 - regras de derivação (ex.: id do parceiro a partir de `<id>NN@monamienet.org`, paleta a partir da cor primária, planos B da marca);
 - controladores e serviços com ramificações (sucesso, erro, reentrância, timeout);
 - regras de segurança (`firestore.rules`, nos testes de integração com emulador);

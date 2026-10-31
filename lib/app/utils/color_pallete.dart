@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
-import '../config/partner/partner.dart';
-import '../config/partner/partner_palette.dart';
+import '../config/organization/organization.dart';
+import '../config/organization/organization_palette.dart';
 
-/// App colors, derived from the bound partner ([PartnerPalette]), or the
-/// MonAmie colors when no partner is bound.
+/// App colors, derived from the bound organization ([OrganizationPalette]), or the
+/// MonAmie colors when no organization is bound.
 ///
 /// The `*Blue` names come from the first brand; they now mean shades of the
-/// partner's primary color, whatever its hue.
+/// organization's primary color, whatever its hue.
 class AppColors {
-  static PartnerPalette get _palette =>
-      PartnerPalette.fromConfig(Partner.current);
+  static OrganizationPalette get _palette =>
+      OrganizationPalette.fromConfig(Organization.current);
 
   // Semantic Getters
   static Color get primary => _palette.primary;
@@ -18,7 +18,7 @@ class AppColors {
   static Color get primaryLight => _palette.light;
   static Color get secondary => _palette.accent;
 
-  /// `colors.secondary` of `partner.json`: the brand background.
+  /// `colors.secondary` of `organization.json`: the brand background.
   static Color get background => _palette.background;
 
   /// Readable text color on [primary] / [mediumBlue].

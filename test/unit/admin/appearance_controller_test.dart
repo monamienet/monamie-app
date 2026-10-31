@@ -4,13 +4,13 @@ import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner_config.dart';
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/organization_config.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/modules/admin/appearance_backend.dart';
 import 'package:monamie_app/app/modules/admin/appearance_controller.dart';
 import 'package:monamie_app/app/modules/admin/logo_converter.dart';
 
-const oceano = PartnerTheme(
+const oceano = OrganizationTheme(
   id: 'oceano',
   name: 'Oceano',
   primary: Color(0xFF0B7F7B),
@@ -20,22 +20,22 @@ const oceano = PartnerTheme(
   onDark: Color(0xFFFFFFFF),
 );
 
-/// The partner as saved: Grafite, no logo.
-const rotaSul = PartnerConfig(
+/// The organization as saved: Grafite, no logo.
+const rotaSul = OrganizationConfig(
   id: 'rotasul',
   name: 'Rota Sul',
   themeId: 'grafite',
-  theme: defaultPartnerTheme,
+  theme: defaultOrganizationTheme,
 );
 
 final savedLogo = Uint8List.fromList([1, 1, 1]);
 
 /// [rotaSul] with a logo already saved.
-final rotaSulWithLogo = PartnerConfig(
+final rotaSulWithLogo = OrganizationConfig(
   id: 'rotasul',
   name: 'Rota Sul',
   themeId: 'grafite',
-  theme: defaultPartnerTheme,
+  theme: defaultOrganizationTheme,
   logoVersion: 5,
   logoPng: savedLogo,
 );
@@ -52,29 +52,29 @@ class FakeAppearanceBackend implements AppearanceBackend {
   Object? failure;
 
   @override
-  Future<List<PartnerTheme>> pickableThemes() async {
+  Future<List<OrganizationTheme>> pickableThemes() async {
     calls.add('pickableThemes');
-    return [oceano, defaultPartnerTheme];
+    return [oceano, defaultOrganizationTheme];
   }
 
   @override
-  Future<void> uploadLogo(String partnerId, Uint8List png) async {
-    calls.add('uploadLogo:$partnerId:${png.length}');
+  Future<void> uploadLogo(String organizationId, Uint8List png) async {
+    calls.add('uploadLogo:$organizationId:${png.length}');
   }
 
   @override
-  Future<void> deleteLogo(String partnerId) async {
-    calls.add('deleteLogo:$partnerId');
+  Future<void> deleteLogo(String organizationId) async {
+    calls.add('deleteLogo:$organizationId');
   }
 
   @override
   Future<void> saveBranding(
-    String partnerId, {
+    String organizationId, {
     String? name,
     String? themeId,
     String? logo,
   }) async {
-    calls.add('saveBranding:$partnerId');
+    calls.add('saveBranding:$organizationId');
     saved.add((name: name, themeId: themeId, logo: logo));
     await gate?.future;
     if (failure case final failure?) throw failure;
@@ -82,16 +82,16 @@ class FakeAppearanceBackend implements AppearanceBackend {
 }
 
 late FakeAppearanceBackend backend;
-late List<PartnerConfig> onSavedWith;
+late List<OrganizationConfig> onSavedWith;
 
-/// A controller for [partner] whose themes are already loaded, with a
+/// A controller for [organization] whose themes are already loaded, with a
 /// converter that returns [convertedPng] (or [convert] when given).
 Future<AppearanceController> controllerFor(
-  PartnerConfig partner, {
+  OrganizationConfig organization, {
   Future<Uint8List> Function(Uint8List bytes)? convert,
 }) async {
   final controller = AppearanceController(
-    partner: partner,
+    organization: organization,
     backend: backend,
     convertLogo: convert ?? (_) async => convertedPng,
     onSaved: (saved) async => onSavedWith.add(saved),

@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_icon.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
-import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
@@ -20,7 +20,7 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 class HomeMenu extends StatelessWidget {
   const HomeMenu({super.key});
 
-  GoogleGroupsController get _groups => Get.find<GoogleGroupsController>();
+  GroupMapState get _groups => Get.find<GroupMapState>();
   UserController get _user => Get.find<UserController>();
   AuthGoogleController get _auth => Get.find<AuthGoogleController>();
   TrackingController get _tracking => Get.find<TrackingController>();
@@ -58,8 +58,12 @@ class HomeMenu extends StatelessWidget {
                 },
               ),
               Obx(() {
-                if (!_groups.isAdmin) return const SizedBox.shrink();
-                return _admin();
+                if (_groups.isAdmin) return _admin();
+                // A group's maintainer manages only their groups.
+                if (_groups.capabilities.value.canManageGroups) {
+                  return _maintainer();
+                }
+                return const SizedBox.shrink();
               }),
               const Spacer(),
               const Divider(color: HomeColors.divider, height: 1),
@@ -89,19 +93,19 @@ class HomeMenu extends StatelessWidget {
   }
 
   Widget _identity() {
-    final partner = Partner.current;
+    final organization = Organization.current;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       child: Row(
         children: [
-          PartnerIcon(partner: partner, size: 48),
+          OrganizationIcon(organization: organization, size: 48),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  partner?.name ?? MonAmieBrand.name,
+                  organization?.name ?? MonAmieBrand.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -116,9 +120,9 @@ class HomeMenu extends StatelessWidget {
                     menuSubtitle(
                       isAdmin: _groups.isAdmin,
                       canWatch: _groups.canWatch,
-                      canShare: _groups.capabilities.value.canShare,
-                      shareTeams: [
-                        for (final team in _groups.shareTeams) team.name,
+                      canShare: _groups.canPublish,
+                      publishGroups: [
+                        for (final group in _groups.publishGroups) group.name,
                       ],
                     ),
                     maxLines: 1,
@@ -219,29 +223,63 @@ class HomeMenu extends StatelessWidget {
     });
   }
 
-  Widget _admin() {
+  Widget _sectionTitle(String title) => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+    child: Text(
+      title,
+      style: const TextStyle(
+        color: HomeColors.muted,
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.7,
+      ),
+    ),
+  );
+
+  /// The maintainer's section: their groups only.
+  Widget _maintainer() {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Divider(color: HomeColors.divider, height: 1),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: Text(
-              'ADMINISTRAÇÃO',
-              style: TextStyle(
-                color: HomeColors.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.7,
-              ),
-            ),
-          ),
+          _sectionTitle('GESTÃO DE GRUPOS'),
           _MenuItem(
             icon: Icons.groups_outlined,
-            label: 'Equipes',
-            onTap: () => _open(Routes.TEAMS),
+            label: 'Meus grupos',
+            onTap: () => _open(Routes.GROUPS),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _admin() {
+    final organizationId = Organization.current?.id;
+    // The owner-only entry needs to know who owns the organization: read
+    // once per organization, while the menu is open.
+    if (organizationId != null) _auth.loadOwnership(organizationId);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Divider(color: HomeColors.divider, height: 1),
+          _sectionTitle('ADMINISTRAÇÃO'),
+          _MenuItem(
+            icon: Icons.groups_outlined,
+            label: 'Grupos',
+            onTap: () => _open(Routes.GROUPS),
+          ),
+          Obx(
+            () => _auth.ownership[organizationId] == true
+                ? _MenuItem(
+                    icon: Icons.admin_panel_settings_outlined,
+                    label: 'Administradores',
+                    onTap: () => _open(Routes.ADMINISTRATORS),
+                  )
+                : const SizedBox.shrink(),
           ),
           _MenuItem(
             icon: Icons.palette_outlined,

@@ -5,16 +5,17 @@ import 'package:args/command_runner.dart';
 import 'access_token_source.dart';
 import 'branding.dart';
 import 'firestore_documents.dart';
-import 'partners.dart';
+import 'organizations.dart';
 import 'themes_command.dart';
+import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
 
-/// `publish <id>`: writes the partner's branding to its own Firestore.
+/// `publish <id>`: writes the organization's branding to its own Firestore.
 class PublishCommand extends Command<void> {
   PublishCommand(this._firestore, this._tokens) {
     argParser
       ..addOption(
         'name',
-        help: 'Partner name, never starting with "MonAmie " (required).',
+        help: 'Organization name, never starting with "MonAmie " (required).',
       )
       ..addOption(
         'theme',
@@ -32,9 +33,9 @@ class PublishCommand extends Command<void> {
 
   @override
   String get description =>
-      "Write a partner's branding (name and catalog theme) to "
-      'partners/<id>/config/branding in its Firebase project. For partners '
-      'onboarded by hand; partners created in the app set it themselves.';
+      "Write an organization's branding (name and catalog theme) to "
+      'organizations/<id>/config/branding in its Firebase project. For organizations '
+      'onboarded by hand; organizations created in the app set it themselves.';
 
   @override
   String get invocation =>
@@ -43,9 +44,11 @@ class PublishCommand extends Command<void> {
   @override
   Future<void> run() async {
     final rest = argResults!.rest;
-    if (rest.length != 1) usageException('Expected exactly one partner id.');
+    if (rest.length != 1) {
+      usageException('Expected exactly one organization id.');
+    }
     final id = rest.single;
-    checkPartnerId(id);
+    checkOrganizationId(id);
     final name = argResults!.option('name');
     if (name == null) usageException('--name is required.');
     final themeId = argResults!.option('theme');
@@ -65,7 +68,7 @@ class PublishCommand extends Command<void> {
     final accessToken = await _tokens.accessToken();
     final registry = await _firestore.get(
       projectId: centralProjectId,
-      path: 'partners/$id',
+      path: FirestorePaths.organization(id),
       accessToken: accessToken,
     );
     final plan = registry?['plan'];

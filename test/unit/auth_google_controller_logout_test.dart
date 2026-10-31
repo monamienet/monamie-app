@@ -3,12 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
-import 'package:monamie_app/app/data/partner/partner_binding.dart';
-import 'package:monamie_app/app/data/partner/partner_binding_store.dart';
-import 'package:monamie_app/app/data/partner/partner_local_data.dart';
-import 'package:monamie_app/app/data/partner/partner_session.dart';
+import 'package:monamie_app/app/data/organization/organization_binding.dart';
+import 'package:monamie_app/app/data/organization/organization_binding_store.dart';
+import 'package:monamie_app/app/data/organization/organization_local_data.dart';
+import 'package:monamie_app/app/data/organization/organization_session.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
@@ -79,13 +78,10 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   Future<String?> signInGoogle() async => null;
 
   @override
-  Future<void> signInToPartner(String idToken) async {}
+  Future<void> signInToOrganization(String idToken) async {}
 
   @override
-  Future<UserGoogleModel?> savePartnerProfile() async => null;
-
-  @override
-  Future<String?> getFirebaseIdToken() async => null;
+  Future<UserGoogleModel?> saveOrganizationProfile() async => null;
 
   @override
   Future<String?> refreshGoogleIdToken() async => null;
@@ -94,28 +90,28 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   Future<String?> centralEmail() async => null;
 
   @override
-  Future<void> signOutOfPartner() async {}
+  Future<void> signOutOfOrganization() async {}
 
   @override
   void dispose() {}
 }
 
-/// Armazenamento em memória do vínculo com o parceiro (sem SharedPreferences).
-class _MemoryBindingStore implements PartnerBindingStore {
-  PartnerBinding? binding;
+/// Armazenamento em memória do vínculo com a organização (sem SharedPreferences).
+class _MemoryBindingStore implements OrganizationBindingStore {
+  OrganizationBinding? binding;
 
   @override
-  Future<PartnerBinding?> read() async => binding;
+  Future<OrganizationBinding?> read() async => binding;
 
   @override
-  Future<void> write(PartnerBinding value) async => binding = value;
+  Future<void> write(OrganizationBinding value) async => binding = value;
 
   @override
   Future<void> clear() async => binding = null;
 }
 
-/// Dados locais do parceiro sem Hive.
-class _FakePartnerLocalData implements PartnerLocalData {
+/// Dados locais da organização sem Hive.
+class _FakeOrganizationLocalData implements OrganizationLocalData {
   @override
   Future<void> clear() async {}
 }
@@ -153,13 +149,13 @@ class _FakeUserGoogleRepository implements UserGoogleRepository {
   }
 
   @override
-  Future<UserGoogleModel> createUserDoc(
+  Future<UserGoogleModel> saveGoogleProfile(
     String email,
     String name,
     String uid,
     String urlImage, {
     String? avatarBase64,
-  }) => throw UnimplementedError('createUserDoc não é usado no logout');
+  }) => throw UnimplementedError('saveGoogleProfile não é usado no logout');
 
   @override
   Future<String> saveUserGoogleModel(UserGoogleModel user) =>
@@ -172,10 +168,6 @@ class _FakeUserGoogleRepository implements UserGoogleRepository {
   @override
   Future<bool> hasUserGoogle() =>
       throw UnimplementedError('hasUserGoogle não é usado no logout');
-
-  @override
-  Future<GdiGroupsGoogle> getGdiGroupsGoogle(String token, String email) =>
-      throw UnimplementedError('getGdiGroupsGoogle não é usado no logout');
 }
 
 /// Registra no log compartilhado as rotas empilhadas pelo Navigator.
@@ -215,8 +207,8 @@ class _Harness {
     // O controller é construído sem `Get.put`, de modo que o `onInit` real
     // (que acessa o Google Sign-In) nunca é executado.
     controller = AuthGoogleController(
-      partnerSession: PartnerSession(store: _MemoryBindingStore()),
-      partnerLocalData: _FakePartnerLocalData(),
+      organizationSession: OrganizationSession(store: _MemoryBindingStore()),
+      organizationLocalData: _FakeOrganizationLocalData(),
       refreshTheme: () {},
       authGoogleService: authService,
       userRepository: userRepository,
@@ -416,6 +408,22 @@ void main() {
       expect(harness.controller.signedInEmail.value, isNull);
     });
 
+    testWidgets(
+      'Happy Path: Deve esquecer a titularidade lida ao concluir o logout',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser());
+        await _pumpApp(tester, harness);
+        harness.controller.ownership['rotasul'] = true;
+
+        // 2. Act
+        await _runLogout(tester, harness.controller);
+
+        // 3. Assert
+        expect(harness.controller.ownership, isEmpty);
+      },
+    );
+
     // ---------------------------------------------------------------------
     // Edge Case
     // ---------------------------------------------------------------------
@@ -425,8 +433,8 @@ void main() {
 
       // 2. Act
       final controller = AuthGoogleController(
-        partnerSession: PartnerSession(store: _MemoryBindingStore()),
-        partnerLocalData: _FakePartnerLocalData(),
+        organizationSession: OrganizationSession(store: _MemoryBindingStore()),
+        organizationLocalData: _FakeOrganizationLocalData(),
         refreshTheme: () {},
         authGoogleService: _FakeAuthGoogleService(log),
         userRepository: _FakeUserGoogleRepository(log),

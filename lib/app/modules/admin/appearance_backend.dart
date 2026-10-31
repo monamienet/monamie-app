@@ -1,24 +1,24 @@
 import 'dart:typed_data';
 
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 
 /// What the *Aparência* screen needs from the server, kept apart so the
 /// screen and its controller are tested with a fake.
 abstract interface class AppearanceBackend {
   /// The catalog's themes an administrator may pick, in picker order.
-  Future<List<PartnerTheme>> pickableThemes();
+  Future<List<OrganizationTheme>> pickableThemes();
 
-  /// Uploads the square logo PNG of [partnerId].
-  Future<void> uploadLogo(String partnerId, Uint8List png);
+  /// Uploads the square logo PNG of [organizationId].
+  Future<void> uploadLogo(String organizationId, Uint8List png);
 
-  /// Deletes the logo of [partnerId].
-  Future<void> deleteLogo(String partnerId);
+  /// Deletes the logo of [organizationId].
+  Future<void> deleteLogo(String organizationId);
 
   /// Saves the changed fields (`setBranding`); `logo` is `set` after an
   /// upload and `removed` after a delete. Throws [AppearanceException]
   /// with a message for an administrator.
   Future<void> saveBranding(
-    String partnerId, {
+    String organizationId, {
     String? name,
     String? themeId,
     String? logo,

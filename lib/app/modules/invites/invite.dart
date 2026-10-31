@@ -1,16 +1,16 @@
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 
-/// A pending invite to a team, as the central invite functions return it.
+/// A pending invite to a group, as the central invite functions return it.
 class Invite {
   const Invite({
     required this.id,
-    required this.partnerId,
-    required this.partnerName,
-    required this.team,
-    required this.teamName,
+    required this.organizationId,
+    required this.organizationName,
+    required this.groupId,
+    required this.groupName,
     required this.email,
     required this.roles,
-    required this.invitedByName,
+    required this.inviterName,
     required this.expiresAt,
     this.expired = false,
   });
@@ -21,46 +21,51 @@ class Invite {
     String? text(String key) =>
         json[key] is String ? json[key] as String : null;
     final id = text('id');
-    final partnerId = text('partnerId');
-    final team = text('team');
+    final organizationId = text('organizationId');
+    final groupId = text('groupId');
     final email = text('email');
     final roles = {
       for (final r in (json['roles'] as List?) ?? const [])
-        ?TeamRole.fromName(r),
+        if (GroupRole.fromName(r) case final role?
+            when GroupRole.everyday.contains(role))
+          role,
     };
-    if (id == null || partnerId == null || team == null || email == null) {
+    if (id == null ||
+        organizationId == null ||
+        groupId == null ||
+        email == null) {
       return null;
     }
     if (roles.isEmpty) return null;
     return Invite(
       id: id,
-      partnerId: partnerId,
-      partnerName: text('partnerName') ?? partnerId,
-      team: team,
-      teamName: text('teamName') ?? 'Equipe $team',
+      organizationId: organizationId,
+      organizationName: text('organizationName') ?? organizationId,
+      groupId: groupId,
+      groupName: text('groupName') ?? 'Grupo',
       email: email,
       roles: roles,
-      invitedByName: text('invitedByName') ?? '',
+      inviterName: text('inviterName') ?? '',
       expiresAt: _date(json['expiresAt']),
       expired: json['expired'] == true,
     );
   }
 
   final String id;
-  final String partnerId;
-  final String partnerName;
-  final String team;
-  final String teamName;
+  final String organizationId;
+  final String organizationName;
+  final String groupId;
+  final String groupName;
   final String email;
-  final Set<TeamRole> roles;
-  final String invitedByName;
+  final Set<GroupRole> roles;
+  final String inviterName;
   final DateTime? expiresAt;
 
   /// Past its 14 days: shown as *Expirado* with *Reenviar*.
   final bool expired;
 
   /// "Em campo · Vê o mapa".
-  String get rolesLabel => teamRolesLabel(roles);
+  String get rolesLabel => groupRolesLabel(roles);
 
   /// "Vale até 9 de novembro", "Expirado · venceu em 9 de novembro", or
   /// just "Expirado" / empty when the date is unknown.
@@ -106,10 +111,10 @@ String dayMonth(DateTime date) {
 
 /// A person on *Convidar pessoas* before sending: e-mail and roles.
 class InviteDraft {
-  InviteDraft(this.email) : roles = {TeamRole.share};
+  InviteDraft(this.email) : roles = {GroupRole.publisher};
 
   final String email;
-  final Set<TeamRole> roles;
+  final Set<GroupRole> roles;
 }
 
 final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');

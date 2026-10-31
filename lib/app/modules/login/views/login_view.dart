@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
-import 'package:monamie_app/app/config/partner/monamie_mark.dart';
-import 'package:monamie_app/app/config/partner/monamie_wordmark.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/monamie_mark.dart';
+import 'package:monamie_app/app/config/organization/monamie_wordmark.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/login/controllers/login_controller.dart';
 import 'package:get/get.dart';
 
 import 'widgets/google_button.dart';
 
-/// *Login*: MonAmie's own screen, never in a partner's brand (the partner
+/// *Login*: MonAmie's own screen, never in an organization's brand (the organization
 /// is only known after sign-in).
 class LoginView extends GetView<LoginController> {
   const LoginView({super.key});
@@ -61,7 +61,7 @@ class LoginView extends GetView<LoginController> {
         );
       }
       if (auth.isLoading.value) {
-        final name = auth.enteringPartnerName.value;
+        final name = auth.enteringOrganizationName.value;
         return SizedBox(
           height: 56,
           child: Row(

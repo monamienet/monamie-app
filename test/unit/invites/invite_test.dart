@@ -1,17 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:monamie_app/app/modules/admin/teams/team.dart';
+import 'package:monamie_app/app/modules/admin/groups/group.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 
 /// A complete invite as `myInvites` returns it.
 Map<String, Object?> _json([Map<String, Object?> overrides = const {}]) => {
   'id': 'inv1',
-  'partnerId': 'rotasul',
-  'partnerName': 'Rota Sul',
-  'team': '01',
-  'teamName': 'Equipe Norte',
+  'organizationId': 'rotasul',
+  'organizationName': 'Rota Sul',
+  'groupId': '01',
+  'groupName': 'Equipe Norte',
   'email': 'davi@x.com',
-  'roles': ['share', 'watch'],
-  'invitedByName': 'Rita Lima',
+  'roles': ['publisher', 'subscriber'],
+  'inviterName': 'Rita Lima',
   'expiresAt': '2026-11-09T12:00:00.000Z',
   ...overrides,
 };
@@ -28,17 +28,17 @@ void main() {
       // 3. Assert
       expect(invite, isNotNull);
       expect(invite!.id, 'inv1');
-      expect(invite.partnerId, 'rotasul');
-      expect(invite.team, '01');
+      expect(invite.organizationId, 'rotasul');
+      expect(invite.groupId, '01');
       expect(invite.email, 'davi@x.com');
-      expect(invite.roles, {TeamRole.share, TeamRole.watch});
+      expect(invite.roles, {GroupRole.publisher, GroupRole.subscriber});
       expect(invite.expiresAt, DateTime.utc(2026, 11, 9, 12));
     });
 
     test('Happy Path: rolesLabel lists Em campo before Vê o mapa', () {
       // 1. Arrange
       final json = _json({
-        'roles': ['watch', 'share'],
+        'roles': ['subscriber', 'publisher'],
       });
 
       // 2. Act
@@ -51,14 +51,14 @@ void main() {
     test('Edge Case: unknown roles are ignored when a known one remains', () {
       // 1. Arrange
       final json = _json({
-        'roles': ['admin', 'watch'],
+        'roles': ['maintainer', 'subscriber'],
       });
 
       // 2. Act
       final invite = Invite.fromJson(json);
 
       // 3. Assert
-      expect(invite!.roles, {TeamRole.watch});
+      expect(invite!.roles, {GroupRole.subscriber});
     });
 
     test('Edge Case: an expiresAt that is not a string is read as null', () {
@@ -88,8 +88,8 @@ void main() {
       'not a map': ['inv1'],
       'null': null,
       'no id': _json({'id': null}),
-      'no partnerId': _json({'partnerId': null}),
-      'no team': _json({'team': null}),
+      'no organizationId': _json({'organizationId': null}),
+      'no group': _json({'groupId': null}),
       'no email': _json({'email': null}),
       'a numeric id': _json({'id': 7}),
       'no roles': _json({'roles': null}),
