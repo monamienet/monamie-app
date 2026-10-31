@@ -190,6 +190,75 @@ void main() {
     });
   });
 
+  group('Capabilities (group maintainers) - Unit Test Suite', () {
+    test(
+      'Happy Path: the maintained groups come sorted and allow managing',
+      () {
+        // 1. Arrange
+        const caps = Capabilities(
+          isMember: true,
+          rolesByGroup: {
+            'recepcao': {'maintainer', 'publisher'},
+            'guias': {'subscriber'},
+            'bar': {'maintainer'},
+          },
+        );
+
+        // 2. Act
+        final result = [caps.maintainerGroupIds, caps.canManageGroups];
+
+        // 3. Assert
+        expect(result, [
+          ['bar', 'recepcao'],
+          isTrue,
+        ]);
+      },
+    );
+
+    test('Edge Case: an administrator in no group manages groups', () {
+      // 1. Arrange
+      const caps = Capabilities(isMember: true, isAdmin: true);
+
+      // 2. Act
+      final result = [caps.maintainerGroupIds, caps.canManageGroups];
+
+      // 3. Assert
+      expect(result, [isEmpty, isTrue]);
+    });
+
+    test('Sad Path: publishing and watching do not allow managing', () {
+      // 1. Arrange
+      const caps = Capabilities(
+        isMember: true,
+        rolesByGroup: {
+          'guias': {'publisher', 'subscriber'},
+        },
+      );
+
+      // 2. Act
+      final result = caps.canManageGroups;
+
+      // 3. Assert
+      expect(result, isFalse);
+    });
+
+    test('Sad Path: Gestor do grupo alone shows no map', () {
+      // 1. Arrange
+      const caps = Capabilities(
+        isMember: true,
+        rolesByGroup: {
+          'guias': {'maintainer'},
+        },
+      );
+
+      // 2. Act
+      final result = [caps.canWatch, caps.canWatchGroup('guias')];
+
+      // 3. Assert
+      expect(result, [isFalse, isFalse]);
+    });
+  });
+
   group('Capabilities equality - Unit Test Suite', () {
     test('Happy Path: the same roles in another order are equal', () {
       // 1. Arrange

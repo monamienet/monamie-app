@@ -72,7 +72,7 @@ class WelcomeView extends GetView<AuthGoogleController> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 16),
-                for (final role in GroupRole.values)
+                for (final role in GroupRole.everyday)
                   if (invite?.roles.contains(role) ?? false)
                     Container(
                       margin: const EdgeInsets.only(bottom: 12),

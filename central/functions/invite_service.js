@@ -138,6 +138,17 @@ async function ownedInvite(centralDb, inviteId, organizationId) {
   return { ref, doc };
 }
 
+/**
+ * The group of the organization's invite `inviteId`, so the caller's right
+ * to manage it can be checked before resending or cancelling.
+ *
+ * @throws {InviteError} code `invite` when it is not the organization's
+ */
+async function inviteGroupId(centralDb, inviteId, organizationId) {
+  const { doc } = await ownedInvite(centralDb, inviteId, organizationId);
+  return String(doc.get("groupId") ?? "");
+}
+
 /** "Reenviar": a new 14-day period, and the e-mail again. */
 async function resendInvite(centralDb, mailer, inviteId, organizationId, now = new Date()) {
   const { ref, doc } = await ownedInvite(centralDb, inviteId, organizationId);
@@ -219,6 +230,7 @@ module.exports = {
   acceptInvite,
   cancelGroupInvites,
   cancelInvite,
+  inviteGroupId,
   listInvites,
   myInvites,
   resendInvite,

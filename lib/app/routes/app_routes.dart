@@ -11,6 +11,7 @@ abstract class Routes {
   static const WELCOME = _Paths.WELCOME;
   static const APPEARANCE = _Paths.APPEARANCE;
   static const GROUPS = _Paths.GROUPS;
+  static const ADMINISTRATORS = _Paths.ADMINISTRATORS;
   static const TRACKING_SETTINGS = _Paths.TRACKING_SETTINGS;
   static const MY_ACCOUNT = _Paths.MY_ACCOUNT;
   static const DELETION_PENDING = _Paths.DELETION_PENDING;
@@ -25,6 +26,7 @@ abstract class _Paths {
   static const WELCOME = '/boas-vindas';
   static const APPEARANCE = '/admin/appearance';
   static const GROUPS = '/admin/groups';
+  static const ADMINISTRATORS = '/admin/administrators';
   static const TRACKING_SETTINGS = '/admin/tracking';
   static const MY_ACCOUNT = '/minha-conta';
   static const DELETION_PENDING = '/em-exclusao';

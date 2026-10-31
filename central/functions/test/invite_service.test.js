@@ -5,6 +5,7 @@ const {
   acceptInvite,
   cancelGroupInvites,
   cancelInvite,
+  inviteGroupId,
   listInvites,
   myInvites,
   resendInvite,
@@ -513,6 +514,54 @@ describe("acceptInvite (more) - Unit Test Suite", () => {
 
     // 2. Act
     const error = await inviteErrorOf(() => acceptInvite(centralDb, openerOf(organization()), "nope", ANA, NOW));
+
+    // 3. Assert
+    assert.equal(error.code, "invite");
+  });
+});
+
+describe("inviteGroupId - Unit Test Suite", () => {
+  test("Happy Path: gives the group of the organization's invite", async () => {
+    // 1. Arrange
+    const centralDb = fakeFirestore({ "invites/i1": pendingInvite() });
+
+    // 2. Act
+    const groupId = await inviteGroupId(centralDb, "i1", "rotasul");
+
+    // 3. Assert
+    assert.equal(groupId, "guias");
+  });
+
+  test("Edge Case: an invite without a group gives an empty id", async () => {
+    // 1. Arrange
+    const centralDb = fakeFirestore({ "invites/i1": pendingInvite({ groupId: undefined }) });
+
+    // 2. Act
+    const groupId = await inviteGroupId(centralDb, "i1", "rotasul");
+
+    // 3. Assert
+    assert.equal(groupId, "");
+  });
+
+  test("Sad Path: another organization's invite is refused with invite", async () => {
+    // 1. Arrange
+    const centralDb = fakeFirestore({
+      "invites/i1": pendingInvite({ organizationId: "verdemar" }),
+    });
+
+    // 2. Act
+    const error = await inviteErrorOf(() => inviteGroupId(centralDb, "i1", "rotasul"));
+
+    // 3. Assert
+    assert.equal(error.code, "invite");
+  });
+
+  test("Sad Path: a missing invite is refused with invite", async () => {
+    // 1. Arrange
+    const centralDb = fakeFirestore();
+
+    // 2. Act
+    const error = await inviteErrorOf(() => inviteGroupId(centralDb, "i9", "rotasul"));
 
     // 3. Assert
     assert.equal(error.code, "invite");

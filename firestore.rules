@@ -14,7 +14,9 @@ rules_version = '2';
 //   organizations/{id}/groups/{groupId}/groupMemberships/{personKey}
 //       {email, organizationId, roles, addedAt}: roles in a group,
 //       'publisher' (shares their own location there), 'subscriber' (sees
-//       the group's map) and 'maintainer' (#165, grants nothing extra yet)
+//       the group's map) and 'maintainer' (manages the group's people,
+//       invites and name through the central functions, and reads its
+//       memberships here; sees the map only if also 'subscriber')
 // personKey() is the lowercase-hex SHA-256 of the lowercased e-mail, so no
 // e-mail appears in a document name; each document also stores `email`.
 service cloud.firestore {
@@ -117,9 +119,11 @@ service cloud.firestore {
         allow write: if false;
 
         // Fields: email, organizationId, roles ('maintainer', 'publisher',
-        // 'subscriber'). The collection-group rule above adds your own.
+        // 'subscriber'). Administrators read every group's; a maintainer
+        // reads the group's they maintain. The collection-group rule above
+        // adds your own.
         match /groupMemberships/{key} {
-          allow read: if isOrganizationAdmin();
+          allow read: if hasGroupRole(groupId, 'maintainer') || isOrganizationAdmin();
           allow write: if false;
         }
 

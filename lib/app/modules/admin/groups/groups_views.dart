@@ -117,7 +117,8 @@ Widget _initialTile(String name, {double size = 44, double? fontSize}) {
   );
 }
 
-/// *Grupos*: every group of the organization (administrators only).
+/// *Grupos*: every group of the organization for an administrator, or the
+/// groups a maintainer (*Gestor do grupo*) maintains.
 class GroupsView extends StatelessWidget {
   const GroupsView({super.key, required this.controller});
 
@@ -129,21 +130,22 @@ class GroupsView extends StatelessWidget {
     appBar: _bar(
       'Grupos',
       actions: [
-        Obx(
-          () => Padding(
-            padding: const EdgeInsets.only(right: 20),
-            child: Center(
-              child: Text(
-                controller.countLabel,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: _palette.light,
+        if (controller.isAdmin)
+          Obx(
+            () => Padding(
+              padding: const EdgeInsets.only(right: 20),
+              child: Center(
+                child: Text(
+                  controller.countLabel,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: _palette.light,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     ),
     body: Column(
@@ -163,13 +165,16 @@ class GroupsView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: _errorText(controller.errorMessage.value),
                     ),
-                  if (controller.groups.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(12, 8, 12, 24),
+                  if (controller.groups.isEmpty &&
+                      controller.errorMessage.value.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
                       child: Text(
-                        'Sua organização ainda não tem grupos. Crie o '
-                        'primeiro e convide quem vai trabalhar nele.',
-                        style: TextStyle(
+                        controller.isAdmin
+                            ? 'Sua organização ainda não tem grupos. Crie o '
+                                  'primeiro e convide quem vai trabalhar nele.'
+                            : 'Você não é gestor de nenhum grupo agora.',
+                        style: const TextStyle(
                           fontSize: 15,
                           height: 1.45,
                           color: _muted,
@@ -182,29 +187,32 @@ class GroupsView extends StatelessWidget {
             );
           }),
         ),
-        Container(
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: _line)),
-          ),
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-          child: SafeArea(
-            top: false,
-            minimum: const EdgeInsets.only(bottom: 32),
-            child: Obx(
-              () => _primaryButton(
-                label: 'Criar grupo',
-                busy: false,
-                busyLabel: '',
-                icon: Icons.add,
-                onPressed:
-                    controller.groups.length >= GroupsController.maxGroups
-                    ? null
-                    : () =>
-                          Get.to(() => CreateGroupView(controller: controller)),
+        // Only administrators create groups.
+        if (controller.isAdmin)
+          Container(
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: _line)),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.only(bottom: 32),
+              child: Obx(
+                () => _primaryButton(
+                  label: 'Criar grupo',
+                  busy: false,
+                  busyLabel: '',
+                  icon: Icons.add,
+                  onPressed:
+                      controller.groups.length >= GroupsController.maxGroups
+                      ? null
+                      : () => Get.to(
+                          () => CreateGroupView(controller: controller),
+                        ),
+                ),
               ),
             ),
           ),
-        ),
       ],
     ),
   );
@@ -610,7 +618,8 @@ void _toast(BuildContext context, String message) {
 }
 
 /// *Grupo*: the group's people and pending invites in two tabs; rename,
-/// change roles, remove, resend or cancel invites, and delete the group.
+/// change roles, remove, resend or cancel invites, and (administrators
+/// only) delete the group.
 class GroupView extends StatefulWidget {
   const GroupView({
     super.key,
@@ -718,8 +727,10 @@ class _GroupViewState extends State<GroupView> {
               ),
               const SizedBox(height: 20),
               _inviteButton(),
-              const SizedBox(height: 12),
-              _deleteButton(group),
+              if (c.isAdmin) ...[
+                const SizedBox(height: 12),
+                _deleteButton(group),
+              ],
             ],
           ),
         ),
@@ -882,8 +893,9 @@ class _GroupViewState extends State<GroupView> {
         roles: groupRolesLabel(person.roles),
         member: true,
         onEditRoles: () => _editRoles(group, person),
-        actionText: 'Remover',
-        onAction: () => _remove(group, person),
+        // A maintainer cannot remove another *Gestor do grupo*.
+        actionText: c.canRemove(person) ? 'Remover' : null,
+        onAction: c.canRemove(person) ? () => _remove(group, person) : null,
       ),
   ], 'Ninguém neste grupo ainda. Convide quem vai trabalhar nele.');
 
@@ -917,8 +929,8 @@ class _GroupViewState extends State<GroupView> {
     required String title,
     required String roles,
     required bool member,
-    required String actionText,
-    required VoidCallback onAction,
+    String? actionText,
+    VoidCallback? onAction,
     String detail = '',
     bool expired = false,
     VoidCallback? onEditRoles,
@@ -1004,25 +1016,28 @@ class _GroupViewState extends State<GroupView> {
                   ),
           ),
           const SizedBox(width: 12),
-          SizedBox(
-            height: 44,
-            child: TextButton(
-              style: TextButton.styleFrom(
-                backgroundColor: expired ? _palette.light : Colors.transparent,
-                foregroundColor: expired ? _palette.dark : _error,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          if (actionText != null && onAction != null)
+            SizedBox(
+              height: 44,
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: expired
+                      ? _palette.light
+                      : Colors.transparent,
+                  foregroundColor: expired ? _palette.dark : _error,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-                textStyle: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                ),
+                onPressed: onAction,
+                child: Text(actionText),
               ),
-              onPressed: onAction,
-              child: Text(actionText),
             ),
-          ),
         ],
       ),
     );
@@ -1218,56 +1233,64 @@ class _GroupViewState extends State<GroupView> {
 
   Future<void> _editRoles(Group group, GroupPerson person) async {
     final roles = {...person.roles};
+    final choices = c.assignableRoles;
+    String? problem() => rolesChoiceProblem(roles, byAdmin: c.isAdmin);
     final ok = await _actionSheet(
       title: 'O que ${person.email} faz',
       confirmLabel: 'Salvar',
       busyLabel: 'Salvando…',
       canConfirm: () =>
-          roles.isNotEmpty &&
+          problem() == null &&
           !(roles.length == person.roles.length &&
               roles.containsAll(person.roles)),
       onConfirm: () async =>
           await c.setRoles(group.id, person.email, roles) ? null : _failure,
-      content: (setSheet, busy) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final (i, role) in GroupRole.values.indexed) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  Expanded(
-                    child: _roleOption(
-                      role,
-                      on: roles.contains(role),
-                      onTap: busy
-                          ? null
-                          : () => setSheet(
-                              () => roles.contains(role)
-                                  ? roles.remove(role)
-                                  : roles.add(role),
-                            ),
-                    ),
-                  ),
+      content: (setSheet, busy) {
+        Widget tappable(GroupRole role) => _roleOption(
+          role,
+          on: roles.contains(role),
+          onTap: busy
+              ? null
+              : () => setSheet(
+                  () => roles.contains(role)
+                      ? roles.remove(role)
+                      : roles.add(role),
+                ),
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (i, role) in GroupRole.everyday.indexed) ...[
+                    if (i > 0) const SizedBox(width: 10),
+                    Expanded(child: tappable(role)),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            roles.isEmpty
-                ? 'Marque pelo menos uma opção.'
-                : 'A mudança vale na hora.',
-            style: TextStyle(
-              fontSize: 13,
-              height: 19 / 13,
-              fontWeight: roles.isEmpty ? FontWeight.w800 : FontWeight.w500,
-              color: roles.isEmpty ? _error : _muted,
+            // Only administrators give or take *Gestor do grupo*.
+            if (choices.contains(GroupRole.maintainer)) ...[
+              const SizedBox(height: 10),
+              tappable(GroupRole.maintainer),
+            ],
+            const SizedBox(height: 16),
+            Text(
+              problem() ?? 'A mudança vale na hora.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 19 / 13,
+                fontWeight: problem() != null
+                    ? FontWeight.w800
+                    : FontWeight.w500,
+                color: problem() != null ? _error : _muted,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
     if (ok && mounted) _toast(context, 'Papel atualizado');
   }
@@ -1321,9 +1344,7 @@ class _GroupViewState extends State<GroupView> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          role == GroupRole.publisher
-                              ? 'Compartilha a própria localização'
-                              : 'Vê quem está em campo',
+                          role.description,
                           style: const TextStyle(
                             fontSize: 12,
                             height: 16 / 12,
@@ -1460,8 +1481,35 @@ Future<void> openInvite(GroupsController controller, {String? groupId}) async {
         groups: controller.groups.toList(),
         groupId: groupId,
         backend: const FirebaseInvitesBackend(),
+        canCreateFirstGroup: controller.isAdmin,
       ),
     ),
   );
   await controller.load();
 }
+
+/// The administration screens' app bar, for the other admin screens.
+AppBar adminAppBar(String title) => _bar(title);
+
+/// The administration screens' confirmation sheet (see the group screens):
+/// completes with whether [onConfirm] succeeded; [onConfirm] returns an
+/// error message to show in the sheet, or `null`.
+Future<bool> adminActionSheet({
+  required String title,
+  required String confirmLabel,
+  required String busyLabel,
+  required Future<String?> Function() onConfirm,
+  bool danger = false,
+  List<String> lines = const [],
+}) => _actionSheet(
+  title: title,
+  confirmLabel: confirmLabel,
+  busyLabel: busyLabel,
+  onConfirm: onConfirm,
+  danger: danger,
+  lines: lines,
+);
+
+/// The administration screens' short confirmation at the bottom.
+void adminToast(BuildContext context, String message) =>
+    _toast(context, message);

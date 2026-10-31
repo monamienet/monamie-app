@@ -266,7 +266,7 @@ class _InviteViewState extends State<InviteView> {
         Wrap(
           spacing: 8,
           children: [
-            for (final role in GroupRole.values)
+            for (final role in GroupRole.everyday)
               FilterChip(
                 label: Text(role.label),
                 selected: person.roles.contains(role),

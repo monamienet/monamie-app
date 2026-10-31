@@ -9,13 +9,25 @@ const {
   OrganizationOptionsReader,
   projectIdFor,
 } = require("./organization_options");
-const { administeredOrganization } = require("./organization_admin");
+const {
+  managerAccess,
+  requireManagesGroup,
+  requireMayInvite,
+  visibleGroups,
+} = require("./group_access");
+const {
+  AdministratorError,
+  listAdministrators,
+  ownedOrganization,
+  setAdministrator,
+} = require("./administrators");
 const { InviteError } = require("./invites");
 const { GmailMailer } = require("./mailer");
 const {
   acceptInvite,
   cancelGroupInvites,
   cancelInvite,
+  inviteGroupId,
   listInvites,
   myInvites,
   resendInvite,
@@ -253,100 +265,154 @@ async function deleteOrganizationProject(id) {
 // Every call that writes memberships runs as groups-admin@ (it keeps its
 // first name; replacing it with a dedicated account is a follow-up), which
 // needs roles/datastore.user on the central project, on the Community
-// project and on each Standard organization project. Organization-scoped
-// calls check that the caller administers the organization: their
-// `organizationMemberships/{personKey}` there has `role: "admin"`.
+// project and on each Standard organization project.
+//
+// Who may call: an administrator of the organization (their
+// `organizationMemberships/{personKey}` there has `role: "admin"`) for
+// everything; a group's maintainer (`maintainer` in its `groupMemberships`)
+// for that group's people, invites and name (group_access.js). Creating and
+// deleting groups stays with the administrators.
 const MEMBERSHIP_SERVICE_ACCOUNT =
   "groups-admin@monamienet-app.iam.gserviceaccount.com";
 
-/**
- * The organization of an administrator's call: `{organizationId, db}`.
- *
- * @throws {HttpsError} unauthenticated / invalid-argument / permission-denied
- */
-async function administered(request) {
-  const email = signedInEmail(request);
+/** The request's organization id. @throws {HttpsError} invalid-argument */
+function requestedOrganizationId(request) {
   const organizationId = request.data?.organizationId;
   if (!isValidOrganizationId(organizationId)) {
     throw new HttpsError("invalid-argument", "organizationId is required.", {
       field: "organizationId",
     });
   }
-  const db = await administeredOrganization(openOrganization, organizationId, email);
-  if (!db) {
-    throw new HttpsError("permission-denied", "Só um administrador gerencia grupos.");
-  }
-  return { organizationId, db, email };
+  return organizationId;
 }
 
-/** Wraps an administrator's call: the check, then GroupError / InviteError →
- * invalid-argument (`full` → failed-precondition) with `{field}`. */
-function adminCall(operation) {
+/** A service error as the HttpsError the app reads: `forbidden` →
+ * permission-denied, `full` → failed-precondition, other codes →
+ * invalid-argument, with `{field}`; anything else → unavailable. */
+function serviceError(error, organizationId) {
+  if (
+    error instanceof GroupError ||
+    error instanceof InviteError ||
+    error instanceof AdministratorError
+  ) {
+    const code =
+      error.code === "forbidden"
+        ? "permission-denied"
+        : error.code === "full"
+          ? "failed-precondition"
+          : "invalid-argument";
+    return new HttpsError(code, error.message, { field: error.code });
+  }
+  logger.error(`[groups] ${organizationId}: ${error.message}`);
+  return new HttpsError("unavailable", "Não foi possível falar com o servidor agora.");
+}
+
+/**
+ * Wraps a group call: `operation({organizationId, db, email, access}, data,
+ * request)` runs when the caller administers the organization or maintains
+ * one of its groups (`access`, see `managerAccess`); each operation then
+ * checks the group it touches. With `adminOnly`, only administrators.
+ */
+function groupCall(operation, { adminOnly = false } = {}) {
   return onCall(
     { invoker: "public", serviceAccount: MEMBERSHIP_SERVICE_ACCOUNT },
     async (request) => {
-      const context = await administered(request);
+      const email = signedInEmail(request);
+      const organizationId = requestedOrganizationId(request);
+      const access = await managerAccess(openOrganization, organizationId, email);
+      if (!access || (adminOnly && !access.admin)) {
+        throw new HttpsError(
+          "permission-denied",
+          adminOnly
+            ? "Só um administrador faz isso."
+            : "Só um administrador ou o gestor do grupo faz isso."
+        );
+      }
       try {
-        return await operation(context, request.data ?? {}, request);
+        return await operation(
+          { organizationId, db: access.db, email, access },
+          request.data ?? {},
+          request
+        );
       } catch (error) {
-        if (error instanceof GroupError || error instanceof InviteError) {
-          throw new HttpsError(
-            error.code === "full" ? "failed-precondition" : "invalid-argument",
-            error.message,
-            { field: error.code }
-          );
-        }
-        logger.error(`[groups] ${context.organizationId}: ${error.message}`);
-        throw new HttpsError("unavailable", "Não foi possível falar com o servidor agora.");
+        throw serviceError(error, organizationId);
       }
     }
   );
 }
 
-/** Response: `{groups: [{id, name, createdAt, people: [{email, roles}]}]}`. */
-exports.listGroups = adminCall(async ({ db, organizationId }) => ({
-  groups: await listGroups(db, organizationId),
+/** The group a request names, which the caller must manage. */
+function managedGroupId(access, data) {
+  const groupId = String(data.groupId ?? "");
+  requireManagesGroup(access, groupId);
+  return groupId;
+}
+
+/** Response: `{groups: [{id, name, createdAt, people: [{email, roles}]}]}`;
+ * a maintainer gets only the groups they maintain. */
+exports.listGroups = groupCall(async ({ db, organizationId, access }) => ({
+  groups: visibleGroups(access, await listGroups(db, organizationId)),
 }));
 
-/** Request: `{organizationId, name}`. Response: `{id, name}`. */
-exports.createGroup = adminCall(({ db, organizationId }, data) =>
-  createGroup(db, organizationId, data.name)
+/** Request: `{organizationId, name}`. Response: `{id, name}`. Administrators. */
+exports.createGroup = groupCall(
+  ({ db, organizationId }, data) => createGroup(db, organizationId, data.name),
+  { adminOnly: true }
 );
 
 /** Request: `{organizationId, groupId, name}`. Response: `{id, name}`. */
-exports.renameGroup = adminCall(({ db, organizationId }, data) =>
-  renameGroup(db, organizationId, String(data.groupId ?? ""), data.name)
+exports.renameGroup = groupCall(({ db, organizationId, access }, data) =>
+  renameGroup(db, organizationId, managedGroupId(access, data), data.name)
 );
 
-/** Request: `{organizationId, groupId}`. Response: `{loses, stays}`. */
-exports.groupDeletionImpact = adminCall(({ db, organizationId }, data) =>
-  groupDeletionImpact(db, organizationId, String(data.groupId ?? ""))
+/** Request: `{organizationId, groupId}`. Response: `{loses, stays}`.
+ * Administrators. */
+exports.groupDeletionImpact = groupCall(
+  ({ db, organizationId }, data) =>
+    groupDeletionImpact(db, organizationId, String(data.groupId ?? "")),
+  { adminOnly: true }
 );
 
-/** Request: `{organizationId, groupId}`. Response: `{deleted: true}`. */
-exports.deleteGroup = adminCall(async ({ db, organizationId }, data) => {
-  const groupId = String(data.groupId ?? "");
-  const centralDb = admin.firestore();
-  await deleteGroup(db, centralDb, organizationId, groupId, () =>
-    cancelGroupInvites(centralDb, organizationId, groupId)
-  );
-  return { deleted: true };
-});
+/** Request: `{organizationId, groupId}`. Response: `{deleted: true}`.
+ * Administrators. */
+exports.deleteGroup = groupCall(
+  async ({ db, organizationId }, data) => {
+    const groupId = String(data.groupId ?? "");
+    const centralDb = admin.firestore();
+    await deleteGroup(db, centralDb, organizationId, groupId, () =>
+      cancelGroupInvites(centralDb, organizationId, groupId)
+    );
+    return { deleted: true };
+  },
+  { adminOnly: true }
+);
 
-/** Request: `{organizationId, groupId, email, roles}`. Response: `{roles}`. */
-exports.setMemberRoles = adminCall(({ db, organizationId }, data) =>
-  setMemberRoles(db, organizationId, String(data.groupId ?? ""), data.email, data.roles)
+/** Request: `{organizationId, groupId, email, roles}`. Response: `{roles}`.
+ * An administrator may give or take `maintainer`; a maintainer changes only
+ * `publisher`/`subscriber` and leaves the person's `maintainer` as it is. */
+exports.setMemberRoles = groupCall(({ db, organizationId, access }, data) =>
+  setMemberRoles(
+    db,
+    organizationId,
+    managedGroupId(access, data),
+    data.email,
+    data.roles,
+    new Date(),
+    { byAdmin: access.admin }
+  )
 );
 
 /** Request: `{organizationId, groupId, email}`. Response: `{removed: true,
- * leftOrganization}`. */
-exports.removeMember = adminCall(async ({ db, organizationId }, data) => {
+ * leftOrganization}`. Only an administrator removes a maintainer. */
+exports.removeMember = groupCall(async ({ db, organizationId, access }, data) => {
   const { leftOrganization } = await removeMember(
     db,
     admin.firestore(),
     organizationId,
-    String(data.groupId ?? ""),
-    data.email
+    managedGroupId(access, data),
+    data.email,
+    new Date(),
+    { byAdmin: access.admin }
   );
   return { removed: true, leftOrganization };
 });
@@ -381,35 +447,99 @@ function mailer() {
 /**
  * Request: `{organizationId, organizationName, groupId?, firstGroupName?,
  * invites: [{email, roles}]}`. Response: `{groupId, groupName, sent, skipped}`.
+ * A maintainer invites only to a group they maintain (never
+ * `firstGroupName`); roles are `publisher`/`subscriber` for everyone.
  */
-exports.sendInvites = adminCall(({ db, organizationId, email }, data, request) =>
-  sendInvites(admin.firestore(), db, mailer(), {
+exports.sendInvites = groupCall(({ db, organizationId, email, access }, data, request) => {
+  const groupId = data.groupId ? String(data.groupId) : undefined;
+  requireMayInvite(access, { groupId, firstGroupName: data.firstGroupName });
+  return sendInvites(admin.firestore(), db, mailer(), {
     organizationId,
     organizationName: String(data.organizationName ?? organizationId).slice(0, 60),
     inviter: { email, name: request.auth.token.name },
-    groupId: data.groupId ? String(data.groupId) : undefined,
+    groupId,
     firstGroupName: data.firstGroupName,
     invites: data.invites,
-  })
-);
+  });
+});
 
-/** Request: `{organizationId, groupId?}`. Response: `{invites}`. */
-exports.listInvites = adminCall(async ({ organizationId }, data) => ({
-  invites: await listInvites(
+/** Request: `{organizationId, groupId?}`. Response: `{invites}`. A
+ * maintainer must name a group they maintain. */
+exports.listInvites = groupCall(async ({ organizationId, access }, data) => {
+  const groupId = data.groupId ? String(data.groupId) : null;
+  if (!access.admin) requireManagesGroup(access, groupId);
+  return { invites: await listInvites(admin.firestore(), organizationId, groupId) };
+});
+
+/** The invite of a resend or cancel, whose group the caller must manage. */
+async function managedInviteId(organizationId, access, data) {
+  const inviteId = String(data.inviteId ?? "");
+  const centralDb = admin.firestore();
+  if (!access.admin) {
+    requireManagesGroup(access, await inviteGroupId(centralDb, inviteId, organizationId));
+  }
+  return inviteId;
+}
+
+/** Request: `{organizationId, inviteId}`. Response: `{expiresAt, emailed}`. */
+exports.resendInvite = groupCall(async ({ organizationId, access }, data) =>
+  resendInvite(
     admin.firestore(),
-    organizationId,
-    data.groupId ? String(data.groupId) : null
-  ),
-}));
-
-exports.resendInvite = adminCall(({ organizationId }, data) =>
-  resendInvite(admin.firestore(), mailer(), String(data.inviteId ?? ""), organizationId)
+    mailer(),
+    await managedInviteId(organizationId, access, data),
+    organizationId
+  )
 );
 
-exports.cancelInvite = adminCall(async ({ organizationId }, data) => {
-  await cancelInvite(admin.firestore(), String(data.inviteId ?? ""), organizationId);
+/** Request: `{organizationId, inviteId}`. Response: `{cancelled: true}`. */
+exports.cancelInvite = groupCall(async ({ organizationId, access }, data) => {
+  await cancelInvite(
+    admin.firestore(),
+    await managedInviteId(organizationId, access, data),
+    organizationId
+  );
   return { cancelled: true };
 });
+
+// ── Administrators ─────────────────────────────────────────────────────────
+// The owner's *Administradores* screen. Only the owner (`ownerEmail` in the
+// registry, verified e-mail) calls these, and the owner is never a target.
+
+/** Wraps an owner's call: `operation({organizationId, db, ownerEmail}, data)`. */
+function ownerCall(operation) {
+  return onCall(
+    { invoker: "public", serviceAccount: MEMBERSHIP_SERVICE_ACCOUNT },
+    async (request) => {
+      const email = signedInEmail(request);
+      const organizationId = requestedOrganizationId(request);
+      const owned = await ownedOrganization(openOrganization, organizationId, email);
+      if (!owned) {
+        throw new HttpsError(
+          "permission-denied",
+          "Só a pessoa titular da organização escolhe os administradores."
+        );
+      }
+      try {
+        return await operation({ organizationId, ...owned }, request.data ?? {});
+      } catch (error) {
+        throw serviceError(error, organizationId);
+      }
+    }
+  );
+}
+
+/** Request: `{organizationId}`. Response: `{administrators: [{email, owner}],
+ * members: [{email}]}` (the owner first, then by e-mail). */
+exports.listAdministrators = ownerCall(({ organizationId, db, ownerEmail }) =>
+  listAdministrators(db, organizationId, ownerEmail)
+);
+
+/** Request: `{organizationId, email, admin: boolean}`. Response:
+ * `{email, role}`. A demoted administrator stays in the organization as a
+ * member, even when in no group. */
+exports.setAdministrator = ownerCall(({ organizationId, db, ownerEmail }, data) =>
+  setAdministrator(db, admin.firestore(), organizationId, ownerEmail, data.email, data.admin)
+);
 
 /** The signed-in person's pending invites (they may belong to nothing yet). */
 exports.myInvites = onCall({ invoker: "public" }, async (request) => ({

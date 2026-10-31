@@ -71,11 +71,12 @@ class FakeGroupsBackend implements GroupsBackend {
 late FakeGroupsBackend backend;
 
 /// A started controller for Rota Sul with [norte] and [leste] loaded and
-/// the backend's call log cleared.
-Future<GroupsController> loadedController() async {
+/// the backend's call log cleared; [isAdmin] false is a group's maintainer.
+Future<GroupsController> loadedController({bool isAdmin = false}) async {
   final controller = GroupsController(
     organizationId: 'rotasul',
     backend: backend,
+    isAdmin: isAdmin,
   );
   controller.onStart();
   await pumpEventQueue();
@@ -307,6 +308,92 @@ void main() {
       // 3. Assert
       expect(ok, isFalse);
       expect(backend.calls, isEmpty);
+    });
+  });
+
+  group('GroupsController (administrator or maintainer) - Unit Test Suite', () {
+    const vera = GroupPerson(
+      email: 'vera@x.com',
+      roles: {GroupRole.maintainer, GroupRole.subscriber},
+    );
+
+    test('Happy Path: an administrator may give Gestor do grupo', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+
+      // 2. Act
+      final roles = controller.assignableRoles;
+
+      // 3. Assert
+      expect(roles, contains(GroupRole.maintainer));
+    });
+
+    test('Happy Path: an administrator may leave someone with only Gestor '
+        'do grupo', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+
+      // 2. Act
+      final ok = await controller.setRoles('01', 'vera@x.com', {
+        GroupRole.maintainer,
+      });
+
+      // 3. Assert
+      expect(ok, isTrue);
+      expect(backend.calls, [
+        'setRoles:rotasul:01:vera@x.com:maintainer',
+        'list:rotasul',
+      ]);
+    });
+
+    test('Edge Case: an administrator may remove a maintainer', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+
+      // 2. Act
+      final allowed = controller.canRemove(vera);
+
+      // 3. Assert
+      expect(allowed, isTrue);
+    });
+
+    test('Edge Case: by default the person is a maintainer, who gives only '
+        'the everyday roles', () async {
+      // 1. Arrange
+      final controller = await loadedController();
+
+      // 2. Act
+      final roles = controller.assignableRoles;
+
+      // 3. Assert
+      expect(roles, GroupRole.everyday);
+    });
+
+    test('Sad Path: a maintainer cannot remove another maintainer', () async {
+      // 1. Arrange
+      final controller = await loadedController();
+
+      // 2. Act
+      final allowed = controller.canRemove(vera);
+
+      // 3. Assert
+      expect(allowed, isFalse);
+    });
+
+    test('Sad Path: a maintainer cannot leave someone with only Gestor do '
+        'grupo and nothing is sent', () async {
+      // 1. Arrange
+      final controller = await loadedController();
+
+      // 2. Act
+      final ok = await controller.setRoles('01', 'vera@x.com', {
+        GroupRole.maintainer,
+      });
+
+      // 3. Assert
+      expect(ok, isFalse);
+      expect(backend.calls, isEmpty);
+      expect(controller.errorMessage.value, 'Marque pelo menos uma opção.');
     });
   });
 

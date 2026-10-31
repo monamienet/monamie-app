@@ -1,31 +1,66 @@
 import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
 
-/// A role an administrator gives a person in a group.
+/// A person's role in a group.
 enum GroupRole {
   /// *Em campo*: shares their own location in the group (`publisher`).
-  publisher('Em campo'),
+  publisher('Em campo', 'Compartilha a própria localização'),
 
   /// *Vê o mapa*: sees the group on the map (`subscriber`).
-  subscriber('Vê o mapa');
+  subscriber('Vê o mapa', 'Vê quem está em campo'),
 
-  const GroupRole(this.label);
+  /// *Gestor do grupo*: manages the group's people, invites and name
+  /// (`maintainer`). Only administrators give or take it; it shows no map
+  /// by itself.
+  maintainer('Gestor do grupo', 'Cuida das pessoas e dos convites do grupo');
+
+  const GroupRole(this.label, this.description);
 
   final String label;
+
+  /// One line under [label] in the role pickers.
+  final String description;
+
+  /// The roles a group's maintainer gives, and the only ones an invite
+  /// carries.
+  static const everyday = [publisher, subscriber];
 
   /// The role's name in Firestore and in the central functions.
   String get id => switch (this) {
     publisher => GroupRoles.publisher,
     subscriber => GroupRoles.subscriber,
+    maintainer => GroupRoles.maintainer,
   };
 
-  /// The role named [name]; `null` for anything else (a `maintainer` role,
-  /// which the app does not manage yet, included).
+  /// The role named [name]; `null` for anything else.
   static GroupRole? fromName(Object? name) => switch (name) {
     GroupRoles.publisher => publisher,
     GroupRoles.subscriber => subscriber,
+    GroupRoles.maintainer => maintainer,
     _ => null,
   };
 }
+
+/// The roles someone may give in a group: every role for an
+/// administrator ([byAdmin]), the [GroupRole.everyday] ones for a
+/// maintainer.
+List<GroupRole> assignableRolesFor({required bool byAdmin}) =>
+    byAdmin ? GroupRole.values : GroupRole.everyday;
+
+/// Why [roles] cannot be saved for a person, or `null` when they can: an
+/// administrator ([byAdmin]) needs at least one role; a maintainer at least
+/// one everyday role (the person's *Gestor do grupo* stays as it is).
+String? rolesChoiceProblem(Set<GroupRole> roles, {required bool byAdmin}) {
+  final counted = byAdmin
+      ? roles
+      : roles.where(GroupRole.everyday.contains).toSet();
+  return counted.isEmpty ? 'Marque pelo menos uma opção.' : null;
+}
+
+/// Whether someone may remove [person] from a group: an administrator
+/// ([byAdmin]) anyone, a maintainer anyone but another *Gestor do grupo*
+/// (that would take away a role only administrators take).
+bool canRemoveFromGroup(GroupPerson person, {required bool byAdmin}) =>
+    byAdmin || !person.roles.contains(GroupRole.maintainer);
 
 /// A person in a group, with one or both roles.
 class GroupPerson {

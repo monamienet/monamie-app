@@ -120,7 +120,8 @@ abstract final class GroupRoles {
   /// Sees the group's map and history.
   static const subscriber = 'subscriber';
 
-  /// Accepted in data, grants nothing yet (#165).
+  /// Manages the group's people, invites and name through the central
+  /// functions (*Gestor do grupo*); given only by administrators.
   static const maintainer = 'maintainer';
 }
 

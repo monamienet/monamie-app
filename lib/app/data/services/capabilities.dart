@@ -53,6 +53,14 @@ class Capabilities {
   /// (administrators see every group besides these).
   List<String> get subscriberGroupIds => _groupsWith(GroupRoles.subscriber);
 
+  /// The groups the person manages as their *Gestor do grupo*, sorted
+  /// (administrators manage every group besides these).
+  List<String> get maintainerGroupIds => _groupsWith(GroupRoles.maintainer);
+
+  /// Whether the person manages some group: as an administrator, or as
+  /// the maintainer of one.
+  bool get canManageGroups => isAdmin || maintainerGroupIds.isNotEmpty;
+
   /// Whether the person shares their location in some group.
   bool get canPublish => publisherGroupIds.isNotEmpty;
 

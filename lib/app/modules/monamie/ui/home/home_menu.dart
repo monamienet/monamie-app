@@ -58,8 +58,12 @@ class HomeMenu extends StatelessWidget {
                 },
               ),
               Obx(() {
-                if (!_groups.isAdmin) return const SizedBox.shrink();
-                return _admin();
+                if (_groups.isAdmin) return _admin();
+                // A group's maintainer manages only their groups.
+                if (_groups.capabilities.value.canManageGroups) {
+                  return _maintainer();
+                }
+                return const SizedBox.shrink();
               }),
               const Spacer(),
               const Divider(color: HomeColors.divider, height: 1),
@@ -219,29 +223,63 @@ class HomeMenu extends StatelessWidget {
     });
   }
 
-  Widget _admin() {
+  Widget _sectionTitle(String title) => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+    child: Text(
+      title,
+      style: const TextStyle(
+        color: HomeColors.muted,
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 0.7,
+      ),
+    ),
+  );
+
+  /// The maintainer's section: their groups only.
+  Widget _maintainer() {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Divider(color: HomeColors.divider, height: 1),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: Text(
-              'ADMINISTRAÇÃO',
-              style: TextStyle(
-                color: HomeColors.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.7,
-              ),
-            ),
+          _sectionTitle('GESTÃO DE GRUPOS'),
+          _MenuItem(
+            icon: Icons.groups_outlined,
+            label: 'Meus grupos',
+            onTap: () => _open(Routes.GROUPS),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _admin() {
+    final organizationId = Organization.current?.id;
+    // The owner-only entry needs to know who owns the organization: read
+    // once per organization, while the menu is open.
+    if (organizationId != null) _auth.loadOwnership(organizationId);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Divider(color: HomeColors.divider, height: 1),
+          _sectionTitle('ADMINISTRAÇÃO'),
           _MenuItem(
             icon: Icons.groups_outlined,
             label: 'Grupos',
             onTap: () => _open(Routes.GROUPS),
+          ),
+          Obx(
+            () => _auth.ownership[organizationId] == true
+                ? _MenuItem(
+                    icon: Icons.admin_panel_settings_outlined,
+                    label: 'Administradores',
+                    onTap: () => _open(Routes.ADMINISTRATORS),
+                  )
+                : const SizedBox.shrink(),
           ),
           _MenuItem(
             icon: Icons.palette_outlined,

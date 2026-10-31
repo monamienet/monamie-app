@@ -11,6 +11,7 @@ const {
   normalizeGroupName,
   removeMember,
   renameGroup,
+  rolesToStore,
   setMemberRoles,
   validGroupId,
   validateGroupName,
@@ -122,7 +123,7 @@ describe("validateRoles - Unit Test Suite", () => {
     assert.deepEqual(result, ["publisher", "subscriber"]);
   });
 
-  test("Edge Case: maintainer cannot be given yet", async () => {
+  test("Edge Case: maintainer is not an everyday role", async () => {
     // 1. Arrange
     const roles = ["maintainer"];
 
@@ -271,7 +272,7 @@ describe("removeMember - Unit Test Suite", () => {
     const centralDb = central();
 
     // 2. Act
-    await removeMember(db, centralDb, "rotasul", "guias", VERA, NOW);
+    await removeMember(db, centralDb, "rotasul", "guias", VERA, NOW, { byAdmin: true });
 
     // 3. Assert
     assert.deepEqual(
@@ -671,7 +672,7 @@ describe("removeMember (more) - Unit Test Suite", () => {
     const db = organization();
 
     // 2. Act
-    const result = await removeMember(db, central(), "rotasul", "guias", " Vera@X.com ", NOW);
+    const result = await removeMember(db, central(), "rotasul", "guias", " Vera@X.com ", NOW, { byAdmin: true });
 
     // 3. Assert
     assert.deepEqual(result, { leftOrganization: true });
@@ -733,5 +734,245 @@ describe("deleteGroup (more) - Unit Test Suite", () => {
 
     // 3. Assert
     assert.equal(db.store.size, before);
+  });
+});
+
+describe("rolesToStore - Unit Test Suite", () => {
+  test("Happy Path: an administrator may make someone a maintainer", () => {
+    // 1. Arrange
+    const current = ["publisher"];
+
+    // 2. Act
+    const roles = rolesToStore(current, ["maintainer", "publisher"], true);
+
+    // 3. Assert
+    assert.deepEqual(roles, ["maintainer", "publisher"]);
+  });
+
+  test("Sad Path: a maintainer cannot make someone a maintainer", async () => {
+    // 1. Arrange
+    const current = ["publisher"];
+
+    // 2. Act
+    const error = await groupErrorOf(() => rolesToStore(current, ["maintainer", "publisher"], false));
+
+    // 3. Assert
+    assert.equal(error.code, "forbidden");
+  });
+});
+
+describe("rolesToStore (more) - Unit Test Suite", () => {
+  test("Happy Path: a maintainer changes the everyday roles of someone who is not a maintainer", () => {
+    // 1. Arrange
+    const current = ["publisher"];
+
+    // 2. Act
+    const roles = rolesToStore(current, ["subscriber", "publisher"], false);
+
+    // 3. Assert
+    assert.deepEqual(roles, ["publisher", "subscriber"]);
+  });
+
+  test("Edge Case: a maintainer keeps another maintainer's maintainer role", () => {
+    // 1. Arrange
+    const current = ["maintainer", "subscriber"];
+
+    // 2. Act
+    const roles = rolesToStore(current, ["publisher"], false);
+
+    // 3. Assert
+    assert.deepEqual(roles, ["maintainer", "publisher"]);
+  });
+
+  test("Edge Case: a maintainer may send back a maintainer role the person holds", () => {
+    // 1. Arrange
+    const current = ["maintainer", "subscriber"];
+
+    // 2. Act
+    const roles = rolesToStore(current, ["maintainer", "subscriber"], false);
+
+    // 3. Assert
+    assert.deepEqual(roles, ["maintainer", "subscriber"]);
+  });
+
+  test("Edge Case: an administrator takes the maintainer role away", () => {
+    // 1. Arrange
+    const current = ["maintainer", "subscriber"];
+
+    // 2. Act
+    const roles = rolesToStore(current, ["subscriber"], true);
+
+    // 3. Assert
+    assert.deepEqual(roles, ["subscriber"]);
+  });
+
+  test("Edge Case: an administrator may leave someone with only the maintainer role", () => {
+    // 1. Arrange
+    const current = ["maintainer", "publisher"];
+
+    // 2. Act
+    const roles = rolesToStore(current, ["maintainer"], true);
+
+    // 3. Assert
+    assert.deepEqual(roles, ["maintainer"]);
+  });
+
+  test("Sad Path: a maintainer cannot leave a maintainer with only that role", async () => {
+    // 1. Arrange
+    const current = ["maintainer", "publisher"];
+
+    // 2. Act
+    const error = await groupErrorOf(() => rolesToStore(current, ["maintainer"], false));
+
+    // 3. Assert
+    assert.equal(error.code, "roles");
+  });
+
+  test("Sad Path: a maintainer cannot leave someone with no role", async () => {
+    // 1. Arrange
+    const current = ["publisher"];
+
+    // 2. Act
+    const error = await groupErrorOf(() => rolesToStore(current, [], false));
+
+    // 3. Assert
+    assert.equal(error.code, "roles");
+  });
+
+  test("Sad Path: roles that are not a list are refused for a maintainer", async () => {
+    // 1. Arrange
+    const current = ["publisher"];
+
+    // 2. Act
+    const error = await groupErrorOf(() => rolesToStore(current, "publisher", false));
+
+    // 3. Assert
+    assert.equal(error.code, "roles");
+  });
+
+  test("Sad Path: an administrator cannot leave someone with no role", async () => {
+    // 1. Arrange
+    const current = ["maintainer"];
+
+    // 2. Act
+    const error = await groupErrorOf(() => rolesToStore(current, [], true));
+
+    // 3. Assert
+    assert.equal(error.code, "roles");
+  });
+
+  test("Sad Path: an unknown role is refused even for an administrator", async () => {
+    // 1. Arrange
+    const current = ["publisher"];
+
+    // 2. Act
+    const error = await groupErrorOf(() => rolesToStore(current, ["admin"], true));
+
+    // 3. Assert
+    assert.equal(error.code, "roles");
+  });
+});
+
+describe("setMemberRoles (by caller) - Unit Test Suite", () => {
+  const rolesIn = (db, groupId, email) =>
+    db.store.get(`${ORG}/groups/${groupId}/groupMemberships/${personKey(email)}`).roles;
+
+  test("Happy Path: an administrator makes someone a maintainer", async () => {
+    // 1. Arrange
+    const db = organization();
+
+    // 2. Act
+    const result = await setMemberRoles(db, "rotasul", "guias", ANA, ["maintainer", "publisher"], NOW, {
+      byAdmin: true,
+    });
+
+    // 3. Assert
+    assert.deepEqual([result.roles, rolesIn(db, "guias", ANA)], [
+      ["maintainer", "publisher"],
+      ["maintainer", "publisher"],
+    ]);
+  });
+
+  test("Edge Case: an administrator takes a maintainer's role away", async () => {
+    // 1. Arrange
+    const db = organization();
+
+    // 2. Act
+    await setMemberRoles(db, "rotasul", "guias", VERA, ["subscriber"], NOW, { byAdmin: true });
+
+    // 3. Assert
+    assert.deepEqual(rolesIn(db, "guias", VERA), ["subscriber"]);
+  });
+
+  test("Sad Path: by default (a maintainer) nobody is made a maintainer and nothing changes", async () => {
+    // 1. Arrange
+    const db = organization();
+
+    // 2. Act
+    const error = await groupErrorOf(() =>
+      setMemberRoles(db, "rotasul", "guias", ANA, ["maintainer", "publisher"], NOW)
+    );
+
+    // 3. Assert
+    assert.deepEqual([error.code, rolesIn(db, "guias", ANA)], ["forbidden", ["publisher"]]);
+  });
+});
+
+describe("removeMember (by caller) - Unit Test Suite", () => {
+  const membershipOf = (db, groupId, email) =>
+    db.store.has(`${ORG}/groups/${groupId}/groupMemberships/${personKey(email)}`);
+
+  test("Happy Path: a maintainer removes someone who is not a maintainer", async () => {
+    // 1. Arrange
+    const db = organization();
+
+    // 2. Act
+    await removeMember(db, central(), "rotasul", "guias", OLGA, NOW, { byAdmin: false });
+
+    // 3. Assert
+    assert.equal(membershipOf(db, "guias", OLGA), false);
+  });
+
+  test("Edge Case: an administrator removes a maintainer", async () => {
+    // 1. Arrange
+    const db = organization();
+
+    // 2. Act
+    await removeMember(db, central(), "rotasul", "guias", VERA, NOW, { byAdmin: true });
+
+    // 3. Assert
+    assert.equal(membershipOf(db, "guias", VERA), false);
+  });
+
+  test("Sad Path: a maintainer cannot remove a maintainer (themselves included) and nothing changes", async () => {
+    // 1. Arrange
+    const db = organization();
+    const centralDb = central();
+
+    // 2. Act
+    const error = await groupErrorOf(() =>
+      removeMember(db, centralDb, "rotasul", "guias", " Vera@X.com ", NOW, { byAdmin: false })
+    );
+
+    // 3. Assert
+    assert.deepEqual(
+      [
+        error.code,
+        membershipOf(db, "guias", VERA),
+        centralDb.store.get(`accounts/${personKey(VERA)}`).organizationIds,
+      ],
+      ["forbidden", true, ["rotasul"]]
+    );
+  });
+
+  test("Sad Path: without a caller the maintainer's powers apply", async () => {
+    // 1. Arrange
+    const db = organization();
+
+    // 2. Act
+    const error = await groupErrorOf(() => removeMember(db, central(), "rotasul", "guias", VERA, NOW));
+
+    // 3. Assert
+    assert.equal(error.code, "forbidden");
   });
 });

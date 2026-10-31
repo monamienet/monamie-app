@@ -408,6 +408,22 @@ void main() {
       expect(harness.controller.signedInEmail.value, isNull);
     });
 
+    testWidgets(
+      'Happy Path: Deve esquecer a titularidade lida ao concluir o logout',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        final harness = _Harness(storedUser: _storedUser());
+        await _pumpApp(tester, harness);
+        harness.controller.ownership['rotasul'] = true;
+
+        // 2. Act
+        await _runLogout(tester, harness.controller);
+
+        // 3. Assert
+        expect(harness.controller.ownership, isEmpty);
+      },
+    );
+
     // ---------------------------------------------------------------------
     // Edge Case
     // ---------------------------------------------------------------------

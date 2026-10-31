@@ -26,7 +26,9 @@ class Invite {
     final email = text('email');
     final roles = {
       for (final r in (json['roles'] as List?) ?? const [])
-        ?GroupRole.fromName(r),
+        if (GroupRole.fromName(r) case final role?
+            when GroupRole.everyday.contains(role))
+          role,
     };
     if (id == null ||
         organizationId == null ||

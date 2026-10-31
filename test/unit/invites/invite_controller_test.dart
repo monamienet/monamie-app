@@ -78,12 +78,14 @@ late FakeInvitesBackend backend;
 InviteController controllerWith({
   List<Group> groups = const [norte, leste],
   String? groupId,
+  bool canCreateFirstGroup = true,
 }) => InviteController(
   organizationId: 'rotasul',
   organizationName: 'Rota Sul',
   groups: groups,
   backend: backend,
   groupId: groupId,
+  canCreateFirstGroup: canCreateFirstGroup,
 );
 
 /// A controller for team 01 with ana (share) in the list.
@@ -156,6 +158,62 @@ void main() {
         },
       );
     }
+  });
+
+  group('InviteController (maintainer) - Unit Test Suite', () {
+    test('Happy Path: a maintainer invites to their group', () async {
+      // 1. Arrange
+      final controller = controllerWith(
+        groups: const [leste],
+        canCreateFirstGroup: false,
+      );
+      controller.add('ana@x.com');
+
+      // 2. Act
+      final ok = await controller.send();
+
+      // 3. Assert
+      expect(ok, isTrue);
+      expect(
+        [backend.sends.single.groupId, backend.sends.single.firstGroupName],
+        ['03', isNull],
+      );
+    });
+
+    test(
+      'Edge Case: with no group a maintainer is not in first-group mode',
+      () {
+        // 1. Arrange
+        const groups = <Group>[];
+
+        // 2. Act
+        final controller = controllerWith(
+          groups: groups,
+          canCreateFirstGroup: false,
+        );
+
+        // 3. Assert
+        expect(controller.firstGroupMode, isFalse);
+      },
+    );
+
+    test('Sad Path: with no group a maintainer cannot send, even with a '
+        'group name typed', () async {
+      // 1. Arrange
+      final controller = controllerWith(
+        groups: const [],
+        canCreateFirstGroup: false,
+      );
+      controller.firstGroupName.value = 'Equipe Serra';
+      controller.add('ana@x.com');
+
+      // 2. Act
+      final ok = await controller.send();
+
+      // 3. Assert
+      expect(ok, isFalse);
+      expect(backend.sends, isEmpty);
+    });
   });
 
   group('InviteController.add - Unit Test Suite', () {

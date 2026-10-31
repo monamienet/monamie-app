@@ -229,6 +229,28 @@ class AuthGoogleController extends GetxController {
     Get.toNamed(Routes.ORGANIZATION_PICKER);
   }
 
+  /// Whether the signed-in user owns each organization read so far (by id),
+  /// as [loadOwnership] last read it; cleared on sign-out. The owner-only
+  /// menu entries (*Administradores*) follow it.
+  final RxMap<String, bool> ownership = <String, bool>{}.obs;
+  bool _readingOwnership = false;
+
+  /// Reads once whether the signed-in user owns [organizationId] into
+  /// [ownership]. A failure leaves it unknown, so owner-only entries stay
+  /// hidden (the server refuses anyone else anyway) and the next call
+  /// retries.
+  Future<void> loadOwnership(String organizationId) async {
+    if (_readingOwnership || ownership.containsKey(organizationId)) return;
+    _readingOwnership = true;
+    try {
+      ownership[organizationId] = await ownsOrganization(organizationId);
+    } catch (e) {
+      debugPrint('[Account] Could not read the ownership: $e');
+    } finally {
+      _readingOwnership = false;
+    }
+  }
+
   /// Whether the signed-in user owns organization [organizationId] (*titular*), as
   /// the server says now. Throws when it cannot be read.
   Future<bool> ownsOrganization(String organizationId) async {
@@ -605,6 +627,7 @@ class AuthGoogleController extends GetxController {
       _refreshTheme();
       _pendingIdToken = null;
       signedInEmail.value = null;
+      ownership.clear();
       Get.offAllNamed(destination);
       if (reason != null) {
         Get.snackbar(

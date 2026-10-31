@@ -14,6 +14,7 @@ class InviteController extends GetxController {
     required List<Group> groups,
     required InvitesBackend backend,
     String? groupId,
+    this.canCreateFirstGroup = true,
   }) : _backend = backend,
        groups = groups.obs,
        groupId = RxnString(
@@ -23,6 +24,10 @@ class InviteController extends GetxController {
   final String organizationId;
   final String organizationName;
   final InvitesBackend _backend;
+
+  /// Whether an organization with no group may create its first one here
+  /// (administrators); a group's maintainer only invites to their groups.
+  final bool canCreateFirstGroup;
 
   final RxList<Group> groups;
 
@@ -38,8 +43,9 @@ class InviteController extends GetxController {
   final RxString errorMessage = ''.obs;
   final Rxn<InviteSendResult> result = Rxn<InviteSendResult>();
 
-  /// No group yet: the first one is created with the invites.
-  bool get firstGroupMode => groups.isEmpty;
+  /// No group yet: the first one is created with the invites (only by
+  /// someone who [canCreateFirstGroup]).
+  bool get firstGroupMode => groups.isEmpty && canCreateFirstGroup;
 
   /// Why the first group's name is not valid yet, or `null`.
   String? get firstGroupProblem =>

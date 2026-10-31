@@ -31,7 +31,7 @@ void main() {
       });
     });
 
-    test('Edge Case: unknown roles (maintainer included) are dropped', () {
+    test('Edge Case: unknown roles are dropped, maintainer is kept', () {
       // 1. Arrange
       final json = {
         'id': 'g1AbC',
@@ -48,7 +48,10 @@ void main() {
       final group = Group.fromJson(json);
 
       // 3. Assert
-      expect(group?.people.single.roles, {GroupRole.subscriber});
+      expect(group?.people.single.roles, {
+        GroupRole.maintainer,
+        GroupRole.subscriber,
+      });
     });
 
     test('Edge Case: missing people and date give an empty group', () {
@@ -387,5 +390,141 @@ void main() {
         expect(text, expected);
       });
     }
+  });
+
+  group('rolesChoiceProblem - Unit Test Suite', () {
+    test('Happy Path: an administrator may leave only Gestor do grupo', () {
+      // 1. Arrange
+      final roles = {GroupRole.maintainer};
+
+      // 2. Act
+      final problem = rolesChoiceProblem(roles, byAdmin: true);
+
+      // 3. Assert
+      expect(problem, isNull);
+    });
+
+    test('Sad Path: a maintainer must keep an everyday role', () {
+      // 1. Arrange
+      final roles = {GroupRole.maintainer};
+
+      // 2. Act
+      final problem = rolesChoiceProblem(roles, byAdmin: false);
+
+      // 3. Assert
+      expect(problem, 'Marque pelo menos uma opção.');
+    });
+
+    test('Happy Path: a maintainer may keep Gestor do grupo with an '
+        'everyday role', () {
+      // 1. Arrange
+      final roles = {GroupRole.maintainer, GroupRole.subscriber};
+
+      // 2. Act
+      final problem = rolesChoiceProblem(roles, byAdmin: false);
+
+      // 3. Assert
+      expect(problem, isNull);
+    });
+
+    for (final byAdmin in [true, false]) {
+      test('Sad Path: no role at all is refused '
+          '(${byAdmin ? 'administrator' : 'maintainer'})', () {
+        // 1. Arrange
+        final roles = <GroupRole>{};
+
+        // 2. Act
+        final problem = rolesChoiceProblem(roles, byAdmin: byAdmin);
+
+        // 3. Assert
+        expect(problem, 'Marque pelo menos uma opção.');
+      });
+    }
+  });
+
+  group('GroupRole.everyday - Unit Test Suite', () {
+    test('Happy Path: the everyday roles are Em campo and Vê o mapa', () {
+      // 1. Arrange
+      const roles = GroupRole.everyday;
+
+      // 2. Act
+      final ids = [for (final role in roles) role.id];
+
+      // 3. Assert
+      expect(ids, ['publisher', 'subscriber']);
+    });
+  });
+
+  group('assignableRolesFor - Unit Test Suite', () {
+    test('Happy Path: an administrator gives every role', () {
+      // 1. Arrange
+      const byAdmin = true;
+
+      // 2. Act
+      final roles = assignableRolesFor(byAdmin: byAdmin);
+
+      // 3. Assert
+      expect(roles, [
+        GroupRole.publisher,
+        GroupRole.subscriber,
+        GroupRole.maintainer,
+      ]);
+    });
+
+    test('Sad Path: a maintainer never gives Gestor do grupo', () {
+      // 1. Arrange
+      const byAdmin = false;
+
+      // 2. Act
+      final roles = assignableRolesFor(byAdmin: byAdmin);
+
+      // 3. Assert
+      expect(roles, [GroupRole.publisher, GroupRole.subscriber]);
+    });
+  });
+
+  group('canRemoveFromGroup - Unit Test Suite', () {
+    const maintainer = GroupPerson(
+      email: 'vera@x.com',
+      roles: {GroupRole.maintainer, GroupRole.subscriber},
+    );
+    const fieldWorker = GroupPerson(
+      email: 'ana@x.com',
+      roles: {GroupRole.publisher},
+    );
+
+    test('Happy Path: a maintainer removes someone who is not a '
+        'maintainer', () {
+      // 1. Arrange
+      const person = fieldWorker;
+
+      // 2. Act
+      final allowed = canRemoveFromGroup(person, byAdmin: false);
+
+      // 3. Assert
+      expect(allowed, isTrue);
+    });
+
+    test('Edge Case: an administrator removes a maintainer', () {
+      // 1. Arrange
+      const person = maintainer;
+
+      // 2. Act
+      final allowed = canRemoveFromGroup(person, byAdmin: true);
+
+      // 3. Assert
+      expect(allowed, isTrue);
+    });
+
+    test('Sad Path: a maintainer cannot remove a maintainer', () {
+      // 1. Arrange
+      const person = maintainer;
+
+      // 2. Act
+      final allowed = canRemoveFromGroup(person, byAdmin: false);
+
+      // 3. Assert
+      expect(allowed, isFalse);
+    });
   });
 }

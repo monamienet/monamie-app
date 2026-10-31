@@ -4,9 +4,13 @@ import 'package:get/get.dart';
 import 'group.dart';
 import 'groups_backend.dart';
 
-/// State of the administrators' group screens (*Grupos*, *Criar grupo*,
-/// *Grupo*). One operation at a time: [isWorking] guards reentrancy and
-/// drives the pending states; it always resets in `finally`.
+/// State of the group screens (*Grupos*, *Criar grupo*, *Grupo*) for an
+/// administrator, who manages every group, or a group's maintainer
+/// (*Gestor do grupo*), who sees only the groups they maintain and manages
+/// their people, invites and name. The server checks the same; [isAdmin]
+/// only hides what the person may not do. One operation at a time:
+/// [isWorking] guards reentrancy and drives the pending states; it always
+/// resets in `finally`.
 ///
 /// The map under these screens needs no notice: it follows the groups in
 /// Firestore by itself.
@@ -14,9 +18,22 @@ class GroupsController extends GetxController {
   GroupsController({
     required this.organizationId,
     required GroupsBackend backend,
+    this.isAdmin = false,
   }) : _backend = backend;
 
   final String organizationId;
+
+  /// Whether the person administers the organization: creates and deletes
+  /// groups and gives *Gestor do grupo*. Otherwise they maintain the groups
+  /// listed.
+  final bool isAdmin;
+
+  /// The roles the person may give in the role picker.
+  List<GroupRole> get assignableRoles => assignableRolesFor(byAdmin: isAdmin);
+
+  /// Whether the person may remove [person] from a group.
+  bool canRemove(GroupPerson person) =>
+      canRemoveFromGroup(person, byAdmin: isAdmin);
   final GroupsBackend _backend;
 
   final RxList<Group> groups = <Group>[].obs;
@@ -109,14 +126,16 @@ class GroupsController extends GetxController {
       }) ??
       false;
 
-  /// Sets [email]'s roles in group [groupId]; never none.
+  /// Sets [email]'s roles in group [groupId]; never none (see
+  /// [rolesChoiceProblem]).
   Future<bool> setRoles(
     String groupId,
     String email,
     Set<GroupRole> roles,
   ) async {
-    if (roles.isEmpty) {
-      errorMessage.value = 'Escolha pelo menos um papel.';
+    final problem = rolesChoiceProblem(roles, byAdmin: isAdmin);
+    if (problem != null) {
+      errorMessage.value = problem;
       return false;
     }
     return await _guarded(() async {

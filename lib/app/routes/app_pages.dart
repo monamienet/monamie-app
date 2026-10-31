@@ -13,6 +13,10 @@ import 'package:monamie_app/app/modules/admin/groups/firebase_groups_backend.dar
 import 'package:monamie_app/app/modules/admin/groups/groups_controller.dart';
 import 'package:monamie_app/app/modules/admin/groups/groups_views.dart';
 import 'package:monamie_app/app/modules/admin/firebase_appearance_backend.dart';
+import 'package:monamie_app/app/modules/admin/administrators/administrators_controller.dart';
+import 'package:monamie_app/app/modules/admin/administrators/administrators_view.dart';
+import 'package:monamie_app/app/modules/admin/administrators/firebase_administrators_backend.dart';
+import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 
 import 'package:monamie_app/app/modules/account/deletion_pending_view.dart';
 import 'package:monamie_app/app/modules/account/firebase_account_deletion_backend.dart';
@@ -88,6 +92,18 @@ class AppPages {
           GroupsController(
             organizationId: Organization.current!.id,
             backend: const FirebaseGroupsBackend(),
+            isAdmin: Get.find<GroupMapState>().isAdmin,
+          ),
+        ),
+      ),
+    ),
+    GetPage(
+      name: _Paths.ADMINISTRATORS,
+      page: () => AdministratorsView(
+        controller: Get.put(
+          AdministratorsController(
+            organizationId: Organization.current!.id,
+            backend: const FirebaseAdministratorsBackend(),
           ),
         ),
       ),

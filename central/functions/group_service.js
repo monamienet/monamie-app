@@ -11,6 +11,7 @@ const {
   leaveOrganization,
   leaveOrganizationIfGroupless,
   markPositionRemoved,
+  GROUP_ROLES,
   sortedRoles,
 } = require("./membership_store");
 const { personKey } = require("./person_key");
@@ -26,7 +27,8 @@ const MAX_GROUPS = 99;
 const MIN_NAME = 2;
 const MAX_NAME = 40;
 
-/** Roles an administrator gives in a group (`maintainer` comes in #165). */
+/** The everyday roles in a group, which a maintainer may also give;
+ * `maintainer` itself is given and taken only by administrators. */
 const ASSIGNABLE_ROLES = Object.freeze(["publisher", "subscriber"]);
 
 /** A Firestore auto id, or any id a test or a migration chose. */
@@ -90,20 +92,22 @@ function validateGroupName(name, existingNames) {
 }
 
 /**
- * The roles an administrator gives, validated: one or both of `publisher`
- * (shares their location) and `subscriber` (sees the map), never none.
+ * Roles from a request, validated against `allowed` (by default the
+ * everyday ones: `publisher`, who shares their location, and `subscriber`,
+ * who sees the map), never none.
  *
  * @param {unknown} roles
+ * @param {readonly string[]} [allowed]
  * @returns {string[]} Sorted, without duplicates
  * @throws {GroupError} code `roles`
  */
-function validateRoles(roles) {
+function validateRoles(roles, allowed = ASSIGNABLE_ROLES) {
   if (!Array.isArray(roles)) {
     throw new GroupError("roles", "Escolha pelo menos um papel.");
   }
   const set = new Set(roles);
   for (const role of set) {
-    if (!ASSIGNABLE_ROLES.includes(role)) {
+    if (!allowed.includes(role)) {
       throw new GroupError("roles", `Papel desconhecido: ${role}.`);
     }
   }
@@ -111,6 +115,32 @@ function validateRoles(roles) {
     throw new GroupError("roles", "Escolha pelo menos um papel.");
   }
   return [...set].sort();
+}
+
+/**
+ * The roles to store when someone changes a person's roles in a group.
+ *
+ * - An administrator gives exactly `requested`: any of `maintainer`,
+ *   `publisher` and `subscriber`, at least one.
+ * - A maintainer gives the everyday roles (at least one) and leaves the
+ *   person's `maintainer` state as it is: kept when held, never granted.
+ *
+ * @param {string[]} currentRoles - The person's roles now
+ * @param {unknown} requested
+ * @param {boolean} byAdmin - Whether the caller administers the organization
+ * @returns {string[]} Sorted
+ * @throws {GroupError} `roles`, or `forbidden` when a maintainer asks to
+ *   make someone a maintainer
+ */
+function rolesToStore(currentRoles, requested, byAdmin) {
+  if (byAdmin) return validateRoles(requested, GROUP_ROLES);
+  const holds = currentRoles.includes("maintainer");
+  const asked = Array.isArray(requested) ? requested : null;
+  if (asked?.includes("maintainer") && !holds) {
+    throw new GroupError("forbidden", "Só um administrador nomeia gestores do grupo.");
+  }
+  const everyday = validateRoles(asked ? asked.filter((r) => r !== "maintainer") : requested);
+  return holds ? sortedRoles([...everyday, "maintainer"]) : everyday;
 }
 
 /**
@@ -269,24 +299,30 @@ async function deleteGroup(db, centralDb, organizationId, groupId, cancelInvites
 }
 
 /**
- * Gives a person of the group exactly `roles` (publisher, subscriber; a
- * `maintainer` role they hold is kept). Losing `publisher` marks their
- * position `removedAt`.
+ * Changes a person's roles in the group (see `rolesToStore`: an
+ * administrator gives exactly `roles`, `maintainer` included; anyone else
+ * the everyday roles, the person's `maintainer` state unchanged). Losing
+ * `publisher` marks their position `removedAt`.
  *
+ * @param {{byAdmin?: boolean}} [caller] - Defaults to a maintainer's powers
  * @returns {Promise<{roles: string[]}>} The roles stored
- * @throws {GroupError} `roles`, `group` or `member` (not in the group: people
- *   join through an invite)
+ * @throws {GroupError} `roles`, `forbidden`, `group` or `member` (not in the
+ *   group: people join through an invite)
  */
-async function setMemberRoles(db, organizationId, groupId, email, roles, now = new Date()) {
-  const wanted = validateRoles(roles);
+async function setMemberRoles(
+  db,
+  organizationId,
+  groupId,
+  email,
+  roles,
+  now = new Date(),
+  { byAdmin = false } = {}
+) {
   const group = await requireGroup(db, organizationId, groupId);
   email = String(email ?? "").trim().toLowerCase();
   const person = group.people.find((p) => p.email === email);
   if (!person) throw new GroupError("member", "Essa pessoa não está no grupo.");
-  const stored = sortedRoles([
-    ...wanted,
-    ...person.roles.filter((r) => !ASSIGNABLE_ROLES.includes(r)),
-  ]);
+  const stored = rolesToStore(person.roles, roles, byAdmin);
   await db
     .doc(groupMembershipPath(organizationId, group.id, personKey(email)))
     .update({ roles: stored });
@@ -299,15 +335,30 @@ async function setMemberRoles(db, organizationId, groupId, email, roles, now = n
 /**
  * Takes a person out of the group (their position is marked `removedAt`);
  * if that was their last group and they do not administer the
- * organization, they leave it too.
+ * organization, they leave it too. Only an administrator removes a
+ * maintainer: for anyone else that would take away a `maintainer` role.
  *
+ * @param {{byAdmin?: boolean}} [caller] - Defaults to a maintainer's powers
  * @returns {Promise<{leftOrganization: boolean}>}
+ * @throws {GroupError} `group`, `member` or `forbidden`
  */
-async function removeMember(db, centralDb, organizationId, groupId, email, now = new Date()) {
+async function removeMember(
+  db,
+  centralDb,
+  organizationId,
+  groupId,
+  email,
+  now = new Date(),
+  { byAdmin = false } = {}
+) {
   const group = await requireGroup(db, organizationId, groupId);
   email = String(email ?? "").trim().toLowerCase();
-  if (!group.people.some((p) => p.email === email)) {
+  const person = group.people.find((p) => p.email === email);
+  if (!person) {
     throw new GroupError("member", "Essa pessoa não está no grupo.");
+  }
+  if (!byAdmin && person.roles.includes("maintainer")) {
+    throw new GroupError("forbidden", "Só um administrador remove um gestor do grupo.");
   }
   await leaveGroup(db, organizationId, group.id, email, now);
   return {
@@ -328,6 +379,7 @@ module.exports = {
   removeMember,
   renameGroup,
   requireGroup,
+  rolesToStore,
   setMemberRoles,
   validGroupId,
   validateGroupName,

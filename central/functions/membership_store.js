@@ -30,8 +30,8 @@ const {
  * Every function takes the Firestore it writes to, so tests pass fakes.
  */
 
-/** Roles a person may hold in a group. `maintainer` grants nothing extra
- * yet (#165) but is kept when present. */
+/** Roles a person may hold in a group: `maintainer` (*Gestor do grupo*,
+ * manages the group, see group_access.js), `publisher`, `subscriber`. */
 const GROUP_ROLES = Object.freeze(["maintainer", "publisher", "subscriber"]);
 
 /**

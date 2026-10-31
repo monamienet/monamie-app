@@ -61,6 +61,7 @@ const people = {
   nina: "nina@example.com", // not in rotasul
   otto: "otto@example.com", // administrator of outro
   pia: "pia@example.com", // publisher in outro's vendas (Community: 15 min)
+  gil: "gil@example.com", // maintainer of guias only (not a subscriber)
 };
 
 let env;
@@ -160,7 +161,7 @@ beforeEach(async () => {
         roles,
       });
 
-    for (const name of ["ana", "vera", "caio"]) await member(HERE, name, "member");
+    for (const name of ["ana", "vera", "caio", "gil"]) await member(HERE, name, "member");
     await member(HERE, "olga", "admin");
     await member(THERE, "otto", "admin");
     await member(THERE, "pia", "member");
@@ -174,6 +175,7 @@ beforeEach(async () => {
     await inGroup(RECEPCAO, HERE, "ana", ["publisher"]);
     await inGroup(GUIAS, HERE, "vera", ["subscriber"]);
     await inGroup(GUIAS, HERE, "caio", ["publisher"]);
+    await inGroup(GUIAS, HERE, "gil", ["maintainer"]);
     await inGroup(VENDAS, THERE, "pia", ["publisher"]);
 
     await setDoc(doc(db, positionPath(GUIAS, "ana")), storedPosition(people.ana));
@@ -361,6 +363,72 @@ describe("membership rules: groups - Rules Test Suite", () => {
     test(`Sad Path: ${label} is denied`, async () => {
       // 1. Arrange
       // (people, groups and memberships are seeded in beforeEach)
+
+      // 2. Act
+      const request = act();
+
+      // 3. Assert
+      await assertFails(request);
+    });
+  }
+});
+
+describe("membership rules: a group's maintainer - Rules Test Suite", () => {
+  test("Happy Path: a maintainer lists the memberships of the group they maintain", async () => {
+    // 1. Arrange
+    const db = dbOf("gil");
+
+    // 2. Act
+    const snapshot = await getDocs(collection(db, `${GUIAS}/groupMemberships`));
+
+    // 3. Assert
+    assert.equal(snapshot.size, 4);
+  });
+
+  test("Edge Case: a maintainer reads another person's membership of their group", async () => {
+    // 1. Arrange
+    const db = dbOf("gil");
+
+    // 2. Act
+    const read = getDoc(doc(db, `${GUIAS}/groupMemberships/${ANA_KEY}`));
+
+    // 3. Assert
+    await assertSucceeds(read);
+  });
+
+  const denied = [
+    ["reading the memberships of a group they do not maintain", () => getDocs(collection(dbOf("gil"), `${RECEPCAO}/groupMemberships`))],
+    ["a subscriber listing their group's memberships", () => getDocs(collection(dbOf("vera"), `${GUIAS}/groupMemberships`))],
+    [
+      "a maintainer writing a membership of their group",
+      () =>
+        setDoc(doc(dbOf("gil"), `${GUIAS}/groupMemberships/${keyOf(people.nina)}`), {
+          email: people.nina,
+          organizationId: "rotasul",
+          roles: ["subscriber"],
+        }),
+    ],
+    [
+      "a maintainer changing their own roles",
+      () =>
+        setDoc(doc(dbOf("gil"), `${GUIAS}/groupMemberships/${keyOf(people.gil)}`), {
+          email: people.gil,
+          organizationId: "rotasul",
+          roles: ["maintainer", "subscriber"],
+        }),
+    ],
+    ["a maintainer renaming their group directly", () => setDoc(doc(dbOf("gil"), GUIAS), { name: "Outro" })],
+    ["a maintainer listing the organization's memberships", () => getDocs(collection(dbOf("gil"), `${HERE}/organizationMemberships`))],
+    [
+      "a maintainer without subscriber reading the group's map",
+      () => getDocs(query(collection(dbOf("gil"), `${GUIAS}/positions`), where("removedAt", "==", null))),
+    ],
+    ["a maintainer without subscriber reading a trail", () => getDocs(collection(dbOf("gil"), `${positionPath(GUIAS, "ana")}/trail`))],
+  ];
+  for (const [label, act] of denied) {
+    test(`Sad Path: ${label} is denied`, async () => {
+      // 1. Arrange
+      // (gil maintains guias, seeded in beforeEach)
 
       // 2. Act
       const request = act();
