@@ -29,9 +29,9 @@ class ShareCard extends StatelessWidget {
         loading: _tracking.isTrackingLoading.value,
       );
       final tinted = state.isOn && !state.busy;
-      final background = tinted ? SheetColors.raised : SheetColors.surface;
-      final titleColor = SheetColors.ink;
-      final subtitleColor = tinted ? SheetColors.ink : SheetColors.muted;
+      final background = tinted ? SheetColors.accent : SheetColors.surface;
+      final titleColor = tinted ? AppColors.darkBlue() : SheetColors.ink;
+      final subtitleColor = tinted ? AppColors.darkBlue() : SheetColors.muted;
 
       return Semantics(
         toggled: state.isOn,
@@ -103,7 +103,7 @@ class ShareCard extends StatelessWidget {
         height: 24,
         child: CircularProgressIndicator(
           strokeWidth: 2.6,
-          color: AppColors.mediumBlue(),
+          color: SheetColors.accent,
           backgroundColor: SheetColors.handle,
         ),
       );
@@ -112,7 +112,7 @@ class ShareCard extends StatelessWidget {
       state.isOn ? Icons.location_on_outlined : Icons.location_off_outlined,
       key: ValueKey(state.isOn ? 'share_card_on' : 'share_card_off'),
       size: 24,
-      color: state.isOn ? SheetColors.ink : SheetColors.muted,
+      color: state.isOn ? AppColors.darkBlue() : SheetColors.muted,
     );
   }
 }

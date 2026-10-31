@@ -79,7 +79,7 @@ class PersonRowTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: live ? SheetColors.ink : SheetColors.muted,
+                      color: live ? SheetColors.accent : SheetColors.muted,
                       fontSize: 12,
                       fontWeight: live ? FontWeight.w800 : FontWeight.w500,
                     ),
@@ -95,7 +95,7 @@ class PersonRowTile extends StatelessWidget {
               child: Icon(
                 Icons.timeline,
                 size: 20,
-                color: highlighted ? AppColors.onPrimary : SheetColors.muted,
+                color: highlighted ? AppColors.darkBlue() : SheetColors.muted,
               ),
             ),
             if (onCall != null) ...[
@@ -152,7 +152,7 @@ class _SquareButton extends StatelessWidget {
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: on ? AppColors.mediumBlue() : Colors.transparent,
+              color: on ? SheetColors.accent : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
               border: on
                   ? null

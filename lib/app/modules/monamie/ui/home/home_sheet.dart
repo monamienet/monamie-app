@@ -10,8 +10,8 @@ import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// The panel under the map: the sharing switch for people who share, the
-/// observed group for people who watch. It is drawn on the theme's light
-/// shade ([SheetColors]).
+/// observed group for people who watch. It is drawn on the theme's dark
+/// shade, continuing the header ([SheetColors]).
 ///
 /// Dragging the grabber down hides the group's list so the map gets the
 /// room; dragging it up (or tapping it) shows the list again.
@@ -188,8 +188,8 @@ class _HomeSheetState extends State<HomeSheet> {
             FilledButton(
               style: FilledButton.styleFrom(
                 minimumSize: const Size(0, 48),
-                backgroundColor: AppColors.mediumBlue(),
-                foregroundColor: AppColors.onPrimary,
+                backgroundColor: SheetColors.accent,
+                foregroundColor: AppColors.darkBlue(),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
