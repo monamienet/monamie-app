@@ -40,7 +40,152 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.token.email == docEmail;
     }
 
+    // ── Memberships in Firestore (#159, phase 1 of the migration) ────────
+    // The documents below replace Google Groups and the claims above. No
+    // client uses them yet. They are keyed by personKey(): the
+    // lowercase-hex SHA-256 of the lowercased e-mail, so no e-mail appears
+    // in a document name. Each one also stores the `email` field.
+
+    function isVerified() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+
+    /// The caller's key. Call only after isVerified().
+    function personKey() {
+      return hashing.sha256(request.auth.token.email.lower()).toHexString().lower();
+    }
+
+    // "Which groups am I in?": a collection-group query on the person's own
+    // memberships, filtered by `email` (and `organizationId`).
+    match /{path=**}/groupMemberships/{key} {
+      allow read: if isVerified() && resource.data.email == request.auth.token.email;
+    }
+
     match /partners/{partnerId} {
+
+      function organizationMembership() {
+        return get(/databases/$(database)/documents/partners/$(partnerId)/organizationMemberships/$(personKey()));
+      }
+
+      /// The caller belongs to this organization in Firestore.
+      function isOrganizationMember() {
+        return isVerified() && organizationMembership() != null;
+      }
+
+      /// The caller administers this organization in Firestore.
+      function isOrganizationAdmin() {
+        return isVerified() && organizationMembership() != null
+          && organizationMembership().data.role == 'admin';
+      }
+
+      /// The caller holds [role] in group [groupId].
+      function hasGroupRole(groupId, role) {
+        let membership = get(/databases/$(database)/documents/partners/$(partnerId)/groups/$(groupId)/groupMemberships/$(personKey()));
+        return isVerified() && membership != null && role in membership.data.roles;
+      }
+
+      /// The caller receives the positions published in [groupId]. The
+      /// group membership is checked first, so a subscriber costs one read.
+      function canSubscribe(groupId) {
+        return hasGroupRole(groupId, 'subscriber') || isOrganizationAdmin();
+      }
+
+      /// Like positionTimingOk(), for the new positions: a new position
+      /// carries `receivedAt` = the server's time, at least the plan's
+      /// interval after the previous one.
+      function publishTimingOk() {
+        return positionChanged()
+          ? request.resource.data.get('receivedAt', null) == request.time
+            && (resource == null
+              || resource.data.get('receivedAt', null) == null
+              || request.time > resource.data.receivedAt
+                   + duration.value(minIntervalMinutes(), 'm'))
+          : request.resource.data.get('receivedAt', null)
+              == (resource == null ? null : resource.data.get('receivedAt', null));
+      }
+
+      /// The position in [groupId] after the current batch: trail points
+      /// and day summaries are written in the same batch as it.
+      function publishedNow(groupId, key) {
+        return getAfter(/databases/$(database)/documents/partners/$(partnerId)/groups/$(groupId)/positions/$(key)).data.receivedAt == request.time;
+      }
+
+      // ── organizationMemberships/{key}: who belongs, with role ─────────
+      // Fields: email, role ('admin' or 'member'), addedAt.
+      match /organizationMemberships/{key} {
+        // Your own, even when it does not exist (the app learns it was
+        // removed), or any of them as an administrator.
+        allow get: if isVerified() && (key == personKey() || isOrganizationAdmin());
+        allow list: if isOrganizationAdmin();
+        allow write: if false;
+      }
+
+      // ── groups/{groupId}: a group of this organization ────────────────
+      // Fields: name, createdAt. Auto ids, never reused.
+      match /groups/{groupId} {
+        allow read: if isOrganizationMember();
+        allow write: if false;
+
+        // Fields: email, organizationId, roles ('maintainer', 'publisher',
+        // 'subscriber'). The collection-group rule above adds your own.
+        match /groupMemberships/{key} {
+          allow read: if isOrganizationAdmin();
+          allow write: if false;
+        }
+
+        // ── positions/{key}: the person's last position in this group ──
+        // Fields: email, name, lat, lng, capturedAt (device clock),
+        // receivedAt (server clock), isPublishing, removedAt (set by the
+        // central functions when the person stops publishing here).
+        match /positions/{key} {
+          allow get: if isVerified() && (key == personKey() || canSubscribe(groupId));
+          allow list: if canSubscribe(groupId);
+
+          allow create, update: if isVerified()
+            && key == personKey()
+            && hasGroupRole(groupId, 'publisher')
+            && request.resource.data.email == request.auth.token.email
+            && request.resource.data.keys().hasOnly(
+                 ['email', 'name', 'lat', 'lng', 'capturedAt', 'receivedAt',
+                  'isPublishing', 'removedAt'])
+            && request.resource.data.get('removedAt', null) == null
+            && publishTimingOk();
+
+          allow delete: if false;
+
+          // ── trail/{pointId}: one point per position published ────────
+          match /trail/{pointId} {
+            allow read: if isVerified() && (key == personKey() || canSubscribe(groupId));
+
+            allow create: if isVerified()
+              && key == personKey()
+              && hasGroupRole(groupId, 'publisher')
+              && request.resource.data.keys().hasOnly(['lat', 'lng', 'receivedAt'])
+              && request.resource.data.lat is number
+              && request.resource.data.lng is number
+              && request.resource.data.receivedAt == request.time
+              && publishedNow(groupId, key);
+
+            allow update, delete: if false;
+          }
+
+          // ── trailDays/{yyyy-mm-dd}: one summary per day, for the calendar
+          match /trailDays/{day} {
+            allow read: if isVerified() && (key == personKey() || canSubscribe(groupId));
+
+            allow create, update: if isVerified()
+              && key == personKey()
+              && hasGroupRole(groupId, 'publisher')
+              && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+              && request.resource.data.keys().hasOnly(['lastAt', 'pointCount'])
+              && request.resource.data.lastAt == request.time
+              && request.resource.data.pointCount is int
+              && publishedNow(groupId, key);
+
+            allow delete: if false;
+          }
+        }
+      }
 
       /// The caller has some capability in this partner.
       function isMember() {
