@@ -367,30 +367,14 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                 ),
               ],
               const SizedBox(height: 8),
-              Text.rich(
-                TextSpan(
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 19 / 13,
-                    fontWeight: FontWeight.w500,
-                    color: _muted,
-                  ),
-                  children: [
-                    const TextSpan(
-                      text:
-                          'Só letras minúsculas, sem acentos, espaços ou números. '
-                          'Ele aparece nos endereços dos grupos, como ',
-                    ),
-                    TextSpan(
-                      text:
-                          '${id.isEmpty ? 'identificador' : id}01@monamienet.org',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: _navy,
-                      ),
-                    ),
-                    const TextSpan(text: '.'),
-                  ],
+              const Text(
+                'Só letras minúsculas, sem acentos, espaços ou números. '
+                'É o código da organização no MonAmie.',
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 19 / 13,
+                  fontWeight: FontWeight.w500,
+                  color: _muted,
                 ),
               ),
               const SizedBox(height: 8),
