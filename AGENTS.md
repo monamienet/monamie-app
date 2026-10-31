@@ -30,7 +30,7 @@ Onboarding an organization needs no app release: see `docs/en-us/white-label.md`
 
 ### Organizations, Groups and Users
 
-> **Migration done in code (#159).** Groups and roles moved from Google Groups to Firestore membership documents; the plan, with one issue per phase, is [docs/pt-br/migracao-grupos-firestore.md](docs/pt-br/migracao-grupos-firestore.md). No code reads Google Groups, the groups gateway or custom claims any more. Only the manual clean-up of phase 5 (#164) is left: deleting the old Google Groups, the gateway and the `groups-admin@` Workspace role, and the orphaned test data under `partners/`.
+> **Migration complete (#159).** Groups and roles moved from Google Groups to Firestore membership documents; the plan, which keeps the reasons behind each decision, is [docs/pt-br/migracao-grupos-firestore.md](docs/pt-br/migracao-grupos-firestore.md). No code reads Google Groups, the groups gateway or custom claims, and none of them exists any more: the old Google Groups, the gateway's project, its Workspace delegation, the `groups-admin@` Workspace role and the old `partners/` data were deleted on 2026-10-31 (#164).
 
 Who belongs where lives in Firestore documents of the organization's project, **written only by the central functions** (`central/functions/`, Admin SDK) and by `dart run tool/organization.dart add-admin`; the rules let no client write them.
 
