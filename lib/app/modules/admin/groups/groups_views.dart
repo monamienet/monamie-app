@@ -45,6 +45,7 @@ Widget _primaryButton({
   required VoidCallback? onPressed,
   IconData? icon,
 }) => SizedBox(
+  width: double.infinity,
   height: 56,
   child: FilledButton(
     style: FilledButton.styleFrom(
