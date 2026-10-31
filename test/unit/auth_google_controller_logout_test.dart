@@ -75,7 +75,10 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   Future<void> ensureInitialized() async {}
 
   @override
-  Future<String?> signInGoogle() async => null;
+  Future<String?> signInGoogle({void Function()? onAccountChosen}) async {
+    onAccountChosen?.call();
+    return null;
+  }
 
   @override
   Future<void> signInToOrganization(String idToken) async {}

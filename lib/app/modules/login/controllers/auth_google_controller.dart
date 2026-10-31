@@ -121,6 +121,12 @@ class AuthGoogleController extends GetxController {
   // indica se uma operação de login está em andamento
   final RxBool isLoading = false.obs;
 
+  /// The login button was tapped and the sign-in has not finished: Google's
+  /// account chooser may be open. Guards against a second tap without showing
+  /// [isLoading]'s "Procurando sua organização…", which only makes sense once an
+  /// account is chosen.
+  final RxBool isChoosingAccount = false.obs;
+
   // indica se o logout (parada do rastreamento + saída) está em andamento
   final RxBool isLoggingOut = false.obs;
 
@@ -578,10 +584,14 @@ class AuthGoogleController extends GetxController {
   }
 
   void loginGoogle() async {
-    if (isLoading.value) return;
-    isLoading.value = true;
+    if (isLoading.value || isChoosingAccount.value) return;
+    isChoosingAccount.value = true;
     try {
-      final idToken = await _authGoogle.signInGoogle();
+      // The spinner waits for an account: while Google's chooser is open there
+      // is no organization to look for yet.
+      final idToken = await _authGoogle.signInGoogle(
+        onAccountChosen: () => isLoading.value = true,
+      );
       // Na web o login retorna null propositalmente (o resultado chega via
       // stream), portanto não exibimos erro quando idToken é null.
       if (idToken != null) {
@@ -591,6 +601,7 @@ class AuthGoogleController extends GetxController {
       _showLoginError("Ocorreu um erro inesperado: $e");
     } finally {
       isLoading.value = false;
+      isChoosingAccount.value = false;
     }
   }
 

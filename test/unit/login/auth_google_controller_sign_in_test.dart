@@ -65,6 +65,7 @@ class _FakeAuthGoogleService implements AuthGoogleService {
     this.refreshedToken = _kIdToken,
     this.signInError,
     this.logoutError,
+    this.chooser,
   });
 
   final List<String> log;
@@ -73,14 +74,20 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   final Object? signInError;
   final Object? logoutError;
 
+  /// Holds the fake at Google's account chooser until the test completes it
+  /// (with an error to mimic a cancelled chooser). Null: the choice is instant.
+  final Completer<void>? chooser;
+
   int signInCalls = 0;
   int logoutCalls = 0;
   int signOutOfOrganizationCalls = 0;
 
   @override
-  Future<String?> signInGoogle() async {
+  Future<String?> signInGoogle({void Function()? onAccountChosen}) async {
     signInCalls++;
     log.add('signInGoogle');
+    await chooser?.future;
+    onAccountChosen?.call();
     final failure = signInError;
     if (failure != null) throw failure;
     return idToken;
@@ -284,6 +291,7 @@ class _Harness {
     String? refreshedToken = _kIdToken,
     Object? signInError,
     Object? logoutError,
+    Completer<void>? chooser,
   }) {
     authService = _FakeAuthGoogleService(
       log,
@@ -291,6 +299,7 @@ class _Harness {
       refreshedToken: refreshedToken,
       signInError: signInError,
       logoutError: logoutError,
+      chooser: chooser,
     );
     directory = _FakeOrganizationDirectory(
       organizations: organizations,
@@ -398,6 +407,93 @@ void main() {
     Organization.bind(testOrganization);
     CurrentOrganizationFirebase.debugReset();
   });
+
+  group(
+    'AuthGoogleController.loginGoogle (seletor de contas do Google) - Suíte de Testes Unitários',
+    () {
+      testWidgets(
+        'Happy Path: Deve manter isLoading falso enquanto o seletor de contas está aberto e ligá-lo só depois da escolha',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final chooser = Completer<void>();
+          final harness = _Harness(chooser: chooser);
+          await _pumpApp(tester);
+          final controller = harness.controller;
+          final loadingHistory = <bool>[];
+          final worker = ever<bool>(controller.isLoading, loadingHistory.add);
+          controller.loginGoogle();
+          await tester.pump();
+          final loadingWhileChooserOpen = controller.isLoading.value;
+          final guardedWhileChooserOpen = controller.isChoosingAccount.value;
+          final historyWhileChooserOpen = List<bool>.of(loadingHistory);
+
+          // 2. Act
+          chooser.complete();
+          await _run(tester, controller, () {});
+          worker.dispose();
+
+          // 3. Assert
+          expect(loadingWhileChooserOpen, isFalse);
+          expect(guardedWhileChooserOpen, isTrue);
+          expect(historyWhileChooserOpen, isEmpty);
+          expect(loadingHistory, [true, false]);
+          expect(controller.isChoosingAccount.value, isFalse);
+        },
+      );
+
+      testWidgets(
+        'Edge Case: Não deve chamar signInGoogle de novo quando há um segundo toque com o seletor aberto',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final chooser = Completer<void>();
+          final harness = _Harness(chooser: chooser);
+          await _pumpApp(tester);
+          harness.controller.loginGoogle();
+          await tester.pump();
+
+          // 2. Act
+          harness.controller.loginGoogle();
+          await tester.pump();
+
+          // 3. Assert
+          expect(harness.authService.signInCalls, 1);
+
+          // Cleanup: finishes the pending sign-in so no timers stay open.
+          chooser.complete();
+          await _run(tester, harness.controller, () {});
+        },
+      );
+
+      testWidgets(
+        'Sad Path: Não deve ligar isLoading quando o seletor é cancelado e deve liberar um novo toque',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final chooser = Completer<void>();
+          final harness = _Harness(chooser: chooser);
+          await _pumpApp(tester);
+          final controller = harness.controller;
+          var loadingEverTrue = false;
+          final worker = ever<bool>(
+            controller.isLoading,
+            (value) => loadingEverTrue = loadingEverTrue || value,
+          );
+          controller.loginGoogle();
+          await tester.pump();
+
+          // 2. Act
+          chooser.completeError(Exception('cancelled'));
+          await _run(tester, controller, () {});
+          worker.dispose();
+
+          // 3. Assert
+          expect(loadingEverTrue, isFalse);
+          expect(controller.isLoading.value, isFalse);
+          expect(controller.isChoosingAccount.value, isFalse);
+          expect(harness.authService.signInCalls, 1);
+        },
+      );
+    },
+  );
 
   group(
     'AuthGoogleController.loginGoogle (sem organização) - Suíte de Testes Unitários',

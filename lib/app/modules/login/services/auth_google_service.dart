@@ -86,10 +86,14 @@ class AuthGoogleService {
   /// Shows Google's account chooser and signs in to the central project.
   /// Returns the Google ID token, or `null` on the web, where the result
   /// arrives through [onWebSignIn].
-  Future<String?> signInGoogle() async {
+  ///
+  /// [onAccountChosen] runs once the chooser is dismissed with an account, before
+  /// the central sign-in, so the caller can show progress only from then on.
+  Future<String?> signInGoogle({void Function()? onAccountChosen}) async {
     await _init;
     if (kIsWeb) return null;
     final account = await _googleSignIn.authenticate();
+    onAccountChosen?.call();
     return _signInCentral(account);
   }
 
