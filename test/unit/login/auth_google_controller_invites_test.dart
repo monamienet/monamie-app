@@ -71,9 +71,10 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   int signOutOfOrganizationCalls = 0;
 
   @override
-  Future<String?> signInGoogle() async {
+  Future<String?> signInGoogle({void Function()? onAccountChosen}) async {
     signInCalls++;
     log.add('signInGoogle');
+    onAccountChosen?.call();
     final failure = signInError;
     if (failure != null) throw failure;
     return idToken;
