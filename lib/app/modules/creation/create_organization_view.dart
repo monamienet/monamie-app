@@ -37,6 +37,7 @@ class CreateOrganizationView extends StatefulWidget {
 }
 
 class _CreateOrganizationViewState extends State<CreateOrganizationView> {
+  static const _stepCount = 4;
   int _step = 0;
   late final _name = TextEditingController();
   late final _id = TextEditingController();
@@ -106,7 +107,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     ),
   );
 
-  /// Back arrow, the screen's name and "n de 2", over a two-segment progress
+  /// Back arrow, the screen's name and "n de 4", over a four-segment progress
   /// bar (`CriarNome.dc.html`): the arrow's box starts 12 px left of the
   /// 24 px margin, so the arrow lines up with the text below.
   Widget _header() => Column(
@@ -138,40 +139,38 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                 ),
               ),
               const Spacer(),
-              if (_step < 2)
-                Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Text(
-                    '${_step + 1} de 2',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: _muted,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-      if (_step < 2) const SizedBox(height: 10),
-      if (_step < 2)
-        Row(
-          children: [
-            for (var i = 0; i < 2; i++) ...[
-              if (i == 1) const SizedBox(width: 6),
-              Expanded(
-                child: Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: i <= _step ? _navy : _line,
-                    borderRadius: BorderRadius.circular(2),
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Text(
+                  '${_step + 1} de $_stepCount',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: _muted,
                   ),
                 ),
               ),
             ],
-          ],
+          ),
         ),
+      ),
+      const SizedBox(height: 10),
+      Row(
+        children: [
+          for (var i = 0; i < _stepCount; i++) ...[
+            if (i > 0) const SizedBox(width: 6),
+            Expanded(
+              child: Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  color: i <= _step ? _navy : _line,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     ],
   );
 
