@@ -224,23 +224,23 @@ void main() {
     );
 
     test(
-      'Contrato de Responsabilidade Única: TrackingController atualiza isTracked sem gravar no histórico',
+      'Contrato de Responsabilidade Única: TrackingController atualiza isPublishing sem gravar no histórico',
       () {
         // Valida o contrato em que o controller de UI emite apenas o payload de ativação de rastreamento
         const email = 'usuario@monamienet.org';
-        const grupoAtivo = 'equipe-bravo@monamienet.org';
+        const groupId = 'equipe-bravo@monamienet.org';
 
         final trackingActivationPayload = <String, dynamic>{
           'email': email,
-          'isTracked': true,
-          'grupo_ativo': grupoAtivo,
+          'isPublishing': true,
+          'groupId': groupId,
         };
 
         // O payload de ativação de tracking não contém arrays ou escritas em subcoleções
         expect(trackingActivationPayload.containsKey('lat'), isFalse);
         expect(trackingActivationPayload.containsKey('lng'), isFalse);
-        expect(trackingActivationPayload['isTracked'], isTrue);
-        expect(trackingActivationPayload['grupo_ativo'], grupoAtivo);
+        expect(trackingActivationPayload['isPublishing'], isTrue);
+        expect(trackingActivationPayload['groupId'], groupId);
       },
     );
   });

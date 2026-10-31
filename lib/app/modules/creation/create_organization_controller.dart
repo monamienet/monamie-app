@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/group_address.dart';
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/group_address.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/data/theme/theme_catalog.dart';
 
 import 'creation_backend.dart';
@@ -12,8 +12,8 @@ const _maxIdLength = 20;
 
 /// The identifier suggested for an organization name: its letters only,
 /// without accents, lower case, at most 20 ("Rota Sul" → "rotasul"). Twin
-/// of `suggestPartnerId` in central/functions/partner_creation.js.
-String suggestPartnerId(String name) {
+/// of `suggestOrganizationId` in central/functions/organization_creation.js.
+String suggestOrganizationId(String name) {
   const accents = {
     'á': 'a',
     'à': 'a',
@@ -57,7 +57,9 @@ String? idFormatProblem(String id) {
   }
   if (id.length < 3) return 'Mínimo 3 letras';
   if (id.length > _maxIdLength) return 'Use no máximo $_maxIdLength letras.';
-  if (partnerIdProblem(id) != null) return 'Esse identificador é reservado.';
+  if (organizationIdProblem(id) != null) {
+    return 'Esse identificador é reservado.';
+  }
   return null;
 }
 
@@ -88,12 +90,12 @@ class CreateOrganizationController extends GetxController {
   final RxString idProblem = ''.obs;
   Timer? _timer;
 
-  final RxList<PartnerTheme> themes = <PartnerTheme>[].obs;
-  final RxString themeId = defaultPartnerTheme.id.obs;
+  final RxList<OrganizationTheme> themes = <OrganizationTheme>[].obs;
+  final RxString themeId = defaultOrganizationTheme.id.obs;
   final RxString plan = 'community'.obs;
 
   /// The plans that can be picked for now. Standard stays on screen, greyed
-  /// out, until it is opened to partners.
+  /// out, until it is opened to organizations.
   static const offeredPlans = {'community'};
 
   /// Picks [id] when it is offered and nothing is being created.
@@ -125,17 +127,17 @@ class CreateOrganizationController extends GetxController {
       themes.assignAll(pickableThemes((await _themes.themes()).values));
     } catch (e) {
       debugPrint('[Creation] Could not load themes: $e');
-      themes.assignAll([defaultPartnerTheme]);
+      themes.assignAll([defaultOrganizationTheme]);
     }
   }
 
-  PartnerTheme get pickedTheme =>
+  OrganizationTheme get pickedTheme =>
       themes.firstWhereOrNull((t) => t.id == themeId.value) ??
-      defaultPartnerTheme;
+      defaultOrganizationTheme;
 
   void setName(String value) {
     name.value = value;
-    if (!_idEdited) _setId(suggestPartnerId(value));
+    if (!_idEdited) _setId(suggestOrganizationId(value));
   }
 
   void setId(String value) {

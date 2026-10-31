@@ -6,12 +6,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
-import 'package:monamie_app/app/data/partner/partner_session.dart';
+import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
+import 'package:monamie_app/app/data/organization/organization_session.dart';
 import 'package:monamie_app/app/data/tracking/firestore_tracking_settings_repository.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
+import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
 
 Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;
@@ -25,7 +26,7 @@ Position? _lastRecordedPosition;
 
 /// The plan's minimum period (*período mínimo*: the least time between two
 /// positions, Community), read from
-/// `partners/{id}/config/plan` at start. The rules refuse a sooner write.
+/// `organizations/{id}/config/plan` at start. The rules refuse a sooner write.
 Duration _minPeriod = Duration.zero;
 DateTime? _lastPositionWriteAt;
 
@@ -33,9 +34,9 @@ DateTime? _lastPositionWriteAt;
 /// (Standard) or cannot be read.
 Future<Duration> _readMinPeriod() async {
   try {
-    final plan = await CurrentPartnerFirebase.instance.partnerData
-        .collection('config')
-        .doc('plan')
+    final plan = await CurrentOrganizationFirebase.instance.organizationData
+        .collection(FirestorePaths.config)
+        .doc(FirestorePaths.plan)
         .get()
         .timeout(const Duration(seconds: 5));
     final minutes = plan.data()?['minIntervalMinutes'];
@@ -59,11 +60,13 @@ bool _minPeriodElapsed(DateTime now) {
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
   // [DEFAULT] is the central project (from google-services.json); the
-  // partner's app was created natively by MonAmieApplication.
+  // organization's app was created natively by MonAmieApplication.
   await Firebase.initializeApp();
-  // The UI stored the bound partner; without one there is nowhere to write.
-  if (await PartnerSession().restore() == null) {
-    debugPrint('[ForegroundService] No partner bound — stopping the service.');
+  // The UI stored the bound organization; without one there is nowhere to write.
+  if (await OrganizationSession().restore() == null) {
+    debugPrint(
+      '[ForegroundService] No organization bound — stopping the service.',
+    );
     service.stopSelf();
     return;
   }
@@ -73,7 +76,7 @@ void onStart(ServiceInstance service) async {
   // no nível nativo, que são compartilhadas entre Flutter engines no
   // mesmo processo. Forçamos um refresh do token para garantir que os
   // custom claims (share, watch, admin) estejam presentes.
-  final currentUser = CurrentPartnerFirebase.instance.auth.currentUser;
+  final currentUser = CurrentOrganizationFirebase.instance.auth.currentUser;
   if (currentUser != null) {
     try {
       await currentUser.getIdToken(true);
@@ -99,7 +102,7 @@ void onStart(ServiceInstance service) async {
   // comportamento anterior.
   var hadUser = currentUser != null;
   await _authSubscription?.cancel();
-  _authSubscription = CurrentPartnerFirebase.instance.auth
+  _authSubscription = CurrentOrganizationFirebase.instance.auth
       .authStateChanges()
       .listen((user) {
         if (user != null) {
@@ -122,7 +125,7 @@ void onStart(ServiceInstance service) async {
         service,
         event['email'],
         event['name'],
-        event['grupoAtivo'] as String?,
+        event['groupId'] as String?,
       );
     }
   });
@@ -159,7 +162,7 @@ Future<void> updateLocation(
   ServiceInstance service,
   String email,
   String name, [
-  String? grupoAtivo,
+  String? groupId,
 ]) async {
   _lastRecordedPosition = null;
 
@@ -179,7 +182,7 @@ Future<void> updateLocation(
                 '[ForegroundService] New settings: every '
                 '${settings.periodMinutes} min, ${settings.radiusMeters} m.',
               );
-              updateLocation(service, email, name, grupoAtivo);
+              updateLocation(service, email, name, groupId);
             }
           },
           onError: (Object e) {
@@ -239,11 +242,11 @@ Future<void> updateLocation(
       try {
         await FirebaseProvider().updateLocationAndTimestamp(
           email: email,
-          nome: name,
+          name: name,
           lat: initialPosition.latitude,
           lng: initialPosition.longitude,
-          timestamp: DateTime.now(),
-          grupoAtivo: grupoAtivo,
+          capturedAt: DateTime.now(),
+          groupId: groupId,
         );
         _lastRecordedPosition = initialPosition;
         _lastPositionWriteAt = DateTime.now();
@@ -305,11 +308,11 @@ Future<void> updateLocation(
           try {
             await FirebaseProvider().updateLocationAndTimestamp(
               email: email,
-              nome: name,
+              name: name,
               lat: position.latitude,
               lng: position.longitude,
-              timestamp: DateTime.now(),
-              grupoAtivo: grupoAtivo,
+              capturedAt: DateTime.now(),
+              groupId: groupId,
             );
             _lastRecordedPosition = position;
             _lastPositionWriteAt = DateTime.now();
@@ -325,7 +328,7 @@ Future<void> updateLocation(
               );
               // Tentar refresh do token para recuperar claims
               try {
-                await CurrentPartnerFirebase.instance.auth.currentUser
+                await CurrentOrganizationFirebase.instance.auth.currentUser
                     ?.getIdToken(true);
               } catch (_) {}
             } else {

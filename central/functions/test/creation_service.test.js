@@ -2,8 +2,8 @@ const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
 const { FieldValue } = require("firebase-admin/firestore");
 
-const { checkPartnerId, createPartner, myCreations } = require("../creation_service");
-const { CreationError } = require("../partner_creation");
+const { checkOrganizationId, createOrganization, myCreations } = require("../creation_service");
+const { CreationError } = require("../organization_creation");
 
 const CUSTOMER = "customers/C0abc";
 const NOW = new Date("2026-10-26T12:00:00.000Z");
@@ -16,7 +16,7 @@ const isDelete = (value) =>
 
 /**
  * An in-memory central Firestore with what the creation service and
- * `transitionPartnerStatus` use: `doc(path).get()`, `runTransaction` with
+ * `transitionOrganizationStatus` use: `doc(path).get()`, `runTransaction` with
  * `tx.get/create/update` (a `FieldValue.delete()` removes the field) and
  * `collection(c).where(f, "==" | "in", v)...get()`. `reads` counts every
  * read; `statuses` keeps each status written, by path, in order.
@@ -177,7 +177,7 @@ function request(overrides = {}) {
 }
 
 const create = (db, d, overrides = {}) =>
-  createPartner(db, d, request(overrides), ACTIVE_THEMES, NOW);
+  createOrganization(db, d, request(overrides), ACTIVE_THEMES, NOW);
 
 /** Awaits `act` and returns the CreationError it rejects with. */
 async function creationErrorOf(act) {
@@ -190,13 +190,13 @@ async function creationErrorOf(act) {
   assert.fail("expected a CreationError");
 }
 
-describe("checkPartnerId - Unit Test Suite", () => {
+describe("checkOrganizationId - Unit Test Suite", () => {
   test("Happy Path: a free id is available", async () => {
     // 1. Arrange
     const db = fakeFirestore();
 
     // 2. Act
-    const result = await checkPartnerId(db, "rotasul");
+    const result = await checkOrganizationId(db, "rotasul");
 
     // 3. Assert
     assert.deepEqual(result, { available: true, problem: null });
@@ -207,7 +207,7 @@ describe("checkPartnerId - Unit Test Suite", () => {
     const db = fakeFirestore();
 
     // 2. Act
-    const result = await checkPartnerId(db, "Rota Sul");
+    const result = await checkOrganizationId(db, "Rota Sul");
 
     // 3. Assert
     assert.equal(result.available, false);
@@ -219,15 +219,15 @@ describe("checkPartnerId - Unit Test Suite", () => {
     const db = fakeFirestore();
 
     // 2. Act
-    await checkPartnerId(db, "ab");
+    await checkOrganizationId(db, "ab");
 
     // 3. Assert
     assert.equal(db.reads, 0);
   });
 
   const taken = [
-    ["already in the registry", { "partners/rotasul": { status: "active" } }],
-    ["retired", { "retiredPartnerIds/rotasul": { retiredAt: NOW } }],
+    ["already in the registry", { "organizations/rotasul": { status: "active" } }],
+    ["retired", { "retiredOrganizationIds/rotasul": { retiredAt: NOW } }],
   ];
   for (const [why, docs] of taken) {
     test(`Sad Path: an id ${why} is unavailable`, async () => {
@@ -235,7 +235,7 @@ describe("checkPartnerId - Unit Test Suite", () => {
       const db = fakeFirestore(docs);
 
       // 2. Act
-      const result = await checkPartnerId(db, "rotasul");
+      const result = await checkOrganizationId(db, "rotasul");
 
       // 3. Assert
       assert.equal(result.available, false);
@@ -244,7 +244,7 @@ describe("checkPartnerId - Unit Test Suite", () => {
   }
 });
 
-describe("createPartner (Community) - Unit Test Suite", () => {
+describe("createOrganization (Community) - Unit Test Suite", () => {
   test("Happy Path: returns the id as active", async () => {
     // 1. Arrange
     const db = fakeFirestore();
@@ -264,7 +264,7 @@ describe("createPartner (Community) - Unit Test Suite", () => {
     await create(db, deps());
 
     // 3. Assert
-    assert.deepEqual(db.statuses.get("partners/rotasul"), ["reserved", "provisioning", "active"]);
+    assert.deepEqual(db.statuses.get("organizations/rotasul"), ["reserved", "provisioning", "active"]);
   });
 
   test("Happy Path: the registry keeps name, theme, plan, owner (lower case) and createdAt", async () => {
@@ -275,7 +275,7 @@ describe("createPartner (Community) - Unit Test Suite", () => {
     await create(db, deps());
 
     // 3. Assert
-    const doc = db.store.get("partners/rotasul");
+    const doc = db.store.get("organizations/rotasul");
     assert.equal(doc.name, "Rota Sul");
     assert.equal(doc.themeId, "oceano");
     assert.equal(doc.plan, "community");
@@ -309,11 +309,11 @@ describe("createPartner (Community) - Unit Test Suite", () => {
     await create(db, d);
 
     // 3. Assert
-    const branding = d.communityDb.store.get("partners/rotasul/config/branding");
+    const branding = d.communityDb.store.get("organizations/rotasul/config/branding");
     assert.equal(branding.name, "Rota Sul");
     assert.equal(branding.themeId, "oceano");
     assert.equal(branding.updatedAt.toISOString(), NOW.toISOString());
-    assert.deepEqual(d.communityDb.store.get("partners/rotasul/config/plan"), {
+    assert.deepEqual(d.communityDb.store.get("organizations/rotasul/config/plan"), {
       minIntervalMinutes: 15,
     });
   });
@@ -360,14 +360,14 @@ describe("createPartner (Community) - Unit Test Suite", () => {
       await create(db, makeDeps());
 
       // 3. Assert
-      const doc = db.store.get("partners/rotasul");
+      const doc = db.store.get("organizations/rotasul");
       assert.equal(doc.status, "failed");
       assert.deepEqual(doc.failure, { step, message });
     });
   }
 });
 
-describe("createPartner (Standard) - Unit Test Suite", () => {
+describe("createOrganization (Standard) - Unit Test Suite", () => {
   test("Happy Path: creates the project for the owner and returns awaiting_billing", async () => {
     // 1. Arrange
     const db = fakeFirestore();
@@ -389,7 +389,7 @@ describe("createPartner (Standard) - Unit Test Suite", () => {
     await create(db, deps(), { plan: "standard" });
 
     // 3. Assert
-    const doc = db.store.get("partners/rotasul");
+    const doc = db.store.get("organizations/rotasul");
     assert.equal(doc.status, "awaiting_billing");
     assert.equal(doc.deleteAt.toISOString(), SEVEN_DAYS_LATER.toISOString());
   });
@@ -408,13 +408,13 @@ describe("createPartner (Standard) - Unit Test Suite", () => {
 
     // 3. Assert
     assert.equal(result.status, "failed");
-    const doc = db.store.get("partners/rotasul");
+    const doc = db.store.get("organizations/rotasul");
     assert.equal(doc.status, "failed");
     assert.equal(doc.failure.step, "project");
   });
 });
 
-describe("createPartner (refusals) - Unit Test Suite", () => {
+describe("createOrganization (refusals) - Unit Test Suite", () => {
   const invalid = [
     ["a bad id", { id: "Rota" }, "id"],
     ["a short name", { name: "R" }, "name"],
@@ -447,8 +447,8 @@ describe("createPartner (refusals) - Unit Test Suite", () => {
   }
 
   const taken = [
-    ["taken", { "partners/rotasul": { status: "active", ownerEmail: "outro@x.com" } }],
-    ["retired", { "retiredPartnerIds/rotasul": { retiredAt: NOW } }],
+    ["taken", { "organizations/rotasul": { status: "active", ownerEmail: "outro@x.com" } }],
+    ["retired", { "retiredOrganizationIds/rotasul": { retiredAt: NOW } }],
   ];
   for (const [why, docs] of taken) {
     test(`Sad Path: a ${why} id throws CreationError 'id'`, async () => {
@@ -465,32 +465,32 @@ describe("createPartner (refusals) - Unit Test Suite", () => {
 
   test("Sad Path: a taken id leaves the existing registry entry and groups untouched", async () => {
     // 1. Arrange
-    const db = fakeFirestore({ "partners/rotasul": { status: "active", ownerEmail: "outro@x.com" } });
+    const db = fakeFirestore({ "organizations/rotasul": { status: "active", ownerEmail: "outro@x.com" } });
     const d = deps();
 
     // 2. Act
     await create(db, d).catch(() => {});
 
     // 3. Assert
-    assert.deepEqual(db.store.get("partners/rotasul"), { status: "active", ownerEmail: "outro@x.com" });
+    assert.deepEqual(db.store.get("organizations/rotasul"), { status: "active", ownerEmail: "outro@x.com" });
     assert.deepEqual(d.groups.calls, []);
   });
 });
 
 describe("myCreations - Unit Test Suite", () => {
   const registry = {
-    "partners/aaa": { status: "reserved", ownerEmail: "dono@x.com", name: "Aaa", plan: "community" },
-    "partners/bbb": { status: "awaiting_billing", ownerEmail: "dono@x.com", name: "Bbb", plan: "standard" },
-    "partners/ccc": { status: "provisioning", ownerEmail: "dono@x.com", name: "Ccc", plan: "community" },
-    "partners/ddd": {
+    "organizations/aaa": { status: "reserved", ownerEmail: "dono@x.com", name: "Aaa", plan: "community" },
+    "organizations/bbb": { status: "awaiting_billing", ownerEmail: "dono@x.com", name: "Bbb", plan: "standard" },
+    "organizations/ccc": { status: "provisioning", ownerEmail: "dono@x.com", name: "Ccc", plan: "community" },
+    "organizations/ddd": {
       status: "failed",
       ownerEmail: "dono@x.com",
       name: "Ddd",
       plan: "community",
       failure: { step: "group", message: "boom" },
     },
-    "partners/eee": { status: "active", ownerEmail: "dono@x.com", name: "Eee", plan: "community" },
-    "partners/fff": { status: "reserved", ownerEmail: "outro@x.com", name: "Fff", plan: "community" },
+    "organizations/eee": { status: "active", ownerEmail: "dono@x.com", name: "Eee", plan: "community" },
+    "organizations/fff": { status: "reserved", ownerEmail: "outro@x.com", name: "Fff", plan: "community" },
   };
 
   test("Happy Path: lists the caller's organizations still being created", async () => {

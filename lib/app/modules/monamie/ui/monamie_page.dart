@@ -515,9 +515,9 @@ class MonamiePage extends StatelessWidget {
                         child: Container(
                           decoration: BoxDecoration(
                             color:
-                                user.isTracked == false ||
+                                user.isPublishing == false ||
                                     DateTime.now().difference(
-                                          user.timestamp!,
+                                          user.capturedAt!,
                                         ) >=
                                         validity
                                 ? trackingCtrl

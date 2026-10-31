@@ -2,15 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
-import 'package:monamie_app/app/data/partner/central_partner_directory.dart';
-import 'package:monamie_app/app/data/partner/partner_binding.dart';
-import 'package:monamie_app/app/data/partner/partner_branding_loader.dart';
-import 'package:monamie_app/app/data/partner/hive_partner_local_data.dart';
-import 'package:monamie_app/app/data/partner/partner_directory.dart';
-import 'package:monamie_app/app/data/partner/partner_local_data.dart';
-import 'package:monamie_app/app/data/partner/partner_membership.dart';
-import 'package:monamie_app/app/data/partner/partner_session.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
+import 'package:monamie_app/app/data/organization/central_organization_directory.dart';
+import 'package:monamie_app/app/data/organization/organization_binding.dart';
+import 'package:monamie_app/app/data/organization/organization_branding_loader.dart';
+import 'package:monamie_app/app/data/organization/hive_organization_local_data.dart';
+import 'package:monamie_app/app/data/organization/organization_directory.dart';
+import 'package:monamie_app/app/data/organization/organization_local_data.dart';
+import 'package:monamie_app/app/data/organization/organization_membership.dart';
+import 'package:monamie_app/app/data/organization/organization_session.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/data/repository/user_data_repository.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
@@ -33,45 +33,46 @@ import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/utils/app_theme.dart';
 
-/// Signs the user in and binds their partner.
+/// Signs the user in and binds their organization.
 ///
-/// After Google sign-in (central project), the user's partners come from
+/// After Google sign-in (central project), the user's organizations come from
 /// their groups: none shows the "not linked" screen, one is entered
-/// directly, several open the partner picker. Entering a partner binds its
+/// directly, several open the organization picker. Entering an organization binds its
 /// Firebase project, root group and branding together, then signs in to the
-/// partner project and syncs the claims there.
+/// organization project and syncs the claims there.
 class AuthGoogleController extends GetxController {
   AuthGoogleController({
     AuthGoogleService? authGoogleService,
     UserGoogleRepository? userRepository,
     BackgroundTrackingStopper? trackingStopper,
-    PartnerDirectory? partnerDirectory,
-    PartnerBrandingLoader? brandingLoader,
-    PartnerSession? partnerSession,
-    PartnerLocalData? partnerLocalData,
+    OrganizationDirectory? organizationDirectory,
+    OrganizationBrandingLoader? brandingLoader,
+    OrganizationSession? organizationSession,
+    OrganizationLocalData? organizationLocalData,
     InvitesBackend? invitesBackend,
     AccountDeletionBackend? deletionBackend,
     void Function()? refreshTheme,
   }) : _invitesBackend = invitesBackend ?? const FirebaseInvitesBackend(),
        _deletionBackend =
            deletionBackend ?? const FirebaseAccountDeletionBackend(),
-       _partnerLocalData = partnerLocalData ?? const HivePartnerLocalData(),
+       _organizationLocalData =
+           organizationLocalData ?? const HiveOrganizationLocalData(),
        _injectedAuthGoogle = authGoogleService,
        _injectedUserRepository = userRepository,
        _injectedTrackingStopper = trackingStopper,
-       _injectedPartnerDirectory = partnerDirectory,
-       _brandingLoader = brandingLoader ?? PartnerBrandingLoader(),
-       _injectedPartnerSession = partnerSession,
+       _injectedOrganizationDirectory = organizationDirectory,
+       _brandingLoader = brandingLoader ?? OrganizationBrandingLoader(),
+       _injectedOrganizationSession = organizationSession,
        _refreshTheme =
            refreshTheme ?? (() => Get.changeTheme(AppTheme.lightTheme));
 
   final AuthGoogleService? _injectedAuthGoogle;
   final UserGoogleRepository? _injectedUserRepository;
   final BackgroundTrackingStopper? _injectedTrackingStopper;
-  final PartnerDirectory? _injectedPartnerDirectory;
-  final PartnerBrandingLoader _brandingLoader;
-  final PartnerSession? _injectedPartnerSession;
-  final PartnerLocalData _partnerLocalData;
+  final OrganizationDirectory? _injectedOrganizationDirectory;
+  final OrganizationBrandingLoader _brandingLoader;
+  final OrganizationSession? _injectedOrganizationSession;
+  final OrganizationLocalData _organizationLocalData;
   final InvitesBackend _invitesBackend;
   final AccountDeletionBackend _deletionBackend;
 
@@ -99,13 +100,13 @@ class AuthGoogleController extends GetxController {
   /// The invite just accepted: *Boas-vindas* is shown once, after entering.
   final Rxn<Invite> welcome = Rxn<Invite>();
 
-  /// Rebuilds the theme from the bound partner (or MonAmie when none).
+  /// Rebuilds the theme from the bound organization (or MonAmie when none).
   final void Function() _refreshTheme;
 
-  late final PartnerDirectory _partnerDirectory =
-      _injectedPartnerDirectory ?? CentralPartnerDirectory();
-  late final PartnerSession _partnerSession =
-      _injectedPartnerSession ?? PartnerSession();
+  late final OrganizationDirectory _organizationDirectory =
+      _injectedOrganizationDirectory ?? CentralOrganizationDirectory();
+  late final OrganizationSession _organizationSession =
+      _injectedOrganizationSession ?? OrganizationSession();
 
   late final AuthGoogleService _authGoogle =
       _injectedAuthGoogle ?? AuthGoogleService();
@@ -130,13 +131,14 @@ class AuthGoogleController extends GetxController {
   /// message.
   final RxBool isSwitchingOrganization = false.obs;
 
-  /// Name of the partner being entered, for the "Entrando em ..." message.
-  final RxnString enteringPartnerName = RxnString();
+  /// Name of the organization being entered, for the "Entrando em ..." message.
+  final RxnString enteringOrganizationName = RxnString();
 
-  /// Partners offered by the picker when the user belongs to several.
-  final RxList<PartnerBinding> partnerChoices = <PartnerBinding>[].obs;
+  /// Organizations offered by the picker when the user belongs to several.
+  final RxList<OrganizationBinding> organizationChoices =
+      <OrganizationBinding>[].obs;
 
-  /// Google ID token of this sign-in, kept to enter a partner after the
+  /// Google ID token of this sign-in, kept to enter an organization after the
   /// picker or after "verificar de novo" on *Sem organização*.
   String? _pendingIdToken;
 
@@ -144,7 +146,7 @@ class AuthGoogleController extends GetxController {
   /// shown on MonAmie's own screens with "Trocar".
   final RxnString signedInEmail = RxnString();
 
-  /// Why the user is on *Sem organização* after trying to enter a partner
+  /// Why the user is on *Sem organização* after trying to enter an organization
   /// (removed from its groups, or no capability there); `null` otherwise.
   final RxnString noAccessReason = RxnString();
 
@@ -173,7 +175,7 @@ class AuthGoogleController extends GetxController {
     if (isLoading.value) return;
     isLoading.value = true;
     try {
-      await _continueWithPartners(idToken, alwaysPick: true);
+      await _continueWithOrganizations(idToken, alwaysPick: true);
     } catch (e) {
       _showLoginError("Ocorreu um erro ao carregar seus dados: $e");
     } finally {
@@ -181,18 +183,18 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// Finds the user's partners and offers a choice. [alwaysPick] (a sign-in
-  /// the person just made) shows the choice even for a single partner, so
-  /// they see where they are entering; otherwise the only partner is entered
+  /// Finds the user's organizations and offers a choice. [alwaysPick] (a sign-in
+  /// the person just made) shows the choice even for a single organization, so
+  /// they see where they are entering; otherwise the only organization is entered
   /// directly. [enter] (an invite just accepted, an organization just
   /// created) is entered directly whenever it is listed.
   ///
-  /// With no partner the user lands on *Sem organização* still signed in to
+  /// With no organization the user lands on *Sem organização* still signed in to
   /// MonAmie, so they can check again (after accepting an invite) or create
   /// their organization without signing in twice. Both screens show the
   /// pending invites: someone already in an organization can be invited to
   /// another one, or to another team.
-  Future<void> _continueWithPartners(
+  Future<void> _continueWithOrganizations(
     String idToken, {
     bool fresh = false,
     bool alwaysPick = false,
@@ -210,7 +212,7 @@ class AuthGoogleController extends GetxController {
     }
     deletionRestored.value = false;
     accountDeletion.value = null;
-    final candidates = await _partnerDirectory.partnersOfSignedInUser(
+    final candidates = await _organizationDirectory.organizationsOfSignedInUser(
       fresh: fresh,
     );
     if (candidates.isEmpty) {
@@ -220,22 +222,23 @@ class AuthGoogleController extends GetxController {
     }
     final bindings = await Future.wait(candidates.map(_brandingLoader.load));
     final target =
-        bindings.firstWhereOrNull((b) => b.partner.id == enter) ??
+        bindings.firstWhereOrNull((b) => b.organization.id == enter) ??
         (bindings.length == 1 && !alwaysPick ? bindings.single : null);
     if (target != null) {
-      await _enterPartner(target, idToken);
+      await _enterOrganization(target, idToken);
       return;
     }
     await _loadInvites();
-    partnerChoices.assignAll(bindings);
-    Get.toNamed(Routes.PARTNER_PICKER);
+    organizationChoices.assignAll(bindings);
+    Get.toNamed(Routes.ORGANIZATION_PICKER);
   }
 
-  /// Whether the signed-in user owns partner [partnerId] (*titular*), as
+  /// Whether the signed-in user owns organization [organizationId] (*titular*), as
   /// the server says now. Throws when it cannot be read.
-  Future<bool> ownsPartner(String partnerId) async {
-    final candidates = await _partnerDirectory.partnersOfSignedInUser();
-    return candidates.any((c) => c.id == partnerId && c.owner);
+  Future<bool> ownsOrganization(String organizationId) async {
+    final candidates = await _organizationDirectory
+        .organizationsOfSignedInUser();
+    return candidates.any((c) => c.id == organizationId && c.owner);
   }
 
   /// A failing check must not keep anyone out: the account is then
@@ -253,16 +256,19 @@ class AuthGoogleController extends GetxController {
   /// shows *Em exclusão*.
   Future<void> accountDeleted(AccountDeletion deletion) async {
     // Registry entries made before in-app creation have no name: the bound
-    // partner's display name stands in.
-    final partner = Partner.current;
+    // organization's display name stands in.
+    final organization = Organization.current;
     accountDeletion.value =
-        partner != null &&
-            deletion.ownedPartners.contains(partner.id) &&
-            !deletion.ownedNames.containsKey(partner.id)
+        organization != null &&
+            deletion.ownedOrganizationIds.contains(organization.id) &&
+            !deletion.ownedOrganizationNames.containsKey(organization.id)
         ? AccountDeletion(
             deleteAt: deletion.deleteAt,
-            ownedPartners: deletion.ownedPartners,
-            ownedNames: {...deletion.ownedNames, partner.id: partner.name},
+            ownedOrganizationIds: deletion.ownedOrganizationIds,
+            ownedOrganizationNames: {
+              ...deletion.ownedOrganizationNames,
+              organization.id: organization.name,
+            },
           )
         : deletion;
     deletionRestored.value = false;
@@ -301,36 +307,35 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// Enters [partnerId] once the central directory lists it, without the
+  /// Enters [organizationId] once the central directory lists it, without the
   /// picker in between. Google's group directory takes a few seconds to show
   /// a new membership (an accepted invite, a newly created root group), so
   /// it asks again without the server's cache before going on with the
   /// sign-in.
-  Future<void> _enterWhenListed(String partnerId) async {
+  Future<void> _enterWhenListed(String organizationId) async {
     final idToken = _pendingIdToken ?? await _authGoogle.signInGoogle();
     if (idToken == null) return;
     for (var attempt = 0; attempt < _acceptRetries; attempt++) {
-      final candidates = await _partnerDirectory.partnersOfSignedInUser(
-        fresh: true,
-      );
-      if (candidates.any((c) => c.id == partnerId)) break;
+      final candidates = await _organizationDirectory
+          .organizationsOfSignedInUser(fresh: true);
+      if (candidates.any((c) => c.id == organizationId)) break;
       await Future<void>.delayed(_acceptRetryDelay);
     }
     // Still not listed: the picker, never another organization silently.
-    await _continueWithPartners(
+    await _continueWithOrganizations(
       idToken,
       fresh: true,
       alwaysPick: true,
-      enter: partnerId,
+      enter: organizationId,
     );
   }
 
   /// "A <nome> está pronta · Entrar": enters the organization just created.
-  Future<void> enterCreatedOrganization(String partnerId) async {
+  Future<void> enterCreatedOrganization(String organizationId) async {
     if (isLoading.value) return;
     isLoading.value = true;
     try {
-      await _enterWhenListed(partnerId);
+      await _enterWhenListed(organizationId);
     } catch (e) {
       _showLoginError("Não foi possível entrar agora: $e");
     } finally {
@@ -338,7 +343,7 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// "Aceitar e entrar": joins the invite's team, then enters its partner
+  /// "Aceitar e entrar": joins the invite's team, then enters its organization
   /// (looked up without the server's cache) and shows *Boas-vindas*.
   Future<void> acceptInvite(Invite invite) async {
     if (acceptingInvite.value != null || isLoading.value) return;
@@ -347,7 +352,7 @@ class AuthGoogleController extends GetxController {
     try {
       await _invitesBackend.accept(invite);
       welcome.value = invite;
-      await _enterWhenListed(invite.partnerId);
+      await _enterWhenListed(invite.organizationId);
     } on InvitesException catch (e) {
       inviteError.value = e.message;
     } catch (e) {
@@ -359,16 +364,16 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// "Já me convidaram · verificar de novo": asks again which partners the
+  /// "Já me convidaram · verificar de novo": asks again which organizations the
   /// user belongs to, reusing this sign-in when there is one.
-  Future<void> recheckPartners() async {
+  Future<void> recheckOrganizations() async {
     if (isLoading.value) return;
     isLoading.value = true;
     noAccessReason.value = null;
     try {
       final idToken = _pendingIdToken ?? await _authGoogle.signInGoogle();
       if (idToken != null) {
-        await _continueWithPartners(idToken, alwaysPick: true);
+        await _continueWithOrganizations(idToken, alwaysPick: true);
       }
     } catch (e) {
       _showLoginError("Não foi possível verificar agora: $e");
@@ -428,14 +433,15 @@ class AuthGoogleController extends GetxController {
     isLoggingOut.value = true;
     isSwitchingOrganization.value = true;
     try {
-      final candidates = await _partnerDirectory.partnersOfSignedInUser();
+      final candidates = await _organizationDirectory
+          .organizationsOfSignedInUser();
       final bindings = await Future.wait(candidates.map(_brandingLoader.load));
 
       await _stopTracking();
-      await _authGoogle.signOutOfPartner();
+      await _authGoogle.signOutOfOrganization();
       await _userRepository.deleteUserGoogleModel();
-      await _partnerSession.forget();
-      await _partnerLocalData.clear();
+      await _organizationSession.forget();
+      await _organizationLocalData.clear();
       _refreshTheme();
       _pendingIdToken = idToken;
 
@@ -444,8 +450,8 @@ class AuthGoogleController extends GetxController {
         Get.offAllNamed(Routes.NO_ORGANIZATION);
         return;
       }
-      partnerChoices.assignAll(bindings);
-      Get.offAllNamed(Routes.PARTNER_PICKER);
+      organizationChoices.assignAll(bindings);
+      Get.offAllNamed(Routes.ORGANIZATION_PICKER);
     } catch (e) {
       debugPrint('Erro ao trocar de organização: $e');
       Get.snackbar(
@@ -462,8 +468,8 @@ class AuthGoogleController extends GetxController {
   }
 
   /// Stops the background tracking and warns when it could not be confirmed.
-  /// It must run while the partner is still signed in: after that the rules
-  /// refuse the write of `isTracked = false`.
+  /// It must run while the organization is still signed in: after that the rules
+  /// refuse the write of `isPublishing = false`.
   Future<void> _stopTracking() async {
     final stopped = await _trackingStopper.stop(email: await _currentEmail());
     if (!stopped) {
@@ -478,46 +484,53 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// Enters the partner the user picked in the partner picker.
-  Future<void> choosePartner(PartnerBinding binding) async {
+  /// Enters the organization the user picked in the organization picker.
+  Future<void> chooseOrganization(OrganizationBinding binding) async {
     final idToken = _pendingIdToken;
     if (idToken == null || isLoading.value) return;
     isLoading.value = true;
     try {
-      await _enterPartner(binding, idToken);
+      await _enterOrganization(binding, idToken);
     } catch (e) {
-      _showLoginError("Não foi possível entrar em ${binding.partner.name}: $e");
+      _showLoginError(
+        "Não foi possível entrar em ${binding.organization.name}: $e",
+      );
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> _enterPartner(PartnerBinding binding, String idToken) async {
+  Future<void> _enterOrganization(
+    OrganizationBinding binding,
+    String idToken,
+  ) async {
     try {
-      await _partnerSession.bind(binding);
+      await _organizationSession.bind(binding);
       // The screen stays in MonAmie's colors until the user is known to
-      // belong to the partner: a removed user never sees its brand (#78).
-      enteringPartnerName.value = binding.partner.name;
-      await _authGoogle.signInToPartner(idToken);
+      // belong to the organization: a removed user never sees its brand (#78).
+      enteringOrganizationName.value = binding.organization.name;
+      await _authGoogle.signInToOrganization(idToken);
 
-      // Sync the claims first: the rules only let the partner's members
-      // write their profile, read the map or write their own position.
+      // Sync the claims first: the rules only let the organization's members
+      // read the map or write their own position.
       final capabilities = await _syncClaims();
       if (claimsShowNoAccess(capabilities)) {
         // Listed by the central directory (its group cache may still have
-        // the user) but no capability here: same outcome as no partner.
-        await _authGoogle.signOutOfPartner();
-        await _partnerSession.forget();
+        // the user) but no capability here: same outcome as no organization.
+        await _authGoogle.signOutOfOrganization();
+        await _organizationSession.forget();
         noAccessReason.value =
-            'Sua conta não tem mais acesso à ${binding.partner.name}.';
+            'Sua conta não tem mais acesso à ${binding.organization.name}.';
         Get.offAllNamed(Routes.NO_ORGANIZATION);
         return;
       }
       _refreshTheme();
 
-      final user = await _authGoogle.savePartnerProfile();
+      final user = await _authGoogle.saveOrganizationProfile();
       if (user == null) {
-        throw StateError('No user after signing in to ${binding.partner.id}.');
+        throw StateError(
+          'No user after signing in to ${binding.organization.id}.',
+        );
       }
       await _userRepository.saveUserGoogleModel(user);
       final token = await _authGoogle.getFirebaseIdToken();
@@ -525,22 +538,22 @@ class AuthGoogleController extends GetxController {
 
       // The token stays (in memory, until sign-out) so that switching
       // organization does not need Google again while it is still good.
-      partnerChoices.clear();
-      // Right after accepting an invite to this partner: welcome first.
+      organizationChoices.clear();
+      // Right after accepting an invite to this organization: welcome first.
       final invite = welcome.value;
-      if (invite != null && invite.partnerId == binding.partner.id) {
+      if (invite != null && invite.organizationId == binding.organization.id) {
         Get.offAllNamed(Routes.WELCOME);
       } else {
         welcome.value = null;
         Get.offAllNamed(Routes.MONAMIE);
       }
     } catch (_) {
-      // Never stay bound to a partner the user could not enter.
-      await _partnerSession.forget();
+      // Never stay bound to an organization the user could not enter.
+      await _organizationSession.forget();
       _refreshTheme();
       rethrow;
     } finally {
-      enteringPartnerName.value = null;
+      enteringOrganizationName.value = null;
     }
   }
 
@@ -598,7 +611,7 @@ class AuthGoogleController extends GetxController {
       // Na web o login retorna null propositalmente (o resultado chega via
       // stream), portanto não exibimos erro quando idToken é null.
       if (idToken != null) {
-        await _continueWithPartners(idToken, alwaysPick: true);
+        await _continueWithOrganizations(idToken, alwaysPick: true);
       }
     } catch (e) {
       _showLoginError("Ocorreu um erro inesperado: $e");
@@ -607,15 +620,15 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  /// Recomputes the person's capabilities in the partner (`syncClaims`).
+  /// Recomputes the person's capabilities in the organization (`syncClaims`).
   Future<Capabilities?> _syncClaims() => MonAmieClaimsService.syncClaims();
 
   Future<void> logout() => _signOut();
 
-  /// Forgets the partner after the user was removed from all its groups:
+  /// Forgets the organization after the user was removed from all its groups:
   /// the same steps as [logout], then *Sem organização* saying why.
-  Future<void> forgetRemovedPartner() async {
-    final name = Partner.current?.name;
+  Future<void> forgetRemovedOrganization() async {
+    final name = Organization.current?.name;
     noAccessReason.value = name == null
         ? 'Você não faz mais parte desta organização.'
         : 'Você não faz mais parte da $name.';
@@ -633,13 +646,13 @@ class AuthGoogleController extends GetxController {
     try {
       // O rastreamento precisa parar ANTES do signOut: o serviço sobrevive ao
       // fechamento da tela, e depois do logout as regras do Firestore recusam
-      // a escrita de `isTracked = false`.
+      // a escrita de `isPublishing = false`.
       await _stopTracking();
 
       await _authGoogle.logoutGoogle();
       await _userRepository.deleteUserGoogleModel();
-      await _partnerSession.forget();
-      await _partnerLocalData.clear();
+      await _organizationSession.forget();
+      await _organizationLocalData.clear();
       _refreshTheme();
       _pendingIdToken = null;
       signedInEmail.value = null;
@@ -670,7 +683,7 @@ class AuthGoogleController extends GetxController {
   }
 
   /// E-mail do usuário salvo no Hive, a mesma fonte usada pelo
-  /// `UserController` para o id do documento em `usuarios`. Uma falha na
+  /// `UserController` para o id do documento em `positions`. Uma falha na
   /// leitura não deve impedir o logout.
   Future<String?> _currentEmail() async {
     try {

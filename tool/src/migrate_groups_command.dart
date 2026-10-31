@@ -1,12 +1,12 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:monamie_app/app/config/partner/group_address.dart';
+import 'package:monamie_app/app/config/organization/group_address.dart';
 
 import 'group_directory.dart';
-import 'partners.dart';
+import 'organizations.dart';
 
-/// One change to the partner's groups.
+/// One change to the organization's groups.
 sealed class GroupChange {
   const GroupChange();
 
@@ -144,10 +144,10 @@ List<GroupChange> planGroupMigration(
   return changes;
 }
 
-/// Runs `gcloud` with [args]; throws a [PartnerToolException] on failure.
+/// Runs `gcloud` with [args]; throws a [OrganizationToolException] on failure.
 typedef GcloudRunner = Future<void> Function(List<String> args);
 
-/// `migrate-groups <id>`: moves a partner made before #91 to the
+/// `migrate-groups <id>`: moves an organization made before #91 to the
 /// three-level group model. Prints the plan; `--apply` runs it.
 class MigrateGroupsCommand extends Command<void> {
   MigrateGroupsCommand(this._groups, this._runGcloud) {
@@ -173,7 +173,7 @@ class MigrateGroupsCommand extends Command<void> {
   Future<void> _apply(GroupChange change) async {
     try {
       await _runGcloud(change.gcloudArgs);
-    } on PartnerToolException catch (error) {
+    } on OrganizationToolException catch (error) {
       if (change is RemoveMember || !error.message.contains('already exists')) {
         rethrow;
       }
@@ -186,7 +186,7 @@ class MigrateGroupsCommand extends Command<void> {
 
   @override
   String get description =>
-      'Move a partner to the three-level group model: <id>NN teams with '
+      'Move an organization to the three-level group model: <id>NN teams with '
       '<id>NNr (watch) and <id>NNw (share) leaves.';
 
   @override
@@ -195,9 +195,11 @@ class MigrateGroupsCommand extends Command<void> {
   @override
   Future<void> run() async {
     final rest = argResults!.rest;
-    if (rest.length != 1) usageException('Expected exactly one partner id.');
+    if (rest.length != 1) {
+      usageException('Expected exactly one organization id.');
+    }
     final id = rest.single;
-    checkPartnerId(id);
+    checkOrganizationId(id);
 
     final rootMembers = await _groups.members(rootGroupEmail(id));
     final teams = <LegacyTeam>[];
@@ -205,7 +207,7 @@ class MigrateGroupsCommand extends Command<void> {
     for (final member in rootMembers.where((m) => m.isGroup)) {
       final address = parseGroupAddress(member.email);
       if (address == null ||
-          address.partnerId != id ||
+          address.organizationId != id ||
           address.level != GroupLevel.team) {
         continue;
       }
@@ -240,7 +242,7 @@ class MigrateGroupsCommand extends Command<void> {
       },
     );
     if (plan.isEmpty) {
-      stdout.writeln("Partner '$id' already uses the three-level model.");
+      stdout.writeln("Organization '$id' already uses the three-level model.");
       return;
     }
     final apply = argResults!.flag('apply');

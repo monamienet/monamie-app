@@ -4,7 +4,7 @@ This document explains how to run the app's web build on your machine, sign in w
 account, and check automatically that the login page renders. Each step says **why** it exists, so the
 process can be scripted or run in CI without surprises.
 
-> **Summary:** run `dart run tool/partner.dart web` and `flutter build web --release`, serve `build/web` on **`http://localhost:5000`** (any
+> **Summary:** run `dart run tool/organization.dart web` and `flutter build web --release`, serve `build/web` on **`http://localhost:5000`** (any
 > other port fails Google sign-in with `origin_mismatch`), and open it in the Chrome profile that has the
 > account you want. For an unattended check, use headless Chrome through DevTools and wait for Flutter to
 > paint before taking the screenshot.
@@ -14,7 +14,7 @@ process can be scripted or run in CI without surprises.
 ## 1. Build
 
 ```bash
-dart run tool/partner.dart web
+dart run tool/organization.dart web
 flutter build web --release
 ```
 
@@ -24,7 +24,7 @@ flutter build web --release
   the OAuth web client id for Google sign-in. `flutter build web` copies everything under `web/` into
   the output, and `flutter run -d chrome` serves it, so the app reads `central/firebase.json` over HTTP
   at startup. Run it again only if the central project's web app changes.
-- There is no partner to stage: one web app serves every partner. The user's partner, with its colors
+- There is no organization to stage: one web app serves every organization. The user's organization, with its colors
   and logo, is bound after sign-in (see `white-label.md`). `web/index.html`, `manifest.json`, the
   favicon and the icons are fixed MonAmie files.
 - Without this step the build still succeeds, but the page shows `Could not fetch
@@ -119,7 +119,7 @@ kill $CHROME $SERVER
 rm -rf "$PROFILE"
 ```
 
-`web.png` should show the "MonAmie" bar, the MonAmie logo (no partner is bound before sign-in) and the **Fazer Login com o Google**
+`web.png` should show the "MonAmie" bar, the MonAmie logo (no organization is bound before sign-in) and the **Fazer Login com o Google**
 button.
 
 ## 5. Known problems

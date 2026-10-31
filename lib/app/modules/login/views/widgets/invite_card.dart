@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/modules/admin/teams/team.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
@@ -46,7 +46,7 @@ class InviteCard extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            invite.partnerName,
+            invite.organizationName,
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -113,7 +113,7 @@ class InviteCard extends StatelessWidget {
                         const SizedBox(width: 10),
                         Flexible(
                           child: Text(
-                            'Entrando na ${invite.partnerName}…',
+                            'Entrando na ${invite.organizationName}…',
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),

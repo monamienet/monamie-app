@@ -8,21 +8,22 @@ import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
+import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
 
 /// Google sign-in in two steps.
 ///
 /// 1. [signInGoogle] (or, on the web, the Google button and [onWebSignIn])
 ///    signs in to the central MonAmie project and returns the Google ID
-///    token. The central session lets the app ask which partners the user
+///    token. The central session lets the app ask which organizations the user
 ///    belongs to.
-/// 2. [signInToPartner] reuses that ID token for the bound partner's project,
+/// 2. [signInToOrganization] reuses that ID token for the bound organization's project,
 ///    which accepts the central web client under "Allowed client IDs".
 class AuthGoogleService {
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   final UserGoogleRepository _userRepository = UserGoogleRepository();
 
-  fb.FirebaseAuth get _partnerAuth => CurrentPartnerFirebase.instance.auth;
+  fb.FirebaseAuth get _organizationAuth =>
+      CurrentOrganizationFirebase.instance.auth;
 
   // Google ID tokens of web sign-ins, which arrive as events (the button is
   // rendered by Google); null when the central sign-in failed.
@@ -119,30 +120,26 @@ class AuthGoogleService {
     return idToken;
   }
 
-  /// Signs in to the bound partner's project with the Google [idToken] from
-  /// [signInGoogle], and creates or refreshes the user's profile there.
-  /// Signs in to the bound partner's project with the central Google ID
-  /// token. The profile is saved later by [savePartnerProfile], once the
-  /// claims let the rules accept it.
-  Future<void> signInToPartner(String idToken) async {
-    await _partnerAuth.signInWithCredential(
+  /// Signs in to the bound organization's project with the central Google ID
+  /// token. The profile is saved later by [saveOrganizationProfile].
+  Future<void> signInToOrganization(String idToken) async {
+    await _organizationAuth.signInWithCredential(
       fb.GoogleAuthProvider.credential(idToken: idToken),
     );
   }
 
-  /// Saves the signed-in person's profile in the bound partner
-  /// (`partners/{id}/users/{uid}`). Needs synced claims: the rules only let
-  /// the partner's members write there.
-  Future<UserGoogleModel?> savePartnerProfile() async {
-    final user = _partnerAuth.currentUser;
+  /// Builds the profile of the person signed in to the bound organization
+  /// and keeps it on the device (Hive). Nothing is written to Firestore.
+  Future<UserGoogleModel?> saveOrganizationProfile() async {
+    final user = _organizationAuth.currentUser;
     if (user == null) return null;
-    return _createUserDoc(user);
+    return _saveGoogleProfile(user);
   }
 
-  Future<UserGoogleModel?> _createUserDoc(fb.User user) async {
+  Future<UserGoogleModel?> _saveGoogleProfile(fb.User user) async {
     final photoUrl = user.photoURL;
     final avatarBase64 = await _downloadAvatarBase64(photoUrl);
-    final userDoc = await _userRepository.createUserDoc(
+    final profile = await _userRepository.saveGoogleProfile(
       user.email ?? '',
       user.displayName ?? '',
       user.uid,
@@ -150,7 +147,7 @@ class AuthGoogleService {
       avatarBase64: avatarBase64,
     );
 
-    return userDoc;
+    return profile;
   }
 
   Future<String?> _downloadAvatarBase64(String? photoUrl) async {
@@ -175,22 +172,22 @@ class AuthGoogleService {
   Future<String?> centralEmail() async =>
       CentralFirebase.auth.currentUser?.email;
 
-  /// Signs out of the bound partner's project only; the MonAmie (central)
+  /// Signs out of the bound organization's project only; the MonAmie (central)
   /// session stays.
-  Future<void> signOutOfPartner() async {
-    if (CurrentPartnerFirebase.isSet) await _partnerAuth.signOut();
+  Future<void> signOutOfOrganization() async {
+    if (CurrentOrganizationFirebase.isSet) await _organizationAuth.signOut();
   }
 
-  /// Signs out of Google, the central project and the bound partner.
+  /// Signs out of Google, the central project and the bound organization.
   Future<void> logoutGoogle() async {
     await _googleSignIn.signOut();
     await CentralFirebase.auth.signOut();
-    if (CurrentPartnerFirebase.isSet) await _partnerAuth.signOut();
+    if (CurrentOrganizationFirebase.isSet) await _organizationAuth.signOut();
   }
 
   Future<String?> getFirebaseIdToken() async {
     // Pega o usuário logado atualmente no Firebase
-    final user = _partnerAuth.currentUser;
+    final user = _organizationAuth.currentUser;
 
     if (user != null) {
       // getIdToken(true) força a atualização do token caso ele esteja expirado

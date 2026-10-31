@@ -4,7 +4,7 @@ import 'package:args/command_runner.dart';
 
 import 'access_token_source.dart';
 import 'firestore_documents.dart';
-import 'partners.dart';
+import 'organizations.dart';
 
 /// One theme of the catalog: a name and three tones, plus the text colors
 /// on the primary and dark tones. Every theme passes WCAG AA for white text
@@ -21,7 +21,7 @@ class CatalogTheme {
 
 /// The theme catalog seeded into the central project, in picker order.
 /// None is close to the MonAmie coral. Grafite is the default theme of a
-/// partner whose `themeId` is missing or unknown.
+/// organization whose `themeId` is missing or unknown.
 const themeCatalog = [
   CatalogTheme('oceano', 'Oceano', '#315399', '#131A34', '#D4DBE9'),
   CatalogTheme('turquesa', 'Turquesa', '#0B7F7B', '#093A3E', '#CDF0EF'),

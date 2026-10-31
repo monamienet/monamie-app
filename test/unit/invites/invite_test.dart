@@ -5,8 +5,8 @@ import 'package:monamie_app/app/modules/invites/invite.dart';
 /// A complete invite as `myInvites` returns it.
 Map<String, Object?> _json([Map<String, Object?> overrides = const {}]) => {
   'id': 'inv1',
-  'partnerId': 'rotasul',
-  'partnerName': 'Rota Sul',
+  'organizationId': 'rotasul',
+  'organizationName': 'Rota Sul',
   'team': '01',
   'teamName': 'Equipe Norte',
   'email': 'davi@x.com',
@@ -28,7 +28,7 @@ void main() {
       // 3. Assert
       expect(invite, isNotNull);
       expect(invite!.id, 'inv1');
-      expect(invite.partnerId, 'rotasul');
+      expect(invite.organizationId, 'rotasul');
       expect(invite.team, '01');
       expect(invite.email, 'davi@x.com');
       expect(invite.roles, {TeamRole.share, TeamRole.watch});
@@ -88,7 +88,7 @@ void main() {
       'not a map': ['inv1'],
       'null': null,
       'no id': _json({'id': null}),
-      'no partnerId': _json({'partnerId': null}),
+      'no organizationId': _json({'organizationId': null}),
       'no team': _json({'team': null}),
       'no email': _json({'email': null}),
       'a numeric id': _json({'id': 7}),

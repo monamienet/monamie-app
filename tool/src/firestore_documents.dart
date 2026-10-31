@@ -1,6 +1,6 @@
 /// Reads and writes single Firestore documents of any project.
 ///
-/// Implementations throw a `PartnerToolException` on failure.
+/// Implementations throw a `OrganizationToolException` on failure.
 abstract interface class FirestoreDocuments {
   /// The document at [path] in [projectId], or `null` when it does not
   /// exist. Without [accessToken] the read is anonymous (it only works where

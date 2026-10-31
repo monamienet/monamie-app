@@ -46,15 +46,15 @@ class UserController extends GetxController {
       if (firestoreUser != null) {
         _user.value = firestoreUser;
       } else {
-        // Only people who share in a team get a document in `usuarios`:
+        // Only people who share in a team get a document in `positions`:
         // the collection holds the positions of people in the field.
         if (await _canShareFromClaims()) {
           await FirebaseProvider().setUser(
-            UserModel(email: email, nome: _googleName),
+            UserModel(email: email, name: _googleName),
           );
           _user.value = await _initializeUser();
         } else {
-          debugPrint('$email shares in no team: no document in `usuarios`.');
+          debugPrint('$email shares in no team: no document in `positions`.');
         }
       }
     } finally {
@@ -80,6 +80,6 @@ class UserController extends GetxController {
       Get.find<GoogleGroupsController>().capabilities.value.canShare;
 
   String getUserName() {
-    return user!.nome ?? _googleName ?? "Nome não informado";
+    return user!.name ?? _googleName ?? "Nome não informado";
   }
 }

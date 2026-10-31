@@ -21,7 +21,7 @@ const {
 
 const rulesPath = path.join(__dirname, "..", "..", "central", "firestore.rules");
 
-/** A theme of the catalog, as `tool/partner.dart themes` writes it. */
+/** A theme of the catalog, as `tool/organization.dart themes` writes it. */
 const grafite = {
   name: "Grafite",
   primary: "#3F4754",
@@ -41,7 +41,7 @@ const clients = {
 };
 
 /** Private documents of the central registry. */
-const privatePaths = ["partners/acme", "retiredPartnerIds/acme"];
+const privatePaths = ["organizations/acme", "retiredOrganizationIds/acme"];
 
 let env;
 
@@ -61,8 +61,8 @@ beforeEach(async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     await setDoc(doc(db, "themes/grafite"), grafite);
-    await setDoc(doc(db, "partners/acme"), { status: "active" });
-    await setDoc(doc(db, "retiredPartnerIds/acme"), { retiredAt: 1 });
+    await setDoc(doc(db, "organizations/acme"), { status: "active" });
+    await setDoc(doc(db, "retiredOrganizationIds/acme"), { retiredAt: 1 });
   });
 });
 
@@ -166,12 +166,12 @@ describe("central rules: every other path - Rules Test Suite", () => {
       });
     }
 
-    test(`Sad Path: ${who} cannot list the partner registry`, async () => {
+    test(`Sad Path: ${who} cannot list the organization registry`, async () => {
       // 1. Arrange
       const db = dbOf(env);
 
       // 2. Act
-      const list = getDocs(collection(db, "partners"));
+      const list = getDocs(collection(db, "organizations"));
 
       // 3. Assert
       await assertFails(list);

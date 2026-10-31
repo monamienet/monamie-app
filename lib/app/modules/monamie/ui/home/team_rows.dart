@@ -38,8 +38,8 @@ List<TeamRow> teamRows({
         presence: observingToday
             ? presenceOf(
                 hasRecord: byEmail.containsKey(member.email),
-                isTracked: byEmail[member.email]?.isTracked,
-                lastSeen: byEmail[member.email]?.timestamp,
+                isPublishing: byEmail[member.email]?.isPublishing,
+                lastSeen: byEmail[member.email]?.capturedAt,
                 now: now,
                 validity: validity,
               )

@@ -30,8 +30,8 @@ const _result = InviteSendResult(
 
 /// One `send` call as the fake recorded it.
 typedef SendCall = ({
-  String partnerId,
-  String partnerName,
+  String organizationId,
+  String organizationName,
   String? team,
   String? firstTeamName,
   List<({String email, Set<TeamRole> roles})> invites,
@@ -46,15 +46,15 @@ class FakeInvitesBackend implements InvitesBackend {
 
   @override
   Future<InviteSendResult> send(
-    String partnerId, {
-    required String partnerName,
+    String organizationId, {
+    required String organizationName,
     String? team,
     String? firstTeamName,
     required List<({String email, Set<TeamRole> roles})> invites,
   }) async {
     sends.add((
-      partnerId: partnerId,
-      partnerName: partnerName,
+      organizationId: organizationId,
+      organizationName: organizationName,
       team: team,
       firstTeamName: firstTeamName,
       invites: invites,
@@ -65,15 +65,15 @@ class FakeInvitesBackend implements InvitesBackend {
   }
 
   @override
-  Future<List<Invite>> listForTeam(String partnerId, String team) =>
+  Future<List<Invite>> listForTeam(String organizationId, String team) =>
       throw UnimplementedError();
 
   @override
-  Future<void> resend(String partnerId, String inviteId) =>
+  Future<void> resend(String organizationId, String inviteId) =>
       throw UnimplementedError();
 
   @override
-  Future<void> cancel(String partnerId, String inviteId) =>
+  Future<void> cancel(String organizationId, String inviteId) =>
       throw UnimplementedError();
 
   @override
@@ -89,8 +89,8 @@ InviteController controllerWith({
   List<Team> teams = const [norte, leste],
   String? team,
 }) => InviteController(
-  partnerId: 'rotasul',
-  partnerName: 'Rota Sul',
+  organizationId: 'rotasul',
+  organizationName: 'Rota Sul',
   teams: teams,
   backend: backend,
   team: team,
@@ -273,7 +273,7 @@ void main() {
       // 3. Assert
       expect(sent, isTrue);
       final call = backend.sends.single;
-      expect(call.partnerId, 'rotasul');
+      expect(call.organizationId, 'rotasul');
       expect(call.team, '01');
       expect(call.firstTeamName, isNull);
       expect(call.invites.map((p) => p.email), ['ana@x.com']);

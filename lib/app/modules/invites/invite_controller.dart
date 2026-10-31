@@ -9,8 +9,8 @@ import 'invites_backend.dart';
 /// organization has none), the people with their roles, and the send.
 class InviteController extends GetxController {
   InviteController({
-    required this.partnerId,
-    required this.partnerName,
+    required this.organizationId,
+    required this.organizationName,
     required List<Team> teams,
     required InvitesBackend backend,
     String? team,
@@ -18,8 +18,8 @@ class InviteController extends GetxController {
        teams = teams.obs,
        team = RxnString(team ?? (teams.isEmpty ? null : teams.first.number));
 
-  final String partnerId;
-  final String partnerName;
+  final String organizationId;
+  final String organizationName;
   final InvitesBackend _backend;
 
   final RxList<Team> teams;
@@ -81,8 +81,8 @@ class InviteController extends GetxController {
     errorMessage.value = '';
     try {
       result.value = await _backend.send(
-        partnerId,
-        partnerName: partnerName,
+        organizationId,
+        organizationName: organizationName,
         team: firstTeamMode ? null : team.value,
         firstTeamName: firstTeamMode ? firstTeamName.value.trim() : null,
         invites: [

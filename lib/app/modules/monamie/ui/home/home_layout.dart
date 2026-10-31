@@ -1,5 +1,5 @@
 /// What the home screen shows to a person, decided by their capabilities in
-/// the bound partner.
+/// the bound organization.
 class HomeLayout {
   const HomeLayout({required this.showShareCard, required this.showTeam});
 

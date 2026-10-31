@@ -7,14 +7,14 @@ class UserGoogleRepository {
   final UserGoogleProvider _provider = UserGoogleProvider();
   final GoogleService _googleService = GoogleService();
 
-  Future<UserGoogleModel> createUserDoc(
+  Future<UserGoogleModel> saveGoogleProfile(
     String email,
     String name,
     String uid,
     String urlImage, {
     String? avatarBase64,
   }) async {
-    UserGoogleModel user = await _provider.createUserDoc(
+    UserGoogleModel user = await _provider.saveGoogleProfile(
       email,
       name,
       uid,

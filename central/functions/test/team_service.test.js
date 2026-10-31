@@ -160,7 +160,7 @@ describe("listTeams - Unit Test Suite", () => {
     );
   });
 
-  test("Edge Case: users, leaves and other partners' groups in the root are ignored", async () => {
+  test("Edge Case: users, leaves and other organizations' groups in the root are ignored", async () => {
     // 1. Arrange
     const api = fakeGroupsApi({
       [g("rotasul00")]: {
@@ -216,7 +216,7 @@ describe("listTeams - Unit Test Suite", () => {
     assert.deepEqual(teams.map((t) => t.team), ["02", "10"]);
   });
 
-  test("Sad Path: a partner without a root group throws TeamError", async () => {
+  test("Sad Path: an organization without a root group throws TeamError", async () => {
     // 1. Arrange
     const api = fakeGroupsApi({});
 

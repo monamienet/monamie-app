@@ -1,36 +1,36 @@
-const { isValidPartnerId } = require("./group_address");
+const { isValidOrganizationId } = require("./group_address");
 
 const PROJECT_PREFIX = "monamienet-";
 
-/** The shared project of every Community partner. */
+/** The shared project of every Community organization. */
 const COMMUNITY_PROJECT_ID = "monamienet-community";
 
 /**
- * The partner whose own Firebase project is `projectId`.
+ * The organization whose own Firebase project is `projectId`.
  *
- * MonAmie convention: a Standard partner `<id>` lives in project
+ * MonAmie convention: a Standard organization `<id>` lives in project
  * `monamienet-<id>`. Deriving it means the same function code serves every
- * partner without a per-project `.env` file.
+ * organization without a per-project `.env` file.
  *
  * @param {string} projectId - Firebase project id, e.g. "monamienet-aquariustur"
- * @returns {string} Partner id, e.g. "aquariustur"
+ * @returns {string} Organization id, e.g. "aquariustur"
  * @throws {Error} If `projectId` does not follow the convention
  */
-function partnerIdForProject(projectId) {
+function organizationIdForProject(projectId) {
   if (typeof projectId !== "string" || !projectId.startsWith(PROJECT_PREFIX)) {
     throw new Error(
       `Project id "${projectId}" does not start with "${PROJECT_PREFIX}".`
     );
   }
   const id = projectId.slice(PROJECT_PREFIX.length);
-  if (!isValidPartnerId(id)) {
-    throw new Error(`Project id "${projectId}" has an invalid partner id.`);
+  if (!isValidOrganizationId(id)) {
+    throw new Error(`Project id "${projectId}" has an invalid organization id.`);
   }
   return id;
 }
 
 /**
- * Derives a partner's root group from its Firebase project id:
+ * Derives an organization's root group from its Firebase project id:
  * `monamienet-<id>` → `<id>00@monamienet.org`.
  *
  * @param {string} projectId - Firebase project id
@@ -38,7 +38,7 @@ function partnerIdForProject(projectId) {
  * @throws {Error} If `projectId` does not follow the convention
  */
 function rootGroupEmailFor(projectId) {
-  return `${partnerIdForProject(projectId)}00@monamienet.org`;
+  return `${organizationIdForProject(projectId)}00@monamienet.org`;
 }
 
-module.exports = { COMMUNITY_PROJECT_ID, partnerIdForProject, rootGroupEmailFor };
+module.exports = { COMMUNITY_PROJECT_ID, organizationIdForProject, rootGroupEmailFor };

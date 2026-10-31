@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../../tool/src/firebase_cli.dart';
-import '../../../tool/src/partners.dart';
+import '../../../tool/src/organizations.dart';
 
 /// A fake API key placed in every config built by [googleServicesJson]: no
-/// message or output of the partner tool may ever contain it.
+/// message or output of the organization tool may ever contain it.
 const secretMarker = 'AIzaFAKE-secret-key-0123456789abcdef';
 
 /// One `androidConfig` call recorded by [FakeFirebaseCli].
@@ -38,10 +38,10 @@ class FakeFirebaseCli implements FirebaseCli {
   final String config;
 
   /// Thrown by [listAndroidApps] when not null.
-  final PartnerToolException? listError;
+  final OrganizationToolException? listError;
 
   /// Thrown by [androidConfig] when not null.
-  final PartnerToolException? configError;
+  final OrganizationToolException? configError;
 
   /// Project ids passed to [listAndroidApps], in call order.
   final listedProjects = <String>[];
@@ -126,14 +126,14 @@ String googleServicesJson({
   'configuration_version': '1',
 });
 
-/// Creates `partners/<id>/partner.json` under [repoRoot].
-void writePartner(Directory repoRoot, String id) {
-  File(p.join(repoRoot.path, 'partners', id, 'partner.json'))
+/// Creates `organizations/<id>/organization.json` under [repoRoot].
+void writeOrganization(Directory repoRoot, String id) {
+  File(p.join(repoRoot.path, 'organizations', id, 'organization.json'))
     ..parent.createSync(recursive: true)
     ..writeAsStringSync('{"name": "Acme", "colors": {"primary": "#112233"}}');
 }
 
-/// The `google-services.json` of partner [id] under [repoRoot], at the path
+/// The `google-services.json` of organization [id] under [repoRoot], at the path
 /// the spec fixes (`android/app/src/<id>/google-services.json`).
 File specConfigFile(Directory repoRoot, String id) => File(
   p.join(repoRoot.path, 'android', 'app', 'src', id, 'google-services.json'),

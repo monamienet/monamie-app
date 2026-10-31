@@ -4,8 +4,8 @@ Este documento registra os nomes que usamos para falar do compartilhamento de lo
 esses nomes, como o app decide quem aparece no mapa. Ele serve de referência para conversas, issues,
 revisões e código.
 
-> **Resumo para explicar a alguém:** quem compartilha tem um interruptor (**isTracked**) e um carimbo de
-> hora (**timestamp**). O aparelho renova o carimbo quando grava uma posição nova e a cada **heartbeat**,
+> **Resumo para explicar a alguém:** quem compartilha tem um interruptor (**isPublishing**) e um carimbo de
+> hora (**capturedAt**). O aparelho renova o carimbo quando grava uma posição nova e a cada **heartbeat**,
 > mesmo com a pessoa parada. Quem observa vê a pessoa enquanto o interruptor estiver ligado e o carimbo
 > tiver menos que a **validade** (12 minutos). Como um aparelho morto não grava mais nada, o mapa
 > confere de novo a cada **recheck** (30 segundos) para notar o silêncio.
@@ -19,15 +19,15 @@ revisões e código.
 | **período mínimo** | o menor tempo permitido entre duas posições gravadas | MonAmieNet, pelo plano | Community: 15 min; Standard: nenhum | `minPeriodMinutes`, `_minPeriod` | `config/plan.minIntervalMinutes` |
 | **período** | o tempo que um administrador pede entre duas posições; nunca menor que o **período mínimo** | administrador, em *Ajustes de acompanhamento* | 1 a 30 min | `periodMinutes` | `config/tracking.intervalMinutes` |
 | **raio** | quanto a pessoa precisa se afastar da última posição gravada para gravar outra | administrador | 5 a 500 m | `radiusMeters` | `config/tracking.distanceMeters` |
-| **timestamp** | quando o aparelho de quem compartilha atualizou o documento dele pela última vez | o aparelho | data e hora | `timestamp` | `usuarios/{email}.timestamp` |
-| **idade** | quanto tempo passou desde o **timestamp** | calculada por quem observa | agora − **timestamp** | `now.difference(timestamp)` | — |
-| **isTracked** | se a pessoa quer compartilhar | a própria pessoa, pelo botão | ligado ou desligado | `isTracked` | `usuarios/{email}.isTracked` |
-| **heartbeat** | a renovação do **timestamp** sem gravar posição nova, repetida a intervalo constante | código | a cada 5 min | `heartbeat` | — |
-| **validade** | por quanto tempo um **timestamp** mantém a pessoa no mapa | código | 12 min | `validity` | — |
+| **capturedAt** | quando o aparelho de quem compartilha atualizou o documento dele pela última vez | o aparelho | data e hora | `capturedAt` | `positions/{email}.capturedAt` |
+| **idade** | quanto tempo passou desde o **capturedAt** | calculada por quem observa | agora − **capturedAt** | `now.difference(capturedAt)` | — |
+| **isPublishing** | se a pessoa quer compartilhar | a própria pessoa, pelo botão | ligado ou desligado | `isPublishing` | `positions/{email}.isPublishing` |
+| **heartbeat** | a renovação do **capturedAt** sem gravar posição nova, repetida a intervalo constante | código | a cada 5 min | `heartbeat` | — |
+| **validade** | por quanto tempo um **capturedAt** mantém a pessoa no mapa | código | 12 min | `validity` | — |
 | **recheck** | a repetição da conferência do mapa sem nenhuma mudança no Firestore | código | a cada 30 s | `recheck` | — |
 
 Os três valores fixos ficam em [`sharing_times.dart`](../../lib/app/data/tracking/sharing_times.dart).
-Os campos do Firestore mantêm os nomes antigos para não exigir migração dos dados de nenhum parceiro.
+O **capturedAt** vem do relógio do aparelho; o `receivedAt` do mesmo documento é a hora do servidor em que a última posição chegou, usada pelas regras para conferir o **período mínimo**.
 
 Na tela de *Ajustes*, o **período** também aparece como frequência ("até 4 posições por hora"). É só outra
 forma de mostrar o mesmo número: a frequência é o inverso do **período**.
@@ -41,10 +41,10 @@ roda separada da tela). Ele faz duas coisas:
    pessoa saiu do **raio** em volta da última posição gravada e, no Community, se já passou o **período
    mínimo** desde a última posição gravada. As regras do Firestore conferem o **período mínimo** de novo,
    com o relógio do servidor, então um app modificado não consegue burlar o plano.
-2. **Bate o heartbeat.** A cada **heartbeat**, ele renova só o **timestamp**, sem tocar na posição. Por não
+2. **Bate o heartbeat.** A cada **heartbeat**, ele renova só o **capturedAt**, sem tocar na posição. Por não
    mudar a posição, o **heartbeat** não esbarra no **período mínimo**.
 
-Uma posição nova também renova o **timestamp**. Por isso, enquanto o aparelho está vivo e conectado, a
+Uma posição nova também renova o **capturedAt**. Por isso, enquanto o aparelho está vivo e conectado, a
 **idade** nunca passa de um **heartbeat** (5 minutos), esteja a pessoa andando ou parada.
 
 A volta não vale. **Idade** pequena não prova que o aparelho está vivo: um aparelho que morreu há um minuto
@@ -56,7 +56,7 @@ internet.
 O aparelho de quem observa recebe do Firestore os documentos da equipe selecionada e confere, pessoa por
 pessoa:
 
-> a pessoa aparece no mapa se o **isTracked** estiver ligado **e** a **idade** for menor que a **validade**.
+> a pessoa aparece no mapa se o **isPublishing** estiver ligado **e** a **idade** for menor que a **validade**.
 
 Essa conferência roda em dois momentos:
 
@@ -64,20 +64,20 @@ Essa conferência roda em dois momentos:
 - a cada **recheck**, com os documentos que o aparelho já tem e o horário atual.
 
 O **recheck** existe por causa do aparelho que morre. Bateria acabou ou o sistema fechou o app: ninguém
-desliga o **isTracked**, e o **timestamp** para de ser renovado. Como o aparelho morto não atualiza o
+desliga o **isPublishing**, e o **capturedAt** para de ser renovado. Como o aparelho morto não atualiza o
 documento dele no Firestore, nenhum aviso chega a quem observa. Sem o **recheck**, a conferência nunca seria
 refeita e a pessoa ficaria no mapa para sempre. Com ele, o horário atual avança, a **idade** cresce, e a
 pessoa sai do mapa quando passa da **validade**.
 
 ## 4. Como alguém deixa de compartilhar
 
-| Como parou | Quem grava **isTracked** desligado | Quando some do mapa |
+| Como parou | Quem grava **isPublishing** desligado | Quando some do mapa |
 |---|---|---|
 | Botão de compartilhamento | o próprio app, na hora | assim que o Firestore avisa quem observa |
 | Logout, troca de organização, exclusão da conta | o próprio app, antes de sair | assim que o Firestore avisa quem observa |
-| Aparelho morto (bateria, sistema, sem internet) | ninguém | até uma **validade** mais um **recheck** depois do último **timestamp** |
+| Aparelho morto (bateria, sistema, sem internet) | ninguém | até uma **validade** mais um **recheck** depois do último **capturedAt** |
 
-No último caso, o documento continua com **isTracked** ligado no Firestore. Só a tela de quem observa
+No último caso, o documento continua com **isPublishing** ligado no Firestore. Só a tela de quem observa
 esconde a pessoa.
 
 O ponto "você está aqui", que cada pessoa vê de si mesma, não depende do Firestore: ele aparece só enquanto o
@@ -87,7 +87,7 @@ compartilhamento do próprio aparelho está ligado.
 
 A **validade** precisa atender a duas exigências que puxam em direções opostas:
 
-- **ser maior que o heartbeat, com folga.** Uma pessoa viva e parada só renova o **timestamp** pelo
+- **ser maior que o heartbeat, com folga.** Uma pessoa viva e parada só renova o **capturedAt** pelo
   **heartbeat**. Se a **validade** fosse menor que 5 minutos, ela sumiria do mapa entre dois pulsos e
   voltaria no seguinte;
 - **ser curta.** Quanto maior a **validade**, mais tempo um aparelho morto continua no mapa.
@@ -104,13 +104,13 @@ limita a **idade** de um aparelho vivo é o **heartbeat**, não o **período**.
 **Ana, preset Economia (período de 15 min, raio de 100 m), Community:**
 
 - **08:00:** liga o compartilhamento; a primeira posição é gravada.
-- **08:05:** está parada; o **heartbeat** renova o **timestamp**.
+- **08:05:** está parada; o **heartbeat** renova o **capturedAt**.
 - **08:16:** andou 2 km; o GPS entrega um ponto, já passou o **período mínimo**, a posição é gravada.
-- **08:18:** a bateria acaba. Último **timestamp**: 08:16.
+- **08:18:** a bateria acaba. Último **capturedAt**: 08:16.
 - **08:28 (mais até 30 s):** a **idade** passa de 12 minutos; no **recheck** seguinte, a Ana sai do mapa.
 
 **Bruno, parado numa portaria por uma hora:** nenhuma posição é gravada, porque ele não sai do **raio**. O
-**heartbeat** renova o **timestamp** a cada 5 minutos, a **idade** nunca chega a 12, e o Bruno continua no
+**heartbeat** renova o **capturedAt** a cada 5 minutos, a **idade** nunca chega a 12, e o Bruno continua no
 mapa a hora toda.
 
 ## 7. O que ainda não foi verificado
@@ -118,7 +118,7 @@ mapa a hora toda.
 - **Pulsos com a tela desligada:** não foi medido se o **heartbeat** chega de 5 em 5 minutos com a tela do
   aparelho apagada por muito tempo. Se o Android adiar o timer por mais de 7 minutos, a pessoa some do mapa
   por engano até o pulso seguinte.
-- **Relógios diferentes:** o **timestamp** é gravado com o relógio de quem compartilha, e a **idade** é
+- **Relógios diferentes:** o **capturedAt** é gravado com o relógio de quem compartilha, e a **idade** é
   calculada com o relógio de quem observa. Se os dois aparelhos discordarem por minutos, a pessoa sai antes
   ou depois do esperado.
 - **Período igual ao período mínimo:** no Economia, o GPS entrega um ponto a cada cerca de 15 minutos, mas

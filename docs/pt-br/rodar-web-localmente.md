@@ -4,7 +4,7 @@ Este documento mostra como rodar o build web do app na sua máquina, entrar com 
 e verificar automaticamente que a página de login aparece. Cada passo diz **por que** ele existe,
 para que o processo possa virar script ou rodar em CI sem surpresas.
 
-> **Resumo:** `dart run tool/partner.dart web` e `flutter build web --release`, sirva `build/web` em **`http://localhost:5000`** (outra porta
+> **Resumo:** `dart run tool/organization.dart web` e `flutter build web --release`, sirva `build/web` em **`http://localhost:5000`** (outra porta
 > falha no login do Google com `origin_mismatch`) e abra no perfil do Chrome que tem a conta desejada.
 > Para uma verificação sem pessoa, use um Chrome headless com DevTools e espere o Flutter desenhar antes
 > de tirar o screenshot.
@@ -14,7 +14,7 @@ para que o processo possa virar script ou rodar em CI sem surpresas.
 ## 1. Gerar o build
 
 ```bash
-dart run tool/partner.dart web
+dart run tool/organization.dart web
 flutter build web --release
 ```
 
@@ -24,8 +24,8 @@ flutter build web --release
   o client id OAuth web do login Google. O `flutter build web` copia tudo o que está em `web/` para o
   resultado, e o `flutter run -d chrome` serve essa pasta. Assim, o app lê `central/firebase.json` via
   HTTP ao iniciar. Rode de novo só se o app web do projeto central mudar.
-- Não há parceiro para preparar: um único app web atende todos os parceiros. O parceiro do usuário, com
-  cores e logo, é ligado depois do login (veja `white-label.md`). O `web/index.html`, o `manifest.json`,
+- Não há organização para preparar: um único app web atende todas as organizações. A organização do usuário, com
+  cores e logo, é ligada depois do login (veja `white-label.md`). O `web/index.html`, o `manifest.json`,
   o favicon e os ícones são arquivos fixos da MonAmie.
 - Sem esse passo, o build ainda funciona, mas a página mostra `Could not fetch
   …/central/firebase.json (HTTP 404)` no lugar do app.
@@ -118,7 +118,7 @@ kill $CHROME $SERVER
 rm -rf "$PROFILE"
 ```
 
-O `web.png` deve mostrar a barra "MonAmie", o logo da MonAmie (antes do login nenhum parceiro está ligado) e o botão
+O `web.png` deve mostrar a barra "MonAmie", o logo da MonAmie (antes do login nenhuma organização está ligada) e o botão
 **Fazer Login com o Google**.
 
 ## 5. Problemas conhecidos

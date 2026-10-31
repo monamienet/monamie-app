@@ -4,8 +4,8 @@ import 'package:monamie_app/app/modules/admin/teams/team.dart';
 class Invite {
   const Invite({
     required this.id,
-    required this.partnerId,
-    required this.partnerName,
+    required this.organizationId,
+    required this.organizationName,
     required this.team,
     required this.teamName,
     required this.email,
@@ -21,21 +21,21 @@ class Invite {
     String? text(String key) =>
         json[key] is String ? json[key] as String : null;
     final id = text('id');
-    final partnerId = text('partnerId');
+    final organizationId = text('organizationId');
     final team = text('team');
     final email = text('email');
     final roles = {
       for (final r in (json['roles'] as List?) ?? const [])
         ?TeamRole.fromName(r),
     };
-    if (id == null || partnerId == null || team == null || email == null) {
+    if (id == null || organizationId == null || team == null || email == null) {
       return null;
     }
     if (roles.isEmpty) return null;
     return Invite(
       id: id,
-      partnerId: partnerId,
-      partnerName: text('partnerName') ?? partnerId,
+      organizationId: organizationId,
+      organizationName: text('organizationName') ?? organizationId,
       team: team,
       teamName: text('teamName') ?? 'Equipe $team',
       email: email,
@@ -47,8 +47,8 @@ class Invite {
   }
 
   final String id;
-  final String partnerId;
-  final String partnerName;
+  final String organizationId;
+  final String organizationName;
   final String team;
   final String teamName;
   final String email;

@@ -220,8 +220,8 @@ const inviter = { email: "admin@x.com", name: "Rita Lima" };
 
 function sendRequest(overrides = {}) {
   return {
-    partnerId: "rotasul",
-    partnerName: "Rota Sul",
+    organizationId: "rotasul",
+    organizationName: "Rota Sul",
     inviter,
     team: "01",
     invites: [{ email: "davi@x.com", roles: ["share"] }],
@@ -233,8 +233,8 @@ function sendRequest(overrides = {}) {
 /** A stored invite of davi to Rota Sul's team 01. */
 function storedInvite(overrides = {}) {
   return {
-    partnerId: "rotasul",
-    partnerName: "Rota Sul",
+    organizationId: "rotasul",
+    organizationName: "Rota Sul",
     team: "01",
     teamName: "Equipe Norte",
     email: "davi@x.com",
@@ -273,11 +273,11 @@ describe("sendInvites - Unit Test Suite", () => {
     // 3. Assert
     const invites = db.all("invites");
     assert.equal(invites.length, 1);
-    const { partnerId, team, teamName, email, roles, expiresAt, status, invitedByName } = invites[0];
+    const { organizationId, team, teamName, email, roles, expiresAt, status, invitedByName } = invites[0];
     assert.deepEqual(
-      { partnerId, team, teamName, email, roles, expiresAt: iso(expiresAt), status, invitedByName },
+      { organizationId, team, teamName, email, roles, expiresAt: iso(expiresAt), status, invitedByName },
       {
-        partnerId: "rotasul",
+        organizationId: "rotasul",
         team: "01",
         teamName: "Equipe Norte",
         email: "davi@x.com",
@@ -531,7 +531,7 @@ describe("acceptInvite - Unit Test Suite", () => {
     assert.ok(peopleOf(api, "rotasul01w").includes("davi@x.com"));
   });
 
-  test("Happy Path: marks the invite accepted and returns its partner", async () => {
+  test("Happy Path: marks the invite accepted and returns its organization", async () => {
     // 1. Arrange
     const db = fakeFirestore({ "invites/inv1": storedInvite() });
 
@@ -539,7 +539,7 @@ describe("acceptInvite - Unit Test Suite", () => {
     const result = await acceptInvite(db, rotaSul(), "inv1", "davi@x.com", NOW);
 
     // 3. Assert
-    assert.equal(result.partnerId, "rotasul");
+    assert.equal(result.organizationId, "rotasul");
     assert.equal(db.store.get("invites/inv1").status, "accepted");
   });
 
@@ -677,7 +677,7 @@ describe("cancelTeamInvites - Unit Test Suite", () => {
       "invites/davi": storedInvite(),
       "invites/eva": storedInvite({ email: "eva@x.com" }),
       "invites/team02": storedInvite({ team: "02" }),
-      "invites/otherPartner": storedInvite({ partnerId: "outro" }),
+      "invites/otherOrganization": storedInvite({ organizationId: "outro" }),
       "invites/accepted": storedInvite({ email: "fabi@x.com", status: "accepted" }),
       "invites/cancelled": storedInvite({ email: "gil@x.com", status: "cancelled" }),
     });
@@ -698,7 +698,7 @@ describe("cancelTeamInvites - Unit Test Suite", () => {
     assert.equal(db.store.get("invites/eva").status, "cancelled");
   });
 
-  test("Edge Case: invites of another team, another partner, accepted or cancelled are untouched", async () => {
+  test("Edge Case: invites of another team, another organization, accepted or cancelled are untouched", async () => {
     // 1. Arrange
     const db = invitesAroundTeam01();
 
@@ -710,7 +710,7 @@ describe("cancelTeamInvites - Unit Test Suite", () => {
       davi: "cancelled",
       eva: "cancelled",
       team02: "pending",
-      otherPartner: "pending",
+      otherOrganization: "pending",
       accepted: "accepted",
       cancelled: "cancelled",
     });
@@ -729,7 +729,7 @@ describe("cancelTeamInvites - Unit Test Suite", () => {
       davi: "pending",
       eva: "pending",
       team02: "pending",
-      otherPartner: "pending",
+      otherOrganization: "pending",
       accepted: "accepted",
       cancelled: "cancelled",
     });
@@ -759,7 +759,7 @@ describe("resendInvite - Unit Test Suite", () => {
     assert.equal(iso(result.expiresAt), IN_14_DAYS);
   });
 
-  test("Sad Path: an invite of another partner is refused with invite", async () => {
+  test("Sad Path: an invite of another organization is refused with invite", async () => {
     // 1. Arrange
     const db = fakeFirestore({ "invites/inv1": storedInvite() });
 
@@ -795,7 +795,7 @@ describe("cancelInvite - Unit Test Suite", () => {
     assert.equal(error.code, "invite");
   });
 
-  test("Sad Path: an invite of another partner is refused and stays pending", async () => {
+  test("Sad Path: an invite of another organization is refused and stays pending", async () => {
     // 1. Arrange
     const db = fakeFirestore({ "invites/inv1": storedInvite() });
 

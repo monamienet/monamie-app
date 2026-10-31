@@ -11,8 +11,8 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
-import 'package:monamie_app/app/data/firebase/partner_firebase.dart';
+import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
+import 'package:monamie_app/app/data/firebase/organization_firebase.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 
@@ -46,8 +46,8 @@ GoogleGroupModel namedTeam(String email, String name) => GoogleGroupModel(
   subgroups: [],
 );
 
-/// [PartnerFirebase] whose signed-in user always has an ID token.
-class FakePartnerFirebase implements PartnerFirebase {
+/// [OrganizationFirebase] whose signed-in user always has an ID token.
+class FakeOrganizationFirebase implements OrganizationFirebase {
   @override
   FirebaseAuth get auth => FakeFirebaseAuth();
 
@@ -61,7 +61,7 @@ class FakePartnerFirebase implements PartnerFirebase {
   FirebaseStorage get storage => throw UnimplementedError();
 
   @override
-  DocumentReference<Map<String, dynamic>> get partnerData =>
+  DocumentReference<Map<String, dynamic>> get organizationData =>
       throw UnimplementedError();
 }
 
@@ -130,7 +130,7 @@ const sul = 'rotasul03@monamienet.org';
 
 void main() {
   group('GoogleGroupsController.teamKeysOf - Unit Test Suite', () {
-    test('Happy Path: the partner\'s team groups give their keys', () {
+    test('Happy Path: the organization\'s team groups give their keys', () {
       // 1. Arrange
       final entities = [
         groupEntity('rotasul01@monamienet.org'),
@@ -156,7 +156,7 @@ void main() {
     });
 
     test(
-      'Sad Path: users, leaves, the root and other partners are ignored',
+      'Sad Path: users, leaves, the root and other organizations are ignored',
       () {
         // 1. Arrange
         final entities = <Map<String, dynamic>>[
@@ -365,32 +365,38 @@ void main() {
     });
   });
 
-  group('GoogleGroupsController.partnerTeams - Unit Test Suite', () {
-    test('Happy Path: every team of the partner, in team order, named', () {
-      // 1. Arrange
-      final names = {
-        'rotasul13': 'Zona Sul',
-        'rotasul01': 'Centro',
-        'rotasul02': 'Zona Norte',
-      };
+  group('GoogleGroupsController.organizationTeams - Unit Test Suite', () {
+    test(
+      'Happy Path: every team of the organization, in team order, named',
+      () {
+        // 1. Arrange
+        final names = {
+          'rotasul13': 'Zona Sul',
+          'rotasul01': 'Centro',
+          'rotasul02': 'Zona Norte',
+        };
 
-      // 2. Act
-      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+        // 2. Act
+        final teams = GoogleGroupsController.organizationTeams(
+          'rotasul',
+          names,
+        );
 
-      // 3. Assert
-      expect(namesAndEmails(teams), [
-        ('Centro', 'rotasul01@monamienet.org'),
-        ('Zona Norte', 'rotasul02@monamienet.org'),
-        ('Zona Sul', 'rotasul13@monamienet.org'),
-      ]);
-    });
+        // 3. Assert
+        expect(namesAndEmails(teams), [
+          ('Centro', 'rotasul01@monamienet.org'),
+          ('Zona Norte', 'rotasul02@monamienet.org'),
+          ('Zona Sul', 'rotasul13@monamienet.org'),
+        ]);
+      },
+    );
 
     test('Edge Case: no names give no teams', () {
       // 1. Arrange
       const names = <String, String>{};
 
       // 2. Act
-      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+      final teams = GoogleGroupsController.organizationTeams('rotasul', names);
 
       // 3. Assert
       expect(teams, isEmpty);
@@ -401,7 +407,7 @@ void main() {
       final names = {'rotasul04': '  Zona Oeste \t'};
 
       // 2. Act
-      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+      final teams = GoogleGroupsController.organizationTeams('rotasul', names);
 
       // 3. Assert
       expect(namesAndEmails(teams), [
@@ -414,7 +420,7 @@ void main() {
       final names = {'rotasul04': ''};
 
       // 2. Act
-      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+      final teams = GoogleGroupsController.organizationTeams('rotasul', names);
 
       // 3. Assert
       expect(namesAndEmails(teams), [
@@ -427,7 +433,7 @@ void main() {
       final names = {'rotasul05': ' \t\n '};
 
       // 2. Act
-      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+      final teams = GoogleGroupsController.organizationTeams('rotasul', names);
 
       // 3. Assert
       expect(namesAndEmails(teams), [
@@ -435,30 +441,36 @@ void main() {
       ]);
     });
 
-    test('Sad Path: other partners, the root, leaves and non-team keys are '
-        'skipped', () {
-      // 1. Arrange
-      final names = {
-        'outro01': 'Outro parceiro',
-        'rota01': 'Prefixo do parceiro',
-        'rotasulx01': 'Parceiro mais longo',
-        'rotasul00': 'Administração',
-        'rotasul01r': 'Leitura',
-        'rotasul01w': 'Envio',
-        'RotaSul05': 'Maiúsculas',
-        'rotasul1': 'Um dígito',
-        'rotasul123': 'Três dígitos',
-        'rotasul02@monamienet.org': 'E-mail completo',
-        '': 'Vazio',
-        'rotasul03': 'Centro',
-      };
+    test(
+      'Sad Path: other organizations, the root, leaves and non-team keys are '
+      'skipped',
+      () {
+        // 1. Arrange
+        final names = {
+          'outro01': 'Outra organização',
+          'rota01': 'Prefixo da organização',
+          'rotasulx01': 'Organização mais longa',
+          'rotasul00': 'Administração',
+          'rotasul01r': 'Leitura',
+          'rotasul01w': 'Envio',
+          'RotaSul05': 'Maiúsculas',
+          'rotasul1': 'Um dígito',
+          'rotasul123': 'Três dígitos',
+          'rotasul02@monamienet.org': 'E-mail completo',
+          '': 'Vazio',
+          'rotasul03': 'Centro',
+        };
 
-      // 2. Act
-      final teams = GoogleGroupsController.partnerTeams('rotasul', names);
+        // 2. Act
+        final teams = GoogleGroupsController.organizationTeams(
+          'rotasul',
+          names,
+        );
 
-      // 3. Assert
-      expect(namesAndEmails(teams), [('Centro', 'rotasul03@monamienet.org')]);
-    });
+        // 3. Assert
+        expect(namesAndEmails(teams), [('Centro', 'rotasul03@monamienet.org')]);
+      },
+    );
   });
 
   group('GoogleGroupsController.renamedSelection - Unit Test Suite', () {
@@ -536,14 +548,14 @@ void main() {
     setUp(() async {
       Get.testMode = true;
       closeCache = await freshGroupsCache();
-      CurrentPartnerFirebase.set(FakePartnerFirebase());
+      CurrentOrganizationFirebase.set(FakeOrganizationFirebase());
       gateway = FakeGateway()
         ..members['rotasul01w@monamienet.org'] = [userEntity('a@x.org')]
         ..members['rotasul02w@monamienet.org'] = [userEntity('b@x.org')];
     });
 
     tearDown(() async {
-      CurrentPartnerFirebase.debugReset();
+      CurrentOrganizationFirebase.debugReset();
       await closeCache();
     });
 
@@ -643,12 +655,12 @@ void main() {
     setUp(() async {
       Get.testMode = true;
       closeCache = await freshGroupsCache();
-      CurrentPartnerFirebase.set(FakePartnerFirebase());
+      CurrentOrganizationFirebase.set(FakeOrganizationFirebase());
       gateway = FakeGateway();
     });
 
     tearDown(() async {
-      CurrentPartnerFirebase.debugReset();
+      CurrentOrganizationFirebase.debugReset();
       await closeCache();
     });
 

@@ -3,26 +3,26 @@
 class AccountDeletion {
   const AccountDeletion({
     required this.deleteAt,
-    this.ownedPartners = const [],
-    this.ownedNames = const {},
+    this.ownedOrganizationIds = const [],
+    this.ownedOrganizationNames = const {},
   });
 
-  /// Reads `{deleteAt: ISO string, ownedPartners: [id], ownedNames: {id:
+  /// Reads `{deleteAt: ISO string, ownedOrganizationIds: [id], ownedOrganizationNames: {id:
   /// name}}`; `null` when [json] is not a deletion.
   static AccountDeletion? fromJson(Object? json) {
     if (json is! Map) return null;
     final deleteAt = DateTime.tryParse('${json['deleteAt']}');
     if (deleteAt == null) return null;
-    final owned = json['ownedPartners'];
-    final names = json['ownedNames'];
+    final owned = json['ownedOrganizationIds'];
+    final names = json['ownedOrganizationNames'];
     return AccountDeletion(
       deleteAt: deleteAt,
-      ownedPartners: [
+      ownedOrganizationIds: [
         if (owned is List)
           for (final id in owned)
             if (id is String) id,
       ],
-      ownedNames: {
+      ownedOrganizationNames: {
         if (names is Map)
           for (final MapEntry(:key, :value) in names.entries)
             if (key is String && value is String) key: value,
@@ -33,16 +33,16 @@ class AccountDeletion {
   final DateTime deleteAt;
 
   /// Ids of the organizations deleted with the account.
-  final List<String> ownedPartners;
+  final List<String> ownedOrganizationIds;
 
-  final Map<String, String> ownedNames;
+  final Map<String, String> ownedOrganizationNames;
 
   /// The organization deleted with the account, as shown in the titles; the
   /// first one when there are several, `null` for a plain member.
   String? get organizationName {
-    if (ownedPartners.isEmpty) return null;
-    final id = ownedPartners.first;
-    return ownedNames[id] ?? id;
+    if (ownedOrganizationIds.isEmpty) return null;
+    final id = ownedOrganizationIds.first;
+    return ownedOrganizationNames[id] ?? id;
   }
 }
 

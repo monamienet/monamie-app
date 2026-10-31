@@ -1,22 +1,24 @@
 rules_version = '2';
 
-// Partner project rules. Every partner's data lives under
-// partners/{partnerId}, the same layout for a Standard project (one
-// partner) and the shared Community project (many partners), so no rule
-// depends on the plan except the location interval below.
+// Organization project rules. Every organization's data lives under
+// organizations/{organizationId}, the same layout for a Standard project
+// (one organization) and the shared Community project (many organizations),
+// so no rule depends on the plan except the location interval below.
 //
 // What a person may do comes from the custom claims set by `syncClaims`
 // (functions/index.js) from *which* Google Groups they are in:
-//   share:    ["rotasul01"]  team keys where they share their own location
-//                            (member of rotasul01w@monamienet.org)
-//   watch:    ["rotasul01"]  team keys whose map they see
-//                            (member of rotasul01r@monamienet.org)
-//   admin:    ["rotasul"]    partners they administer (member of rotasul00@),
-//                            which means watching every team of that partner
-//   partners: ["rotasul"]    partners where they have any of the above
-// A team key is the local part of the team group, `<partner id><NN>`.
-// Location documents name their team by the team group's e-mail
-// (`grupo_ativo`, e.g. "rotasul01@monamienet.org").
+//   share:         ["rotasul01"]  team keys where they share their own
+//                                 location (member of rotasul01w@)
+//   watch:         ["rotasul01"]  team keys whose map they see
+//                                 (member of rotasul01r@monamienet.org)
+//   admin:         ["rotasul"]    organizations they administer (member of
+//                                 rotasul00@), which means watching every
+//                                 team of that organization
+//   organizations: ["rotasul"]    organizations where they have any of the
+//                                 above
+// A team key is the local part of the team group, `<organization id><NN>`.
+// Position documents name their team by the team group's e-mail
+// (`groupId`, e.g. "rotasul01@monamienet.org").
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -61,10 +63,10 @@ service cloud.firestore {
       allow read: if isVerified() && resource.data.email == request.auth.token.email;
     }
 
-    match /partners/{partnerId} {
+    match /organizations/{organizationId} {
 
       function organizationMembership() {
-        return get(/databases/$(database)/documents/partners/$(partnerId)/organizationMemberships/$(personKey()));
+        return get(/databases/$(database)/documents/organizations/$(organizationId)/organizationMemberships/$(personKey()));
       }
 
       /// The caller belongs to this organization in Firestore.
@@ -80,7 +82,7 @@ service cloud.firestore {
 
       /// The caller holds [role] in group [groupId].
       function hasGroupRole(groupId, role) {
-        let membership = get(/databases/$(database)/documents/partners/$(partnerId)/groups/$(groupId)/groupMemberships/$(personKey()));
+        let membership = get(/databases/$(database)/documents/organizations/$(organizationId)/groups/$(groupId)/groupMemberships/$(personKey()));
         return isVerified() && membership != null && role in membership.data.roles;
       }
 
@@ -107,7 +109,7 @@ service cloud.firestore {
       /// The position in [groupId] after the current batch: trail points
       /// and day summaries are written in the same batch as it.
       function publishedNow(groupId, key) {
-        return getAfter(/databases/$(database)/documents/partners/$(partnerId)/groups/$(groupId)/positions/$(key)).data.receivedAt == request.time;
+        return getAfter(/databases/$(database)/documents/organizations/$(organizationId)/groups/$(groupId)/positions/$(key)).data.receivedAt == request.time;
       }
 
       // ── organizationMemberships/{key}: who belongs, with role ─────────
@@ -187,15 +189,15 @@ service cloud.firestore {
         }
       }
 
-      /// The caller has some capability in this partner.
+      /// The caller has some capability in this organization.
       function isMember() {
-        return claimList('partners').hasAny([partnerId]);
+        return claimList('organizations').hasAny([organizationId]);
       }
 
-      /// [groupEmail] is a team of this partner (never another's).
+      /// [groupEmail] is a team of this organization (never another's).
       function isTeamHere(groupEmail) {
         return groupEmail is string
-          && teamKeyOf(groupEmail).matches(partnerId + '[0-9]{2}');
+          && teamKeyOf(groupEmail).matches(organizationId + '[0-9]{2}');
       }
 
       /// The caller shares their location in this team.
@@ -205,11 +207,11 @@ service cloud.firestore {
       }
 
       /// The caller sees this team's map: they watch it, or administer the
-      /// partner.
+      /// organization.
       function canWatch(groupEmail) {
         return isTeamHere(groupEmail)
           && (claimList('watch').hasAny([teamKeyOf(groupEmail)])
-            || claimList('admin').hasAny([partnerId]));
+            || claimList('admin').hasAny([organizationId]));
       }
 
       /// Minimum minutes between two positions: the plan's limit on
@@ -217,7 +219,7 @@ service cloud.firestore {
       /// Standard. Enforced here because hiding presets in the app would
       /// not stop a modified app.
       function minIntervalMinutes() {
-        let plan = /databases/$(database)/documents/partners/$(partnerId)/config/plan;
+        let plan = /databases/$(database)/documents/organizations/$(organizationId)/config/plan;
         return exists(plan) ? get(plan).data.minIntervalMinutes : 0;
       }
 
@@ -230,128 +232,112 @@ service cloud.firestore {
             || request.resource.data.get('lng', null) != resource.data.get('lng', null);
       }
 
-      /// A new position must carry `positionAt` = the server's time, at
+      /// A new position must carry `receivedAt` = the server's time, at
       /// least the plan's interval after the previous one. Heartbeats and
-      /// other updates leave `positionAt` alone.
+      /// other updates leave `receivedAt` alone.
       function positionTimingOk() {
         return positionChanged()
-          ? request.resource.data.get('positionAt', null) == request.time
+          ? request.resource.data.get('receivedAt', null) == request.time
             && (resource == null
-              || resource.data.get('positionAt', null) == null
-              || request.time > resource.data.positionAt
+              || resource.data.get('receivedAt', null) == null
+              || request.time > resource.data.receivedAt
                    + duration.value(minIntervalMinutes(), 'm'))
-          : request.resource.data.get('positionAt', null)
-              == (resource == null ? null : resource.data.get('positionAt', null));
+          : request.resource.data.get('receivedAt', null)
+              == (resource == null ? null : resource.data.get('receivedAt', null));
       }
 
-      // ── usuarios/{email}: the live position of a person in the field ──
-      // Fields: email, nome, lat, lng, timestamp, positionAt, isTracked,
-      // grupo_ativo (the team they share with)
-      match /usuarios/{usuarioEmail} {
+      // ── positions/{email}: the live position of a person in the field ─
+      // Fields: email, name, lat, lng, capturedAt (device clock),
+      // receivedAt (server clock), isPublishing, groupId (the team they
+      // share with)
+      match /positions/{email} {
 
-        // Their own document (as a member of this partner), or the people
+        // Their own document (as a member of this organization), or the people
         // who watch the team it is shared with. A field-only person reads
         // only their own.
-        allow read: if (isMember() && isDocOwner(usuarioEmail))
-          || canWatch(resource.data.grupo_ativo);
+        allow read: if (isMember() && isDocOwner(email))
+          || canWatch(resource.data.groupId);
 
         // Only members who share somewhere write, only their own document,
-        // and only towards a team of this partner where they share.
+        // and only towards a team of this organization where they share.
         allow create, update: if isMember()
           && claimList('share').size() > 0
-          && isDocOwner(usuarioEmail)
+          && isDocOwner(email)
           && request.resource.data.email == request.auth.token.email
           && (resource == null || request.resource.data.email == resource.data.email)
           && request.resource.data.keys().hasOnly(
-               ['email', 'nome', 'lat', 'lng', 'timestamp', 'positionAt',
-                'isTracked', 'grupo_ativo']
+               ['email', 'name', 'lat', 'lng', 'capturedAt', 'receivedAt',
+                'isPublishing', 'groupId']
              )
           && (
-            !('grupo_ativo' in request.resource.data)
-            || request.resource.data.grupo_ativo == null
-            || canShareIn(request.resource.data.grupo_ativo)
+            !('groupId' in request.resource.data)
+            || request.resource.data.groupId == null
+            || canShareIn(request.resource.data.groupId)
           )
           && positionTimingOk();
 
         // Location data is kept.
         allow delete: if false;
 
-        // ── dias/{yyyy-mm-dd}: one summary per day with trails ──────────
-        // Fields: lastAt, points, grupo_ativo. Written in the same batch as
+        // ── trailDays/{yyyy-mm-dd}: one summary per day with trails ─────
+        // Fields: lastAt, pointCount, groupId. Written in the same batch as
         // a position, so it follows the same interval; read like the trail.
         // The history calendar reads a month of these, not every point.
-        match /dias/{day} {
-          allow read: if (isMember() && isDocOwner(usuarioEmail))
+        match /trailDays/{day} {
+          allow read: if (isMember() && isDocOwner(email))
             || canWatch(
-                 get(/databases/$(database)/documents/partners/$(partnerId)/usuarios/$(usuarioEmail)).data.grupo_ativo
+                 get(/databases/$(database)/documents/organizations/$(organizationId)/positions/$(email)).data.groupId
                );
 
           allow create, update: if isMember()
             && claimList('share').size() > 0
-            && isDocOwner(usuarioEmail)
+            && isDocOwner(email)
             && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
-            && request.resource.data.keys().hasOnly(['lastAt', 'points', 'grupo_ativo'])
+            && request.resource.data.keys().hasOnly(['lastAt', 'pointCount', 'groupId'])
             && request.resource.data.lastAt == request.time
-            && request.resource.data.points is int
-            && getAfter(/databases/$(database)/documents/partners/$(partnerId)/usuarios/$(usuarioEmail)).data.positionAt == request.time
+            && request.resource.data.pointCount is int
+            && getAfter(/databases/$(database)/documents/organizations/$(organizationId)/positions/$(email)).data.receivedAt == request.time
             && (
-              !('grupo_ativo' in request.resource.data)
-              || request.resource.data.grupo_ativo == null
-              || canShareIn(request.resource.data.grupo_ativo)
+              !('groupId' in request.resource.data)
+              || request.resource.data.groupId == null
+              || canShareIn(request.resource.data.groupId)
             );
 
           allow delete: if false;
         }
 
-        // ── historico_posicoes/{pontoId}: append-only trail points ──────
-        // Fields: lat, lng, timestamp, grupo_ativo
-        match /historico_posicoes/{pontoId} {
+        // ── trail/{pointId}: append-only trail points ───────────────────
+        // Fields: lat, lng, receivedAt (server clock), groupId
+        match /trail/{pointId} {
 
           // Read by the owner, or by whoever watches the team the person
           // currently shares with (a rule that does not depend on each
           // point, so a time-range query over the trail is allowed).
-          allow read: if (isMember() && isDocOwner(usuarioEmail))
+          allow read: if (isMember() && isDocOwner(email))
             || canWatch(
-                 get(/databases/$(database)/documents/partners/$(partnerId)/usuarios/$(usuarioEmail)).data.grupo_ativo
+                 get(/databases/$(database)/documents/organizations/$(organizationId)/positions/$(email)).data.groupId
                );
 
           // A point is written in the same batch as the position update it
           // records, so the interval above also limits the trail.
           allow create: if isMember()
-            && isDocOwner(usuarioEmail)
-            && request.resource.data.keys().hasOnly(['lat', 'lng', 'timestamp', 'grupo_ativo'])
+            && isDocOwner(email)
+            && request.resource.data.keys().hasOnly(['lat', 'lng', 'receivedAt', 'groupId'])
             && request.resource.data.lat is number
             && request.resource.data.lng is number
-            && request.resource.data.timestamp == request.time
-            && getAfter(/databases/$(database)/documents/partners/$(partnerId)/usuarios/$(usuarioEmail)).data.positionAt == request.time
+            && request.resource.data.receivedAt == request.time
+            && getAfter(/databases/$(database)/documents/organizations/$(organizationId)/positions/$(email)).data.receivedAt == request.time
             && (
-              !('grupo_ativo' in request.resource.data)
-              || request.resource.data.grupo_ativo == null
-              || canShareIn(request.resource.data.grupo_ativo)
+              !('groupId' in request.resource.data)
+              || request.resource.data.groupId == null
+              || canShareIn(request.resource.data.groupId)
             );
 
           allow update, delete: if false;
         }
       }
 
-      // ── users/{uid}: the Google profile written at sign-in ─────────────
-      // Fields: name, email, urlImage, createdAt, avatarBase64
-      match /users/{userId} {
-
-        // Names and avatars of the people on the map, for this partner's
-        // members only.
-        allow read: if isMember();
-
-        allow create, update: if isMember()
-          && request.auth.uid == userId
-          && request.resource.data.keys().hasOnly(
-               ['name', 'email', 'urlImage', 'createdAt', 'avatarBase64']
-             );
-
-        allow delete: if false;
-      }
-
-      // ── config/branding: the partner's name and look ───────────────────
+      // ── config/branding: the organization's name and look ───────────────────
       // Public: the app shows the brand in the organization picker and
       // while entering, before signing in to this project.
       match /config/branding {
@@ -366,7 +352,7 @@ service cloud.firestore {
       // below the plan's minimum interval.
       match /config/tracking {
         allow read: if isMember();
-        allow write: if claimList('admin').hasAny([partnerId])
+        allow write: if claimList('admin').hasAny([organizationId])
           && request.resource.data.keys().hasOnly(
                ['intervalMinutes', 'distanceMeters', 'updatedAt', 'updatedBy'])
           && request.resource.data.intervalMinutes in [1, 2, 3, 5, 10, 15, 20, 30]

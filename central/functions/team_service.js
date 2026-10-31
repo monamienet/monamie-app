@@ -10,21 +10,21 @@ const {
 } = require("./teams");
 
 /**
- * The partner's teams with their people, read from the groups:
+ * The organization's teams with their people, read from the groups:
  * `[{team, key, email, name, people: [{email, roles}]}]`, by team number.
  *
  * @param {import("./groups_api").GroupsApi} api
- * @param {string} partnerId
+ * @param {string} organizationId
  */
-async function listTeams(api, partnerId) {
-  const root = await api.lookup(`${partnerId}00@monamienet.org`);
-  if (!root) throw new TeamError("partner", "Organização sem grupo principal.");
+async function listTeams(api, organizationId) {
+  const root = await api.lookup(`${organizationId}00@monamienet.org`);
+  if (!root) throw new TeamError("organization", "Organização sem grupo principal.");
   const teams = [];
   for (const member of await api.members(root)) {
     const address = parseGroupAddress(member.email);
     if (member.type !== "GROUP" || !address) continue;
-    if (address.partnerId !== partnerId || address.level !== 1) continue;
-    const emails = teamGroupEmails(partnerId, address.team);
+    if (address.organizationId !== organizationId || address.level !== 1) continue;
+    const emails = teamGroupEmails(organizationId, address.team);
     const name = await api.lookup(emails.team);
     const group = name ? await api.get(name) : null;
     const roles = new Map();
@@ -58,15 +58,15 @@ async function listTeams(api, partnerId) {
  *
  * @returns {Promise<{team: string, key: string, name: string}>}
  */
-async function createTeam(api, partnerId, requestedName) {
-  const existing = await listTeams(api, partnerId);
+async function createTeam(api, organizationId, requestedName) {
+  const existing = await listTeams(api, organizationId);
   const name = validateTeamName(
     requestedName,
     existing.map((t) => t.name)
   );
   const team = nextTeamNumber(existing.map((t) => t.team));
-  const emails = teamGroupEmails(partnerId, team);
-  const root = await api.lookup(`${partnerId}00@monamienet.org`);
+  const emails = teamGroupEmails(organizationId, team);
+  const root = await api.lookup(`${organizationId}00@monamienet.org`);
   const customer = (await api.get(root)).parent;
   const created = [];
   try {
@@ -89,12 +89,12 @@ async function createTeam(api, partnerId, requestedName) {
     }
     throw error;
   }
-  return { team, key: `${partnerId}${team}`, name };
+  return { team, key: `${organizationId}${team}`, name };
 }
 
 /** Changes only the team group's display name; the address never changes. */
-async function renameTeam(api, partnerId, team, requestedName) {
-  const teams = await listTeams(api, partnerId);
+async function renameTeam(api, organizationId, team, requestedName) {
+  const teams = await listTeams(api, organizationId);
   const current = teams.find((t) => t.team === team);
   if (!current) throw new TeamError("team", "Equipe não encontrada.");
   const name = validateTeamName(
@@ -106,15 +106,15 @@ async function renameTeam(api, partnerId, team, requestedName) {
 }
 
 /**
- * Who would lose access to the partner if `team` were deleted, for the
+ * Who would lose access to the organization if `team` were deleted, for the
  * confirmation dialog.
  */
-async function deletionImpact(api, partnerId, team) {
-  const teams = await listTeams(api, partnerId);
+async function deletionImpact(api, organizationId, team) {
+  const teams = await listTeams(api, organizationId);
   const groupsByPerson = new Map();
   // Members of the root group (the administrators) watch every team: they never
   // lose access by a team being deleted.
-  const rootEmail = `${partnerId}00@monamienet.org`;
+  const rootEmail = `${organizationId}00@monamienet.org`;
   const root = await api.lookup(rootEmail);
   for (const member of root ? await api.members(root) : []) {
     if (member.type !== "GROUP") groupsByPerson.set(member.email, [rootEmail]);
@@ -130,12 +130,12 @@ async function deletionImpact(api, partnerId, team) {
       ]);
     }
   }
-  return whoLosesAccess(`${partnerId}${team}`, groupsByPerson);
+  return whoLosesAccess(`${organizationId}${team}`, groupsByPerson);
 }
 
 /** Deletes the two leaves, then the team group. */
-async function deleteTeam(api, partnerId, team) {
-  const emails = teamGroupEmails(partnerId, team);
+async function deleteTeam(api, organizationId, team) {
+  const emails = teamGroupEmails(organizationId, team);
   for (const email of [emails.watch, emails.share, emails.team]) {
     const name = await api.lookup(email);
     if (name) await api.delete(name);
@@ -146,14 +146,14 @@ async function deleteTeam(api, partnerId, team) {
  * Gives `email` exactly `roles` in `team` (one or both of share/watch),
  * joining or leaving the leaves.
  */
-async function setRoles(api, partnerId, team, email, roles) {
+async function setRoles(api, organizationId, team, email, roles) {
   const wanted = validateRoles(roles);
-  const teams = await listTeams(api, partnerId);
+  const teams = await listTeams(api, organizationId);
   const current = teams.find((t) => t.team === team);
   if (!current) throw new TeamError("team", "Equipe não encontrada.");
   const person = current.people.find((p) => p.email === email.toLowerCase());
   const { add, remove } = roleChanges(person?.roles ?? [], wanted);
-  const emails = teamGroupEmails(partnerId, team);
+  const emails = teamGroupEmails(organizationId, team);
   const leafOf = (role) => (role === "watch" ? emails.watch : emails.share);
   for (const role of add) await api.addMember(await api.lookup(leafOf(role)), email);
   for (const role of remove) {
@@ -163,8 +163,8 @@ async function setRoles(api, partnerId, team, email, roles) {
 }
 
 /** Removes `email` from both leaves of `team`. */
-async function removePerson(api, partnerId, team, email) {
-  const emails = teamGroupEmails(partnerId, team);
+async function removePerson(api, organizationId, team, email) {
+  const emails = teamGroupEmails(organizationId, team);
   for (const leaf of [emails.watch, emails.share]) {
     const name = await api.lookup(leaf);
     if (name) await api.removeMember(name, email);

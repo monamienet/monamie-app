@@ -2,8 +2,8 @@ import 'package:monamie_app/app/modules/monamie/controller/google_groups_control
 import 'package:monamie_app/app/modules/monamie/bindings/monamie_bindings.dart';
 import 'package:monamie_app/app/modules/monamie/ui/monamie_page.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/data/partner/partner_session.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/data/organization/organization_session.dart';
 import 'package:monamie_app/app/data/tracking/firestore_tracking_settings_repository.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart';
 import 'package:monamie_app/app/modules/admin/appearance_controller.dart';
@@ -26,7 +26,7 @@ import '../modules/login/bindings/login_binding.dart';
 import '../modules/login/views/login_view.dart';
 import '../modules/invites/welcome_view.dart';
 import '../modules/login/views/no_organization_view.dart';
-import '../modules/login/views/partner_picker_view.dart';
+import '../modules/login/views/organization_picker_view.dart';
 
 part 'app_routes.dart';
 
@@ -41,7 +41,10 @@ class AppPages {
       page: () => const LoginView(),
       binding: LoginBinding(),
     ),
-    GetPage(name: _Paths.PARTNER_PICKER, page: () => const PartnerPickerView()),
+    GetPage(
+      name: _Paths.ORGANIZATION_PICKER,
+      page: () => const OrganizationPickerView(),
+    ),
     GetPage(name: _Paths.WELCOME, page: () => const WelcomeView()),
     GetPage(
       name: _Paths.DELETION_PENDING,
@@ -53,15 +56,15 @@ class AppPages {
         controller: Get.put(
           MyAccountController(
             backend: const FirebaseAccountDeletionBackend(),
-            partnerId: Partner.current!.id,
-            checkOwner: () => Get.find<AuthGoogleController>().ownsPartner(
-              Partner.current!.id,
+            organizationId: Organization.current!.id,
+            checkOwner: () => Get.find<AuthGoogleController>().ownsOrganization(
+              Organization.current!.id,
             ),
             onDeleted: Get.find<AuthGoogleController>().accountDeleted,
           ),
         ),
         email: Get.find<UserController>().googleUser?.email ?? '',
-        partnerName: Partner.current!.name,
+        organizationName: Organization.current!.name,
       ),
     ),
     GetPage(
@@ -84,12 +87,12 @@ class AppPages {
       page: () => TeamsView(
         controller: Get.put(
           TeamsController(
-            partnerId: Partner.current!.id,
+            organizationId: Organization.current!.id,
             backend: const FirebaseTeamsBackend(),
             // The map under this screen follows the teams made here.
             onTeamsChanged: (teams) {
               if (!Get.isRegistered<GoogleGroupsController>()) return;
-              Get.find<GoogleGroupsController>().adoptPartnerTeams({
+              Get.find<GoogleGroupsController>().adoptOrganizationTeams({
                 for (final team in teams) team.key: team.name,
               });
             },
@@ -102,9 +105,9 @@ class AppPages {
       page: () => AppearanceView(
         controller: Get.put(
           AppearanceController(
-            partner: Partner.current!,
+            organization: Organization.current!,
             backend: FirebaseAppearanceBackend(),
-            onSaved: PartnerSession().storeBranding,
+            onSaved: OrganizationSession().storeBranding,
           ),
         ),
       ),

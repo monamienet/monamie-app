@@ -32,7 +32,7 @@ function normalizeTeamName(name) {
 }
 
 /**
- * Validates a new (or renamed) team name against the partner's other teams.
+ * Validates a new (or renamed) team name against the organization's other teams.
  *
  * @param {unknown} name - Requested name
  * @param {string[]} existingNames - Display names of the other teams
@@ -79,12 +79,12 @@ function nextTeamNumber(usedNumbers) {
 /**
  * The three groups of a team: the team itself and its two leaves.
  *
- * @param {string} partnerId
+ * @param {string} organizationId
  * @param {string} team - Two-digit number
  * @returns {{team: string, watch: string, share: string}} Group e-mails
  */
-function teamGroupEmails(partnerId, team) {
-  const key = `${partnerId}${team}`;
+function teamGroupEmails(organizationId, team) {
+  const key = `${organizationId}${team}`;
   return {
     team: `${key}@monamienet.org`,
     watch: `${key}r@monamienet.org`,
@@ -134,12 +134,12 @@ function roleChanges(current, wanted) {
 }
 
 /**
- * Who loses access to the partner if `teamKey` is deleted: the people of
- * that team who are in no other team of the partner and do not administer it.
+ * Who loses access to the organization if `teamKey` is deleted: the people of
+ * that team who are in no other team of the organization and do not administer it.
  *
  * @param {string} teamKey - e.g. "rotasul01"
  * @param {Map<string, string[]>} groupsByPerson - Each person's leaf (and
- *   root) group e-mails in the partner
+ *   root) group e-mails in the organization
  * @returns {{loses: string[], stays: string[]}} Sorted e-mails
  */
 function whoLosesAccess(teamKey, groupsByPerson) {

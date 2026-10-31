@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_palette.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_palette.dart';
 import 'package:monamie_app/app/modules/admin/teams/team.dart';
 
 import 'invite.dart';
@@ -28,7 +28,8 @@ class _InviteViewState extends State<InviteView> {
   final _email = TextEditingController();
 
   InviteController get c => widget.controller;
-  PartnerPalette get palette => PartnerPalette.fromConfig(Partner.current);
+  OrganizationPalette get palette =>
+      OrganizationPalette.fromConfig(Organization.current);
 
   @override
   void dispose() {

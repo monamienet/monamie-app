@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_icon.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
@@ -89,19 +89,19 @@ class HomeMenu extends StatelessWidget {
   }
 
   Widget _identity() {
-    final partner = Partner.current;
+    final organization = Organization.current;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       child: Row(
         children: [
-          PartnerIcon(partner: partner, size: 48),
+          OrganizationIcon(organization: organization, size: 48),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  partner?.name ?? MonAmieBrand.name,
+                  organization?.name ?? MonAmieBrand.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

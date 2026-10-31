@@ -25,7 +25,7 @@ class TeamPerson {
   final Set<TeamRole> roles;
 }
 
-/// A team of the bound partner, as `listTeams` returns it.
+/// A team of the bound organization, as `listTeams` returns it.
 class Team {
   const Team({
     required this.number,
@@ -58,7 +58,7 @@ class Team {
   /// `01`–`99`.
   final String number;
 
-  /// `<partner id><number>`.
+  /// `<organization id><number>`.
   final String key;
   final String name;
   final List<TeamPerson> people;

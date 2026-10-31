@@ -7,24 +7,25 @@ import 'check_command.dart';
 import 'firebase_cli.dart';
 import 'firestore_documents.dart';
 import 'group_directory.dart';
-import 'partner_check.dart';
-import 'partners.dart';
+import 'organization_check.dart';
+import 'organizations.dart';
+import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
 
-/// Path of partner `<id>`'s entry in the central registry.
-String registryDocumentPath(String id) => 'partners/$id';
+/// Path of organization `<id>`'s entry in the central registry.
+String registryDocumentPath(String id) => FirestorePaths.organization(id);
 
 /// Path of the marker that retires `<id>` forever.
-String retiredDocumentPath(String id) => 'retiredPartnerIds/$id';
+String retiredDocumentPath(String id) => 'retiredOrganizationIds/$id';
 
-/// Statuses from which MonAmieNet may activate a partner by hand.
+/// Statuses from which MonAmieNet may activate an organization by hand.
 ///
-/// This is the manual onboarding path, outside the in-app flow: a partner
+/// This is the manual onboarding path, outside the in-app flow: an organization
 /// set up from `docs/en-us/white-label.md` (no entry yet, or a legacy entry
 /// with `active: true` and no `status`), one whose provisioning stopped
 /// (`provisioning`, `failed`), or an `active` one being checked again.
 const manualActivationStatuses = {null, 'provisioning', 'failed', 'active'};
 
-/// Returns why partner `<id>` must not be activated by hand, or `null` when
+/// Returns why organization `<id>` must not be activated by hand, or `null` when
 /// it may.
 ///
 /// [registry] is its entry in the central registry (`null` when missing);
@@ -35,21 +36,21 @@ String? activationProblem(
   required bool retired,
 }) {
   if (retired) {
-    return "Partner id '$id' is retired: its project and groups were "
+    return "Organization id '$id' is retired: its project and groups were "
         'deleted, and the id can never be used again.';
   }
   final status = registry?['status'];
   if (status != null && status is! String) {
-    return "Partner '$id' has a malformed status in the registry.";
+    return "Organization '$id' has a malformed status in the registry.";
   }
   if (!manualActivationStatuses.contains(status)) {
-    return "Partner '$id' is '$status'; only a partner with no status, or "
+    return "Organization '$id' is '$status'; only an organization with no status, or "
         "in 'provisioning', 'failed' or 'active', can be activated by hand.";
   }
   return null;
 }
 
-/// `activate <id>`: sets a partner's status to `active` in the central
+/// `activate <id>`: sets an organization's status to `active` in the central
 /// registry, but only after `check` passes and only from the statuses in
 /// [manualActivationStatuses].
 class ActivateCommand extends Command<void> {
@@ -57,8 +58,8 @@ class ActivateCommand extends Command<void> {
     argParser.addOption(
       'owner',
       help:
-          "E-mail of the partner's owner (titular), who created it; "
-          'deleting their account deletes the partner. Administration powers '
+          "E-mail of the organization's owner (titular), who created it; "
+          'deleting their account deletes the organization. Administration powers '
           'come from the root group, not from this.',
     );
   }
@@ -73,7 +74,7 @@ class ActivateCommand extends Command<void> {
 
   @override
   String get description =>
-      'Activate a partner in the central registry ($centralProjectId), after '
+      'Activate an organization in the central registry ($centralProjectId), after '
       'the same checks as `check`.';
 
   @override
@@ -82,9 +83,11 @@ class ActivateCommand extends Command<void> {
   @override
   Future<void> run() async {
     final rest = argResults!.rest;
-    if (rest.length != 1) usageException('Expected exactly one partner id.');
+    if (rest.length != 1) {
+      usageException('Expected exactly one organization id.');
+    }
     final id = rest.single;
-    checkPartnerId(id);
+    checkOrganizationId(id);
     final accessToken = await _tokens.accessToken();
     final registry = await _firestore.get(
       projectId: centralProjectId,
@@ -97,10 +100,10 @@ class ActivateCommand extends Command<void> {
       accessToken: accessToken,
     );
     final problem = activationProblem(id, registry, retired: retired != null);
-    if (problem != null) throw PartnerToolException(problem);
+    if (problem != null) throw OrganizationToolException(problem);
 
     final plan = registry?['plan'];
-    final results = await checkPartner(
+    final results = await checkOrganization(
       id: id,
       cli: _cli,
       groups: _groups,
@@ -109,7 +112,7 @@ class ActivateCommand extends Command<void> {
     );
     printCheckResults(results);
     if (results.any((r) => !r.passed)) {
-      throw PartnerToolException(
+      throw OrganizationToolException(
         "Not activating '$id': fix the failed checks first.",
       );
     }
@@ -133,6 +136,6 @@ class ActivateCommand extends Command<void> {
       ],
       accessToken: accessToken,
     );
-    stdout.writeln("Partner '$id' is now active in $centralProjectId.");
+    stdout.writeln("Organization '$id' is now active in $centralProjectId.");
   }
 }

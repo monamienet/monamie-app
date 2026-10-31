@@ -9,25 +9,25 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_config.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
-import 'package:monamie_app/app/data/firebase/partner_firebase.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_config.dart';
+import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
+import 'package:monamie_app/app/data/firebase/organization_firebase.dart';
 import 'package:monamie_app/app/data/models/gd_groups_google_model.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
-import 'package:monamie_app/app/data/partner/partner_binding.dart';
-import 'package:monamie_app/app/data/partner/partner_binding_store.dart';
-import 'package:monamie_app/app/data/partner/partner_branding_loader.dart';
-import 'package:monamie_app/app/data/partner/partner_directory.dart';
-import 'package:monamie_app/app/data/partner/partner_local_data.dart';
-import 'package:monamie_app/app/data/partner/partner_session.dart';
+import 'package:monamie_app/app/data/organization/organization_binding.dart';
+import 'package:monamie_app/app/data/organization/organization_binding_store.dart';
+import 'package:monamie_app/app/data/organization/organization_branding_loader.dart';
+import 'package:monamie_app/app/data/organization/organization_directory.dart';
+import 'package:monamie_app/app/data/organization/organization_local_data.dart';
+import 'package:monamie_app/app/data/organization/organization_session.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 
-import '../../support/test_partner.dart';
+import '../../support/test_organization.dart';
 
 const String _kHomeRoute = '/home-test';
 const String _kIdToken = 'google-id-token';
@@ -41,10 +41,10 @@ const _kOptions = FirebaseOptions(
   messagingSenderId: '111',
 );
 
-const _kRotaSul = PartnerCandidate(id: 'rotasul', options: _kOptions);
+const _kRotaSul = OrganizationCandidate(id: 'rotasul', options: _kOptions);
 const _kRotaSulName = 'Rota Sul';
 
-const _kVerdeMar = PartnerCandidate(
+const _kVerdeMar = OrganizationCandidate(
   id: 'verdemar',
   options: FirebaseOptions(
     apiKey: 'api-key',
@@ -89,7 +89,7 @@ class _FakeAuthGoogleService implements AuthGoogleService {
 
   int signInCalls = 0;
   int logoutCalls = 0;
-  int signOutOfPartnerCalls = 0;
+  int signOutOfOrganizationCalls = 0;
 
   @override
   Future<String?> signInGoogle() async {
@@ -110,14 +110,14 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   Future<String?> centralEmail() async => _kCentralEmail;
 
   @override
-  Future<void> signInToPartner(String idToken) async {
-    log.add('signInToPartner');
+  Future<void> signInToOrganization(String idToken) async {
+    log.add('signInToOrganization');
   }
 
   @override
-  Future<void> signOutOfPartner() async {
-    signOutOfPartnerCalls++;
-    log.add('signOutOfPartner');
+  Future<void> signOutOfOrganization() async {
+    signOutOfOrganizationCalls++;
+    log.add('signOutOfOrganization');
   }
 
   @override
@@ -129,7 +129,7 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   }
 
   @override
-  Future<UserGoogleModel?> savePartnerProfile() async =>
+  Future<UserGoogleModel?> saveOrganizationProfile() async =>
       UserGoogleModel(id: 'uid-123', name: 'Ana Souza', email: _kCentralEmail);
 
   @override
@@ -145,57 +145,61 @@ class _FakeAuthGoogleService implements AuthGoogleService {
   void dispose() {}
 }
 
-class _FakePartnerDirectory implements PartnerDirectory {
-  _FakePartnerDirectory({this.partners = const [], this.error, this.log});
+class _FakeOrganizationDirectory implements OrganizationDirectory {
+  _FakeOrganizationDirectory({
+    this.organizations = const [],
+    this.error,
+    this.log,
+  });
 
-  final List<PartnerCandidate> partners;
+  final List<OrganizationCandidate> organizations;
   final Object? error;
   final List<String>? log;
   int calls = 0;
 
   @override
-  Future<List<PartnerCandidate>> partnersOfSignedInUser({
+  Future<List<OrganizationCandidate>> organizationsOfSignedInUser({
     bool fresh = false,
   }) async {
     calls++;
     log?.add('directory');
     final failure = error;
     if (failure != null) throw failure;
-    return partners;
+    return organizations;
   }
 }
 
-class _FakeBrandingLoader implements PartnerBrandingLoader {
+class _FakeBrandingLoader implements OrganizationBrandingLoader {
   @override
-  Future<PartnerBinding> load(PartnerCandidate candidate) async =>
-      PartnerBinding(
-        partner: PartnerConfig(id: candidate.id, name: _kRotaSulName),
+  Future<OrganizationBinding> load(OrganizationCandidate candidate) async =>
+      OrganizationBinding(
+        organization: OrganizationConfig(id: candidate.id, name: _kRotaSulName),
         options: candidate.options,
       );
 
   @override
-  Future<PartnerConfig> readBranding(PartnerBinding binding) =>
+  Future<OrganizationConfig> readBranding(OrganizationBinding binding) =>
       throw UnimplementedError('readBranding is not used by the sign-in');
 }
 
-class _MemoryBindingStore implements PartnerBindingStore {
-  PartnerBinding? binding;
+class _MemoryBindingStore implements OrganizationBindingStore {
+  OrganizationBinding? binding;
 
   @override
-  Future<PartnerBinding?> read() async => binding;
+  Future<OrganizationBinding?> read() async => binding;
 
   @override
-  Future<void> write(PartnerBinding value) async => binding = value;
+  Future<void> write(OrganizationBinding value) async => binding = value;
 
   @override
   Future<void> clear() async => binding = null;
 }
 
-/// [PartnerSession] that binds without creating a real [FirebaseApp]: it
-/// sets [Partner.current] and a fake [PartnerFirebase] whose `syncClaims`
+/// [OrganizationSession] that binds without creating a real [FirebaseApp]: it
+/// sets [Organization.current] and a fake [OrganizationFirebase] whose `syncClaims`
 /// returns [claims] (or fails when [syncError] is set).
-class _FakePartnerSession extends PartnerSession {
-  _FakePartnerSession(this.log, {this.claims, this.syncError})
+class _FakeOrganizationSession extends OrganizationSession {
+  _FakeOrganizationSession(this.log, {this.claims, this.syncError})
     : super(store: _MemoryBindingStore());
 
   final List<String> log;
@@ -204,11 +208,11 @@ class _FakePartnerSession extends PartnerSession {
   int forgetCalls = 0;
 
   @override
-  Future<void> bind(PartnerBinding binding, {bool remember = true}) async {
+  Future<void> bind(OrganizationBinding binding, {bool remember = true}) async {
     log.add('bind');
-    Partner.bind(binding.partner);
-    CurrentPartnerFirebase.set(
-      _FakePartnerFirebase(claims: claims ?? const {}, error: syncError),
+    Organization.bind(binding.organization);
+    CurrentOrganizationFirebase.set(
+      _FakeOrganizationFirebase(claims: claims ?? const {}, error: syncError),
     );
   }
 
@@ -220,8 +224,8 @@ class _FakePartnerSession extends PartnerSession {
   }
 }
 
-class _FakePartnerFirebase implements PartnerFirebase {
-  _FakePartnerFirebase({required this.claims, this.error});
+class _FakeOrganizationFirebase implements OrganizationFirebase {
+  _FakeOrganizationFirebase({required this.claims, this.error});
 
   final Map<String, Object?> claims;
   final Object? error;
@@ -239,7 +243,7 @@ class _FakePartnerFirebase implements PartnerFirebase {
   FirebaseStorage get storage => throw UnimplementedError();
 
   @override
-  DocumentReference<Map<String, dynamic>> get partnerData =>
+  DocumentReference<Map<String, dynamic>> get organizationData =>
       throw UnimplementedError();
 }
 
@@ -254,7 +258,7 @@ class _FakeFirebaseAuth implements FirebaseAuth {
 class _FakeUser implements User {
   @override
   Future<String?> getIdToken([bool forceRefresh = false]) async =>
-      'partner-id-token';
+      'organization-id-token';
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -310,7 +314,7 @@ class _FakeTrackingStopper implements BackgroundTrackingStopper {
   }
 }
 
-class _FakePartnerLocalData implements PartnerLocalData {
+class _FakeOrganizationLocalData implements OrganizationLocalData {
   @override
   Future<void> clear() async {}
 }
@@ -330,7 +334,7 @@ class _FakeUserGoogleRepository implements UserGoogleRepository {
       throw StateError('groups gateway unavailable in tests');
 
   @override
-  Future<UserGoogleModel> createUserDoc(
+  Future<UserGoogleModel> saveGoogleProfile(
     String email,
     String name,
     String uid,
@@ -351,7 +355,7 @@ class _FakeUserGoogleRepository implements UserGoogleRepository {
 
 class _Harness {
   _Harness({
-    List<PartnerCandidate> partners = const [],
+    List<OrganizationCandidate> organizations = const [],
     Object? directoryError,
     Map<String, Object?>? claims,
     Object? syncError,
@@ -367,28 +371,32 @@ class _Harness {
       signInError: signInError,
       logoutError: logoutError,
     );
-    directory = _FakePartnerDirectory(
-      partners: partners,
+    directory = _FakeOrganizationDirectory(
+      organizations: organizations,
       error: directoryError,
       log: log,
     );
-    session = _FakePartnerSession(log, claims: claims, syncError: syncError);
+    session = _FakeOrganizationSession(
+      log,
+      claims: claims,
+      syncError: syncError,
+    );
     controller = AuthGoogleController(
       authGoogleService: authService,
       userRepository: _FakeUserGoogleRepository(),
       trackingStopper: _FakeTrackingStopper(log),
-      partnerDirectory: directory,
+      organizationDirectory: directory,
       brandingLoader: _FakeBrandingLoader(),
-      partnerSession: session,
-      partnerLocalData: _FakePartnerLocalData(),
+      organizationSession: session,
+      organizationLocalData: _FakeOrganizationLocalData(),
       refreshTheme: () => log.add('refreshTheme'),
     );
   }
 
   final List<String> log = <String>[];
   late final _FakeAuthGoogleService authService;
-  late final _FakePartnerDirectory directory;
-  late final _FakePartnerSession session;
+  late final _FakeOrganizationDirectory directory;
+  late final _FakeOrganizationSession session;
   late final AuthGoogleController controller;
 }
 
@@ -404,7 +412,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
         page(_kHomeRoute),
         page(Routes.LOGIN),
         page(Routes.NO_ORGANIZATION),
-        page(Routes.PARTNER_PICKER),
+        page(Routes.ORGANIZATION_PICKER),
         page(Routes.MONAMIE),
       ],
     ),
@@ -456,9 +464,9 @@ String _jwtExpiringIn(Duration fromNow) {
   return '${part({'alg': 'none'})}.${part({'exp': exp})}.sig';
 }
 
-/// Entries of [log] before the partner is forgotten or signed out of.
+/// Entries of [log] before the organization is forgotten or signed out of.
 Iterable<String> _beforeNoAccessDecision(List<String> log) =>
-    log.takeWhile((e) => e != 'forget' && e != 'signOutOfPartner');
+    log.takeWhile((e) => e != 'forget' && e != 'signOutOfOrganization');
 
 void main() {
   setUp(() {
@@ -467,15 +475,15 @@ void main() {
 
   tearDown(() {
     Get.reset();
-    Partner.bind(testPartner);
-    CurrentPartnerFirebase.debugReset();
+    Organization.bind(testOrganization);
+    CurrentOrganizationFirebase.debugReset();
   });
 
   group(
-    'AuthGoogleController.loginGoogle (sem parceiro) - Suíte de Testes Unitários',
+    'AuthGoogleController.loginGoogle (sem organização) - Suíte de Testes Unitários',
     () {
       testWidgets(
-        'Happy Path: Deve navegar para Routes.NO_ORGANIZATION quando o usuário não tiver parceiro',
+        'Happy Path: Deve navegar para Routes.NO_ORGANIZATION quando o usuário não tiver organização',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _Harness();
@@ -513,7 +521,7 @@ void main() {
       );
 
       testWidgets(
-        'Edge Case: Não deve sair do Google/central quando o usuário não tiver parceiro',
+        'Edge Case: Não deve sair do Google/central quando o usuário não tiver organização',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _Harness();
@@ -532,7 +540,7 @@ void main() {
       );
 
       testWidgets(
-        'Sad Path: Deve exibir erro de login e voltar isLoading a false quando a busca de parceiros lançar',
+        'Sad Path: Deve exibir erro de login e voltar isLoading a false quando a busca de organizações lançar',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _Harness(directoryError: Exception('sem rede'));
@@ -561,7 +569,7 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _Harness(
-            partners: [_kRotaSul],
+            organizations: [_kRotaSul],
             claims: _kShareClaims,
           );
           await _pumpApp(tester);
@@ -574,10 +582,13 @@ void main() {
           );
 
           // 3. Assert
-          expect(Get.currentRoute, Routes.PARTNER_PICKER);
-          expect(harness.controller.partnerChoices.map((b) => b.partner.id), [
-            'rotasul',
-          ]);
+          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(
+            harness.controller.organizationChoices.map(
+              (b) => b.organization.id,
+            ),
+            ['rotasul'],
+          );
         },
       );
 
@@ -586,7 +597,7 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _Harness(
-            partners: [_kRotaSul, _kVerdeMar],
+            organizations: [_kRotaSul, _kVerdeMar],
             claims: _kShareClaims,
           );
           await _pumpApp(tester);
@@ -599,11 +610,13 @@ void main() {
           );
 
           // 3. Assert
-          expect(Get.currentRoute, Routes.PARTNER_PICKER);
-          expect(harness.controller.partnerChoices.map((b) => b.partner.id), [
-            'rotasul',
-            'verdemar',
-          ]);
+          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(
+            harness.controller.organizationChoices.map(
+              (b) => b.organization.id,
+            ),
+            ['rotasul', 'verdemar'],
+          );
         },
       );
 
@@ -612,7 +625,7 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _Harness(
-            partners: [_kRotaSul],
+            organizations: [_kRotaSul],
             claims: _kShareClaims,
           );
           await _pumpApp(tester);
@@ -626,7 +639,7 @@ void main() {
 
           // 3. Assert
           expect(harness.log, isNot(contains('bind')));
-          expect(harness.log, isNot(contains('signInToPartner')));
+          expect(harness.log, isNot(contains('signInToOrganization')));
           expect(harness.session.forgetCalls, 0);
         },
       );
@@ -636,7 +649,7 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _Harness(
-            partners: [_kRotaSul],
+            organizations: [_kRotaSul],
             claims: _kShareClaims,
           );
           await _pumpApp(tester);
@@ -645,14 +658,17 @@ void main() {
           await _run(
             tester,
             harness.controller,
-            harness.controller.recheckPartners,
+            harness.controller.recheckOrganizations,
           );
 
           // 3. Assert
-          expect(Get.currentRoute, Routes.PARTNER_PICKER);
-          expect(harness.controller.partnerChoices.map((b) => b.partner.id), [
-            'rotasul',
-          ]);
+          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(
+            harness.controller.organizationChoices.map(
+              (b) => b.organization.id,
+            ),
+            ['rotasul'],
+          );
           expect(harness.log, isNot(contains('bind')));
         },
       );
@@ -661,7 +677,7 @@ void main() {
         'Sad Path: Não deve abrir o seletor quando o login do Google não devolver token',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(partners: [_kRotaSul], idToken: null);
+          final harness = _Harness(organizations: [_kRotaSul], idToken: null);
           await _pumpApp(tester);
 
           // 2. Act
@@ -673,7 +689,7 @@ void main() {
 
           // 3. Assert
           expect(Get.currentRoute, _kHomeRoute);
-          expect(harness.controller.partnerChoices, isEmpty);
+          expect(harness.controller.organizationChoices, isEmpty);
           expect(harness.directory.calls, 0);
         },
       );
@@ -681,13 +697,16 @@ void main() {
   );
 
   group(
-    'AuthGoogleController.choosePartner (parceiro sem acesso) - Suíte de Testes Unitários',
+    'AuthGoogleController.chooseOrganization (organização sem acesso) - Suíte de Testes Unitários',
     () {
       testWidgets(
-        'Happy Path: Deve explicar em noAccessReason que a conta não tem mais acesso ao parceiro',
+        'Happy Path: Deve explicar em noAccessReason que a conta não tem mais acesso à organização',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
+          final harness = _Harness(
+            organizations: [_kRotaSul],
+            claims: _kNoClaims,
+          );
           await _pumpApp(tester);
           await _run(
             tester,
@@ -699,8 +718,8 @@ void main() {
           await _run(
             tester,
             harness.controller,
-            () => harness.controller.choosePartner(
-              harness.controller.partnerChoices.single,
+            () => harness.controller.chooseOrganization(
+              harness.controller.organizationChoices.single,
             ),
           );
 
@@ -716,7 +735,10 @@ void main() {
         'Happy Path: Deve navegar para Routes.NO_ORGANIZATION quando as claims não derem acesso',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
+          final harness = _Harness(
+            organizations: [_kRotaSul],
+            claims: _kNoClaims,
+          );
           await _pumpApp(tester);
           await _run(
             tester,
@@ -728,8 +750,8 @@ void main() {
           await _run(
             tester,
             harness.controller,
-            () => harness.controller.choosePartner(
-              harness.controller.partnerChoices.single,
+            () => harness.controller.chooseOrganization(
+              harness.controller.organizationChoices.single,
             ),
           );
 
@@ -739,10 +761,13 @@ void main() {
       );
 
       testWidgets(
-        'Happy Path: Deve esquecer o parceiro quando as claims não derem acesso',
+        'Happy Path: Deve esquecer a organização quando as claims não derem acesso',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
+          final harness = _Harness(
+            organizations: [_kRotaSul],
+            claims: _kNoClaims,
+          );
           await _pumpApp(tester);
           await _run(
             tester,
@@ -754,22 +779,25 @@ void main() {
           await _run(
             tester,
             harness.controller,
-            () => harness.controller.choosePartner(
-              harness.controller.partnerChoices.single,
+            () => harness.controller.chooseOrganization(
+              harness.controller.organizationChoices.single,
             ),
           );
 
           // 3. Assert
           expect(harness.session.forgetCalls, greaterThanOrEqualTo(1));
-          expect(Partner.current, isNull);
+          expect(Organization.current, isNull);
         },
       );
 
       testWidgets(
-        'Happy Path: Deve sair apenas do projeto do parceiro quando as claims não derem acesso',
+        'Happy Path: Deve sair apenas do projeto da organização quando as claims não derem acesso',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
+          final harness = _Harness(
+            organizations: [_kRotaSul],
+            claims: _kNoClaims,
+          );
           await _pumpApp(tester);
           await _run(
             tester,
@@ -781,13 +809,13 @@ void main() {
           await _run(
             tester,
             harness.controller,
-            () => harness.controller.choosePartner(
-              harness.controller.partnerChoices.single,
+            () => harness.controller.chooseOrganization(
+              harness.controller.organizationChoices.single,
             ),
           );
 
           // 3. Assert
-          expect(harness.authService.signOutOfPartnerCalls, 1);
+          expect(harness.authService.signOutOfOrganizationCalls, 1);
         },
       );
 
@@ -795,7 +823,10 @@ void main() {
         'Edge Case: Não deve exibir snackbar de erro de login quando as claims não derem acesso',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
+          final harness = _Harness(
+            organizations: [_kRotaSul],
+            claims: _kNoClaims,
+          );
           await _pumpApp(tester);
           await _run(
             tester,
@@ -807,8 +838,8 @@ void main() {
           final titles = await _run(
             tester,
             harness.controller,
-            () => harness.controller.choosePartner(
-              harness.controller.partnerChoices.single,
+            () => harness.controller.chooseOrganization(
+              harness.controller.organizationChoices.single,
             ),
           );
 
@@ -818,10 +849,13 @@ void main() {
       );
 
       testWidgets(
-        'Edge Case: Não deve aplicar o tema do parceiro antes de decidir que a conta não tem acesso',
+        'Edge Case: Não deve aplicar o tema da organização antes de decidir que a conta não tem acesso',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _Harness(partners: [_kRotaSul], claims: _kNoClaims);
+          final harness = _Harness(
+            organizations: [_kRotaSul],
+            claims: _kNoClaims,
+          );
           await _pumpApp(tester);
           await _run(
             tester,
@@ -833,8 +867,8 @@ void main() {
           await _run(
             tester,
             harness.controller,
-            () => harness.controller.choosePartner(
-              harness.controller.partnerChoices.single,
+            () => harness.controller.chooseOrganization(
+              harness.controller.organizationChoices.single,
             ),
           );
 
@@ -851,7 +885,7 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _Harness(
-            partners: [_kRotaSul],
+            organizations: [_kRotaSul],
             claims: _kShareClaims,
           );
           await _pumpApp(tester);
@@ -865,8 +899,8 @@ void main() {
           await _run(
             tester,
             harness.controller,
-            () => harness.controller.choosePartner(
-              harness.controller.partnerChoices.single,
+            () => harness.controller.chooseOrganization(
+              harness.controller.organizationChoices.single,
             ),
           );
 
@@ -881,7 +915,7 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _Harness(
-            partners: [_kRotaSul],
+            organizations: [_kRotaSul],
             syncError: Exception('functions indisponível'),
           );
           await _pumpApp(tester);
@@ -895,20 +929,20 @@ void main() {
           await _run(
             tester,
             harness.controller,
-            () => harness.controller.choosePartner(
-              harness.controller.partnerChoices.single,
+            () => harness.controller.chooseOrganization(
+              harness.controller.organizationChoices.single,
             ),
           );
 
           // 3. Assert
           expect(harness.controller.noAccessReason.value, isNull);
-          expect(harness.authService.signOutOfPartnerCalls, 0);
+          expect(harness.authService.signOutOfOrganizationCalls, 0);
         },
       );
     },
   );
 
-  group('AuthGoogleController.recheckPartners - Suíte de Testes Unitários', () {
+  group('AuthGoogleController.recheckOrganizations - Suíte de Testes Unitários', () {
     testWidgets(
       'Happy Path: Deve reutilizar o ID token do login anterior sem chamar signInGoogle de novo',
       (WidgetTester tester) async {
@@ -921,7 +955,7 @@ void main() {
         await _run(
           tester,
           harness.controller,
-          harness.controller.recheckPartners,
+          harness.controller.recheckOrganizations,
         );
 
         // 3. Assert
@@ -929,7 +963,7 @@ void main() {
       },
     );
 
-    testWidgets('Happy Path: Deve buscar de novo os parceiros do usuário', (
+    testWidgets('Happy Path: Deve buscar de novo as organizações do usuário', (
       WidgetTester tester,
     ) async {
       // 1. Arrange
@@ -941,7 +975,7 @@ void main() {
       await _run(
         tester,
         harness.controller,
-        harness.controller.recheckPartners,
+        harness.controller.recheckOrganizations,
       );
 
       // 3. Assert
@@ -962,7 +996,7 @@ void main() {
       await _run(
         tester,
         harness.controller,
-        harness.controller.recheckPartners,
+        harness.controller.recheckOrganizations,
       );
 
       // 3. Assert
@@ -980,7 +1014,7 @@ void main() {
         await _run(
           tester,
           harness.controller,
-          harness.controller.recheckPartners,
+          harness.controller.recheckOrganizations,
         );
 
         // 3. Assert
@@ -996,7 +1030,7 @@ void main() {
         harness.controller.isLoading.value = true;
 
         // 2. Act
-        await harness.controller.recheckPartners();
+        await harness.controller.recheckOrganizations();
 
         // 3. Assert
         expect(harness.authService.signInCalls, 0);
@@ -1005,7 +1039,7 @@ void main() {
     );
 
     testWidgets(
-      'Sad Path: Deve voltar isLoading a false quando a busca de parceiros lançar',
+      'Sad Path: Deve voltar isLoading a false quando a busca de organizações lançar',
       (WidgetTester tester) async {
         // 1. Arrange
         final harness = _Harness(directoryError: Exception('sem rede'));
@@ -1015,7 +1049,7 @@ void main() {
         await _run(
           tester,
           harness.controller,
-          harness.controller.recheckPartners,
+          harness.controller.recheckOrganizations,
         );
 
         // 3. Assert
@@ -1024,120 +1058,125 @@ void main() {
     );
   });
 
-  group('AuthGoogleController.forgetRemovedPartner - Suíte de Testes Unitários', () {
-    testWidgets(
-      'Happy Path: Deve explicar em noAccessReason que o usuário não faz mais parte do parceiro',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness();
-        await _pumpApp(tester);
-        Partner.bind(const PartnerConfig(id: 'rotasul', name: _kRotaSulName));
+  group(
+    'AuthGoogleController.forgetRemovedOrganization - Suíte de Testes Unitários',
+    () {
+      testWidgets(
+        'Happy Path: Deve explicar em noAccessReason que o usuário não faz mais parte da organização',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness();
+          await _pumpApp(tester);
+          Organization.bind(
+            const OrganizationConfig(id: 'rotasul', name: _kRotaSulName),
+          );
 
-        // 2. Act
-        await _run(
-          tester,
-          harness.controller,
-          harness.controller.forgetRemovedPartner,
-        );
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.forgetRemovedOrganization,
+          );
 
-        // 3. Assert
-        expect(
-          harness.controller.noAccessReason.value,
-          'Você não faz mais parte da Rota Sul.',
-        );
-      },
-    );
+          // 3. Assert
+          expect(
+            harness.controller.noAccessReason.value,
+            'Você não faz mais parte da Rota Sul.',
+          );
+        },
+      );
 
-    testWidgets(
-      'Happy Path: Deve navegar para Routes.NO_ORGANIZATION em vez de Routes.LOGIN',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness();
-        await _pumpApp(tester);
+      testWidgets(
+        'Happy Path: Deve navegar para Routes.NO_ORGANIZATION em vez de Routes.LOGIN',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness();
+          await _pumpApp(tester);
 
-        // 2. Act
-        await _run(
-          tester,
-          harness.controller,
-          harness.controller.forgetRemovedPartner,
-        );
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.forgetRemovedOrganization,
+          );
 
-        // 3. Assert
-        expect(Get.currentRoute, Routes.NO_ORGANIZATION);
-      },
-    );
+          // 3. Assert
+          expect(Get.currentRoute, Routes.NO_ORGANIZATION);
+        },
+      );
 
-    testWidgets(
-      'Happy Path: Deve parar o rastreamento antes de sair, como no logout',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness();
-        await _pumpApp(tester);
+      testWidgets(
+        'Happy Path: Deve parar o rastreamento antes de sair, como no logout',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness();
+          await _pumpApp(tester);
 
-        // 2. Act
-        await _run(
-          tester,
-          harness.controller,
-          harness.controller.forgetRemovedPartner,
-        );
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.forgetRemovedOrganization,
+          );
 
-        // 3. Assert
-        expect(harness.log.where((e) => e == 'stop' || e == 'logoutGoogle'), [
-          'stop',
-          'logoutGoogle',
-        ]);
-      },
-    );
+          // 3. Assert
+          expect(harness.log.where((e) => e == 'stop' || e == 'logoutGoogle'), [
+            'stop',
+            'logoutGoogle',
+          ]);
+        },
+      );
 
-    testWidgets(
-      'Edge Case: Deve usar "desta organização" quando não houver parceiro vinculado',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness();
-        await _pumpApp(tester);
-        Partner.unbind();
+      testWidgets(
+        'Edge Case: Deve usar "desta organização" quando não houver organização vinculada',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness();
+          await _pumpApp(tester);
+          Organization.unbind();
 
-        // 2. Act
-        await _run(
-          tester,
-          harness.controller,
-          harness.controller.forgetRemovedPartner,
-        );
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.forgetRemovedOrganization,
+          );
 
-        // 3. Assert
-        expect(
-          harness.controller.noAccessReason.value,
-          'Você não faz mais parte desta organização.',
-        );
-      },
-    );
+          // 3. Assert
+          expect(
+            harness.controller.noAccessReason.value,
+            'Você não faz mais parte desta organização.',
+          );
+        },
+      );
 
-    testWidgets(
-      'Sad Path: Deve permanecer na tela atual quando logoutGoogle lançar',
-      (WidgetTester tester) async {
-        // 1. Arrange
-        final harness = _Harness(logoutError: Exception('falha de rede'));
-        await _pumpApp(tester);
+      testWidgets(
+        'Sad Path: Deve permanecer na tela atual quando logoutGoogle lançar',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _Harness(logoutError: Exception('falha de rede'));
+          await _pumpApp(tester);
 
-        // 2. Act
-        await _run(
-          tester,
-          harness.controller,
-          harness.controller.forgetRemovedPartner,
-        );
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.forgetRemovedOrganization,
+          );
 
-        // 3. Assert
-        expect(Get.currentRoute, _kHomeRoute);
-      },
-    );
-  });
+          // 3. Assert
+          expect(Get.currentRoute, _kHomeRoute);
+        },
+      );
+    },
+  );
 
   group('AuthGoogleController.switchOrganization - Suíte de Testes Unitários', () {
     testWidgets(
       'Happy Path: Deve abrir o seletor de organizações com as organizações da pessoa',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul]);
+        final harness = _Harness(organizations: [_kRotaSul]);
         await _pumpApp(tester);
 
         // 2. Act
@@ -1148,18 +1187,19 @@ void main() {
         );
 
         // 3. Assert
-        expect(Get.currentRoute, Routes.PARTNER_PICKER);
-        expect(harness.controller.partnerChoices.map((b) => b.partner.id), [
-          'rotasul',
-        ]);
+        expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+        expect(
+          harness.controller.organizationChoices.map((b) => b.organization.id),
+          ['rotasul'],
+        );
       },
     );
 
     testWidgets(
-      'Happy Path: Deve buscar as organizações antes de parar o rastreamento e esquecer o parceiro',
+      'Happy Path: Deve buscar as organizações antes de parar o rastreamento e esquecer a organização',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul]);
+        final harness = _Harness(organizations: [_kRotaSul]);
         await _pumpApp(tester);
 
         // 2. Act
@@ -1176,10 +1216,10 @@ void main() {
             (e) =>
                 e == 'directory' ||
                 e == 'stop' ||
-                e == 'signOutOfPartner' ||
+                e == 'signOutOfOrganization' ||
                 e == 'forget',
           ),
-          ['directory', 'stop', 'signOutOfPartner', 'forget'],
+          ['directory', 'stop', 'signOutOfOrganization', 'forget'],
         );
       },
     );
@@ -1188,7 +1228,7 @@ void main() {
       'Happy Path: Não deve sair do Google nem abrir o seletor de contas',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul]);
+        final harness = _Harness(organizations: [_kRotaSul]);
         await _pumpApp(tester);
 
         // 2. Act
@@ -1205,10 +1245,10 @@ void main() {
     );
 
     testWidgets(
-      'Happy Path: Deve atualizar o tema depois de esquecer o parceiro',
+      'Happy Path: Deve atualizar o tema depois de esquecer a organização',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul]);
+        final harness = _Harness(organizations: [_kRotaSul]);
         await _pumpApp(tester);
 
         // 2. Act
@@ -1232,7 +1272,7 @@ void main() {
       (WidgetTester tester) async {
         // 1. Arrange
         final harness = _Harness(
-          partners: [_kRotaSul],
+          organizations: [_kRotaSul],
           claims: _kShareClaims,
           idToken: _jwtExpiringIn(const Duration(hours: 1)),
           refreshedToken: null,
@@ -1250,8 +1290,8 @@ void main() {
 
         // 3. Assert
         expect(harness.log, isNot(contains('refreshGoogleIdToken')));
-        expect(harness.log, contains('signOutOfPartner'));
-        expect(Get.currentRoute, Routes.PARTNER_PICKER);
+        expect(harness.log, contains('signOutOfOrganization'));
+        expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
       },
     );
 
@@ -1259,7 +1299,10 @@ void main() {
       'Edge Case: Deve pedir um token novo quando o token guardado não for um JWT válido',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul], claims: _kShareClaims);
+        final harness = _Harness(
+          organizations: [_kRotaSul],
+          claims: _kShareClaims,
+        );
         await _pumpApp(tester);
         await _run(tester, harness.controller, harness.controller.loginGoogle);
         harness.log.clear();
@@ -1273,7 +1316,7 @@ void main() {
 
         // 3. Assert
         expect(harness.log, contains('refreshGoogleIdToken'));
-        expect(harness.log, contains('signOutOfPartner'));
+        expect(harness.log, contains('signOutOfOrganization'));
       },
     );
 
@@ -1282,7 +1325,7 @@ void main() {
       (WidgetTester tester) async {
         // 1. Arrange
         final harness = _Harness(
-          partners: [_kRotaSul],
+          organizations: [_kRotaSul],
           claims: _kShareClaims,
           idToken: _jwtExpiringIn(const Duration(hours: -1)),
         );
@@ -1299,7 +1342,7 @@ void main() {
 
         // 3. Assert
         expect(harness.log, contains('refreshGoogleIdToken'));
-        expect(harness.log, contains('signOutOfPartner'));
+        expect(harness.log, contains('signOutOfOrganization'));
       },
     );
 
@@ -1319,7 +1362,7 @@ void main() {
 
         // 3. Assert
         expect(Get.currentRoute, Routes.NO_ORGANIZATION);
-        expect(harness.controller.partnerChoices, isEmpty);
+        expect(harness.controller.organizationChoices, isEmpty);
         expect(harness.authService.logoutCalls, 0);
       },
     );
@@ -1328,7 +1371,7 @@ void main() {
       'Edge Case: Não deve fazer nada quando chamado com isLoggingOut true (reentrância)',
       () async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul]);
+        final harness = _Harness(organizations: [_kRotaSul]);
         harness.controller.isLoggingOut.value = true;
 
         // 2. Act
@@ -1344,7 +1387,7 @@ void main() {
       'Edge Case: Não deve fazer nada quando chamado com isLoading true (reentrância)',
       () async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul]);
+        final harness = _Harness(organizations: [_kRotaSul]);
         harness.controller.isLoading.value = true;
 
         // 2. Act
@@ -1360,7 +1403,10 @@ void main() {
       'Sad Path: Não deve mudar nada quando não houver token válido nem renovação',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
+        final harness = _Harness(
+          organizations: [_kRotaSul],
+          refreshedToken: null,
+        );
         await _pumpApp(tester);
 
         // 2. Act
@@ -1383,7 +1429,10 @@ void main() {
       'Sad Path: Deve exibir snackbar quando não houver token válido nem renovação',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
+        final harness = _Harness(
+          organizations: [_kRotaSul],
+          refreshedToken: null,
+        );
         await _pumpApp(tester);
 
         // 2. Act
@@ -1402,7 +1451,10 @@ void main() {
       'Sad Path: Deve manter isLoggingOut false quando não houver token válido nem renovação',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
+        final harness = _Harness(
+          organizations: [_kRotaSul],
+          refreshedToken: null,
+        );
         await _pumpApp(tester);
 
         // 2. Act
@@ -1418,7 +1470,7 @@ void main() {
     );
 
     testWidgets(
-      'Sad Path: Não deve parar o rastreamento nem esquecer o parceiro quando a busca de organizações lançar',
+      'Sad Path: Não deve parar o rastreamento nem esquecer a organização quando a busca de organizações lançar',
       (WidgetTester tester) async {
         // 1. Arrange
         final harness = _Harness(directoryError: Exception('sem rede'));
@@ -1434,7 +1486,7 @@ void main() {
         // 3. Assert
         expect(
           harness.log.where(
-            (e) => e == 'stop' || e == 'signOutOfPartner' || e == 'forget',
+            (e) => e == 'stop' || e == 'signOutOfOrganization' || e == 'forget',
           ),
           isEmpty,
         );
@@ -1486,7 +1538,7 @@ void main() {
       'Happy Path: Deve emitir isSwitchingOrganization true e depois false ao trocar de organização',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul]);
+        final harness = _Harness(organizations: [_kRotaSul]);
         await _pumpApp(tester);
         final seen = <bool>[];
         final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
@@ -1551,7 +1603,7 @@ void main() {
       'Edge Case: Não deve marcar isSwitchingOrganization quando chamado com isLoggingOut true (reentrância)',
       () async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul]);
+        final harness = _Harness(organizations: [_kRotaSul]);
         harness.controller.isLoggingOut.value = true;
         final seen = <bool>[];
         final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
@@ -1570,7 +1622,10 @@ void main() {
       'Sad Path: Não deve marcar isSwitchingOrganization quando não houver token válido nem renovação',
       (WidgetTester tester) async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul], refreshedToken: null);
+        final harness = _Harness(
+          organizations: [_kRotaSul],
+          refreshedToken: null,
+        );
         await _pumpApp(tester);
         final seen = <bool>[];
         final sub = harness.controller.isSwitchingOrganization.listen(seen.add);
@@ -1590,14 +1645,14 @@ void main() {
     );
   });
 
-  group('AuthGoogleController.ownsPartner - Suíte de Testes Unitários', () {
+  group('AuthGoogleController.ownsOrganization - Suíte de Testes Unitários', () {
     test(
-      'Happy Path: Deve ser true quando o diretório marca o parceiro como do usuário',
+      'Happy Path: Deve ser true quando o diretório marca a organização como do usuário',
       () async {
         // 1. Arrange
         final harness = _Harness(
-          partners: [
-            const PartnerCandidate(
+          organizations: [
+            const OrganizationCandidate(
               id: 'rotasul',
               options: _kOptions,
               owner: true,
@@ -1606,7 +1661,7 @@ void main() {
         );
 
         // 2. Act
-        final owns = await harness.controller.ownsPartner('rotasul');
+        final owns = await harness.controller.ownsOrganization('rotasul');
 
         // 3. Assert
         expect(owns, isTrue);
@@ -1614,13 +1669,13 @@ void main() {
     );
 
     test(
-      'Edge Case: Deve ser false quando o usuário é só membro do parceiro',
+      'Edge Case: Deve ser false quando o usuário é só membro da organização',
       () async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kRotaSul, _kVerdeMar]);
+        final harness = _Harness(organizations: [_kRotaSul, _kVerdeMar]);
 
         // 2. Act
-        final owns = await harness.controller.ownsPartner('rotasul');
+        final owns = await harness.controller.ownsOrganization('rotasul');
 
         // 3. Assert
         expect(owns, isFalse);
@@ -1628,13 +1683,13 @@ void main() {
     );
 
     test(
-      'Edge Case: Deve ser false quando o usuário é titular de outro parceiro',
+      'Edge Case: Deve ser false quando o usuário é titular de outra organização',
       () async {
         // 1. Arrange
         final harness = _Harness(
-          partners: [
+          organizations: [
             _kRotaSul,
-            PartnerCandidate(
+            OrganizationCandidate(
               id: _kVerdeMar.id,
               options: _kVerdeMar.options,
               owner: true,
@@ -1643,7 +1698,7 @@ void main() {
         );
 
         // 2. Act
-        final owns = await harness.controller.ownsPartner('rotasul');
+        final owns = await harness.controller.ownsOrganization('rotasul');
 
         // 3. Assert
         expect(owns, isFalse);
@@ -1651,13 +1706,13 @@ void main() {
     );
 
     test(
-      'Sad Path: Deve ser false quando o parceiro não está na lista',
+      'Sad Path: Deve ser false quando a organização não está na lista',
       () async {
         // 1. Arrange
-        final harness = _Harness(partners: [_kVerdeMar]);
+        final harness = _Harness(organizations: [_kVerdeMar]);
 
         // 2. Act
-        final owns = await harness.controller.ownsPartner('rotasul');
+        final owns = await harness.controller.ownsOrganization('rotasul');
 
         // 3. Assert
         expect(owns, isFalse);
@@ -1671,7 +1726,7 @@ void main() {
         final harness = _Harness(directoryError: StateError('offline'));
 
         // 2. Act
-        final owns = harness.controller.ownsPartner('rotasul');
+        final owns = harness.controller.ownsOrganization('rotasul');
 
         // 3. Assert
         await expectLater(owns, throwsStateError);

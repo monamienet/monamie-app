@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 
 import 'account_deletion.dart';
@@ -98,7 +98,7 @@ class DeletionPendingView extends GetView<AuthGoogleController> {
                     onPressed: busy
                         ? null
                         : restored
-                        ? controller.recheckPartners
+                        ? controller.recheckOrganizations
                         : controller.cancelAccountDeletion,
                     child: busy
                         ? const SizedBox(

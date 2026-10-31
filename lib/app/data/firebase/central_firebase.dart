@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// Path, relative to the web app's base URL, of the central web config staged
-/// by `dart run tool/partner.dart web`.
+/// by `dart run tool/organization.dart web`.
 const webCentralConfigPath = 'central/firebase.json';
 
 const _webConfigTimeout = Duration(seconds: 10);
@@ -25,8 +25,8 @@ class CentralFirebaseException implements Exception {
 }
 
 /// The central MonAmie Firebase project (`monamienet-app`): Google sign-in
-/// and the `resolvePartners` function. It is the `[DEFAULT]` app; partners'
-/// projects are separate named apps (see `PartnerSession`).
+/// and the `resolveOrganizations` function. It is the `[DEFAULT]` app; organizations'
+/// projects are separate named apps (see `OrganizationSession`).
 abstract final class CentralFirebase {
   static String? _webGoogleClientId;
 
@@ -59,7 +59,7 @@ abstract final class CentralFirebase {
 class CentralWebConfig {
   const CentralWebConfig({required this.options, required this.googleClientId});
 
-  /// Reads what `tool/partner.dart web` writes. Throws a
+  /// Reads what `tool/organization.dart web` writes. Throws a
   /// [CentralFirebaseException] naming the missing field.
   factory CentralWebConfig.fromJson(Object? json) {
     if (json case {
@@ -102,7 +102,7 @@ class CentralWebConfig {
 }
 
 const _webFix =
-    'Run "dart run tool/partner.dart web" before building or running the web '
+    'Run "dart run tool/organization.dart web" before building or running the web '
     'app.';
 
 Future<CentralWebConfig> _loadWebConfig(http.Client client) async {

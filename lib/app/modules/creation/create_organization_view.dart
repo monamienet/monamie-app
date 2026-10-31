@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
-import 'package:monamie_app/app/config/partner/partner_config.dart';
-import 'package:monamie_app/app/config/partner/partner_icon.dart';
-import 'package:monamie_app/app/config/partner/partner_theme.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/organization_config.dart';
+import 'package:monamie_app/app/config/organization/organization_icon.dart';
+import 'package:monamie_app/app/config/organization/organization_theme.dart';
 
 import 'create_organization_controller.dart';
 import 'id_input_formatter.dart';
@@ -517,7 +517,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     };
   }
 
-  PartnerConfig get _preview => PartnerConfig(
+  OrganizationConfig get _preview => OrganizationConfig(
     id: c.id.value.length >= 3 ? c.id.value : 'nova',
     name: c.name.value.trim().isEmpty ? 'Organização' : c.name.value.trim(),
     theme: c.pickedTheme,
@@ -716,7 +716,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     );
   }
 
-  Widget _themeChip(PartnerTheme theme, bool selected) => Semantics(
+  Widget _themeChip(OrganizationTheme theme, bool selected) => Semantics(
     label: theme.name,
     selected: selected,
     button: true,
@@ -1012,7 +1012,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                   children: [
                     TextSpan(text: 'Li e aceito os '),
                     TextSpan(
-                      text: 'Termos para parceiros',
+                      text: 'Termos para organizações',
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                     TextSpan(text: '.'),
@@ -1363,7 +1363,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: PartnerIcon(partner: _preview, size: 72),
+            child: OrganizationIcon(organization: _preview, size: 72),
           ),
           const SizedBox(height: 24),
           Text(

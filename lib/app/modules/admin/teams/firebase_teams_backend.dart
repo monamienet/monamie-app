@@ -30,8 +30,8 @@ class FirebaseTeamsBackend implements TeamsBackend {
   }
 
   @override
-  Future<List<Team>> list(String partnerId) async {
-    final data = await _call('listTeams', {'partnerId': partnerId});
+  Future<List<Team>> list(String organizationId) async {
+    final data = await _call('listTeams', {'organizationId': organizationId});
     final teams = data is Map ? data['teams'] : null;
     return [
       for (final entry in teams is List ? teams : const [])
@@ -40,9 +40,9 @@ class FirebaseTeamsBackend implements TeamsBackend {
   }
 
   @override
-  Future<Team> create(String partnerId, String name) async {
+  Future<Team> create(String organizationId, String name) async {
     final data = await _call('createTeam', {
-      'partnerId': partnerId,
+      'organizationId': organizationId,
       'name': name,
     });
     return Team.fromJson({...?(data as Map?), 'people': const []}) ??
@@ -50,16 +50,18 @@ class FirebaseTeamsBackend implements TeamsBackend {
   }
 
   @override
-  Future<void> rename(String partnerId, String team, String name) =>
-      _call('renameTeam', {'partnerId': partnerId, 'team': team, 'name': name});
+  Future<void> rename(String organizationId, String team, String name) => _call(
+    'renameTeam',
+    {'organizationId': organizationId, 'team': team, 'name': name},
+  );
 
   @override
   Future<({List<String> loses, List<String> stays})> deletionImpact(
-    String partnerId,
+    String organizationId,
     String team,
   ) async {
     final data = await _call('teamDeletionImpact', {
-      'partnerId': partnerId,
+      'organizationId': organizationId,
       'team': team,
     });
     List<String> list(String key) => [
@@ -70,25 +72,27 @@ class FirebaseTeamsBackend implements TeamsBackend {
   }
 
   @override
-  Future<void> delete(String partnerId, String team) =>
-      _call('deleteTeam', {'partnerId': partnerId, 'team': team});
+  Future<void> delete(String organizationId, String team) =>
+      _call('deleteTeam', {'organizationId': organizationId, 'team': team});
 
   @override
   Future<void> setRoles(
-    String partnerId,
+    String organizationId,
     String team,
     String email,
     Set<TeamRole> roles,
   ) => _call('setMemberRoles', {
-    'partnerId': partnerId,
+    'organizationId': organizationId,
     'team': team,
     'email': email,
     'roles': [for (final r in roles) r.name],
   });
 
   @override
-  Future<void> remove(String partnerId, String team, String email) => _call(
-    'removeMember',
-    {'partnerId': partnerId, 'team': team, 'email': email},
-  );
+  Future<void> remove(String organizationId, String team, String email) =>
+      _call('removeMember', {
+        'organizationId': organizationId,
+        'team': team,
+        'email': email,
+      });
 }

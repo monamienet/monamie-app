@@ -11,11 +11,11 @@ GoogleGroupMember member(String name) =>
     GoogleGroupMember(name: name, email: '$name@x.org');
 
 /// A live document of [name], last seen [minutesAgo] minutes before [now].
-UserModel doc(String name, {int minutesAgo = 1, bool? isTracked = true}) =>
+UserModel doc(String name, {int minutesAgo = 1, bool? isPublishing = true}) =>
     UserModel(
       email: '$name@x.org',
-      timestamp: now.subtract(Duration(minutes: minutesAgo)),
-      isTracked: isTracked,
+      capturedAt: now.subtract(Duration(minutes: minutesAgo)),
+      isPublishing: isPublishing,
     );
 
 List<TeamRow> rows({
@@ -47,7 +47,7 @@ void main() {
         member('live'),
       ];
       final users = [
-        doc('off', isTracked: false),
+        doc('off', isPublishing: false),
         doc('stale', minutesAgo: 30),
         doc('live'),
       ];

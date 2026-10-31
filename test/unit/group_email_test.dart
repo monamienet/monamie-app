@@ -50,10 +50,10 @@ void main() {
         const groupRoles = <String, String>{
           'aquariustur01@monamienet.org': 'member',
         };
-        const grupoAtivo = 'AquariusTur01@monamienet.org';
+        const groupId = 'AquariusTur01@monamienet.org';
 
         // 2. Act
-        final key = normalizeGroupEmail(grupoAtivo);
+        final key = normalizeGroupEmail(groupId);
 
         // 3. Assert
         expect(groupRoles.containsKey(key), isTrue);

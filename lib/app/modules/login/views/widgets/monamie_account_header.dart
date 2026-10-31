@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
-import 'package:monamie_app/app/config/partner/monamie_mark.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/monamie_mark.dart';
 
 /// The top of MonAmie's own screens after sign-in: the mark, the signed-in
 /// account and "Trocar" (sign in with another account).

@@ -8,7 +8,7 @@ import 'package:monamie_app/app/modules/account/my_account_controller.dart';
 
 final _deletion = AccountDeletion(
   deleteAt: DateTime.utc(2026, 11, 25, 12),
-  ownedPartners: const ['rotasul'],
+  ownedOrganizationIds: const ['rotasul'],
 );
 
 /// [AccountDeletionBackend] that records `request`, optionally waits on
@@ -56,7 +56,7 @@ late List<AccountDeletion> deleted;
 
 MyAccountController newController(FakeOwnerCheck check) => MyAccountController(
   backend: backend,
-  partnerId: 'rotasul',
+  organizationId: 'rotasul',
   checkOwner: check.call,
   onDeleted: (deletion) async => deleted.add(deletion),
 );

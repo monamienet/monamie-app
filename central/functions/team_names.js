@@ -1,22 +1,22 @@
 const { GROUP_DOMAIN, parseGroupAddress } = require("./group_address");
 
 /**
- * The teams of `partnerId` whose names the caller may read, from their
+ * The teams of `organizationId` whose names the caller may read, from their
  * **direct** groups (the gateway's `/groups?email=`), by the same rule as
- * the partner's syncClaims: a root-group member (`<id>00`) sees every team
+ * the organization's syncClaims: a root-group member (`<id>00`) sees every team
  * (`all`), anyone else the teams of their leaves `<id>NNr` / `<id>NNw`.
  * A direct member of a team group `<id>NN` gets nothing.
  *
- * @param {string} partnerId
+ * @param {string} organizationId
  * @param {Array<{email?: unknown}>} groups - The caller's direct groups
  * @returns {{all: boolean, keys: string[]}} Team keys, sorted, distinct
  */
-function visibleTeams(partnerId, groups) {
+function visibleTeams(organizationId, groups) {
   let all = false;
   const keys = new Set();
   for (const group of groups ?? []) {
     const address = parseGroupAddress(group?.email);
-    if (!address || address.partnerId !== partnerId) continue;
+    if (!address || address.organizationId !== organizationId) continue;
     if (address.level === 0) all = true;
     else if (address.level === 2) keys.add(address.teamKey);
   }
@@ -31,19 +31,19 @@ function visibleTeams(partnerId, groups) {
  * "Equipe NN".
  *
  * @param {import("./groups_api").GroupsApi} api
- * @param {string} partnerId
+ * @param {string} organizationId
  * @param {Array<{email?: unknown}>} groups - The caller's direct groups
  * @returns {Promise<Object<string, string>>} Display name by team key
  */
-async function teamNames(api, partnerId, groups) {
-  const { all, keys } = visibleTeams(partnerId, groups);
+async function teamNames(api, organizationId, groups) {
+  const { all, keys } = visibleTeams(organizationId, groups);
   const teamKeys = new Set(keys);
   if (all) {
-    const root = await api.lookup(`${partnerId}00@${GROUP_DOMAIN}`);
+    const root = await api.lookup(`${organizationId}00@${GROUP_DOMAIN}`);
     for (const member of root ? await api.members(root) : []) {
       const address = parseGroupAddress(member.email);
       if (member.type !== "GROUP" || !address) continue;
-      if (address.partnerId === partnerId && address.level === 1) {
+      if (address.organizationId === organizationId && address.level === 1) {
         teamKeys.add(address.teamKey);
       }
     }

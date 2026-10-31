@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
+import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
 
 import 'capabilities.dart';
 
 /// Syncs and reads the MonAmie custom claims (`share`, `watch`, `admin`) of
-/// the person signed in to the bound partner's project.
+/// the person signed in to the bound organization's project.
 class MonAmieClaimsService {
   MonAmieClaimsService._();
 
-  /// Calls the partner's `syncClaims`, which recomputes the claims from the
+  /// Calls the organization's `syncClaims`, which recomputes the claims from the
   /// person's Google Groups, then refreshes the ID token so the rules see
   /// them.
   ///
@@ -16,7 +16,7 @@ class MonAmieClaimsService {
   /// not evidence of removal).
   static Future<Capabilities?> syncClaims() async {
     try {
-      final user = CurrentPartnerFirebase.instance.auth.currentUser;
+      final user = CurrentOrganizationFirebase.instance.auth.currentUser;
       if (user == null) {
         debugPrint('[MonAmieClaimsService] Not signed in.');
         return null;
@@ -25,7 +25,7 @@ class MonAmieClaimsService {
       final rawToken = await user.getIdToken(true);
       if (rawToken == null) return null;
 
-      final result = await CurrentPartnerFirebase.instance.functions
+      final result = await CurrentOrganizationFirebase.instance.functions
           .httpsCallable('syncClaims')
           .call({'idToken': rawToken});
       await user.getIdToken(true);
@@ -49,7 +49,7 @@ class MonAmieClaimsService {
   /// not signed in or the token cannot be read.
   static Future<Capabilities?> readClaims() async {
     try {
-      final user = CurrentPartnerFirebase.instance.auth.currentUser;
+      final user = CurrentOrganizationFirebase.instance.auth.currentUser;
       if (user == null) return null;
       final result = await user.getIdTokenResult(true);
       return Capabilities.fromClaims(result.claims ?? const {});

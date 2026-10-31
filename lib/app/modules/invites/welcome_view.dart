@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_icon.dart';
-import 'package:monamie_app/app/config/partner/partner_palette.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_icon.dart';
+import 'package:monamie_app/app/config/organization/organization_palette.dart';
 import 'package:monamie_app/app/modules/admin/teams/team.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
@@ -16,8 +16,8 @@ class WelcomeView extends GetView<AuthGoogleController> {
   @override
   Widget build(BuildContext context) {
     final invite = controller.welcome.value;
-    final partner = Partner.current;
-    final palette = PartnerPalette.fromConfig(partner);
+    final organization = Organization.current;
+    final palette = OrganizationPalette.fromConfig(organization);
     final shares = invite?.roles.contains(TeamRole.share) ?? false;
     void open() {
       controller.welcome.value = null;
@@ -40,10 +40,10 @@ class WelcomeView extends GetView<AuthGoogleController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                PartnerIcon(partner: partner, size: 72),
+                OrganizationIcon(organization: organization, size: 72),
                 const SizedBox(height: 20),
                 Text(
-                  'Você entrou na ${partner?.name ?? invite?.partnerName ?? ''}',
+                  'Você entrou na ${organization?.name ?? invite?.organizationName ?? ''}',
                   style: TextStyle(
                     fontSize: 32,
                     height: 1.1,

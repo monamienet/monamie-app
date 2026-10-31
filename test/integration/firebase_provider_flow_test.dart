@@ -7,7 +7,7 @@ void main() {
     // Escrita de Usuário
     // -------------------------------------------------------------
     test(
-      'Happy Path: Contrato de escrita de posição e grupo_ativo com campos válidos',
+      'Happy Path: Contrato de escrita de posição e groupId com campos válidos',
       () {
         // 1. Arrange
         const email = 'servidor1@monamienet.org';
@@ -15,32 +15,32 @@ void main() {
         const lat = -22.9035;
         const lng = -43.1320;
         final timestamp = DateTime(2026, 9, 16, 21, 0, 0);
-        const grupoAtivo = 'seguranca-operacional@monamienet.org';
+        const groupId = 'seguranca-operacional@monamienet.org';
 
         // 2. Act
         final userUpdates = <String, dynamic>{
           'email': email,
-          'nome': nome,
+          'name': nome,
           'lat': lat,
           'lng': lng,
-          'timestamp': timestamp,
-          if (grupoAtivo.isNotEmpty) 'grupo_ativo': grupoAtivo,
+          'capturedAt': timestamp,
+          if (groupId.isNotEmpty) 'groupId': groupId,
         };
 
         // 3. Assert
         expect(userUpdates, {
           'email': email,
-          'nome': nome,
+          'name': nome,
           'lat': lat,
           'lng': lng,
-          'timestamp': timestamp,
-          'grupo_ativo': grupoAtivo,
+          'capturedAt': timestamp,
+          'groupId': groupId,
         });
       },
     );
 
     test(
-      'Edge Case: Contrato de escrita omite grupo_ativo quando este for vazio',
+      'Edge Case: Contrato de escrita omite groupId quando este for vazio',
       () {
         // 1. Arrange
         const email = 'servidor1@monamienet.org';
@@ -49,11 +49,11 @@ void main() {
         // 2. Act
         final userUpdates = <String, dynamic>{
           'email': email,
-          if (grupoAtivoVazio.isNotEmpty) 'grupo_ativo': grupoAtivoVazio,
+          if (grupoAtivoVazio.isNotEmpty) 'groupId': grupoAtivoVazio,
         };
 
         // 3. Assert
-        expect(userUpdates.containsKey('grupo_ativo'), isFalse);
+        expect(userUpdates.containsKey('groupId'), isFalse);
       },
     );
 
@@ -63,12 +63,12 @@ void main() {
         // 1. Arrange
         final allowedKeys = {
           'email',
-          'nome',
+          'name',
           'lat',
           'lng',
-          'timestamp',
-          'isTracked',
-          'grupo_ativo',
+          'capturedAt',
+          'isPublishing',
+          'groupId',
         };
         final payloadComCampoInvalido = {
           'email': 'teste@monamienet.org',
@@ -89,28 +89,28 @@ void main() {
     // Histórico de Posições
     // -------------------------------------------------------------
     test(
-      'Happy Path: Contrato de gravação de ponto histórico inclui grupo_ativo e coordenadas',
+      'Happy Path: Contrato de gravação de ponto histórico inclui groupId e coordenadas',
       () {
         // 1. Arrange
         const lat = -22.9035;
         const lng = -43.1320;
         final timestamp = DateTime(2026, 9, 16, 21, 0, 0);
-        const grupoAtivo = 'seguranca-operacional@monamienet.org';
+        const groupId = 'seguranca-operacional@monamienet.org';
 
         // 2. Act
         final pointData = <String, dynamic>{
           'lat': lat,
           'lng': lng,
-          'timestamp': timestamp,
-          'grupo_ativo': grupoAtivo,
+          'receivedAt': timestamp,
+          'groupId': groupId,
         };
 
         // 3. Assert
         expect(pointData, {
           'lat': lat,
           'lng': lng,
-          'timestamp': timestamp,
-          'grupo_ativo': grupoAtivo,
+          'receivedAt': timestamp,
+          'groupId': groupId,
         });
       },
     );
@@ -119,7 +119,7 @@ void main() {
       'Sad Path: Rejeita chaves não permitidas na subcoleção de histórico de posições',
       () {
         // 1. Arrange
-        final allowedHistoryKeys = {'lat', 'lng', 'timestamp', 'grupo_ativo'};
+        final allowedHistoryKeys = {'lat', 'lng', 'receivedAt', 'groupId'};
         final historicoComCampoInvalido = {
           'lat': -22.90,
           'campo_desconhecido': 'valor',
@@ -139,36 +139,36 @@ void main() {
     // Ativação e Desativação de Rastreamento
     // -------------------------------------------------------------
     test(
-      'Happy Path: Payload de ativação de rastreamento deve conter isTracked true e grupo_ativo',
+      'Happy Path: Payload de ativação de rastreamento deve conter isPublishing true e groupId',
       () {
         // 1. Arrange
         const activeGroup = 'transporte-vans@monamienet.org';
 
         // 2. Act
         final payloadIniciar = <String, dynamic>{
-          'isTracked': true,
-          'grupo_ativo': activeGroup,
+          'isPublishing': true,
+          'groupId': activeGroup,
         };
 
         // 3. Assert
         expect(payloadIniciar, {
-          'isTracked': true,
-          'grupo_ativo': 'transporte-vans@monamienet.org',
+          'isPublishing': true,
+          'groupId': 'transporte-vans@monamienet.org',
         });
       },
     );
 
     test(
-      'Happy Path: Payload de desativação de rastreamento deve conter isTracked false sem grupo_ativo',
+      'Happy Path: Payload de desativação de rastreamento deve conter isPublishing false sem groupId',
       () {
         // 1. Arrange
-        const isTracked = false;
+        const isPublishing = false;
 
         // 2. Act
-        final payloadParar = <String, dynamic>{'isTracked': isTracked};
+        final payloadParar = <String, dynamic>{'isPublishing': isPublishing};
 
         // 3. Assert
-        expect(payloadParar, {'isTracked': false});
+        expect(payloadParar, {'isPublishing': false});
       },
     );
 
@@ -184,16 +184,16 @@ void main() {
           email: 'ativo@monamienet.org',
           lat: -22.90,
           lng: -43.13,
-          timestamp: now.subtract(const Duration(minutes: 1)),
-          isTracked: true,
-          grupoAtivo: 'seguranca@monamienet.org',
+          capturedAt: now.subtract(const Duration(minutes: 1)),
+          isPublishing: true,
+          groupId: 'seguranca@monamienet.org',
         );
         final limit = now.subtract(const Duration(minutes: 5));
 
         // 2. Act
         final isRecente =
-            usuarioRecente.timestamp != null &&
-            usuarioRecente.timestamp!.isAfter(limit);
+            usuarioRecente.capturedAt != null &&
+            usuarioRecente.capturedAt!.isAfter(limit);
 
         // 3. Assert
         expect(isRecente, isTrue);
@@ -203,16 +203,16 @@ void main() {
     test('Edge Case: Filtro de tempo descarta usuário com timestamp nulo', () {
       // 1. Arrange
       final now = DateTime.now();
-      final usuarioSemTimestamp = UserModel(
-        email: 'sem.timestamp@monamienet.org',
-        timestamp: null,
+      final pessoaSemHorario = UserModel(
+        email: 'sem.capturedAt@monamienet.org',
+        capturedAt: null,
       );
       final limit = now.subtract(const Duration(minutes: 5));
 
       // 2. Act
       final isValido =
-          usuarioSemTimestamp.timestamp != null &&
-          usuarioSemTimestamp.timestamp!.isAfter(limit);
+          pessoaSemHorario.capturedAt != null &&
+          pessoaSemHorario.capturedAt!.isAfter(limit);
 
       // 3. Assert
       expect(isValido, isFalse);
@@ -225,14 +225,14 @@ void main() {
         final now = DateTime.now();
         final usuarioAntigo = UserModel(
           email: 'antigo@monamienet.org',
-          timestamp: now.subtract(const Duration(minutes: 10)),
+          capturedAt: now.subtract(const Duration(minutes: 10)),
         );
         final limit = now.subtract(const Duration(minutes: 5));
 
         // 2. Act
         final isRecente =
-            usuarioAntigo.timestamp != null &&
-            usuarioAntigo.timestamp!.isAfter(limit);
+            usuarioAntigo.capturedAt != null &&
+            usuarioAntigo.capturedAt!.isAfter(limit);
 
         // 3. Assert
         expect(isRecente, isFalse);

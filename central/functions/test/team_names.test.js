@@ -114,7 +114,7 @@ describe("visibleTeams - Unit Test Suite", () => {
   });
 
   test(
-    "Sad Path: team groups, other partners, other domains and malformed " +
+    "Sad Path: team groups, other organizations, other domains and malformed " +
       "entries give nothing",
     () => {
       // 1. Arrange
@@ -218,7 +218,7 @@ describe("teamNames - Unit Test Suite", () => {
   });
 
   test(
-    "Edge Case: the root's users, leaves and other partners' groups add " +
+    "Edge Case: the root's users, leaves and other organizations' groups add " +
       "no team",
     async () => {
       // 1. Arrange

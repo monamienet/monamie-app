@@ -87,7 +87,7 @@ push alterar pelo menos um destes caminhos, que são as entradas do build Androi
 | `lib/**` | o código Dart |
 | `android/**` | Gradle, manifest |
 | `assets/**` | imagens declaradas no `pubspec.yaml` |
-| `tool/**` | a ferramenta dos parceiros: o build roda `tool/partner.dart firebase` para buscar o `google-services.json` (seção 6) |
+| `tool/**` | a ferramenta das organizações: o build roda `tool/organization.dart firebase` para buscar o `google-services.json` (seção 6) |
 | `pubspec.yaml`, `pubspec.lock` | dependências e lista de assets |
 | `distribution/**` | não entra no `.aab`, mas as notas da versão são enviadas junto com ele (seção 5.1) |
 | `.github/scripts/check-release-notes.sh`, `.github/workflows/deploy-play-internal.yml` | o próprio pipeline: se ele muda, precisa rodar para provar que ainda funciona |
@@ -214,7 +214,7 @@ a `main` mais nova já contém as mudanças da do meio.
 | 7 | `flutter test test/unit` | Roda os testes unitários. Se algum falhar, o deploy para aqui. Os testes de integração ficam de fora porque dependem dos emuladores do Firebase. |
 | 8 | `Install Firebase CLI` | Instala o `firebase-tools` numa versão fixa. O build usa o CLI para buscar a config do Firebase do projeto central. |
 | 9 | `google-github-actions/auth` (`auth-config`) | Troca o token OIDC do GitHub por credenciais temporárias de uma service account que **só lê** a config dos apps do Firebase (seção 6). |
-| 10 | `flutter build appbundle` | Gera o `.aab` de release do app único `org.monamienet.app`, assinado com a keystore do passo 5, com o versionName do passo 1c e com um versionCode novo (seção 5). Antes de compilar, o Gradle busca o `google-services.json` do projeto central com as credenciais do passo 9. Os parceiros são ligados em tempo de execução, então nenhum parceiro é escolhido aqui. |
+| 10 | `flutter build appbundle` | Gera o `.aab` de release do app único `org.monamienet.app`, assinado com a keystore do passo 5, com o versionName do passo 1c e com um versionCode novo (seção 5). Antes de compilar, o Gradle busca o `google-services.json` do projeto central com as credenciais do passo 9. As organizações são ligadas em tempo de execução, então nenhuma organização é escolhida aqui. |
 | 11 | `google-github-actions/auth` (`auth`) | Troca o token OIDC do GitHub por credenciais temporárias da service account que publica, sem chave (seção 6). |
 | 12 | `r0adkll/upload-google-play` | Envia o `.aab` para a faixa `internal` com as credenciais do passo 11. `status: completed` lança o release direto para os testadores. `whatsNewDirectory` envia as notas da versão, e `releaseName` dá à versão o nome do versionName, que a promoção lê de volta. |
 | 13 | job `tag` | Só quando o versionName é novo: cria a tag `vX.Y.Z` no commit. Fica num job separado, o único com permissão de escrever no repositório, para que o código de terceiros que roda no build (Gradle, pacotes pub) nunca tenha essa permissão. |

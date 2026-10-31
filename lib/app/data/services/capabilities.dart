@@ -1,6 +1,6 @@
-import 'package:monamie_app/app/config/partner/group_address.dart';
+import 'package:monamie_app/app/config/organization/group_address.dart';
 
-/// What the signed-in person may do in the bound partner, from the custom
+/// What the signed-in person may do in the bound organization, from the custom
 /// claims `syncClaims` sets (see `firestore.rules`).
 class Capabilities {
   const Capabilities({
@@ -32,7 +32,7 @@ class Capabilities {
   /// Team keys whose map the person sees.
   final Set<String> watch;
 
-  /// Partners the person administers (member of their root group): they
+  /// Organizations the person administers (member of their root group): they
   /// watch every team of these and manage them.
   final Set<String> admin;
 
@@ -42,47 +42,55 @@ class Capabilities {
   /// Whether the person shares their location in some team.
   bool get canShare => share.isNotEmpty;
 
-  /// Whether the person administers [partnerId] (the *administrador*).
-  bool isAdminOf(String partnerId) => admin.contains(partnerId);
+  /// Whether the person administers [organizationId] (the *administrador*).
+  bool isAdminOf(String organizationId) => admin.contains(organizationId);
 
-  /// Whether the person sees any map of [partnerId]: they watch one of its
+  /// Whether the person sees any map of [organizationId]: they watch one of its
   /// teams, or administer it.
-  bool canWatchIn(String partnerId) =>
-      isAdminOf(partnerId) ||
+  bool canWatchIn(String organizationId) =>
+      isAdminOf(organizationId) ||
       watch.any(
         (key) =>
-            parseGroupAddress(teamEmailForKey(key))?.partnerId == partnerId,
+            parseGroupAddress(teamEmailForKey(key))?.organizationId ==
+            organizationId,
       );
 
   /// Whether the person sees the map of team [teamKey].
   bool canWatchTeam(String teamKey) {
-    final partnerId = parseGroupAddress(teamEmailForKey(teamKey))?.partnerId;
+    final organizationId = parseGroupAddress(
+      teamEmailForKey(teamKey),
+    )?.organizationId;
     return watch.contains(teamKey) ||
-        (partnerId != null && isAdminOf(partnerId));
+        (organizationId != null && isAdminOf(organizationId));
   }
 
-  /// The team keys of [partnerId] where the person shares, sorted.
-  List<String> shareTeamsIn(String partnerId) => [
+  /// The team keys of [organizationId] where the person shares, sorted.
+  List<String> shareTeamsIn(String organizationId) => [
     for (final key in share)
-      if (parseGroupAddress(teamEmailForKey(key))?.partnerId == partnerId) key,
+      if (parseGroupAddress(teamEmailForKey(key))?.organizationId ==
+          organizationId)
+        key,
   ]..sort();
 
-  /// The keys of the teams of [partnerId] the person sees on the map,
-  /// sorted. An administrator sees every team in [allTeamKeys] (the partner's team
+  /// The keys of the teams of [organizationId] the person sees on the map,
+  /// sorted. An administrator sees every team in [allTeamKeys] (the organization's team
   /// groups); anyone else sees the teams they watch.
-  List<String> watchTeamsIn(String partnerId, Iterable<String> allTeamKeys) {
-    final keys = isAdminOf(partnerId)
+  List<String> watchTeamsIn(
+    String organizationId,
+    Iterable<String> allTeamKeys,
+  ) {
+    final keys = isAdminOf(organizationId)
         ? {
             ...allTeamKeys.where(
               (key) =>
-                  parseGroupAddress(teamEmailForKey(key))?.partnerId ==
-                  partnerId,
+                  parseGroupAddress(teamEmailForKey(key))?.organizationId ==
+                  organizationId,
             ),
           }
         : {
             for (final key in watch)
-              if (parseGroupAddress(teamEmailForKey(key))?.partnerId ==
-                  partnerId)
+              if (parseGroupAddress(teamEmailForKey(key))?.organizationId ==
+                  organizationId)
                 key,
           };
     return keys.toList()..sort();

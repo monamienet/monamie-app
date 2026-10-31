@@ -28,7 +28,7 @@ class FirebaseCreationBackend implements CreationBackend {
 
   @override
   Future<String?> idProblem(String id) async {
-    final data = await _call('checkPartnerId', {'id': id});
+    final data = await _call('checkOrganizationId', {'id': id});
     if (data is Map && data['available'] == true) return null;
     return data is Map && data['problem'] is String
         ? data['problem'] as String
@@ -42,7 +42,7 @@ class FirebaseCreationBackend implements CreationBackend {
     required String themeId,
     required String plan,
   }) async {
-    final data = await _call('createPartner', {
+    final data = await _call('createOrganization', {
       'id': id,
       'name': name,
       'themeId': themeId,

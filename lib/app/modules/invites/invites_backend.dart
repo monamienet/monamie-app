@@ -30,16 +30,16 @@ class InviteSendResult {
 /// tested with a fake. Throws [InvitesException] with a message.
 abstract interface class InvitesBackend {
   Future<InviteSendResult> send(
-    String partnerId, {
-    required String partnerName,
+    String organizationId, {
+    required String organizationName,
     String? team,
     String? firstTeamName,
     required List<({String email, Set<TeamRole> roles})> invites,
   });
 
-  Future<List<Invite>> listForTeam(String partnerId, String team);
-  Future<void> resend(String partnerId, String inviteId);
-  Future<void> cancel(String partnerId, String inviteId);
+  Future<List<Invite>> listForTeam(String organizationId, String team);
+  Future<void> resend(String organizationId, String inviteId);
+  Future<void> cancel(String organizationId, String inviteId);
 
   /// The signed-in account's pending invites.
   Future<List<Invite>> mine();

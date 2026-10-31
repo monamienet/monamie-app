@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import 'firebase_cli.dart';
-import 'partners.dart';
+import 'organizations.dart';
 
 /// `client_type` of the OAuth web client in `google-services.json`. The
 /// google-services plugin turns it into `default_web_client_id`, which Google
@@ -24,10 +24,10 @@ final androidFirebaseConfigPath = p.join(
 /// ([appPackageName]) from the central project ([centralProjectId]) and
 /// writes it to [androidFirebaseConfigPath]. Returns the Firebase app id.
 ///
-/// Partners' projects are not involved: the app binds them at runtime.
+/// Organizations' projects are not involved: the app binds them at runtime.
 ///
 /// The config is validated before anything is written, so a failed run keeps
-/// the previous file. Throws a [PartnerToolException] on failure; messages
+/// the previous file. Throws a [OrganizationToolException] on failure; messages
 /// never include the config contents, which hold API keys.
 Future<String> fetchAndroidFirebaseConfig({
   required Directory repoRoot,
@@ -40,7 +40,7 @@ Future<String> fetchAndroidFirebaseConfig({
   final matches = apps.where((app) => app.packageName == packageName).toList();
   if (matches.length != 1) {
     final candidates = apps.isEmpty ? '(none)' : apps.join(', ');
-    throw PartnerToolException(
+    throw OrganizationToolException(
       matches.isEmpty
           ? "No Android app with package '$packageName' in Firebase project "
                 "'$projectId'. Android apps: $candidates."
@@ -65,7 +65,7 @@ Future<String> fetchAndroidFirebaseConfig({
 /// The OAuth web client id in a `google-services.json`: the client id
 /// Google sign-in uses on the web, and the server client id on Android.
 ///
-/// Throws a [PartnerToolException] when there is none or [contents] is not
+/// Throws a [OrganizationToolException] when there is none or [contents] is not
 /// JSON. The message never echoes [contents], which hold API keys (a
 /// [FormatException] from `jsonDecode` would).
 String webClientIdFromGoogleServices(String contents) {
@@ -73,7 +73,9 @@ String webClientIdFromGoogleServices(String contents) {
   try {
     config = jsonDecode(contents);
   } on FormatException {
-    throw PartnerToolException('The google-services.json is not valid JSON.');
+    throw OrganizationToolException(
+      'The google-services.json is not valid JSON.',
+    );
   }
   final clients = switch (config) {
     {'client': final List<Object?> value} => value,
@@ -93,7 +95,7 @@ String webClientIdFromGoogleServices(String contents) {
       }
     }
   }
-  throw PartnerToolException(
+  throw OrganizationToolException(
     'The google-services.json has no OAuth web client. Enable Google sign-in '
     'in the central project (Authentication) and run again.',
   );
@@ -109,7 +111,7 @@ void _validateConfig(
   try {
     config = jsonDecode(contents);
   } on FormatException {
-    throw PartnerToolException('$source is not valid JSON.');
+    throw OrganizationToolException('$source is not valid JSON.');
   }
 
   final configProjectId = switch (config) {
@@ -117,7 +119,7 @@ void _validateConfig(
     _ => null,
   };
   if (configProjectId != projectId) {
-    throw PartnerToolException(
+    throw OrganizationToolException(
       "$source has project_info.project_id '$configProjectId', "
       "expected '$projectId'.",
     );
@@ -135,7 +137,7 @@ void _validateConfig(
     },
   );
   if (matching.length != 1) {
-    throw PartnerToolException(
+    throw OrganizationToolException(
       "$source must have exactly one client with package '$packageName', "
       'found ${matching.length}.',
     );
@@ -152,7 +154,7 @@ void _validateConfig(
     },
   );
   if (!hasWebClient) {
-    throw PartnerToolException(
+    throw OrganizationToolException(
       "$source has no OAuth web client (client_type $oauthWebClientType) for "
       "'$packageName', so Google sign-in would fail. Enable Google sign-in in "
       'the Firebase console (Authentication) and run again.',

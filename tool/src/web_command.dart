@@ -23,7 +23,7 @@ class WebCommand extends Command<void> {
   @override
   Future<void> run() async {
     if (argResults!.rest.isNotEmpty) {
-      usageException('Takes no arguments: partners are bound at runtime.');
+      usageException('Takes no arguments: organizations are bound at runtime.');
     }
     await stageCentralWebConfig(repoRoot: _repoRoot, cli: _cli);
     stdout.writeln('Wrote $webCentralConfigPath.');

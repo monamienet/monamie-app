@@ -1,6 +1,6 @@
-// Security rules of a partner project's Storage (storage.rules), against
-// the Storage emulator. The only file is partners/{partnerId}/logo.png:
-// public to read, written and deleted only by the partner's administrators (the
+// Security rules of an organization project's Storage (storage.rules), against
+// the Storage emulator. The only file is organizations/{organizationId}/logo.png:
+// public to read, written and deleted only by the organization's administrators (the
 // `admin` claim that syncClaims sets), as a PNG of at most 1 MiB.
 const { after, before, beforeEach, describe, test } = require("node:test");
 const fs = require("node:fs");
@@ -15,7 +15,7 @@ const { deleteObject, getBytes, getMetadata, ref, uploadBytes } = require("fireb
 
 const rulesPath = path.join(__dirname, "..", "..", "storage.rules");
 
-const LOGO = "partners/rotasul/logo.png";
+const LOGO = "organizations/rotasul/logo.png";
 const MiB = 1024 * 1024;
 const PNG = { contentType: "image/png" };
 
@@ -86,15 +86,15 @@ describe("storage.rules read - Unit Test Suite", () => {
     await assertSucceeds(read);
   });
 
-  test("Sad Path: another file of the partner cannot be read", async () => {
+  test("Sad Path: another file of the organization cannot be read", async () => {
     // 1. Arrange
     await env.withSecurityRulesDisabled(async (context) => {
-      await uploadBytes(ref(context.storage(), "partners/rotasul/other.png"), pngBytes(), PNG);
+      await uploadBytes(ref(context.storage(), "organizations/rotasul/other.png"), pngBytes(), PNG);
     });
     const storage = administrator();
 
     // 2. Act
-    const read = getBytes(ref(storage, "partners/rotasul/other.png"));
+    const read = getBytes(ref(storage, "organizations/rotasul/other.png"));
 
     // 3. Assert
     await assertFails(read);
@@ -125,7 +125,7 @@ describe("storage.rules write - Unit Test Suite", () => {
     await assertSucceeds(write);
   });
 
-  test("Edge Case: an administrator of several partners uploads this one's logo", async () => {
+  test("Edge Case: an administrator of several organizations uploads this one's logo", async () => {
     // 1. Arrange
     const storage = storageAs({ admin: ["outro", "rotasul"] });
 
@@ -149,10 +149,10 @@ describe("storage.rules write - Unit Test Suite", () => {
 
   const deniedUsers = [
     ["Sad Path: a signed-out user", () => env.unauthenticatedContext().storage()],
-    ["Sad Path: an administrator of another partner", () => storageAs({ admin: ["outro"] })],
+    ["Sad Path: an administrator of another organization", () => storageAs({ admin: ["outro"] })],
     [
-      "Sad Path: a user who only shares and watches in the partner",
-      () => storageAs({ share: ["rotasul01"], watch: ["rotasul02"], partners: ["rotasul"] }),
+      "Sad Path: a user who only shares and watches in the organization",
+      () => storageAs({ share: ["rotasul01"], watch: ["rotasul02"], organizations: ["rotasul"] }),
     ],
     ["Sad Path: a user without claims", () => storageAs({})],
     ["Sad Path: admin as a string instead of a list", () => storageAs({ admin: "rotasul" })],
@@ -194,7 +194,7 @@ describe("storage.rules write - Unit Test Suite", () => {
     await assertFails(write);
   });
 
-  for (const other of ["partners/rotasul/other.png", "logo.png", "partners/rotasul/logo.png/x.png"]) {
+  for (const other of ["organizations/rotasul/other.png", "logo.png", "organizations/rotasul/logo.png/x.png"]) {
     test(`Sad Path: an administrator cannot upload to ${other}`, async () => {
       // 1. Arrange
       const storage = administrator();
@@ -233,7 +233,7 @@ describe("storage.rules delete - Unit Test Suite", () => {
     await assertFails(remove);
   });
 
-  test("Sad Path: an administrator of another partner cannot delete the logo", async () => {
+  test("Sad Path: an administrator of another organization cannot delete the logo", async () => {
     // 1. Arrange
     await seedLogo();
     const storage = storageAs({ admin: ["outro"] });

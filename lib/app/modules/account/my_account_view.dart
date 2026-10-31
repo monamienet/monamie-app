@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 
 import 'account_deletion.dart';
 import 'my_account_controller.dart';
@@ -14,12 +14,12 @@ class MyAccountView extends StatelessWidget {
     super.key,
     required this.controller,
     required this.email,
-    required this.partnerName,
+    required this.organizationName,
   });
 
   final MyAccountController controller;
   final String email;
-  final String partnerName;
+  final String organizationName;
 
   @override
   Widget build(BuildContext context) {
@@ -82,10 +82,10 @@ class MyAccountView extends StatelessWidget {
                 children: [
                   for (final line in [
                     if (owner)
-                      'Você é titular da $partnerName, então a organização '
+                      'Você é titular da $organizationName, então a organização '
                           'inteira é excluída junto com a sua conta.'
                     else
-                      'Você sai da $partnerName agora e deixa de aparecer no '
+                      'Você sai da $organizationName agora e deixa de aparecer no '
                           'mapa.',
                     'Em $deleteAt apagamos de vez sua conta e seus dados no '
                         'MonAmie.',
@@ -166,7 +166,7 @@ class MyAccountView extends StatelessWidget {
   List<Widget> _confirmation() => [
     const SizedBox(height: 12),
     Text(
-      'Para confirmar, digite ${controller.partnerId}',
+      'Para confirmar, digite ${controller.organizationId}',
       style: const TextStyle(
         fontWeight: FontWeight.w700,
         color: MonAmieBrand.navy,
@@ -178,7 +178,7 @@ class MyAccountView extends StatelessWidget {
       enableSuggestions: false,
       onChanged: (value) => controller.confirmation.value = value,
       decoration: InputDecoration(
-        hintText: controller.partnerId,
+        hintText: controller.organizationId,
         hintStyle: TextStyle(
           color: MonAmieBrand.mutedInk.withValues(alpha: 0.45),
         ),

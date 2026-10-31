@@ -1,7 +1,7 @@
 const { describe, test } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { partnerIdForProject, rootGroupEmailFor } = require("../root_group");
+const { organizationIdForProject, rootGroupEmailFor } = require("../root_group");
 
 /** Project ids that do not follow `monamienet-<valid id>`. */
 const invalidProjects = [
@@ -17,24 +17,24 @@ const invalidProjects = [
   ["the reserved id community", "monamienet-community"],
 ];
 
-describe("partnerIdForProject - Unit Test Suite", () => {
+describe("organizationIdForProject - Unit Test Suite", () => {
   test("Happy Path: monamienet-<id> gives <id>", () => {
     // 1. Arrange
     const projectId = "monamienet-rotasul";
 
     // 2. Act
-    const id = partnerIdForProject(projectId);
+    const id = organizationIdForProject(projectId);
 
     // 3. Assert
     assert.equal(id, "rotasul");
   });
 
-  test("Edge Case: a three-letter partner id is accepted", () => {
+  test("Edge Case: a three-letter organization id is accepted", () => {
     // 1. Arrange
     const projectId = "monamienet-abc";
 
     // 2. Act
-    const id = partnerIdForProject(projectId);
+    const id = organizationIdForProject(projectId);
 
     // 3. Assert
     assert.equal(id, "abc");
@@ -46,7 +46,7 @@ describe("partnerIdForProject - Unit Test Suite", () => {
       const input = projectId;
 
       // 2. Act
-      const action = () => partnerIdForProject(input);
+      const action = () => organizationIdForProject(input);
 
       // 3. Assert
       assert.throws(action, Error);
@@ -86,9 +86,9 @@ describe("rootGroupEmailFor - Unit Test Suite", () => {
   // -------------------------------------------------------------
   // SAD PATH
   // -------------------------------------------------------------
-  // Partner ids are letters only now: digits would make the team number
+  // Organization ids are letters only now: digits would make the team number
   // ambiguous in a group address.
-  test("Sad Path: digits in the partner id throw", () => {
+  test("Sad Path: digits in the organization id throw", () => {
     // 1. Arrange
     const projectId = "monamienet-tur2";
 
@@ -96,7 +96,7 @@ describe("rootGroupEmailFor - Unit Test Suite", () => {
     const action = () => rootGroupEmailFor(projectId);
 
     // 3. Assert
-    assert.throws(action, /invalid partner id/);
+    assert.throws(action, /invalid organization id/);
   });
 
   for (const [label, projectId] of invalidProjects) {
@@ -121,7 +121,7 @@ describe("rootGroupEmailFor - Unit Test Suite", () => {
     const action = () => rootGroupEmailFor(projectId);
 
     // 3. Assert
-    assert.throws(action, /invalid partner id/);
+    assert.throws(action, /invalid organization id/);
   });
 
   const nonStrings = [

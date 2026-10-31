@@ -1,4 +1,4 @@
-// Membership-based rules of a partner project (#159, phase 1), against the
+// Membership-based rules of an organization project (#159, phase 1), against the
 // Firestore and Storage emulators. Organizations, groups and roles live in
 // Firestore documents keyed by personKey (the lowercase-hex SHA-256 of the
 // lowercased e-mail); the rules read them with get() instead of claims.
@@ -33,8 +33,8 @@ const { ref, uploadBytes } = require("firebase/storage");
 
 const root = path.join(__dirname, "..", "..");
 
-const HERE = "partners/rotasul";
-const THERE = "partners/outro";
+const HERE = "organizations/rotasul";
+const THERE = "organizations/outro";
 const GUIAS = `${HERE}/groups/guias`;
 const RECEPCAO = `${HERE}/groups/recepcao`;
 const VENDAS = `${THERE}/groups/vendas`;
@@ -566,7 +566,7 @@ describe("membership rules: logo upload with a Firestore admin - Rules Test Suit
     return bytes;
   };
   const upload = (storage) =>
-    uploadBytes(ref(storage, "partners/rotasul/logo.png"), png(), { contentType: "image/png" });
+    uploadBytes(ref(storage, "organizations/rotasul/logo.png"), png(), { contentType: "image/png" });
 
   test("Happy Path: an administrator in Firestore (no claims) uploads the logo", async () => {
     // 1. Arrange

@@ -4,26 +4,26 @@ const assert = require("node:assert/strict");
 const { capabilitiesFromGroups, hasNoAccess } = require("../capabilities");
 
 const hostsEverything = () => true;
-const hostsOnlyRotasul = (partnerId) => partnerId === "rotasul";
+const hostsOnlyRotasul = (organizationId) => organizationId === "rotasul";
 
-const none = { share: [], watch: [], admin: [], partners: [], ignored: [] };
+const none = { share: [], watch: [], admin: [], organizations: [], ignored: [] };
 
 describe("capabilitiesFromGroups - Unit Test Suite", () => {
   const single = [
     [
       "Happy Path: a share leaf gives share in its team",
       "rotasul01w@monamienet.org",
-      { ...none, share: ["rotasul01"], partners: ["rotasul"] },
+      { ...none, share: ["rotasul01"], organizations: ["rotasul"] },
     ],
     [
       "Happy Path: a watch leaf gives watch in its team",
       "rotasul01r@monamienet.org",
-      { ...none, watch: ["rotasul01"], partners: ["rotasul"] },
+      { ...none, watch: ["rotasul01"], organizations: ["rotasul"] },
     ],
     [
       "Happy Path: the root group makes the person an administrator",
       "rotasul00@monamienet.org",
-      { ...none, admin: ["rotasul"], partners: ["rotasul"] },
+      { ...none, admin: ["rotasul"], organizations: ["rotasul"] },
     ],
     [
       "Edge Case: a direct team group grants nothing and is reported",
@@ -71,12 +71,12 @@ describe("capabilitiesFromGroups - Unit Test Suite", () => {
       share: ["rotasul01", "rotasul02"],
       watch: ["rotasul01", "rotasul03"],
       admin: ["rotasul"],
-      partners: ["rotasul"],
+      organizations: ["rotasul"],
       ignored: ["rotasul04@monamienet.org", "rotasul05@monamienet.org"],
     });
   });
 
-  test("Edge Case: groups of partners not hosted here are left out entirely", () => {
+  test("Edge Case: groups of organizations not hosted here are left out entirely", () => {
     // 1. Arrange
     const groups = [
       { email: "rotasul01w@monamienet.org" },
@@ -90,7 +90,7 @@ describe("capabilitiesFromGroups - Unit Test Suite", () => {
     const caps = capabilitiesFromGroups(groups, hostsOnlyRotasul);
 
     // 3. Assert
-    assert.deepEqual(caps, { ...none, share: ["rotasul01"], partners: ["rotasul"] });
+    assert.deepEqual(caps, { ...none, share: ["rotasul01"], organizations: ["rotasul"] });
   });
 
   for (const [label, value] of [
@@ -127,12 +127,12 @@ describe("capabilitiesFromGroups - Unit Test Suite", () => {
     const caps = capabilitiesFromGroups(groups, hostsEverything);
 
     // 3. Assert
-    assert.deepEqual(caps, { ...none, watch: ["rotasul01"], partners: ["rotasul"] });
+    assert.deepEqual(caps, { ...none, watch: ["rotasul01"], organizations: ["rotasul"] });
   });
 });
 
-describe("capabilitiesFromGroups partners - Unit Test Suite", () => {
-  test("Happy Path: partners lists every hosted partner with a capability, sorted", () => {
+describe("capabilitiesFromGroups organizations - Unit Test Suite", () => {
+  test("Happy Path: organizations lists every hosted organization with a capability, sorted", () => {
     // 1. Arrange
     const groups = [
       { email: "zeta01r@monamienet.org" },
@@ -145,10 +145,10 @@ describe("capabilitiesFromGroups partners - Unit Test Suite", () => {
     const caps = capabilitiesFromGroups(groups, hostsEverything);
 
     // 3. Assert
-    assert.deepEqual(caps.partners, ["alfa", "rotasul", "zeta"]);
+    assert.deepEqual(caps.organizations, ["alfa", "rotasul", "zeta"]);
   });
 
-  test("Edge Case: a direct team group of another partner does not add that partner", () => {
+  test("Edge Case: a direct team group of another organization does not add that organization", () => {
     // 1. Arrange
     const groups = [{ email: "rotasul01w@monamienet.org" }, { email: "outro01@monamienet.org" }];
 
@@ -156,10 +156,10 @@ describe("capabilitiesFromGroups partners - Unit Test Suite", () => {
     const caps = capabilitiesFromGroups(groups, hostsEverything);
 
     // 3. Assert
-    assert.deepEqual(caps.partners, ["rotasul"]);
+    assert.deepEqual(caps.organizations, ["rotasul"]);
   });
 
-  test("Sad Path: a partner not hosted here is not listed", () => {
+  test("Sad Path: an organization not hosted here is not listed", () => {
     // 1. Arrange
     const groups = [{ email: "outro00@monamienet.org" }, { email: "outro01w@monamienet.org" }];
 
@@ -167,7 +167,7 @@ describe("capabilitiesFromGroups partners - Unit Test Suite", () => {
     const caps = capabilitiesFromGroups(groups, hostsOnlyRotasul);
 
     // 3. Assert
-    assert.deepEqual(caps.partners, []);
+    assert.deepEqual(caps.organizations, []);
   });
 });
 

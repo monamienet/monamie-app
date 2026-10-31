@@ -380,7 +380,7 @@ class TrackingController extends GetxController
     ever(firebaseUsers, _onFirebaseUsersUpdated);
 
     // O stream só emite quando um documento muda. Quem parou sem conseguir
-    // gravar `isTracked = false` (sem rede, app encerrado) não gera emissão:
+    // gravar `isPublishing = false` (sem rede, app encerrado) não gera emissão:
     // sem este relógio o marcador ficaria no mapa até alguém mudar.
     _recheckTimer = Timer.periodic(recheck, (_) => _dropUsersNoLongerLive());
 
@@ -752,7 +752,7 @@ class TrackingController extends GetxController
       _service.invoke("setUserInfo", {
         "email": userCtrl.user!.email,
         "name": userCtrl.getUserName(),
-        "grupoAtivo": activeGroupEmail,
+        "groupId": activeGroupEmail,
       });
     });
 
@@ -775,10 +775,10 @@ class TrackingController extends GetxController
     // Informa Firebase que sua posição pode ser visualizada no mapa associada ao grupo ativo.
     // A persistência de localização e histórico é gerenciada exclusivamente pelo ForegroundService.
     try {
-      await FirebaseProvider().updateIsTracked(
+      await FirebaseProvider().updateIsPublishing(
         userCtrl.user!.email,
         true,
-        grupoAtivo: activeGroupEmail,
+        groupId: activeGroupEmail,
       );
     } catch (e) {
       debugPrint(
@@ -805,9 +805,9 @@ class TrackingController extends GetxController
     _service.invoke("stopService");
     isTrackingEnabled.value = false;
     try {
-      await FirebaseProvider().updateIsTracked(userCtrl.user!.email, false);
+      await FirebaseProvider().updateIsPublishing(userCtrl.user!.email, false);
     } catch (e) {
-      debugPrint('[TrackingController] Erro ao desativar isTracked: $e');
+      debugPrint('[TrackingController] Erro ao desativar isPublishing: $e');
     }
   }
 

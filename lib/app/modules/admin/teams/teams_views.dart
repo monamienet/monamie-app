@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_palette.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_palette.dart';
 
 import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
@@ -22,7 +22,8 @@ const _dangerLine = Color(0xFFE8B4AF);
 const _handle = Color(0xFFC9C3D6);
 const _error = Color(0xFFB3261E);
 
-PartnerPalette get _palette => PartnerPalette.fromConfig(Partner.current);
+OrganizationPalette get _palette =>
+    OrganizationPalette.fromConfig(Organization.current);
 
 AppBar _bar(String title, {List<Widget>? actions}) => AppBar(
   backgroundColor: _palette.dark,
@@ -387,7 +388,7 @@ class _CreateTeamViewState extends State<CreateTeamView> {
 /// default theme).
 Color get _roleTone => Color.lerp(_palette.primary, _palette.dark, 0.3)!;
 
-String get _organization => Partner.current?.name ?? 'organização';
+String get _organization => Organization.current?.name ?? 'organização';
 
 /// A bottom sheet with [title], optional [content] and [lines], and a
 /// confirm button that runs [onConfirm] (an error message, or `null` on
@@ -643,7 +644,7 @@ class _TeamViewState extends State<TeamView> {
   Future<void> _loadInvites() async {
     try {
       final invites = await widget.invitesBackend.listForTeam(
-        c.partnerId,
+        c.organizationId,
         widget.number,
       );
       if (mounted) {
@@ -1382,7 +1383,7 @@ class _TeamViewState extends State<TeamView> {
         'O novo convite vale por 14 dias.',
       ],
       onConfirm: () => _inviteOperation(
-        () => widget.invitesBackend.resend(c.partnerId, invite.id),
+        () => widget.invitesBackend.resend(c.organizationId, invite.id),
       ),
     );
     if (ok && mounted) _toast(context, 'Convite reenviado');
@@ -1399,7 +1400,7 @@ class _TeamViewState extends State<TeamView> {
         'Você pode convidar de novo depois.',
       ],
       onConfirm: () => _inviteOperation(
-        () => widget.invitesBackend.cancel(c.partnerId, invite.id),
+        () => widget.invitesBackend.cancel(c.organizationId, invite.id),
       ),
     );
     if (ok && mounted) _toast(context, 'Convite cancelado');
@@ -1447,8 +1448,9 @@ Future<void> openInvite(TeamsController controller, {String? team}) async {
   await Get.to(
     () => InviteView(
       controller: InviteController(
-        partnerId: controller.partnerId,
-        partnerName: Partner.current?.name ?? controller.partnerId,
+        organizationId: controller.organizationId,
+        organizationName:
+            Organization.current?.name ?? controller.organizationId,
         teams: controller.teams.toList(),
         team: team,
         backend: const FirebaseInvitesBackend(),

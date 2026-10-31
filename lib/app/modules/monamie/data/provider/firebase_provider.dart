@@ -4,21 +4,24 @@ import 'package:monamie_app/app/modules/monamie/history/history_month.dart';
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:monamie_app/app/utils/group_email.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
+import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
+import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
 
 class FirebaseProvider {
-  CollectionReference get collectionRef =>
-      CurrentPartnerFirebase.instance.partnerData.collection('usuarios');
+  CollectionReference get collectionRef => CurrentOrganizationFirebase
+      .instance
+      .organizationData
+      .collection(FirestorePaths.positions);
 
   Future<void> adicionarDados(UserModel userLocation) async {
     try {
       await collectionRef.doc(userLocation.email).set({
-        'email': userLocation.email,
-        'lat': userLocation.lat,
-        'lng': userLocation.lng,
-        'timestamp': userLocation.timestamp,
-        'nome': userLocation.nome,
-        'isTracked': userLocation.isTracked,
+        PositionFields.email: userLocation.email,
+        PositionFields.lat: userLocation.lat,
+        PositionFields.lng: userLocation.lng,
+        PositionFields.capturedAt: userLocation.capturedAt,
+        PositionFields.name: userLocation.name,
+        PositionFields.isPublishing: userLocation.isPublishing,
       });
       if (kDebugMode) {
         print("Dados adicionados com sucesso!");
@@ -51,7 +54,10 @@ class FirebaseProvider {
   Stream<List<UserModel>> streamUsersOfGroup(String groupEmail) {
     try {
       return collectionRef
-          .where('grupo_ativo', isEqualTo: normalizeGroupEmail(groupEmail))
+          .where(
+            PositionFields.groupId,
+            isEqualTo: normalizeGroupEmail(groupEmail),
+          )
           .snapshots()
           .map(
             (QuerySnapshot query) => [
@@ -70,7 +76,7 @@ class FirebaseProvider {
         List<UserModel> users = [];
         for (var doc in query.docs) {
           final user = UserModel.fromMap(doc.data() as Map<String, dynamic>);
-          if (user.timestamp == null) continue;
+          if (user.capturedAt == null) continue;
           users.add(user);
         }
         return users;
@@ -96,27 +102,31 @@ class FirebaseProvider {
     }
   }
 
-  Future<void> updateIsTracked(
+  Future<void> updateIsPublishing(
     String email,
-    bool isTracked, {
-    String? grupoAtivo,
+    bool isPublishing, {
+    String? groupId,
   }) async {
     try {
-      final Map<String, dynamic> data = {'isTracked': isTracked};
-      if (grupoAtivo != null) {
-        data['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
+      final Map<String, dynamic> data = {
+        PositionFields.isPublishing: isPublishing,
+      };
+      if (groupId != null) {
+        data[PositionFields.groupId] = normalizeGroupEmail(groupId);
       }
       await collectionRef.doc(email).update(data);
-      debugPrint("Campo isTracked atualizado com sucesso!");
+      debugPrint("Campo isPublishing atualizado com sucesso!");
     } catch (e) {
-      debugPrint("Erro ao atualizar isTracked: $e");
+      debugPrint("Erro ao atualizar isPublishing: $e");
       rethrow;
     }
   }
 
   Future<void> updateHeartbeat(String email) async {
     try {
-      await collectionRef.doc(email).update({'timestamp': DateTime.now()});
+      await collectionRef.doc(email).update({
+        PositionFields.capturedAt: DateTime.now(),
+      });
       debugPrint("Heartbeat atualizado com sucesso!");
     } catch (e) {
       debugPrint("Erro ao atualizar heartbeat: $e");
@@ -125,11 +135,11 @@ class FirebaseProvider {
 
   Future<void> updateLocationAndTimestamp({
     required String email,
-    required String nome,
+    required String name,
     required double lat,
     required double lng,
-    required DateTime timestamp,
-    String? grupoAtivo,
+    required DateTime capturedAt,
+    String? groupId,
   }) async {
     try {
       // The position and its trail point go in one batch, both stamped
@@ -138,35 +148,37 @@ class FirebaseProvider {
       // with the position it records.
       final userDoc = collectionRef.doc(email);
       final Map<String, dynamic> userUpdates = {
-        'email': email,
-        'nome': nome,
-        'lat': lat,
-        'lng': lng,
-        'timestamp': timestamp,
-        'positionAt': FieldValue.serverTimestamp(),
+        PositionFields.email: email,
+        PositionFields.name: name,
+        PositionFields.lat: lat,
+        PositionFields.lng: lng,
+        PositionFields.capturedAt: capturedAt,
+        PositionFields.receivedAt: FieldValue.serverTimestamp(),
       };
       final Map<String, dynamic> pointData = {
-        'lat': lat,
-        'lng': lng,
-        'timestamp': FieldValue.serverTimestamp(),
+        TrailPointFields.lat: lat,
+        TrailPointFields.lng: lng,
+        TrailPointFields.receivedAt: FieldValue.serverTimestamp(),
       };
-      if (grupoAtivo != null) {
-        userUpdates['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
-        pointData['grupo_ativo'] = normalizeGroupEmail(grupoAtivo);
+      if (groupId != null) {
+        userUpdates[PositionFields.groupId] = normalizeGroupEmail(groupId);
+        pointData[TrailPointFields.groupId] = normalizeGroupEmail(groupId);
       }
 
       // The day summary marks the day in the history calendar, so a month
       // costs one read per person and day instead of every point.
       final daySummary = <String, dynamic>{
-        'lastAt': FieldValue.serverTimestamp(),
-        'points': FieldValue.increment(1),
-        'grupo_ativo': ?pointData['grupo_ativo'],
+        TrailDayFields.lastAt: FieldValue.serverTimestamp(),
+        TrailDayFields.pointCount: FieldValue.increment(1),
+        TrailDayFields.groupId: ?pointData[TrailPointFields.groupId],
       };
-      final batch = CurrentPartnerFirebase.instance.firestore.batch()
+      final batch = CurrentOrganizationFirebase.instance.firestore.batch()
         ..update(userDoc, userUpdates)
-        ..set(userDoc.collection('historico_posicoes').doc(), pointData)
+        ..set(userDoc.collection(FirestorePaths.trail).doc(), pointData)
         ..set(
-          userDoc.collection('dias').doc(dayKey(DateTime.now())),
+          userDoc
+              .collection(FirestorePaths.trailDays)
+              .doc(dayKey(DateTime.now())),
           daySummary,
           SetOptions(merge: true),
         );
@@ -191,7 +203,7 @@ class FirebaseProvider {
       for (final email in emails)
         collectionRef
             .doc(email)
-            .collection('dias')
+            .collection(FirestorePaths.trailDays)
             .where(FieldPath.documentId, isGreaterThanOrEqualTo: first)
             .where(FieldPath.documentId, isLessThanOrEqualTo: last)
             .get()
@@ -215,9 +227,12 @@ class FirebaseProvider {
 
     return collectionRef
         .doc(email)
-        .collection('historico_posicoes')
-        .where('timestamp', isGreaterThanOrEqualTo: twentyFourHoursAgo)
-        .orderBy('timestamp', descending: true)
+        .collection(FirestorePaths.trail)
+        .where(
+          TrailPointFields.receivedAt,
+          isGreaterThanOrEqualTo: twentyFourHoursAgo,
+        )
+        .orderBy(TrailPointFields.receivedAt, descending: true)
         .limit(limit)
         .snapshots()
         .map((snapshot) {
@@ -242,10 +257,10 @@ class FirebaseProvider {
 
     final snapshot = await collectionRef
         .doc(email)
-        .collection('historico_posicoes')
-        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-        .where('timestamp', isLessThan: endOfDay)
-        .orderBy('timestamp', descending: true)
+        .collection(FirestorePaths.trail)
+        .where(TrailPointFields.receivedAt, isGreaterThanOrEqualTo: startOfDay)
+        .where(TrailPointFields.receivedAt, isLessThan: endOfDay)
+        .orderBy(TrailPointFields.receivedAt, descending: true)
         .limit(1)
         .get();
 
@@ -261,9 +276,9 @@ class FirebaseProvider {
 
     final snapshot = await collectionRef
         .doc(email)
-        .collection('historico_posicoes')
-        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-        .where('timestamp', isLessThan: endOfDay)
+        .collection(FirestorePaths.trail)
+        .where(TrailPointFields.receivedAt, isGreaterThanOrEqualTo: startOfDay)
+        .where(TrailPointFields.receivedAt, isLessThan: endOfDay)
         .limit(1)
         .get();
 
@@ -282,10 +297,10 @@ class FirebaseProvider {
 
     return collectionRef
         .doc(email)
-        .collection('historico_posicoes')
-        .where('timestamp', isGreaterThanOrEqualTo: startOfDay)
-        .where('timestamp', isLessThan: endOfDay)
-        .orderBy('timestamp', descending: true)
+        .collection(FirestorePaths.trail)
+        .where(TrailPointFields.receivedAt, isGreaterThanOrEqualTo: startOfDay)
+        .where(TrailPointFields.receivedAt, isLessThan: endOfDay)
+        .orderBy(TrailPointFields.receivedAt, descending: true)
         .limit(limit)
         .snapshots()
         .map((snapshot) {

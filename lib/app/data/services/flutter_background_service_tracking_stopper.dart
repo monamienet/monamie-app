@@ -19,13 +19,13 @@ class FlutterBackgroundServiceTrackingStopper
   }) : _injectedService = service,
        _markUntracked =
            markUntracked ??
-           ((email) => FirebaseProvider().updateIsTracked(email, false));
+           ((email) => FirebaseProvider().updateIsPublishing(email, false));
 
   final FlutterBackgroundService? _injectedService;
   final Future<void> Function(String email) _markUntracked;
 
   /// Tempo máximo de espera pela parada do serviço e, separadamente, pela
-  /// escrita de `isTracked` (que nunca completa enquanto o aparelho está
+  /// escrita de `isPublishing` (que nunca completa enquanto o aparelho está
   /// offline).
   final Duration timeout;
   final Duration pollInterval;
@@ -57,7 +57,7 @@ class FlutterBackgroundServiceTrackingStopper
         await _markUntracked(email).timeout(timeout);
       } catch (e) {
         debugPrint(
-          '[BackgroundTrackingStopper] Erro ao desativar isTracked: $e',
+          '[BackgroundTrackingStopper] Erro ao desativar isPublishing: $e',
         );
       }
     }

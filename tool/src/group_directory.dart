@@ -24,7 +24,7 @@ class GroupMember {
 
 /// Reads Google Workspace group memberships.
 ///
-/// Implementations throw a `PartnerToolException` when the group does not
+/// Implementations throw a `OrganizationToolException` when the group does not
 /// exist or cannot be read.
 abstract interface class GroupDirectory {
   Future<List<GroupMember>> members(String groupEmail);

@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/monamie_brand.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/config/partner/partner_icon.dart';
+import 'package:monamie_app/app/config/organization/monamie_brand.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/google_groups_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
@@ -51,11 +51,14 @@ class HomeHeader extends StatelessWidget {
                     onPressed: () => Scaffold.of(context).openDrawer(),
                   ),
                   const SizedBox(width: 4),
-                  PartnerIcon(partner: Partner.current, size: 30),
+                  OrganizationIcon(
+                    organization: Organization.current,
+                    size: 30,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      Partner.current?.name ?? MonAmieBrand.name,
+                      Organization.current?.name ?? MonAmieBrand.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

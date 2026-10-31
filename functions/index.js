@@ -12,10 +12,11 @@ const {
 } = require("./branding");
 const { capabilitiesFromGroups } = require("./capabilities");
 const { parseGroupAddress } = require("./group_address");
-const { COMMUNITY_PROJECT_ID, partnerIdForProject } = require("./root_group");
+const { COMMUNITY_PROJECT_ID, organizationIdForProject } = require("./root_group");
+const { brandingPath } = require("./firestore_paths");
 admin.initializeApp();
 
-// Host of the workspace-groups-gateway, shared by every partner (functions/.env).
+// Host of the workspace-groups-gateway, shared by every organization (functions/.env).
 const BACKEND_HOST = defineString("GROUPS_GATEWAY_HOST");
 
 const GATEWAY_TIMEOUT_MS = 10000;
@@ -25,15 +26,15 @@ const GATEWAY_TIMEOUT_MS = 10000;
  *
  * What a person may do comes from *which* groups they are in (everyone is
  * a plain MEMBER): `<id>NNw` shares in team `<id>NN`, `<id>NNr` watches it,
- * and `<id>00` (an administrator) watches every team and manages the partner. Only the person's direct
+ * and `<id>00` (an administrator) watches every team and manages the organization. Only the person's direct
  * groups are needed: one gateway call, no walk of the group tree.
  *
- * Claims: `{share: [teamKey], watch: [teamKey], admin: [partnerId],
- * partners: [partnerId]}`, where a team key is the team group's local part
- * (`rotasul01`) and `partners` lists the partners where the person has any
- * capability. Only the partners hosted by this project are kept: the one
+ * Claims: `{share: [teamKey], watch: [teamKey], admin: [organizationId],
+ * organizations: [organizationId]}`, where a team key is the team group's local part
+ * (`rotasul01`) and `organizations` lists the organizations where the person has any
+ * capability. Only the organizations hosted by this project are kept: the one
  * named by a Standard project's id, or, in the shared Community project,
- * every partner whose `partners/{id}/config/branding` exists here.
+ * every organization whose `organizations/{id}/config/branding` exists here.
  *
  * Request: `{idToken}` (forwarded to the gateway).
  * Response: the claims set.
@@ -56,9 +57,9 @@ exports.syncClaims = onCall({ invoker: "public", region: "us-central1" }, async 
   }
 
   const groups = await fetchUserGroups(idToken, email);
-  const hosted = await hostedPartners(projectID.value(), groups);
-  const { ignored, ...claims } = capabilitiesFromGroups(groups, (partnerId) =>
-    hosted.has(partnerId)
+  const hosted = await hostedOrganizations(projectID.value(), groups);
+  const { ignored, ...claims } = capabilitiesFromGroups(groups, (organizationId) =>
+    hosted.has(organizationId)
   );
   if (ignored.length > 0) {
     logger.warn(
@@ -71,23 +72,23 @@ exports.syncClaims = onCall({ invoker: "public", region: "us-central1" }, async 
 });
 
 /**
- * The partners of `groups` whose data lives in this project.
+ * The organizations of `groups` whose data lives in this project.
  *
  * @param {string} projectId - This Firebase project
  * @param {Array<{email?: unknown}>} groups - The person's groups
  * @returns {Promise<Set<string>>}
  */
-async function hostedPartners(projectId, groups) {
+async function hostedOrganizations(projectId, groups) {
   if (projectId !== COMMUNITY_PROJECT_ID) {
-    return new Set([partnerIdForProject(projectId)]);
+    return new Set([organizationIdForProject(projectId)]);
   }
   const ids = new Set();
   for (const group of groups) {
     const address = parseGroupAddress(group?.email);
-    if (address) ids.add(address.partnerId);
+    if (address) ids.add(address.organizationId);
   }
   const db = admin.firestore();
-  const refs = [...ids].map((id) => db.doc(`partners/${id}/config/branding`));
+  const refs = [...ids].map((id) => db.doc(brandingPath(id)));
   if (refs.length === 0) return new Set();
   const docs = await db.getAll(...refs);
   return new Set(docs.filter((doc) => doc.exists).map((doc) => doc.ref.parent.parent.id));
@@ -117,25 +118,25 @@ async function fetchUserGroups(idToken, email) {
 }
 
 /**
- * Changes the bound partner's name, theme or logo flag. Owner only.
+ * Changes the bound organization's name, theme or logo flag. Owner only.
  *
- * The partner project's rules cannot read the central theme catalog, so
+ * The organization project's rules cannot read the central theme catalog, so
  * the theme is checked here, against the active themes (public REST read).
  * The logo itself is uploaded by the owner's app to
- * `partners/{id}/logo.png` (storage.rules); `logo: "set"` then bumps
+ * `organizations/{id}/logo.png` (storage.rules); `logo: "set"` then bumps
  * `logoVersion` so every device fetches the new file, and `"removed"`
  * drops it.
  *
- * Request: `{partnerId, name?, themeId?, logo?: "set" | "removed"}`.
+ * Request: `{organizationId, name?, themeId?, logo?: "set" | "removed"}`.
  * Response: the fields written.
  */
 exports.setBranding = onCall({ invoker: "public", region: "us-central1" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Autenticação necessária.");
   }
-  const partnerId = request.data?.partnerId;
+  const organizationId = request.data?.organizationId;
   const admins = request.auth.token.admin;
-  if (typeof partnerId !== "string" || !Array.isArray(admins) || !admins.includes(partnerId)) {
+  if (typeof organizationId !== "string" || !Array.isArray(admins) || !admins.includes(organizationId)) {
     throw new HttpsError("permission-denied", "Só um administrador muda a aparência.");
   }
   let change;
@@ -155,7 +156,7 @@ exports.setBranding = onCall({ invoker: "public", region: "us-central1" }, async
   if (logo === "removed") data.logoVersion = FieldValue.delete();
   await admin
     .firestore()
-    .doc(`partners/${partnerId}/config/branding`)
+    .doc(brandingPath(organizationId))
     .set(data, { merge: true });
   return { ...fields, ...(logo ? { logo } : {}) };
 });

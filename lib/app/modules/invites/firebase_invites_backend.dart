@@ -37,15 +37,15 @@ class FirebaseInvitesBackend implements InvitesBackend {
 
   @override
   Future<InviteSendResult> send(
-    String partnerId, {
-    required String partnerName,
+    String organizationId, {
+    required String organizationName,
     String? team,
     String? firstTeamName,
     required List<({String email, Set<TeamRole> roles})> invites,
   }) async {
     final data = await _call('sendInvites', {
-      'partnerId': partnerId,
-      'partnerName': partnerName,
+      'organizationId': organizationId,
+      'organizationName': organizationName,
       'team': ?team,
       'firstTeamName': ?firstTeamName,
       'invites': [
@@ -77,18 +77,25 @@ class FirebaseInvitesBackend implements InvitesBackend {
   }
 
   @override
-  Future<List<Invite>> listForTeam(String partnerId, String team) async =>
+  Future<List<Invite>> listForTeam(String organizationId, String team) async =>
       _invites(
-        await _call('listInvites', {'partnerId': partnerId, 'team': team}),
+        await _call('listInvites', {
+          'organizationId': organizationId,
+          'team': team,
+        }),
       );
 
   @override
-  Future<void> resend(String partnerId, String inviteId) =>
-      _call('resendInvite', {'partnerId': partnerId, 'inviteId': inviteId});
+  Future<void> resend(String organizationId, String inviteId) => _call(
+    'resendInvite',
+    {'organizationId': organizationId, 'inviteId': inviteId},
+  );
 
   @override
-  Future<void> cancel(String partnerId, String inviteId) =>
-      _call('cancelInvite', {'partnerId': partnerId, 'inviteId': inviteId});
+  Future<void> cancel(String organizationId, String inviteId) => _call(
+    'cancelInvite',
+    {'organizationId': organizationId, 'inviteId': inviteId},
+  );
 
   @override
   Future<List<Invite>> mine() async => _invites(await _call('myInvites', {}));

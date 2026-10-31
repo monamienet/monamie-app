@@ -10,7 +10,7 @@ const PRIVACY = "Sua localização só é compartilhada";
 /** Rita invites ana to Equipe Norte of Rota Sul, valid until Nov 9. */
 function invite(overrides = {}) {
   return {
-    partnerName: "Rota Sul",
+    organizationName: "Rota Sul",
     teamName: "Equipe Norte",
     invitedByName: "Rita Lima",
     invitedByEmail: "dono@x.com",
@@ -28,7 +28,7 @@ function headersOf(raw) {
 }
 
 describe("inviteEmail - Unit Test Suite", () => {
-  test("Happy Path: the subject names who invited and the partner", () => {
+  test("Happy Path: the subject names who invited and the organization", () => {
     // 1. Arrange
     const data = invite();
 
@@ -100,7 +100,7 @@ describe("inviteEmail - Unit Test Suite", () => {
   test("Sad Path: the HTML escapes <, >, & and \" in the names", () => {
     // 1. Arrange
     const data = invite({
-      partnerName: 'A&B <Ltda> "Sul"',
+      organizationName: 'A&B <Ltda> "Sul"',
       invitedByName: "<script>x</script>",
       teamName: "Equipe <b>",
     });

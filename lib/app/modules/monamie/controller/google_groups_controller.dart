@@ -1,35 +1,35 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/config/partner/group_address.dart';
-import 'package:monamie_app/app/config/partner/partner.dart';
-import 'package:monamie_app/app/data/partner/central_team_names.dart';
-import 'package:monamie_app/app/data/partner/partner_membership.dart';
+import 'package:monamie_app/app/config/organization/group_address.dart';
+import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/app/data/organization/central_team_names.dart';
+import 'package:monamie_app/app/data/organization/organization_membership.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/data/repository/google_groups_repository.dart';
 import 'package:monamie_app/app/data/services/capabilities.dart';
 import 'package:monamie_app/app/data/services/monamie_claims_service.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_model.dart';
 import 'package:monamie_app/app/modules/monamie/models/google_group_member_model.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
+import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
 
 class GoogleGroupsController extends GetxController {
   GoogleGroupsController({
     Future<void> Function()? onAccessLost,
-    Future<Map<String, String>> Function(String partnerId)? teamNames,
+    Future<Map<String, String>> Function(String organizationId)? teamNames,
   }) : _onAccessLost =
            onAccessLost ??
-           (() => Get.find<AuthGoogleController>().forgetRemovedPartner()),
+           (() => Get.find<AuthGoogleController>().forgetRemovedOrganization()),
        _teamNames = teamNames ?? fetchTeamNames;
 
-  /// Called when the user no longer belongs to the bound partner.
+  /// Called when the user no longer belongs to the bound organization.
   final Future<void> Function() _onAccessLost;
 
   /// The display names of the teams the person sees, by team key.
-  final Future<Map<String, String>> Function(String partnerId) _teamNames;
+  final Future<Map<String, String>> Function(String organizationId) _teamNames;
 
   final GoogleGroupsRepository _repository = GoogleGroupsRepository();
-  fb.FirebaseAuth get _auth => CurrentPartnerFirebase.instance.auth;
+  fb.FirebaseAuth get _auth => CurrentOrganizationFirebase.instance.auth;
 
   final RxString _loadError = RxString('');
   RxString get loadError => _loadError;
@@ -43,42 +43,44 @@ class GoogleGroupsController extends GetxController {
   RxList<GoogleGroupMember> get highlightedObservedUsers =>
       _highlightedObservedUsers;
 
-  /// What the person may do in the bound partner (from the claims).
+  /// What the person may do in the bound organization (from the claims).
   final Rx<Capabilities> capabilities = const Capabilities().obs;
 
   /// The teams where the person shares their location: the choices when
   /// they start sharing.
   final RxList<GoogleGroupModel> shareTeams = RxList<GoogleGroupModel>();
 
-  /// Whether the person sees any team's map in the bound partner. A
+  /// Whether the person sees any team's map in the bound organization. A
   /// field-only person sees just their own position.
   bool get canWatch {
-    final partner = Partner.current;
-    return partner != null && capabilities.value.canWatchIn(partner.id);
+    final organization = Organization.current;
+    return organization != null &&
+        capabilities.value.canWatchIn(organization.id);
   }
 
   /// Whether the person administers (is an *administrador* of) the bound
-  /// partner: a member of its root group.
+  /// organization: a member of its root group.
   bool get isAdmin {
-    final partner = Partner.current;
-    return partner != null && capabilities.value.isAdminOf(partner.id);
+    final organization = Organization.current;
+    return organization != null &&
+        capabilities.value.isAdminOf(organization.id);
   }
 
   /// The teams where the signed-in person shares their location.
   Future<List<GoogleGroupModel>> getObservableGroupsForUser() async =>
       shareTeams.toList();
 
-  /// Root group of the bound partner: `<id>00@monamienet.org`.
+  /// Root group of the bound organization: `<id>00@monamienet.org`.
   static String get rootGroupEmail {
-    final partner = Partner.current;
-    if (partner == null) {
-      throw StateError('No partner is bound, so there is no root group.');
+    final organization = Organization.current;
+    if (organization == null) {
+      throw StateError('No organization is bound, so there is no root group.');
     }
-    return partner.rootGroupEmail;
+    return organization.rootGroupEmail;
   }
 
   /// The teams whose map the signed-in person sees: the ones they watch,
-  /// or every team of the partner for its administrators.
+  /// or every team of the organization for its administrators.
   final RxList<GoogleGroupModel> _observableGoogleGroups =
       RxList<GoogleGroupModel>();
   List<GoogleGroupModel> get googleGroups => _observableGoogleGroups;
@@ -131,34 +133,34 @@ class GoogleGroupsController extends GetxController {
     return teams.first;
   }
 
-  /// The team keys of [partnerId] among [rootEntities]: the root group's
+  /// The team keys of [organizationId] among [rootEntities]: the root group's
   /// subgroups named `<id>NN@`.
   @visibleForTesting
   static List<String> teamKeysOf(
-    String partnerId,
+    String organizationId,
     List<Map<String, dynamic>> rootEntities,
   ) => [
     for (final entity in rootEntities)
       if (entity['type'] == 'GROUP' && entity['email'] is String)
         if (parseGroupAddress(entity['email'] as String) case final address?
-            when address.partnerId == partnerId &&
+            when address.organizationId == organizationId &&
                 address.level == GroupLevel.team)
           address.teamKey,
   ];
 
-  /// The menu's teams for every team of [partnerId] in [namesByKey]
-  /// (display name by team key), in team order. Keys of another partner,
+  /// The menu's teams for every team of [organizationId] in [namesByKey]
+  /// (display name by team key), in team order. Keys of another organization,
   /// or that are not team keys, are skipped; a blank name falls back to
   /// "Equipe NN", as in [parseTeamNames].
   @visibleForTesting
-  static List<GoogleGroupModel> partnerTeams(
-    String partnerId,
+  static List<GoogleGroupModel> organizationTeams(
+    String organizationId,
     Map<String, String> namesByKey,
   ) {
     final keys = [
       for (final key in namesByKey.keys)
         if (parseGroupAddress(teamEmailForKey(key)) case final address?
-            when address.partnerId == partnerId &&
+            when address.organizationId == organizationId &&
                 address.level == GroupLevel.team &&
                 address.teamKey == key)
           key,
@@ -181,18 +183,18 @@ class GoogleGroupsController extends GetxController {
     return same != null && same.name != current.name ? same : null;
   }
 
-  /// Takes [namesByKey], every team of the bound partner by team key (from
+  /// Takes [namesByKey], every team of the bound organization by team key (from
   /// the administrators' *Equipes* screens), as the teams of the menu, so a
   /// team created, renamed or deleted there shows at once. An administrator
   /// watches every team, so this is the list a new sign-in would read. The
   /// root group's cached members are dropped too, or the next start would
   /// read the old teams from the 7-day cache. Only for administrators.
-  Future<void> adoptPartnerTeams(Map<String, String> namesByKey) async {
-    final partner = Partner.current;
-    if (partner == null || !isAdmin) return;
-    final teams = partnerTeams(partner.id, namesByKey);
+  Future<void> adoptOrganizationTeams(Map<String, String> namesByKey) async {
+    final organization = Organization.current;
+    if (organization == null || !isAdmin) return;
+    final teams = organizationTeams(organization.id, namesByKey);
     _observableGoogleGroups.assignAll(teams);
-    await _repository.forgetGroupEntities(partner.rootGroupEmail);
+    await _repository.forgetGroupEntities(organization.rootGroupEmail);
 
     final current = selectedGroup.value;
     if (teams.isEmpty && current != null) {
@@ -248,15 +250,15 @@ class GoogleGroupsController extends GetxController {
         forceRefresh: forceRefresh,
       );
 
-      // Removed from every group of the partner: forget it.
-      final partner = Partner.current;
-      if (partner == null) return;
-      if (!belongsToPartner(partner.id, userGroups)) {
+      // Removed from every group of the organization: forget it.
+      final organization = Organization.current;
+      if (organization == null) return;
+      if (!belongsToOrganization(organization.id, userGroups)) {
         await _onAccessLost();
         return;
       }
       // Asked while the claims sync, which it does not depend on.
-      final names = _teamNamesOrNone(partner.id);
+      final names = _teamNamesOrNone(organization.id);
 
       // 2. Capabilities decide which teams the person sees and shares in.
       // Synced on every start, not only at sign-in: the binding stays on the
@@ -267,14 +269,19 @@ class GoogleGroupsController extends GetxController {
           await MonAmieClaimsService.readClaims() ??
           const Capabilities();
       capabilities.value = caps;
-      final partnerId = partner.id;
+      final organizationId = organization.id;
       _observableGoogleGroups.assignAll(
         teamsFor(
-          caps.watchTeamsIn(partnerId, teamKeysOf(partnerId, rootEntities)),
+          caps.watchTeamsIn(
+            organizationId,
+            teamKeysOf(organizationId, rootEntities),
+          ),
           await names,
         ),
       );
-      shareTeams.assignAll(teamsFor(caps.shareTeamsIn(partnerId), await names));
+      shareTeams.assignAll(
+        teamsFor(caps.shareTeamsIn(organizationId), await names),
+      );
 
       // Someone who watches opens straight onto a team, not an empty panel.
       final next = teamToObserve(_observableGoogleGroups, selectedGroup.value);
@@ -290,13 +297,13 @@ class GoogleGroupsController extends GetxController {
 
   /// The team names, or none when they cannot be read now: the menu then
   /// shows "Equipe NN" instead of failing the whole load.
-  Future<Map<String, String>> _teamNamesOrNone(String partnerId) async {
+  Future<Map<String, String>> _teamNamesOrNone(String organizationId) async {
     try {
-      final names = await _teamNames(partnerId);
-      debugPrint('Team names of $partnerId: $names');
+      final names = await _teamNames(organizationId);
+      debugPrint('Team names of $organizationId: $names');
       return names;
     } catch (e) {
-      debugPrint('Could not read the team names of $partnerId: $e');
+      debugPrint('Could not read the team names of $organizationId: $e');
       return const {};
     }
   }

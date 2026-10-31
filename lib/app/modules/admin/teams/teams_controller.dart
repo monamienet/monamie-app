@@ -9,15 +9,15 @@ import 'teams_backend.dart';
 /// drives the pending states; it always resets in `finally`.
 class TeamsController extends GetxController {
   TeamsController({
-    required this.partnerId,
+    required this.organizationId,
     required TeamsBackend backend,
     this.onTeamsChanged,
   }) : _backend = backend;
 
-  final String partnerId;
+  final String organizationId;
   final TeamsBackend _backend;
 
-  /// Called with every team of the partner each time [teams] is read or
+  /// Called with every team of the organization each time [teams] is read or
   /// changed, so the map's team menu follows them without a new sign-in.
   final void Function(List<Team> teams)? onTeamsChanged;
 
@@ -49,7 +49,7 @@ class TeamsController extends GetxController {
     isLoading.value = true;
     errorMessage.value = '';
     try {
-      teams.assignAll(await _backend.list(partnerId));
+      teams.assignAll(await _backend.list(organizationId));
       onTeamsChanged?.call(teams.toList());
     } on TeamsException catch (e) {
       errorMessage.value = e.message;
@@ -84,7 +84,7 @@ class TeamsController extends GetxController {
 
   /// Creates a team; returns it, or `null` on failure.
   Future<Team?> create(String name) => _guarded(() async {
-    final team = await _backend.create(partnerId, name.trim());
+    final team = await _backend.create(organizationId, name.trim());
     teams.add(team);
     onTeamsChanged?.call(teams.toList());
     return team;
@@ -92,7 +92,7 @@ class TeamsController extends GetxController {
 
   Future<bool> rename(String number, String name) async =>
       await _guarded(() async {
-        await _backend.rename(partnerId, number, name.trim());
+        await _backend.rename(organizationId, number, name.trim());
         await load();
         return true;
       }) ??
@@ -100,11 +100,11 @@ class TeamsController extends GetxController {
 
   Future<({List<String> loses, List<String> stays})?> deletionImpact(
     String number,
-  ) => _guarded(() => _backend.deletionImpact(partnerId, number));
+  ) => _guarded(() => _backend.deletionImpact(organizationId, number));
 
   Future<bool> delete(String number) async =>
       await _guarded(() async {
-        await _backend.delete(partnerId, number);
+        await _backend.delete(organizationId, number);
         teams.removeWhere((t) => t.number == number);
         onTeamsChanged?.call(teams.toList());
         return true;
@@ -122,7 +122,7 @@ class TeamsController extends GetxController {
       return false;
     }
     return await _guarded(() async {
-          await _backend.setRoles(partnerId, number, email, roles);
+          await _backend.setRoles(organizationId, number, email, roles);
           await load();
           return true;
         }) ??
@@ -131,7 +131,7 @@ class TeamsController extends GetxController {
 
   Future<bool> remove(String number, String email) async =>
       await _guarded(() async {
-        await _backend.remove(partnerId, number, email);
+        await _backend.remove(organizationId, number, email);
         await load();
         return true;
       }) ??

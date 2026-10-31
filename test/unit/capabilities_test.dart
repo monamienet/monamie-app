@@ -160,7 +160,7 @@ void main() {
   group('Capabilities.isAdminOf - Unit Test Suite', () {
     final cases = <(String, Capabilities, String, bool)>[
       (
-        'Happy Path: admin lists the partner',
+        'Happy Path: admin lists the organization',
         const Capabilities(admin: {'rotasul'}),
         'rotasul',
         true,
@@ -172,19 +172,19 @@ void main() {
         false,
       ),
       (
-        'Sad Path: administering another partner is not administering this one',
+        'Sad Path: administering another organization is not administering this one',
         const Capabilities(admin: {'outro'}),
         'rotasul',
         false,
       ),
     ];
-    for (final (label, caps, partnerId, expected) in cases) {
+    for (final (label, caps, organizationId, expected) in cases) {
       test(label, () {
         // 1. Arrange
         final input = caps;
 
         // 2. Act
-        final admin = input.isAdminOf(partnerId);
+        final admin = input.isAdminOf(organizationId);
 
         // 3. Assert
         expect(admin, expected);
@@ -195,12 +195,12 @@ void main() {
   group('Capabilities.canWatchIn - Unit Test Suite', () {
     final cases = <(String, Capabilities, bool)>[
       (
-        'Happy Path: an administrator watches in the partner',
+        'Happy Path: an administrator watches in the organization',
         const Capabilities(admin: {'rotasul'}),
         true,
       ),
       (
-        'Happy Path: watching one team is watching in the partner',
+        'Happy Path: watching one team is watching in the organization',
         const Capabilities(watch: {'rotasul02'}),
         true,
       ),
@@ -210,7 +210,7 @@ void main() {
         false,
       ),
       (
-        'Sad Path: watching a team of another partner is not enough',
+        'Sad Path: watching a team of another organization is not enough',
         const Capabilities(watch: {'outro01'}, admin: {'outro'}),
         false,
       ),
@@ -237,7 +237,7 @@ void main() {
         true,
       ),
       (
-        'Happy Path: administering the team\'s partner',
+        'Happy Path: administering the team\'s organization',
         const Capabilities(admin: {'rotasul'}),
         true,
       ),
@@ -247,12 +247,12 @@ void main() {
         false,
       ),
       (
-        'Sad Path: watching another team of the same partner',
+        'Sad Path: watching another team of the same organization',
         const Capabilities(watch: {'rotasul02'}),
         false,
       ),
       (
-        'Sad Path: administering another partner',
+        'Sad Path: administering another organization',
         const Capabilities(admin: {'outro'}),
         false,
       ),
@@ -272,7 +272,7 @@ void main() {
   });
 
   group('Capabilities.shareTeamsIn - Unit Test Suite', () {
-    test('Happy Path: the partner\'s share teams, sorted', () {
+    test('Happy Path: the organization\'s share teams, sorted', () {
       // 1. Arrange
       const caps = Capabilities(share: {'rotasul03', 'rotasul01'});
 
@@ -283,7 +283,7 @@ void main() {
       expect(teams, ['rotasul01', 'rotasul03']);
     });
 
-    test('Edge Case: teams of other partners are left out', () {
+    test('Edge Case: teams of other organizations are left out', () {
       // 1. Arrange
       const caps = Capabilities(share: {'outro01', 'rotasul02'});
 
@@ -294,7 +294,7 @@ void main() {
       expect(teams, ['rotasul02']);
     });
 
-    test('Sad Path: administering the partner gives no share teams', () {
+    test('Sad Path: administering the organization gives no share teams', () {
       // 1. Arrange
       const caps = Capabilities(admin: {'rotasul'}, watch: {'rotasul01'});
 
@@ -308,7 +308,7 @@ void main() {
 
   group('Capabilities.watchTeamsIn - Unit Test Suite', () {
     test(
-      'Happy Path: an administrator sees every team of the partner, sorted',
+      'Happy Path: an administrator sees every team of the organization, sorted',
       () {
         // 1. Arrange
         const caps = Capabilities(admin: {'rotasul'});

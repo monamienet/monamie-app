@@ -33,11 +33,11 @@ void main() {
 
         final activeUser = UserModel(
           email: 'user1@monamienet.org',
-          nome: 'User 1',
+          name: 'User 1',
           lat: -22.90,
           lng: -43.13,
-          isTracked: true,
-          timestamp: DateTime.now(),
+          isPublishing: true,
+          capturedAt: DateTime.now(),
         );
 
         // 2. Act
@@ -64,11 +64,11 @@ void main() {
 
         final outsideUser = UserModel(
           email: 'other_user@monamienet.org',
-          nome: 'Other',
+          name: 'Other',
           lat: -22.90,
           lng: -43.13,
-          isTracked: true,
-          timestamp: DateTime.now(),
+          isPublishing: true,
+          capturedAt: DateTime.now(),
         );
 
         // 2. Act
@@ -93,7 +93,7 @@ void main() {
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
-        final user = UserModel(email: 'user1@monamienet.org', nome: 'User 1');
+        final user = UserModel(email: 'user1@monamienet.org', name: 'User 1');
 
         final animatedMarkerPositions = <String, LatLng>{
           'user1@monamienet.org': const LatLng(-22.90, -43.13),
@@ -121,7 +121,7 @@ void main() {
         ];
         final observedEmails = observedMembers.map((m) => m.email).toSet();
 
-        final user = UserModel(email: 'user2@monamienet.org', nome: 'User 2');
+        final user = UserModel(email: 'user2@monamienet.org', name: 'User 2');
 
         final animatedMarkerPositions = <String, LatLng>{
           'user1@monamienet.org': const LatLng(-22.90, -43.13),
@@ -200,27 +200,27 @@ void main() {
         // 2. Act
         final updateData = <String, dynamic>{
           'email': email,
-          'nome': nome,
+          'name': nome,
           'lat': lat,
           'lng': lng,
-          'timestamp': now,
-          'grupo_ativo': activeGroup,
+          'capturedAt': now,
+          'groupId': activeGroup,
         };
 
         final trackedData = <String, dynamic>{
-          'isTracked': true,
-          'grupo_ativo': activeGroup,
+          'isPublishing': true,
+          'groupId': activeGroup,
         };
 
         // 3. Assert
         expect(updateData['email'], email);
         expect(updateData['lat'], lat);
         expect(updateData['lng'], lng);
-        expect(updateData['timestamp'], now);
-        expect(updateData['grupo_ativo'], activeGroup);
+        expect(updateData['capturedAt'], now);
+        expect(updateData['groupId'], activeGroup);
 
-        expect(trackedData['isTracked'], isTrue);
-        expect(trackedData['grupo_ativo'], activeGroup);
+        expect(trackedData['isPublishing'], isTrue);
+        expect(trackedData['groupId'], activeGroup);
       },
     );
   });

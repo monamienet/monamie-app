@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'firestore_documents.dart';
-import 'partners.dart';
+import 'organizations.dart';
 
 /// [FirestoreDocuments] over the Firestore REST API (v1).
 class HttpFirestoreDocuments implements FirestoreDocuments {
@@ -87,7 +87,7 @@ void _checkStatus(
   String path,
 ) {
   if (response.statusCode == 200) return;
-  throw PartnerToolException(
+  throw OrganizationToolException(
     "Could not $action '$path' in project '$projectId' "
     '(HTTP ${response.statusCode}). Check that the project exists, that '
     'Firestore is enabled and that your account (`gcloud auth login`) may '

@@ -9,7 +9,7 @@ import 'account_deletion_backend.dart';
 class MyAccountController extends GetxController {
   MyAccountController({
     required AccountDeletionBackend backend,
-    required this.partnerId,
+    required this.organizationId,
     required Future<bool> Function() checkOwner,
     required Future<void> Function(AccountDeletion) onDeleted,
   }) : _backend = backend,
@@ -21,9 +21,9 @@ class MyAccountController extends GetxController {
   final Future<void> Function(AccountDeletion) _onDeleted;
 
   /// The bound organization.
-  final String partnerId;
+  final String organizationId;
 
-  /// Whether the person owns [partnerId]; `null` while it is being read or
+  /// Whether the person owns [organizationId]; `null` while it is being read or
   /// when it could not be read, and then nothing can be deleted.
   final RxnBool isOwner = RxnBool();
   final RxBool isCheckingOwner = false.obs;
@@ -62,7 +62,7 @@ class MyAccountController extends GetxController {
     null => false,
     final owner =>
       !isDeleting.value &&
-          (!owner || confirmsId(confirmation.value, partnerId)),
+          (!owner || confirmsId(confirmation.value, organizationId)),
   };
 
   /// "Excluir conta" / "Excluir conta e organização".
@@ -72,7 +72,7 @@ class MyAccountController extends GetxController {
     errorMessage.value = '';
     try {
       final deletion = await _backend.request(
-        confirmIds: isOwner.value == true ? [partnerId] : const [],
+        confirmIds: isOwner.value == true ? [organizationId] : const [],
       );
       await _onDeleted(deletion);
     } on AccountDeletionException catch (e) {

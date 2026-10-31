@@ -6,7 +6,7 @@ abstract class Routes {
   Routes._();
   static const LOGIN = _Paths.LOGIN;
   static const MONAMIE = _Paths.MONAMIE;
-  static const PARTNER_PICKER = _Paths.PARTNER_PICKER;
+  static const ORGANIZATION_PICKER = _Paths.ORGANIZATION_PICKER;
   static const NO_ORGANIZATION = _Paths.NO_ORGANIZATION;
   static const WELCOME = _Paths.WELCOME;
   static const APPEARANCE = _Paths.APPEARANCE;
@@ -20,7 +20,7 @@ abstract class _Paths {
   _Paths._();
   static const LOGIN = '/login';
   static const MONAMIE = '/monamie';
-  static const PARTNER_PICKER = '/partner';
+  static const ORGANIZATION_PICKER = '/organization';
   static const NO_ORGANIZATION = '/sem-organizacao';
   static const WELCOME = '/boas-vindas';
   static const APPEARANCE = '/admin/appearance';

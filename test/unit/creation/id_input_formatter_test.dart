@@ -32,27 +32,33 @@ void main() {
 
         // 3. Assert
         expect(result.text, expected);
-        expect(result.selection, TextSelection.collapsed(offset: expected.length));
+        expect(
+          result.selection,
+          TextSelection.collapsed(offset: expected.length),
+        );
         expect(calls, [true]);
       });
     }
 
-    test('text over the maximum length is truncated like suggestPartnerId', () {
-      // 1. Arrange
-      final long = List.filled(60, 'a').join();
-      final max = suggestPartnerId(long).length;
-      final calls = <bool>[];
-      final formatter = IdInputFormatter(calls.add);
+    test(
+      'text over the maximum length is truncated like suggestOrganizationId',
+      () {
+        // 1. Arrange
+        final long = List.filled(60, 'a').join();
+        final max = suggestOrganizationId(long).length;
+        final calls = <bool>[];
+        final formatter = IdInputFormatter(calls.add);
 
-      // 2. Act
-      final result = formatter.formatEditUpdate(old, _typed(long));
+        // 2. Act
+        final result = formatter.formatEditUpdate(old, _typed(long));
 
-      // 3. Assert
-      expect(max, lessThan(60));
-      expect(result.text.length, max);
-      expect(result.selection, TextSelection.collapsed(offset: max));
-      expect(calls, [true]);
-    });
+        // 3. Assert
+        expect(max, lessThan(60));
+        expect(result.text.length, max);
+        expect(result.selection, TextSelection.collapsed(offset: max));
+        expect(calls, [true]);
+      },
+    );
 
     test('a change in the middle still puts the caret at the end', () {
       // 1. Arrange

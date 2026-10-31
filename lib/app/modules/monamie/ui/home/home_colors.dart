@@ -1,6 +1,6 @@
 import 'package:flutter/painting.dart';
 
-/// Neutral colors of the home screen, the same for every partner. The brand
+/// Neutral colors of the home screen, the same for every organization. The brand
 /// colors (header, accents) come from `AppColors`, which follows the theme.
 abstract final class HomeColors {
   /// Primary text.

@@ -4,25 +4,25 @@ import 'team.dart';
 /// screens are tested with a fake. Every method throws [TeamsException]
 /// with a message for an administrator.
 abstract interface class TeamsBackend {
-  Future<List<Team>> list(String partnerId);
-  Future<Team> create(String partnerId, String name);
-  Future<void> rename(String partnerId, String team, String name);
+  Future<List<Team>> list(String organizationId);
+  Future<Team> create(String organizationId, String name);
+  Future<void> rename(String organizationId, String team, String name);
 
   /// Who would lose access to the organization if [team] were deleted
   /// (people in no other team), and who stays.
   Future<({List<String> loses, List<String> stays})> deletionImpact(
-    String partnerId,
+    String organizationId,
     String team,
   );
 
-  Future<void> delete(String partnerId, String team);
+  Future<void> delete(String organizationId, String team);
   Future<void> setRoles(
-    String partnerId,
+    String organizationId,
     String team,
     String email,
     Set<TeamRole> roles,
   );
-  Future<void> remove(String partnerId, String team, String email);
+  Future<void> remove(String organizationId, String team, String email);
 }
 
 /// A team operation that failed, in words for an administrator.

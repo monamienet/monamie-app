@@ -3,7 +3,7 @@ import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/data/firebase/current_partner_firebase.dart';
+import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
 
 class LoginController extends GetxController {
   late final AuthGoogleController _loginGoogleController;
@@ -39,9 +39,9 @@ class LoginController extends GetxController {
 
   Future<bool> hasActiveGoogleBond() async {
     try {
-      // No bound partner: the user must sign in and pick one first.
-      if (!CurrentPartnerFirebase.isSet) return false;
-      final currentUser = CurrentPartnerFirebase.instance.auth.currentUser;
+      // No bound organization: the user must sign in and pick one first.
+      if (!CurrentOrganizationFirebase.isSet) return false;
+      final currentUser = CurrentOrganizationFirebase.instance.auth.currentUser;
       final storedUser = await userGoogleRepository.getUserGoogleModel();
       final hasStoredUser = storedUser != null && storedUser.email.isNotEmpty;
       return currentUser != null && hasStoredUser;

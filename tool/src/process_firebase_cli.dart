@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'firebase_cli.dart';
-import 'partners.dart';
+import 'organizations.dart';
 
 /// Hint appended to every failure: the CLI's own messages rarely say that the
 /// cause is a missing project, sign-in or permission. Google answers 403 both
@@ -102,7 +102,7 @@ class ProcessFirebaseCli implements FirebaseCli {
         '--non-interactive',
       ], runInShell: Platform.isWindows);
     } on ProcessException {
-      throw PartnerToolException(
+      throw OrganizationToolException(
         "Could not run '$executable'. Install the Firebase CLI: "
         'npm install -g firebase-tools',
       );
@@ -111,7 +111,7 @@ class ProcessFirebaseCli implements FirebaseCli {
     // code is only reported when stdout has no envelope.
     final stdout = result.stdout as String;
     if (result.exitCode != 0 && !_hasEnvelope(stdout)) {
-      throw PartnerToolException(
+      throw OrganizationToolException(
         "'$executable ${args.first}' failed with exit code "
         '${result.exitCode}. ${_accessHint(projectId)}',
       );
@@ -122,7 +122,7 @@ class ProcessFirebaseCli implements FirebaseCli {
 
 /// Returns the apps in the `--json` output of `firebase apps:list ANDROID`.
 ///
-/// Throws a [PartnerToolException] when the CLI reported an error or the
+/// Throws a [OrganizationToolException] when the CLI reported an error or the
 /// output is not the expected envelope. [projectId], when given, is named in
 /// the error message.
 List<FirebaseAndroidApp> parseAppsListOutput(
@@ -146,7 +146,7 @@ List<FirebaseAndroidApp> parseAppsListOutput(
 /// Returns the `google-services.json` contents in the `--json` output of
 /// `firebase apps:sdkconfig ANDROID <appId>`.
 ///
-/// Throws a [PartnerToolException] when the CLI reported an error or the
+/// Throws a [OrganizationToolException] when the CLI reported an error or the
 /// output is not the expected envelope. Messages never include the contents.
 /// [projectId], when given, is named in the error message.
 String parseSdkConfigOutput(String stdout, {String? projectId}) {
@@ -177,7 +177,7 @@ Object? _envelopeResult(String stdout, String command, String? projectId) {
     case {'status': 'success', 'result': final result}:
       return result;
     case {'status': 'error', 'error': final String error}:
-      throw PartnerToolException(
+      throw OrganizationToolException(
         "'firebase $command' failed"
         "${projectId == null ? '' : " for project '$projectId'"}: "
         '$error ${_accessHint(projectId)}',
@@ -187,7 +187,8 @@ Object? _envelopeResult(String stdout, String command, String? projectId) {
   }
 }
 
-PartnerToolException _unexpectedOutput(String command) => PartnerToolException(
-  "Unexpected output from 'firebase $command --json'. "
-  'Expected firebase-tools 15.x.',
-);
+OrganizationToolException _unexpectedOutput(String command) =>
+    OrganizationToolException(
+      "Unexpected output from 'firebase $command --json'. "
+      'Expected firebase-tools 15.x.',
+    );

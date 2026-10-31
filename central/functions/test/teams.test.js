@@ -146,10 +146,10 @@ describe("nextTeamNumber - Unit Test Suite", () => {
 describe("teamGroupEmails - Unit Test Suite", () => {
   test("Happy Path: team 07 gives the team, watch and share groups", () => {
     // 1. Arrange
-    const partnerId = "rotasul";
+    const organizationId = "rotasul";
 
     // 2. Act
-    const emails = teamGroupEmails(partnerId, "07");
+    const emails = teamGroupEmails(organizationId, "07");
 
     // 3. Assert
     assert.deepEqual(emails, {
@@ -161,10 +161,10 @@ describe("teamGroupEmails - Unit Test Suite", () => {
 
   test("Edge Case: team 99 gives the last groups", () => {
     // 1. Arrange
-    const partnerId = "rotasul";
+    const organizationId = "rotasul";
 
     // 2. Act
-    const emails = teamGroupEmails(partnerId, "99");
+    const emails = teamGroupEmails(organizationId, "99");
 
     // 3. Assert
     assert.deepEqual(emails, {

@@ -40,47 +40,47 @@ class FakeTeamsBackend implements TeamsBackend {
   }
 
   @override
-  Future<List<Team>> list(String partnerId) async {
-    calls.add('list:$partnerId');
+  Future<List<Team>> list(String organizationId) async {
+    calls.add('list:$organizationId');
     return teams;
   }
 
   @override
-  Future<Team> create(String partnerId, String name) async {
-    await _write('create:$partnerId:$name');
+  Future<Team> create(String organizationId, String name) async {
+    await _write('create:$organizationId:$name');
     return serra;
   }
 
   @override
-  Future<void> rename(String partnerId, String team, String name) =>
-      _write('rename:$partnerId:$team:$name');
+  Future<void> rename(String organizationId, String team, String name) =>
+      _write('rename:$organizationId:$team:$name');
 
   @override
   Future<({List<String> loses, List<String> stays})> deletionImpact(
-    String partnerId,
+    String organizationId,
     String team,
   ) async {
-    await _write('deletionImpact:$partnerId:$team');
+    await _write('deletionImpact:$organizationId:$team');
     return (loses: ['ana@x.com'], stays: <String>[]);
   }
 
   @override
-  Future<void> delete(String partnerId, String team) =>
-      _write('delete:$partnerId:$team');
+  Future<void> delete(String organizationId, String team) =>
+      _write('delete:$organizationId:$team');
 
   @override
   Future<void> setRoles(
-    String partnerId,
+    String organizationId,
     String team,
     String email,
     Set<TeamRole> roles,
   ) => _write(
-    'setRoles:$partnerId:$team:$email:${(roles.map((r) => r.name).toList()..sort()).join(',')}',
+    'setRoles:$organizationId:$team:$email:${(roles.map((r) => r.name).toList()..sort()).join(',')}',
   );
 
   @override
-  Future<void> remove(String partnerId, String team, String email) =>
-      _write('remove:$partnerId:$team:$email');
+  Future<void> remove(String organizationId, String team, String email) =>
+      _write('remove:$organizationId:$team:$email');
 }
 
 late FakeTeamsBackend backend;
@@ -88,7 +88,10 @@ late FakeTeamsBackend backend;
 /// A started controller for Rota Sul with [norte] and [leste] loaded and
 /// the backend's call log cleared.
 Future<TeamsController> loadedController() async {
-  final controller = TeamsController(partnerId: 'rotasul', backend: backend);
+  final controller = TeamsController(
+    organizationId: 'rotasul',
+    backend: backend,
+  );
   controller.onStart();
   await pumpEventQueue();
   backend.calls.clear();
@@ -100,7 +103,7 @@ Future<TeamsController> loadedController() async {
 Future<(TeamsController, List<List<Team>>)> recordingController() async {
   final received = <List<Team>>[];
   final controller = TeamsController(
-    partnerId: 'rotasul',
+    organizationId: 'rotasul',
     backend: backend,
     onTeamsChanged: received.add,
   );
@@ -118,10 +121,10 @@ void main() {
   });
 
   group('TeamsController.onInit - Unit Test Suite', () {
-    test('Happy Path: starting loads the partner teams', () async {
+    test('Happy Path: starting loads the organization teams', () async {
       // 1. Arrange
       final controller = TeamsController(
-        partnerId: 'rotasul',
+        organizationId: 'rotasul',
         backend: backend,
       );
 
@@ -152,7 +155,7 @@ void main() {
         // 1. Arrange
         backend = _FailingListBackend();
         final controller = TeamsController(
-          partnerId: 'rotasul',
+          organizationId: 'rotasul',
           backend: backend,
         );
 
@@ -387,7 +390,7 @@ void main() {
       // 1. Arrange
       final received = <List<Team>>[];
       final controller = TeamsController(
-        partnerId: 'rotasul',
+        organizationId: 'rotasul',
         backend: backend,
         onTeamsChanged: received.add,
       );
@@ -407,7 +410,7 @@ void main() {
       backend.teams = [];
       final received = <List<Team>>[];
       final controller = TeamsController(
-        partnerId: 'rotasul',
+        organizationId: 'rotasul',
         backend: backend,
         onTeamsChanged: received.add,
       );
@@ -425,7 +428,7 @@ void main() {
       backend = _FailingListBackend();
       final received = <List<Team>>[];
       final controller = TeamsController(
-        partnerId: 'rotasul',
+        organizationId: 'rotasul',
         backend: backend,
         onTeamsChanged: received.add,
       );
@@ -571,8 +574,8 @@ void main() {
 /// A backend whose `list` fails with a [TeamsException].
 class _FailingListBackend extends FakeTeamsBackend {
   @override
-  Future<List<Team>> list(String partnerId) async {
-    calls.add('list:$partnerId');
+  Future<List<Team>> list(String organizationId) async {
+    calls.add('list:$organizationId');
     throw const TeamsException('Sem permissão.');
   }
 }
