@@ -25,7 +25,7 @@ const _error = Color(0xFFB3261E);
 OrganizationPalette get _palette =>
     OrganizationPalette.fromConfig(Organization.current);
 
-AppBar _bar(String title, {List<Widget>? actions}) => AppBar(
+AppBar _bar(String title) => AppBar(
   backgroundColor: _palette.dark,
   foregroundColor: _palette.onDark,
   toolbarHeight: 64,
@@ -36,7 +36,6 @@ AppBar _bar(String title, {List<Widget>? actions}) => AppBar(
     color: _palette.onDark,
   ),
   centerTitle: false,
-  actions: actions,
 );
 
 Widget _primaryButton({
@@ -127,27 +126,7 @@ class GroupsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.white,
-    appBar: _bar(
-      'Grupos',
-      actions: [
-        if (controller.isAdmin)
-          Obx(
-            () => Padding(
-              padding: const EdgeInsets.only(right: 20),
-              child: Center(
-                child: Text(
-                  controller.countLabel,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: _palette.light,
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    ),
+    appBar: _bar('Grupos'),
     body: Column(
       children: [
         Expanded(
@@ -197,19 +176,13 @@ class GroupsView extends StatelessWidget {
             child: SafeArea(
               top: false,
               minimum: const EdgeInsets.only(bottom: 32),
-              child: Obx(
-                () => _primaryButton(
-                  label: 'Criar grupo',
-                  busy: false,
-                  busyLabel: '',
-                  icon: Icons.add,
-                  onPressed:
-                      controller.groups.length >= GroupsController.maxGroups
-                      ? null
-                      : () => Get.to(
-                          () => CreateGroupView(controller: controller),
-                        ),
-                ),
+              child: _primaryButton(
+                label: 'Criar grupo',
+                busy: false,
+                busyLabel: '',
+                icon: Icons.add,
+                onPressed: () =>
+                    Get.to(() => CreateGroupView(controller: controller)),
               ),
             ),
           ),

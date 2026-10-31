@@ -108,17 +108,6 @@ void main() {
       expect(controller.isLoading.value, isFalse);
     });
 
-    test('Edge Case: no groups read "0 de 99"', () async {
-      // 1. Arrange
-      backend.groups = [];
-
-      // 2. Act
-      final controller = await loadedController();
-
-      // 3. Assert
-      expect(controller.countLabel, '0 de 99');
-    });
-
     test(
       'Sad Path: a failed load shows the message and leaves no team',
       () async {
@@ -139,19 +128,6 @@ void main() {
         expect(controller.isLoading.value, isFalse);
       },
     );
-  });
-
-  group('GroupsController.countLabel - Unit Test Suite', () {
-    test('Happy Path: two groups read "2 de 99"', () async {
-      // 1. Arrange
-      final controller = await loadedController();
-
-      // 2. Act
-      final label = controller.countLabel;
-
-      // 3. Assert
-      expect(label, '2 de 99');
-    });
   });
 
   group('GroupsController.nameProblem - Unit Test Suite', () {
