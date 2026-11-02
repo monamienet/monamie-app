@@ -122,7 +122,7 @@ Essa branch entrou em `main` pelo PR #185 (`61baf74`). Conferido no mesmo dia: `
 - Espelhar exatamente `lib/` e `tool/` dentro de `test/`, como manda a skill `dart-add-unit-test`:
   - `lib/app/modules/admin/groups/groups_controller.dart` → `test/app/modules/admin/groups/groups_controller_test.dart`;
   - `tool/src/activate_command.dart` → `test/tool/src/activate_command_test.dart`.
-- No mesmo commit, ajustar os imports relativos: os dos testes de `tool/` e os seis `'../support/test_organization.dart'` dos testes do app. Sem isso, o commit de renomeação não compila. `test/flutter_test_config.dart` e `test/support/` ficam onde estão; o `flutter_test_config.dart` já vale para todas as subpastas. `test/unit/support/fake_firebase_cli.dart` some no segundo commit, por ser um *fake*.
+- No mesmo commit, ajustar os imports relativos: os dos testes de `tool/` e os seis `'../support/test_organization.dart'` dos testes do app. Sem isso, o commit de renomeação não compila. `test/flutter_test_config.dart` e `test/support/` ficam onde estão; o `flutter_test_config.dart` já vale para todas as subpastas. `test/unit/support/fake_firebase_cli.dart` perde a classe *fake* e vira `test/support/firebase_config_fixtures.dart`, que guarda só os `google-services.json` de exemplo usados por três testes de `tool/`.
 - `test/rules/` (Node) fica onde está, porque `lib/` não tem pasta `rules`.
 
 **Estrutura, segundo commit:**
@@ -147,12 +147,12 @@ Essa branch entrou em `main` pelo PR #185 (`61baf74`). Conferido no mesmo dia: `
   - `group()` e `setUp()`;
   - testes espelhando `lib/` em `test/` (D8).
 - Continua valendo, por ser regra do AGENTS.md fora da seção *Testing* (*Avoid Transitive Bloat*): testes de tela e componentes visuais só dependem de contratos leves. Por isso, mocks são de **contratos** sempre que existe um. Classes concretas sem contrato (`AuthGoogleService`, `UserGoogleRepository`, `OrganizationBrandingLoader`, `OrganizationSession`) podem ser imitadas em testes de controller, mas nunca um controller concreto pesado num teste de tela.
-- **AGENTS.md, *Resource Limits*:** `nice -n 15 flutter test -j 2` com o caminho novo, e `nice -n 15 dart run build_runner build --delete-conflicting-outputs`, sem o modo `watch`.
+- **AGENTS.md, *Resource Limits*:** `nice -n 15 flutter test -j 2` com o caminho novo, e `nice -n 15 dart run build_runner build`, sem o modo `watch`. Desde o 2.16 o `build_runner` substitui sozinho os gerados antigos, e a opção `--delete-conflicting-outputs` foi removida.
 
 **Geração de código:**
-- `dev_dependencies`: `mockito` 5.8.x, `build_runner` 2.17.x, `freezed` 4.0.x; `dependencies`: `freezed_annotation`. Com o Flutter 3.47 (D9), os três resolvem para o `analyzer` 14.3+: `freezed` 4.0.3 pede ≥ 14.0 < 15; `mockito` 5.8.1, ≥ 13.3 < 15; `build_runner` 2.17.1, ≥ 14.3 < 15 (pub.dev, 2026-11-02). Hoje o `pubspec.lock` não fixa `analyzer`, `build` nem `source_gen`. Se o `pub get` falhar, seguir a skill `dart-resolve-package-conflicts`.
+- `dev_dependencies`: `mockito` 5.8.x, `build_runner` 2.16.x, `freezed` 4.0.x; `dependencies`: `freezed_annotation`. Com o Flutter 3.47 (D9), os três resolvem para o `analyzer` 14: `freezed` 4.0.3 pede ≥ 14.0 < 15; `mockito` 5.8.1, ≥ 13.3 < 15 (pub.dev, 2026-11-02). O `build_runner` fica no 2.16.2: o 2.17.1 exige o pacote `build` 5, e o `mockito` 5.8.1 ainda exige `build` < 5 (achado ao instalar, na Fase 1). Hoje o `pubspec.lock` não fixa `analyzer`, `build` nem `source_gen`. Se o `pub get` falhar, seguir a skill `dart-resolve-package-conflicts`.
 - `build.yaml` com `sources: exclude: [test/rules/**]`: sem isso, o `build_runner` varre os 8.068 arquivos do `node_modules`, o que pesa nos notebooks de 8 GB.
-- O `build_runner` não toca no `user_google_model.g.dart` ([#186](https://github.com/monamienet/monamie-app/issues/186)). O construtor que escreve `.g.dart` só roda quando outro gerador o aciona, e o freezed não aciona; nem o `--delete-conflicting-outputs` apaga o arquivo.
+- O `build_runner` não toca no `user_google_model.g.dart` ([#186](https://github.com/monamienet/monamie-app/issues/186)). O construtor que escreve `.g.dart` só roda quando outro gerador o aciona, e o freezed não aciona; rodar o `build_runner` também não apaga o arquivo (conferido na Fase 1).
 - **Arquivos gerados versionados** (`*.mocks.dart`, `*.freezed.dart`): o deploy não roda `build_runner`.
 - `analysis_options.yaml` exclui `**/*.mocks.dart`, `**/*.freezed.dart` e `**/*.g.dart`.
 - `pr-checks.yml` ganha um passo que roda o `build_runner` e falha se o resultado diferir do versionado (`git diff --exit-code`).
@@ -167,8 +167,9 @@ Essa branch entrou em `main` pelo PR #185 (`61baf74`). Conferido no mesmo dia: `
     - `_FakeLoginController` herda da própria classe testada para trocar o `hasActiveGoogleBond`, que lê FirebaseAuth e Hive, e por isso precisa de um verificador injetado;
     - `_FakeAuthGoogleController` é registrado com `Get.put`. Registrar um mock de `GetxController` com `Get.put` chama o `onStart` do mock, que quebraria sem configuração (`get_instance.dart:253-254`);
     - os `_FakeOrganizationSession` chamam código real (`super.forget()`).
-- Os testes de `tool/` (`organization_tool/`, `support/fake_firebase_cli.dart`) seguem a mesma regra.
+- Os testes de `tool/` (`test/tool/`, `test/support/firebase_config_fixtures.dart`) seguem a mesma regra.
 - `freezed` só é instalado nesta fase; o uso começa na Fase 5.
+- **Feito (2026-11-02):** 47 dublês trocados; o número 55 era de antes de juntar as cópias repetidas. Três arquivos de teste saíram por testarem só funções definidas no próprio teste (`firebase_provider_flow`, `location_history_deduplication`, `tracking_marker_visibility`). O `auth_google_controller_test.dart` confere a ordem das chamadas entre vários mocks com um registro compartilhado, porque o `verify` não enxerga ordem entre mocks diferentes. O `build_runner` levou 79 s e cerca de 720 MB numa geração completa.
 - **Pronto quando:**
   - `test/unit/` e `test/integration/` não existem mais, e cada arquivo de teste tem o caminho e o nome da sua unidade em `lib/` ou `tool/`;
   - nenhuma classe dublê escrita à mão (`grep -rE "class \w+ (implements|extends)" test --include=*_test.dart`), exceto `_FakeLoginController`, `_FakeAuthGoogleController` e os dois `_FakeOrganizationSession`, que saem na Fase 3;
@@ -318,4 +319,4 @@ Como a estimativa cresceu:
 - **D6. mockito, não mocktail.**
 - **D7. freezed adotado:** estados dos controllers e modelos de valor da home (Fases 5–7); não para o `Result`, que usa `sealed` do Dart.
 - **D8. Testes em `test/`,** espelhando exatamente `lib/` e `tool/`, sem o prefixo `unit/`, com um arquivo por unidade (Fase 1).
-- **D9. Flutter atualizado antes:** do 3.44.4 para o 3.47.x estável (Dart 3.13), num issue e PR próprios antes da Fase 0, para usar as versões estáveis atuais de `freezed` (4.0.x), `mockito` (5.8.x) e `build_runner` (2.17.x).
+- **D9. Flutter atualizado antes:** do 3.44.4 para o 3.47.x estável (Dart 3.13), num issue e PR próprios antes da Fase 0, para usar as versões estáveis atuais de `freezed` (4.0.x), `mockito` (5.8.x) e `build_runner` (2.16.x; ver Fase 1).
