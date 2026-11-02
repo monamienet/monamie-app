@@ -36,32 +36,3 @@ class Creation {
   /// Where a failed creation stopped (`project`, `group`, `data`).
   final String? failureStep;
 }
-
-/// The central creation functions, behind a contract so the screens are
-/// tested with a fake. Throws [CreationException] with a message.
-abstract interface class CreationBackend {
-  /// Whether [id] can be used: `null` when available, else why not.
-  Future<String?> idProblem(String id);
-
-  /// Creates the organization; returns its status after the call
-  /// (`active` for Community, `awaiting_billing` for Standard, or
-  /// `failed`).
-  Future<String> create({
-    required String id,
-    required String name,
-    required String themeId,
-    required String plan,
-  });
-
-  /// The signed-in account's organizations still being created.
-  Future<List<Creation>> mine();
-}
-
-class CreationException implements Exception {
-  const CreationException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => message;
-}

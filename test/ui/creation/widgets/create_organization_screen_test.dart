@@ -9,10 +9,10 @@ import 'package:monamie_app/domain/models/organization/organization_theme.dart';
 import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
 import 'package:monamie_app/ui/creation/widgets/create_organization_screen.dart';
-import 'package:monamie_app/data/repositories/creation/creation_backend.dart';
+import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
 import 'package:monamie_app/utils/result.dart';
 
-@GenerateNiceMocks([MockSpec<CreationBackend>(), MockSpec<ThemeCatalog>()])
+@GenerateNiceMocks([MockSpec<CreationRepository>(), MockSpec<ThemeCatalog>()])
 import 'create_organization_screen_test.mocks.dart';
 
 const _white = Color(0xFFFFFFFF);
@@ -29,23 +29,24 @@ final oceano = OrganizationTheme(
   active: true,
 );
 
-/// The `create` stub of [backend], with any arguments.
-Future<String> anyCreate() => backend.create(
+/// The `create` stub of [repository], with any arguments.
+Future<Result<String>> anyCreate() => repository.create(
   id: anyNamed('id'),
   name: anyNamed('name'),
   themeId: anyNamed('themeId'),
   plan: anyNamed('plan'),
 );
 
-/// Makes `create` run [answer] before returning `active`.
-void stubCreate(Future<void> Function() answer) {
+/// Makes `create` wait on [wait] before returning `active` or, with
+/// [failure], an [Err] with that message.
+void stubCreate(Future<void> Function() wait, {String? failure}) {
   when(anyCreate()).thenAnswer((_) async {
-    await answer();
-    return 'active';
+    await wait();
+    return failure == null ? const Ok('active') : Err(failure);
   });
 }
 
-late MockCreationBackend backend;
+late MockCreationRepository repository;
 late MockThemeCatalog catalog;
 
 final _createButton = find.widgetWithText(FilledButton, 'Criar organização');
@@ -64,7 +65,7 @@ Future<void> pumpView(
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
   final controller = CreateOrganizationViewModel(
-    backend: backend,
+    repository: repository,
     themes: catalog,
     debounce: Duration.zero,
   );
@@ -107,9 +108,12 @@ Future<void> acceptTerms(WidgetTester tester) async {
 }
 
 void main() {
+  provideDummy<Result<String?>>(const Ok(null));
+  provideDummy<Result<String>>(const Ok('active'));
+
   setUp(() {
-    backend = MockCreationBackend();
-    when(backend.idProblem(any)).thenAnswer((_) async => null);
+    repository = MockCreationRepository();
+    when(repository.idProblem(any)).thenAnswer((_) async => const Ok(null));
     stubCreate(() async {});
     catalog = MockThemeCatalog();
     when(catalog.themes()).thenAnswer(
@@ -210,25 +214,22 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Sad Path: a CreationException shows its message on the Review',
-      (tester) async {
-        // 1. Arrange
-        stubCreate(
-          () async => throw const CreationException('Identificador já em uso.'),
-        );
-        await goToReview(tester);
-        await acceptTerms(tester);
+    testWidgets('Sad Path: an Err shows its message on the Review', (
+      tester,
+    ) async {
+      // 1. Arrange
+      stubCreate(() async {}, failure: 'Identificador já em uso.');
+      await goToReview(tester);
+      await acceptTerms(tester);
 
-        // 2. Act
-        await tester.tap(_createButton);
-        await tester.pump();
+      // 2. Act
+      await tester.tap(_createButton);
+      await tester.pump();
 
-        // 3. Assert
-        expect(find.text('Identificador já em uso.'), findsOneWidget);
-        expect(_createButton, findsOneWidget);
-      },
-    );
+      // 3. Assert
+      expect(find.text('Identificador já em uso.'), findsOneWidget);
+      expect(_createButton, findsOneWidget);
+    });
 
     testWidgets(
       'Happy Path: Criar organização creates once with the choices and shows '
@@ -244,7 +245,7 @@ void main() {
 
         // 3. Assert
         final sent = verify(
-          backend.create(
+          repository.create(
             id: captureAnyNamed('id'),
             name: captureAnyNamed('name'),
             themeId: captureAnyNamed('themeId'),
@@ -313,7 +314,7 @@ void main() {
     ) async {
       // 1. Arrange
       final controller = CreateOrganizationViewModel(
-        backend: backend,
+        repository: repository,
         themes: catalog,
       );
 
@@ -347,7 +348,7 @@ void main() {
         MaterialApp(
           home: ChangeNotifierProvider(
             create: (_) => CreateOrganizationViewModel(
-              backend: backend,
+              repository: repository,
               themes: catalog,
               debounce: const Duration(seconds: 1),
             ),
@@ -369,7 +370,7 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
 
       // 3. Assert
-      verifyNever(backend.idProblem(any));
+      verifyNever(repository.idProblem(any));
     });
   });
 }

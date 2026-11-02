@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
 import 'package:monamie_app/ui/account/widgets/my_account_screen.dart';
 
-@GenerateNiceMocks([MockSpec<AccountDeletionBackend>()])
+@GenerateNiceMocks([MockSpec<AccountDeletionRepository>()])
 import 'my_account_screen_test.mocks.dart';
 
 void main() {
@@ -16,7 +16,7 @@ void main() {
       // 1. Arrange
       var checks = 0;
       final controller = MyAccountViewModel(
-        backend: MockAccountDeletionBackend(),
+        repository: MockAccountDeletionRepository(),
         organizationId: 'rotasul',
         checkOwner: () async {
           checks++;

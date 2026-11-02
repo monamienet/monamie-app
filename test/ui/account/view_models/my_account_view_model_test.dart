@@ -4,10 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/domain/models/account_deletion.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
+import 'package:monamie_app/utils/result.dart';
 
-@GenerateNiceMocks([MockSpec<AccountDeletionBackend>()])
+@GenerateNiceMocks([MockSpec<AccountDeletionRepository>()])
 import 'my_account_view_model_test.mocks.dart';
 
 final _deletion = AccountDeletion(
@@ -15,20 +16,22 @@ final _deletion = AccountDeletion(
   ownedOrganizationIds: const ['rotasul'],
 );
 
-/// Makes `request` run [answer] before returning [_deletion].
-void stubRequest(Future<void> Function() answer) {
-  when(backend.request(confirmIds: anyNamed('confirmIds'))).thenAnswer((
+/// Makes `request` wait on [wait] before returning [_deletion] or, with
+/// [failure], an [Err] with that message.
+void stubRequest(Future<void> Function() wait, {String? failure}) {
+  when(repository.request(confirmIds: anyNamed('confirmIds'))).thenAnswer((
     _,
   ) async {
-    await answer();
-    return _deletion;
+    await wait();
+    return failure == null ? Ok(_deletion) : Err(failure);
   });
 }
 
 /// The `confirmIds` of every `request` call, verifying there was at least
 /// one.
-List<Object?> requestedConfirmIds() =>
-    verify(backend.request(confirmIds: captureAnyNamed('confirmIds'))).captured;
+List<Object?> requestedConfirmIds() => verify(
+  repository.request(confirmIds: captureAnyNamed('confirmIds')),
+).captured;
 
 /// A `checkOwner` that counts its calls, optionally waits on [gate] and
 /// fails with [failure].
@@ -48,11 +51,11 @@ class FakeOwnerCheck {
   }
 }
 
-late MockAccountDeletionBackend backend;
+late MockAccountDeletionRepository repository;
 late List<AccountDeletion> deleted;
 
 MyAccountViewModel newController(FakeOwnerCheck check) => MyAccountViewModel(
-  backend: backend,
+  repository: repository,
   organizationId: 'rotasul',
   checkOwner: check.call,
   onDeleted: (deletion) async => deleted.add(deletion),
@@ -66,8 +69,10 @@ Future<MyAccountViewModel> controllerFor({required bool isOwner}) async {
 }
 
 void main() {
+  provideDummy<Result<AccountDeletion>>(Ok(_deletion));
+
   setUp(() {
-    backend = MockAccountDeletionBackend();
+    repository = MockAccountDeletionRepository();
     stubRequest(() async {});
     deleted = [];
   });
@@ -322,7 +327,7 @@ void main() {
       await controller.deleteAccount();
 
       // 3. Assert
-      verify(backend.request(confirmIds: anyNamed('confirmIds'))).called(1);
+      verify(repository.request(confirmIds: anyNamed('confirmIds'))).called(1);
       gate.complete();
       await first;
     });
@@ -335,7 +340,7 @@ void main() {
       await controller.deleteAccount();
 
       // 3. Assert
-      verifyNever(backend.request(confirmIds: anyNamed('confirmIds')));
+      verifyNever(repository.request(confirmIds: anyNamed('confirmIds')));
       expect(deleted, isEmpty);
     });
 
@@ -350,16 +355,14 @@ void main() {
       await controller.deleteAccount();
 
       // 3. Assert
-      verifyNever(backend.request(confirmIds: anyNamed('confirmIds')));
+      verifyNever(repository.request(confirmIds: anyNamed('confirmIds')));
       expect(deleted, isEmpty);
     });
 
-    test('Sad Path: a backend refusal shows its own message', () async {
+    test('Sad Path: a refusal shows its own message', () async {
       // 1. Arrange
       final controller = await controllerFor(isOwner: false);
-      stubRequest(
-        () async => throw const AccountDeletionException('Recusado.'),
-      );
+      stubRequest(() async {}, failure: 'Recusado.');
 
       // 2. Act
       await controller.deleteAccount();
@@ -370,10 +373,34 @@ void main() {
       expect(controller.state.isDeleting, isFalse);
     });
 
-    test('Sad Path: an unexpected error shows a generic message', () async {
+    test('Sad Path: the repository\'s generic message for an unexpected '
+        'error is shown as it came', () async {
       // 1. Arrange
+      const generic =
+          'Não foi possível excluir agora. Verifique a conexão e tente de '
+          'novo.';
       final controller = await controllerFor(isOwner: false);
-      stubRequest(() async => throw StateError('offline'));
+      stubRequest(() async {}, failure: generic);
+
+      // 2. Act
+      await controller.deleteAccount();
+
+      // 3. Assert
+      expect(controller.state.errorMessage, generic);
+      expect(deleted, isEmpty);
+      expect(controller.state.isDeleting, isFalse);
+    });
+
+    test('Sad Path: a failure after the deletion was scheduled (onDeleted '
+        'throws) shows a generic message', () async {
+      // 1. Arrange
+      final controller = MyAccountViewModel(
+        repository: repository,
+        organizationId: 'rotasul',
+        checkOwner: FakeOwnerCheck(false).call,
+        onDeleted: (_) async => throw StateError('offline'),
+      );
+      await controller.loadOwnership();
 
       // 2. Act
       await controller.deleteAccount();
@@ -381,7 +408,6 @@ void main() {
       // 3. Assert
       expect(controller.state.errorMessage, isNotEmpty);
       expect(controller.state.errorMessage, isNot(contains('offline')));
-      expect(deleted, isEmpty);
       expect(controller.state.isDeleting, isFalse);
     });
   });

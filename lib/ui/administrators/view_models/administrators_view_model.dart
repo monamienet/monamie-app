@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:monamie_app/data/repositories/administrators/administrators_backend.dart';
+import 'package:monamie_app/data/repositories/administrators/administrators_repository.dart';
+import 'package:monamie_app/utils/result.dart';
 import 'administrators_state.dart';
 
 export 'administrators_state.dart';
@@ -13,13 +14,13 @@ export 'administrators_state.dart';
 class AdministratorsViewModel extends ChangeNotifier {
   AdministratorsViewModel({
     required this.organizationId,
-    required this.backend,
+    required this.repository,
   });
 
   final String organizationId;
 
-  /// The central functions (a fake in tests).
-  final AdministratorsBackend backend;
+  /// The administrators' data (a fake in tests).
+  final AdministratorsRepository repository;
 
   AdministratorsState _state = const AdministratorsState();
   bool _disposed = false;
@@ -44,17 +45,12 @@ class AdministratorsViewModel extends ChangeNotifier {
     if (_state.isLoading) return;
     _emit(_state.copyWith(isLoading: true, errorMessage: ''));
     try {
-      final people = await backend.list(organizationId);
-      _emit(_state.copyWith(people: people));
-    } on AdministratorsException catch (e) {
-      _emit(_state.copyWith(errorMessage: e.message));
-    } catch (e) {
-      debugPrint('[Administrators] Could not load: $e');
-      _emit(
-        _state.copyWith(
-          errorMessage: 'Não foi possível carregar os administradores.',
-        ),
-      );
+      switch (await repository.list(organizationId)) {
+        case Ok(value: final people):
+          _emit(_state.copyWith(people: people));
+        case Err(:final message):
+          _emit(_state.copyWith(errorMessage: message));
+      }
     } finally {
       _emit(_state.copyWith(isLoading: false));
     }
@@ -67,23 +63,23 @@ class AdministratorsViewModel extends ChangeNotifier {
     if (_state.workingEmail != null || _state.isLoading) return false;
     _emit(_state.copyWith(workingEmail: email, errorMessage: ''));
     try {
-      await backend.setAdministrator(organizationId, email, admin: admin);
-      final people = await backend.list(organizationId);
-      _emit(_state.copyWith(people: people));
-      return true;
-    } on AdministratorsException catch (e) {
-      _emit(_state.copyWith(errorMessage: e.message));
-      return false;
-    } catch (e) {
-      debugPrint('[Administrators] Change failed: $e');
-      _emit(
-        _state.copyWith(
-          errorMessage:
-              'Não foi possível concluir agora. Verifique a conexão e tente '
-              'de novo.',
-        ),
+      final changed = await repository.setAdministrator(
+        organizationId,
+        email,
+        admin: admin,
       );
-      return false;
+      if (changed case Err(:final message)) {
+        _emit(_state.copyWith(errorMessage: message));
+        return false;
+      }
+      switch (await repository.list(organizationId)) {
+        case Ok(value: final people):
+          _emit(_state.copyWith(people: people));
+          return true;
+        case Err(:final message):
+          _emit(_state.copyWith(errorMessage: message));
+          return false;
+      }
     } finally {
       _emit(_state.copyWith(workingEmail: null));
     }

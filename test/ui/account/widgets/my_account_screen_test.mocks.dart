@@ -4,12 +4,14 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i4;
+import 'dart:async' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart'
-    as _i3;
-import 'package:monamie_app/domain/models/account_deletion.dart' as _i2;
+import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart'
+    as _i2;
+import 'package:monamie_app/domain/models/account_deletion.dart' as _i5;
+import 'package:monamie_app/utils/result.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -27,53 +29,69 @@ import 'package:monamie_app/domain/models/account_deletion.dart' as _i2;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeAccountDeletion_0 extends _i1.SmartFake
-    implements _i2.AccountDeletion {
-  _FakeAccountDeletion_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-/// A class which mocks [AccountDeletionBackend].
+/// A class which mocks [AccountDeletionRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAccountDeletionBackend extends _i1.Mock
-    implements _i3.AccountDeletionBackend {
+class MockAccountDeletionRepository extends _i1.Mock
+    implements _i2.AccountDeletionRepository {
   @override
-  _i4.Future<_i2.AccountDeletion> request({
+  _i3.Future<_i4.Result<_i5.AccountDeletion>> request({
     List<String>? confirmIds = const [],
   }) =>
       (super.noSuchMethod(
             Invocation.method(#request, [], {#confirmIds: confirmIds}),
-            returnValue: _i4.Future<_i2.AccountDeletion>.value(
-              _FakeAccountDeletion_0(
+            returnValue: _i3.Future<_i4.Result<_i5.AccountDeletion>>.value(
+              _i6.dummyValue<_i4.Result<_i5.AccountDeletion>>(
                 this,
                 Invocation.method(#request, [], {#confirmIds: confirmIds}),
               ),
             ),
-            returnValueForMissingStub: _i4.Future<_i2.AccountDeletion>.value(
-              _FakeAccountDeletion_0(
-                this,
-                Invocation.method(#request, [], {#confirmIds: confirmIds}),
-              ),
-            ),
+            returnValueForMissingStub:
+                _i3.Future<_i4.Result<_i5.AccountDeletion>>.value(
+                  _i6.dummyValue<_i4.Result<_i5.AccountDeletion>>(
+                    this,
+                    Invocation.method(#request, [], {#confirmIds: confirmIds}),
+                  ),
+                ),
           )
-          as _i4.Future<_i2.AccountDeletion>);
+          as _i3.Future<_i4.Result<_i5.AccountDeletion>>);
 
   @override
-  _i4.Future<void> cancel() =>
+  _i3.Future<_i4.Result<void>> cancel() =>
       (super.noSuchMethod(
             Invocation.method(#cancel, []),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#cancel, []),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#cancel, []),
+              ),
+            ),
           )
-          as _i4.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 
   @override
-  _i4.Future<_i2.AccountDeletion?> pending() =>
+  _i3.Future<_i4.Result<_i5.AccountDeletion?>> pending() =>
       (super.noSuchMethod(
             Invocation.method(#pending, []),
-            returnValue: _i4.Future<_i2.AccountDeletion?>.value(),
-            returnValueForMissingStub: _i4.Future<_i2.AccountDeletion?>.value(),
+            returnValue: _i3.Future<_i4.Result<_i5.AccountDeletion?>>.value(
+              _i6.dummyValue<_i4.Result<_i5.AccountDeletion?>>(
+                this,
+                Invocation.method(#pending, []),
+              ),
+            ),
+            returnValueForMissingStub:
+                _i3.Future<_i4.Result<_i5.AccountDeletion?>>.value(
+                  _i6.dummyValue<_i4.Result<_i5.AccountDeletion?>>(
+                    this,
+                    Invocation.method(#pending, []),
+                  ),
+                ),
           )
-          as _i4.Future<_i2.AccountDeletion?>);
+          as _i3.Future<_i4.Result<_i5.AccountDeletion?>>);
 }

@@ -3,7 +3,8 @@ import 'package:monamie_app/domain/models/group.dart';
 
 import 'package:monamie_app/domain/models/invite.dart';
 import 'invite_state.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
+import 'package:monamie_app/utils/result.dart';
 
 export 'invite_state.dart';
 
@@ -14,7 +15,7 @@ class InviteViewModel extends ChangeNotifier {
     required this.organizationId,
     required this.organizationName,
     required List<Group> groups,
-    required this._backend,
+    required this._repository,
     String? groupId,
     this.canCreateFirstGroup = true,
   }) : _state = InviteState(
@@ -24,7 +25,7 @@ class InviteViewModel extends ChangeNotifier {
 
   final String organizationId;
   final String organizationName;
-  final InvitesBackend _backend;
+  final InvitesRepository _repository;
 
   /// Whether an organization with no group may create its first one here
   /// (administrators); a group's maintainer only invites to their groups.
@@ -128,7 +129,7 @@ class InviteViewModel extends ChangeNotifier {
     if (!canSend) return false;
     _emit(_state.copyWith(isSending: true, errorMessage: ''));
     try {
-      final result = await _backend.send(
+      final sent = await _repository.send(
         organizationId,
         organizationName: organizationName,
         groupId: firstGroupMode ? null : _state.groupId,
@@ -137,21 +138,14 @@ class InviteViewModel extends ChangeNotifier {
           for (final p in _state.people) (email: p.email, roles: {...p.roles}),
         ],
       );
-      _emit(_state.copyWith(result: result));
-      return true;
-    } on InvitesException catch (e) {
-      _emit(_state.copyWith(errorMessage: e.message));
-      return false;
-    } catch (e) {
-      debugPrint('[Invite] Send failed: $e');
-      _emit(
-        _state.copyWith(
-          errorMessage:
-              'Não foi possível enviar agora. Verifique a conexão e tente de '
-              'novo.',
-        ),
-      );
-      return false;
+      switch (sent) {
+        case Ok(value: final result):
+          _emit(_state.copyWith(result: result));
+          return true;
+        case Err(:final message):
+          _emit(_state.copyWith(errorMessage: message));
+          return false;
+      }
     } finally {
       _emit(_state.copyWith(isSending: false));
     }

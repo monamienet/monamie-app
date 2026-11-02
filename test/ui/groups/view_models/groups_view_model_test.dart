@@ -4,65 +4,81 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/domain/models/group.dart';
-import 'package:monamie_app/data/repositories/groups/groups_backend.dart';
+import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
+import 'package:monamie_app/utils/result.dart';
 
-@GenerateNiceMocks([MockSpec<GroupsBackend>()])
+@GenerateNiceMocks([MockSpec<GroupsRepository>()])
 import 'groups_view_model_test.mocks.dart';
 
 const norte = Group(id: '01', name: 'Equipe Norte', people: []);
 const leste = Group(id: '03', name: 'Equipe Léste', people: []);
 const serra = Group(id: '02', name: 'Equipe Serra', people: []);
 
-/// Stubs every write of [backend] to run [answer] before its result:
+/// Stubs every write of [repository] to wait on [wait] before its result:
 /// `create` returns [serra] and `deletionImpact` says only ana@x.com
-/// leaves the organization.
-void stubWrites(Future<void> Function() answer) {
-  when(backend.create(any, any)).thenAnswer((_) async {
-    await answer();
-    return serra;
-  });
-  when(backend.rename(any, any, any)).thenAnswer((_) => answer());
-  when(backend.deletionImpact(any, any)).thenAnswer((_) async {
-    await answer();
-    return (loses: ['ana@x.com'], stays: <String>[]);
-  });
-  when(backend.delete(any, any)).thenAnswer((_) => answer());
-  when(backend.setRoles(any, any, any, any)).thenAnswer((_) => answer());
-  when(backend.remove(any, any, any)).thenAnswer((_) => answer());
+/// leaves the organization; with [failure], every write returns an [Err]
+/// with that message instead.
+void stubWrites(Future<void> Function() wait, {String? failure}) {
+  Future<Result<T>> answer<T>(T value) async {
+    await wait();
+    return failure == null ? Ok(value) : Err(failure);
+  }
+
+  when(repository.create(any, any)).thenAnswer((_) => answer(serra));
+  when(repository.rename(any, any, any)).thenAnswer((_) => answer(null));
+  when(
+    repository.deletionImpact(any, any),
+  ).thenAnswer((_) => answer((loses: ['ana@x.com'], stays: <String>[])));
+  when(repository.delete(any, any)).thenAnswer((_) => answer(null));
+  when(repository.setRoles(any, any, any, any)).thenAnswer((_) => answer(null));
+  when(repository.remove(any, any, any)).thenAnswer((_) => answer(null));
 }
 
 /// Makes every write wait on [gate].
 void writesWaitOn(Completer<void> gate) => stubWrites(() => gate.future);
 
-/// Makes every write fail with [failure].
-void writesFail(Object failure) => stubWrites(() async => throw failure);
+/// Makes every write return an [Err] with [message].
+void writesFail(String message) => stubWrites(() async {}, failure: message);
 
-late MockGroupsBackend backend;
+/// The repository's message for an unexpected (non-Functions) error.
+const _generic =
+    'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
+
+late MockGroupsRepository repository;
 
 /// A controller for Rota Sul, not loaded yet.
 GroupsViewModel newController() =>
-    GroupsViewModel(organizationId: 'rotasul', backend: backend);
+    GroupsViewModel(organizationId: 'rotasul', repository: repository);
 
 /// A started controller for Rota Sul with [norte] and [leste] loaded and
-/// the backend's interactions cleared; [isAdmin] false is a group's
+/// the repository's interactions cleared; [isAdmin] false is a group's
 /// maintainer.
 Future<GroupsViewModel> loadedController({bool isAdmin = false}) async {
   final controller = GroupsViewModel(
     organizationId: 'rotasul',
-    backend: backend,
+    repository: repository,
     isAdmin: isAdmin,
   );
   controller.load();
   await pumpEventQueue();
-  clearInteractions(backend);
+  clearInteractions(repository);
   return controller;
 }
 
 void main() {
+  provideDummy<Result<List<Group>>>(const Ok([]));
+  provideDummy<Result<Group>>(const Ok(norte));
+  provideDummy<Result<void>>(const Ok(null));
+  provideDummy<Result<({List<String> loses, List<String> stays})>>(
+    const Ok((loses: <String>[], stays: <String>[])),
+  );
+
   setUp(() {
-    backend = MockGroupsBackend();
-    when(backend.list(any)).thenAnswer((_) async => [norte, leste]);
+    repository = MockGroupsRepository();
+    when(
+      repository.list(any),
+    ).thenAnswer((_) async => const Ok([norte, leste]));
     stubWrites(() async {});
   });
 
@@ -71,7 +87,7 @@ void main() {
       // 1. Arrange
       final controller = GroupsViewModel(
         organizationId: 'rotasul',
-        backend: backend,
+        repository: repository,
       );
 
       // 2. Act
@@ -79,8 +95,8 @@ void main() {
       await pumpEventQueue();
 
       // 3. Assert
-      verify(backend.list('rotasul')).called(1);
-      verifyNoMoreInteractions(backend);
+      verify(repository.list('rotasul')).called(1);
+      verifyNoMoreInteractions(repository);
       expect(controller.state.groups, [norte, leste]);
       expect(controller.state.isLoading, isFalse);
     });
@@ -89,12 +105,12 @@ void main() {
       'Sad Path: a failed load shows the message and leaves no team',
       () async {
         // 1. Arrange
-        when(backend.list(any)).thenAnswer(
-          (_) async => throw const GroupsException('Sem permissão.'),
-        );
+        when(
+          repository.list(any),
+        ).thenAnswer((_) async => const Err('Sem permissão.'));
         final controller = GroupsViewModel(
           organizationId: 'rotasul',
-          backend: backend,
+          repository: repository,
         );
 
         // 2. Act
@@ -158,8 +174,8 @@ void main() {
       // 3. Assert
       expect(created, serra);
       expect(controller.state.groups, [norte, leste, serra]);
-      verify(backend.create('rotasul', 'Equipe Serra')).called(1);
-      verifyNoMoreInteractions(backend);
+      verify(repository.create('rotasul', 'Equipe Serra')).called(1);
+      verifyNoMoreInteractions(repository);
       expect(controller.state.isWorking, isFalse);
     });
 
@@ -177,14 +193,14 @@ void main() {
 
         // 3. Assert
         expect(second, isNull);
-        verify(backend.create('rotasul', 'Equipe Serra')).called(1);
-        verifyNoMoreInteractions(backend);
+        verify(repository.create('rotasul', 'Equipe Serra')).called(1);
+        verifyNoMoreInteractions(repository);
         gate.complete();
         await first;
       },
     );
 
-    test('Edge Case: isWorking is true while the backend works', () async {
+    test('Edge Case: isWorking is true while the repository works', () async {
       // 1. Arrange
       final controller = await loadedController();
       final gate = Completer<void>();
@@ -199,10 +215,10 @@ void main() {
       await pending;
     });
 
-    test('Sad Path: a GroupsException returns null with its message', () async {
+    test('Sad Path: an Err returns null with its message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail(const GroupsException('Já existe a equipe Equipe Serra.'));
+      writesFail('Já existe a equipe Equipe Serra.');
 
       // 2. Act
       final created = await controller.create('Equipe Serra');
@@ -229,13 +245,13 @@ void main() {
       // 3. Assert
       expect(ok, isTrue);
       verifyInOrder([
-        backend.setRoles('rotasul', '01', 'ana@x.com', {
+        repository.setRoles('rotasul', '01', 'ana@x.com', {
           GroupRole.publisher,
           GroupRole.subscriber,
         }),
-        backend.list('rotasul'),
+        repository.list('rotasul'),
       ]);
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
     });
 
     test(
@@ -254,8 +270,8 @@ void main() {
 
         // 3. Assert
         expect(ok, isFalse);
-        verify(backend.delete('rotasul', '03')).called(1);
-        verifyNoMoreInteractions(backend);
+        verify(repository.delete('rotasul', '03')).called(1);
+        verifyNoMoreInteractions(repository);
         gate.complete();
         await first;
       },
@@ -270,7 +286,7 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
     });
   });
 
@@ -304,10 +320,12 @@ void main() {
       // 3. Assert
       expect(ok, isTrue);
       verifyInOrder([
-        backend.setRoles('rotasul', '01', 'vera@x.com', {GroupRole.maintainer}),
-        backend.list('rotasul'),
+        repository.setRoles('rotasul', '01', 'vera@x.com', {
+          GroupRole.maintainer,
+        }),
+        repository.list('rotasul'),
       ]);
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
     });
 
     test('Edge Case: an administrator may remove a maintainer', () async {
@@ -356,7 +374,7 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
       expect(controller.state.errorMessage, 'Marque pelo menos uma opção.');
     });
   });
@@ -372,14 +390,14 @@ void main() {
       // 3. Assert
       expect(ok, isTrue);
       expect(controller.state.groups, [leste]);
-      verify(backend.delete('rotasul', '01')).called(1);
-      verifyNoMoreInteractions(backend);
+      verify(repository.delete('rotasul', '01')).called(1);
+      verifyNoMoreInteractions(repository);
     });
 
     test('Edge Case: an unexpected error gives a generic message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail(StateError('network down'));
+      writesFail(_generic);
 
       // 2. Act
       final ok = await controller.delete('01');
@@ -393,7 +411,7 @@ void main() {
     test('Sad Path: a failed delete keeps the team', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail(const GroupsException('Equipe não encontrada.'));
+      writesFail('Equipe não encontrada.');
 
       // 2. Act
       final ok = await controller.delete('01');
@@ -419,14 +437,14 @@ void main() {
         // 3. Assert
         expect(ok, isTrue);
         verifyInOrder([
-          backend.rename('rotasul', '01', 'Guias Norte'),
-          backend.list('rotasul'),
+          repository.rename('rotasul', '01', 'Guias Norte'),
+          repository.list('rotasul'),
         ]);
-        verifyNoMoreInteractions(backend);
+        verifyNoMoreInteractions(repository);
       },
     );
 
-    test('Edge Case: isWorking is true while the backend works', () async {
+    test('Edge Case: isWorking is true while the repository works', () async {
       // 1. Arrange
       final controller = await loadedController();
       final gate = Completer<void>();
@@ -447,7 +465,7 @@ void main() {
       () async {
         // 1. Arrange
         final controller = await loadedController();
-        writesFail(const GroupsException('Já existe o grupo Equipe Léste.'));
+        writesFail('Já existe o grupo Equipe Léste.');
 
         // 2. Act
         final ok = await controller.rename('01', 'equipe leste');
@@ -458,8 +476,8 @@ void main() {
           controller.state.errorMessage,
           'Já existe o grupo Equipe Léste.',
         );
-        verify(backend.rename('rotasul', '01', 'equipe leste')).called(1);
-        verifyNoMoreInteractions(backend);
+        verify(repository.rename('rotasul', '01', 'equipe leste')).called(1);
+        verifyNoMoreInteractions(repository);
       },
     );
   });
@@ -474,8 +492,8 @@ void main() {
 
       // 3. Assert
       expect(impact?.loses, ['ana@x.com']);
-      verify(backend.deletionImpact('rotasul', '01')).called(1);
-      verifyNoMoreInteractions(backend);
+      verify(repository.deletionImpact('rotasul', '01')).called(1);
+      verifyNoMoreInteractions(repository);
     });
 
     test('Edge Case: while another operation runs it returns null', () async {
@@ -497,7 +515,7 @@ void main() {
     test('Sad Path: a failure returns null with its message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail(const GroupsException('Grupo não encontrado.'));
+      writesFail('Grupo não encontrado.');
 
       // 2. Act
       final impact = await controller.deletionImpact('01');
@@ -519,16 +537,16 @@ void main() {
       // 3. Assert
       expect(ok, isTrue);
       verifyInOrder([
-        backend.remove('rotasul', '01', 'ana@x.com'),
-        backend.list('rotasul'),
+        repository.remove('rotasul', '01', 'ana@x.com'),
+        repository.list('rotasul'),
       ]);
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
     });
 
     test('Edge Case: an unexpected error gives a generic message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail(StateError('network down'));
+      writesFail(_generic);
 
       // 2. Act
       final ok = await controller.remove('01', 'ana@x.com');
@@ -541,15 +559,15 @@ void main() {
     test('Sad Path: a refused removal does not reload the groups', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail(const GroupsException('Essa pessoa não está no grupo.'));
+      writesFail('Essa pessoa não está no grupo.');
 
       // 2. Act
       final ok = await controller.remove('01', 'vera@x.com');
 
       // 3. Assert
       expect(ok, isFalse);
-      verify(backend.remove('rotasul', '01', 'vera@x.com')).called(1);
-      verifyNoMoreInteractions(backend);
+      verify(repository.remove('rotasul', '01', 'vera@x.com')).called(1);
+      verifyNoMoreInteractions(repository);
       expect(controller.state.errorMessage, 'Essa pessoa não está no grupo.');
     });
   });
@@ -558,7 +576,7 @@ void main() {
     test('Edge Case: isLoading is true while the groups are read', () async {
       // 1. Arrange
       final gate = Completer<List<Group>>();
-      when(backend.list(any)).thenAnswer((_) => gate.future);
+      when(repository.list(any)).thenAnswer((_) async => Ok(await gate.future));
       final controller = newController();
 
       // 2. Act
@@ -574,7 +592,7 @@ void main() {
     test('Edge Case: an organization with no group loads an empty '
         'list', () async {
       // 1. Arrange
-      when(backend.list(any)).thenAnswer((_) async => <Group>[]);
+      when(repository.list(any)).thenAnswer((_) async => const Ok(<Group>[]));
       final controller = newController();
 
       // 2. Act
@@ -588,7 +606,7 @@ void main() {
     test('Edge Case: a second load while one runs reads nothing', () async {
       // 1. Arrange
       final gate = Completer<List<Group>>();
-      when(backend.list(any)).thenAnswer((_) => gate.future);
+      when(repository.list(any)).thenAnswer((_) async => Ok(await gate.future));
       final controller = newController();
       final first = controller.load();
 
@@ -596,16 +614,19 @@ void main() {
       await controller.load();
 
       // 3. Assert
-      verify(backend.list(any)).called(1);
+      verify(repository.list(any)).called(1);
       gate.complete([norte]);
       await first;
     });
 
     test('Sad Path: an unexpected error shows a generic message', () async {
       // 1. Arrange
-      when(
-        backend.list(any),
-      ).thenAnswer((_) async => throw StateError('offline'));
+      when(repository.list(any)).thenAnswer(
+        (_) async => Err(
+          'Não foi possível carregar os grupos.',
+          error: StateError('offline'),
+        ),
+      );
       final controller = newController();
 
       // 2. Act
@@ -636,9 +657,9 @@ void main() {
     test('Edge Case: reloading groups equal by content notifies only for '
         'the loading flag', () async {
       // 1. Arrange
-      // Fresh objects on every read, as the backend builds them from JSON.
-      when(backend.list(any)).thenAnswer(
-        (_) async => [
+      // Fresh objects on every read, as the repository builds them from JSON.
+      when(repository.list(any)).thenAnswer(
+        (_) async => Ok([
           Group(
             id: '01',
             name: 'Equipe Norte',
@@ -650,7 +671,7 @@ void main() {
             ],
             createdAt: DateTime.utc(2026, 10, 1),
           ),
-        ],
+        ]),
       );
       final controller = newController();
       await controller.load();
@@ -682,7 +703,7 @@ void main() {
         'not throw', () async {
       // 1. Arrange
       final gate = Completer<List<Group>>();
-      when(backend.list(any)).thenAnswer((_) => gate.future);
+      when(repository.list(any)).thenAnswer((_) async => Ok(await gate.future));
       final controller = newController();
       var notifications = 0;
       final pending = controller.load();

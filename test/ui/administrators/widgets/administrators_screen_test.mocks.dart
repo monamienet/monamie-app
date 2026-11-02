@@ -4,12 +4,14 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i4;
+import 'dart:async' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:monamie_app/data/repositories/administrators/administrators_backend.dart'
-    as _i3;
-import 'package:monamie_app/domain/models/administrators.dart' as _i2;
+import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:monamie_app/data/repositories/administrators/administrators_repository.dart'
+    as _i2;
+import 'package:monamie_app/domain/models/administrators.dart' as _i5;
+import 'package:monamie_app/utils/result.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -27,39 +29,36 @@ import 'package:monamie_app/domain/models/administrators.dart' as _i2;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeOrganizationAdministrators_0 extends _i1.SmartFake
-    implements _i2.OrganizationAdministrators {
-  _FakeOrganizationAdministrators_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-/// A class which mocks [AdministratorsBackend].
+/// A class which mocks [AdministratorsRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAdministratorsBackend extends _i1.Mock
-    implements _i3.AdministratorsBackend {
+class MockAdministratorsRepository extends _i1.Mock
+    implements _i2.AdministratorsRepository {
   @override
-  _i4.Future<_i2.OrganizationAdministrators> list(String? organizationId) =>
+  _i3.Future<_i4.Result<_i5.OrganizationAdministrators>> list(
+    String? organizationId,
+  ) =>
       (super.noSuchMethod(
             Invocation.method(#list, [organizationId]),
-            returnValue: _i4.Future<_i2.OrganizationAdministrators>.value(
-              _FakeOrganizationAdministrators_0(
-                this,
-                Invocation.method(#list, [organizationId]),
-              ),
-            ),
+            returnValue:
+                _i3.Future<_i4.Result<_i5.OrganizationAdministrators>>.value(
+                  _i6.dummyValue<_i4.Result<_i5.OrganizationAdministrators>>(
+                    this,
+                    Invocation.method(#list, [organizationId]),
+                  ),
+                ),
             returnValueForMissingStub:
-                _i4.Future<_i2.OrganizationAdministrators>.value(
-                  _FakeOrganizationAdministrators_0(
+                _i3.Future<_i4.Result<_i5.OrganizationAdministrators>>.value(
+                  _i6.dummyValue<_i4.Result<_i5.OrganizationAdministrators>>(
                     this,
                     Invocation.method(#list, [organizationId]),
                   ),
                 ),
           )
-          as _i4.Future<_i2.OrganizationAdministrators>);
+          as _i3.Future<_i4.Result<_i5.OrganizationAdministrators>>);
 
   @override
-  _i4.Future<void> setAdministrator(
+  _i3.Future<_i4.Result<void>> setAdministrator(
     String? organizationId,
     String? email, {
     required bool? admin,
@@ -70,8 +69,26 @@ class MockAdministratorsBackend extends _i1.Mock
               [organizationId, email],
               {#admin: admin},
             ),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #setAdministrator,
+                  [organizationId, email],
+                  {#admin: admin},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #setAdministrator,
+                  [organizationId, email],
+                  {#admin: admin},
+                ),
+              ),
+            ),
           )
-          as _i4.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 }

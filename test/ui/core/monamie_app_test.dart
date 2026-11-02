@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:mockito/mockito.dart';
+import 'package:monamie_app/domain/models/account_deletion.dart';
+import 'package:monamie_app/domain/models/invite.dart';
+import 'package:monamie_app/utils/result.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
 import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
@@ -18,11 +22,11 @@ import 'package:monamie_app/ui/core/themes/app_theme.dart';
 import 'package:provider/provider.dart';
 
 @GenerateNiceMocks([
-  MockSpec<AccountDeletionBackend>(),
+  MockSpec<AccountDeletionRepository>(),
   MockSpec<AuthGoogleService>(),
   MockSpec<BackgroundTrackingStopper>(),
   MockSpec<GoogleBondCheck>(),
-  MockSpec<InvitesBackend>(),
+  MockSpec<InvitesRepository>(),
   MockSpec<OrganizationBrandingLoader>(),
   MockSpec<OrganizationDirectory>(),
   MockSpec<OrganizationLocalData>(),
@@ -58,9 +62,9 @@ Future<void> _pumpApp(WidgetTester tester) async {
         Provider<OrganizationLocalData>.value(
           value: MockOrganizationLocalData(),
         ),
-        Provider<InvitesBackend>.value(value: MockInvitesBackend()),
-        Provider<AccountDeletionBackend>.value(
-          value: MockAccountDeletionBackend(),
+        Provider<InvitesRepository>.value(value: MockInvitesRepository()),
+        Provider<AccountDeletionRepository>.value(
+          value: MockAccountDeletionRepository(),
         ),
         Provider<OrganizationMembershipCheck>.value(
           value: MockOrganizationMembershipCheck(),
@@ -75,6 +79,9 @@ Future<void> _pumpApp(WidgetTester tester) async {
 }
 
 void main() {
+  provideDummy<Result<List<Invite>>>(const Ok(<Invite>[]));
+  provideDummy<Result<AccountDeletion?>>(const Ok(null));
+
   group('MonAmieApp (app scope) - Widget Test Suite', () {
     testWidgets('Happy Path: the app opens on Login, whose route finds the '
         'sign-in controller above the router', (tester) async {

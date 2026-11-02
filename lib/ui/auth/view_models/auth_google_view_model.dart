@@ -11,9 +11,9 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/domain/models/account_deletion.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
 import 'package:monamie_app/domain/models/invite.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
 import 'package:monamie_app/ui/auth/view_models/sign_in_actions.dart';
 import 'package:monamie_app/ui/auth/view_models/auth_google_state.dart';
 import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
@@ -59,8 +59,8 @@ class AuthGoogleViewModel extends ChangeNotifier
     required this._brandingLoader,
     required this._organizationSession,
     required this._organizationLocalData,
-    required this._invitesBackend,
-    required this._deletionBackend,
+    required this._invitesRepository,
+    required this._deletionRepository,
     required this._membershipCheck,
   });
 
@@ -72,8 +72,8 @@ class AuthGoogleViewModel extends ChangeNotifier
   final OrganizationBrandingLoader _brandingLoader;
   final OrganizationBinder _organizationSession;
   final OrganizationLocalData _organizationLocalData;
-  final InvitesBackend _invitesBackend;
-  final AccountDeletionBackend _deletionBackend;
+  final InvitesRepository _invitesRepository;
+  final AccountDeletionRepository _deletionRepository;
   final OrganizationMembershipCheck _membershipCheck;
 
   /// Rebuilds the theme from the bound organization (or MonAmie when none).
@@ -252,11 +252,12 @@ class AuthGoogleViewModel extends ChangeNotifier
   /// A failing check must not keep anyone out: the account is then
   /// treated as not being deleted.
   Future<AccountDeletion?> _pendingDeletion() async {
-    try {
-      return await _deletionBackend.pending();
-    } catch (e) {
-      debugPrint('[Account] Could not read the deletion: $e');
-      return null;
+    switch (await _deletionRepository.pending()) {
+      case Ok(:final value):
+        return value;
+      case Err(:final error):
+        debugPrint('[Account] Could not read the deletion: $error');
+        return null;
     }
   }
 
@@ -300,11 +301,14 @@ class AuthGoogleViewModel extends ChangeNotifier
     try {
       _pendingIdToken ??= await _authGoogle.signInGoogle();
       if (_pendingIdToken == null) return;
-      await _deletionBackend.cancel();
-      _emit(_state.copyWith(deletionRestored: true));
-    } on AccountDeletionException catch (e) {
-      _emit(_state.copyWith(deletionError: e.message));
+      switch (await _deletionRepository.cancel()) {
+        case Ok():
+          _emit(_state.copyWith(deletionRestored: true));
+        case Err(:final message):
+          _emit(_state.copyWith(deletionError: message));
+      }
     } catch (e) {
+      // Signing in to Google again failed.
       debugPrint('[Account] Cancel failed: $e');
       _emit(
         _state.copyWith(
@@ -319,12 +323,12 @@ class AuthGoogleViewModel extends ChangeNotifier
   }
 
   Future<void> _loadInvites() async {
-    try {
-      final invites = await _invitesBackend.mine();
-      _emit(_state.copyWith(pendingInvites: invites));
-    } catch (e) {
-      debugPrint('[Invites] Could not read the invites: $e');
-      _emit(_state.copyWith(pendingInvites: const []));
+    switch (await _invitesRepository.mine()) {
+      case Ok(value: final invites):
+        _emit(_state.copyWith(pendingInvites: invites));
+      case Err(:final error):
+        debugPrint('[Invites] Could not read the invites: $error');
+        _emit(_state.copyWith(pendingInvites: const []));
     }
   }
 
@@ -365,12 +369,15 @@ class AuthGoogleViewModel extends ChangeNotifier
     if (_state.acceptingInvite != null || _state.isLoading) return;
     _emit(_state.copyWith(acceptingInvite: invite.id, inviteError: ''));
     try {
-      await _invitesBackend.accept(invite);
-      _emit(_state.copyWith(welcome: invite));
-      await _enterNew(invite.organizationId);
-    } on InvitesException catch (e) {
-      _emit(_state.copyWith(inviteError: e.message));
+      switch (await _invitesRepository.accept(invite)) {
+        case Ok():
+          _emit(_state.copyWith(welcome: invite));
+          await _enterNew(invite.organizationId);
+        case Err(:final message):
+          _emit(_state.copyWith(inviteError: message));
+      }
     } catch (e) {
+      // Entering the organization after joining failed.
       debugPrint('[Invites] Accept failed: $e');
       _emit(
         _state.copyWith(

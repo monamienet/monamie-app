@@ -7,11 +7,12 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
-import 'package:monamie_app/data/repositories/appearance/appearance_backend.dart';
+import 'package:monamie_app/data/repositories/appearance/appearance_repository.dart';
 import 'package:monamie_app/ui/appearance/view_models/appearance_view_model.dart';
 import 'package:monamie_app/data/services/logo_converter.dart';
+import 'package:monamie_app/utils/result.dart';
 
-@GenerateNiceMocks([MockSpec<AppearanceBackend>()])
+@GenerateNiceMocks([MockSpec<AppearanceRepository>()])
 import 'appearance_view_model_test.mocks.dart';
 
 const oceano = OrganizationTheme(
@@ -47,23 +48,27 @@ final rotaSulWithLogo = OrganizationConfig(
 final pickedFile = Uint8List.fromList([9, 9, 9]);
 final convertedPng = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
 
-/// Makes `saveBranding` run [answer].
-void stubSave(Future<void> Function() answer) {
+/// Makes `saveBranding` wait on [wait], then succeed or, with [failure],
+/// return an [Err] with that message.
+void stubSave(Future<void> Function() wait, {String? failure}) {
   when(
-    backend.saveBranding(
+    repository.saveBranding(
       any,
       name: anyNamed('name'),
       themeId: anyNamed('themeId'),
       logo: anyNamed('logo'),
     ),
-  ).thenAnswer((_) => answer());
+  ).thenAnswer((_) async {
+    await wait();
+    return failure == null ? const Ok(null) : Err(failure);
+  });
 }
 
 /// Verifies `saveBranding` was called once for Rota Sul and returns the
 /// fields it was sent.
 ({String? name, String? themeId, String? logo}) savedBranding() {
   final fields = verify(
-    backend.saveBranding(
+    repository.saveBranding(
       'rotasul',
       name: captureAnyNamed('name'),
       themeId: captureAnyNamed('themeId'),
@@ -78,14 +83,14 @@ void stubSave(Future<void> Function() answer) {
   );
 }
 
-late MockAppearanceBackend backend;
+late MockAppearanceRepository repository;
 late List<OrganizationConfig> onSavedWith;
 
 /// A controller for [organization] whose themes are not loaded yet.
 AppearanceViewModel newController(OrganizationConfig organization) =>
     AppearanceViewModel(
       organization: organization,
-      backend: backend,
+      repository: repository,
       convertLogo: (_) async => convertedPng,
       onSaved: (saved) async => onSavedWith.add(saved),
     );
@@ -98,13 +103,13 @@ Future<AppearanceViewModel> controllerFor(
 }) async {
   final controller = AppearanceViewModel(
     organization: organization,
-    backend: backend,
+    repository: repository,
     convertLogo: convert ?? (_) async => convertedPng,
     onSaved: (saved) async => onSavedWith.add(saved),
   );
   controller.load();
   await pumpEventQueue();
-  clearInteractions(backend);
+  clearInteractions(repository);
   return controller;
 }
 
@@ -115,11 +120,19 @@ Future<void> pickAndUse(AppearanceViewModel controller) async {
 }
 
 void main() {
+  provideDummy<Result<List<OrganizationTheme>>>(const Ok([]));
+  provideDummy<Result<void>>(const Ok(null));
+
   setUp(() {
-    backend = MockAppearanceBackend();
+    repository = MockAppearanceRepository();
     when(
-      backend.pickableThemes(),
-    ).thenAnswer((_) async => [oceano, defaultOrganizationTheme]);
+      repository.pickableThemes(),
+    ).thenAnswer((_) async => const Ok([oceano, defaultOrganizationTheme]));
+    when(
+      repository.uploadLogo(any, any),
+    ).thenAnswer((_) async => const Ok(null));
+    when(repository.deleteLogo(any)).thenAnswer((_) async => const Ok(null));
+    stubSave(() async {});
     onSavedWith = [];
   });
 
@@ -206,7 +219,7 @@ void main() {
 
       // 3. Assert
       expect(savedBranding(), (name: 'Rota Norte', themeId: null, logo: null));
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
     });
 
     test('Happy Path: a new theme alone sends only the theme', () async {
@@ -231,10 +244,15 @@ void main() {
 
       // 3. Assert
       verifyInOrder([
-        backend.uploadLogo('rotasul', convertedPng),
-        backend.saveBranding('rotasul', name: null, themeId: null, logo: 'set'),
+        repository.uploadLogo('rotasul', convertedPng),
+        repository.saveBranding(
+          'rotasul',
+          name: null,
+          themeId: null,
+          logo: 'set',
+        ),
       ]);
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
     });
 
     test('Happy Path: a removed logo is deleted, then saved as '
@@ -248,15 +266,15 @@ void main() {
 
       // 3. Assert
       verifyInOrder([
-        backend.deleteLogo('rotasul'),
-        backend.saveBranding(
+        repository.deleteLogo('rotasul'),
+        repository.saveBranding(
           'rotasul',
           name: null,
           themeId: null,
           logo: 'removed',
         ),
       ]);
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
     });
 
     test('Happy Path: onSaved receives the new name and theme', () async {
@@ -312,15 +330,15 @@ void main() {
 
       // 3. Assert
       expect([ok, onSavedWith], [false, isEmpty]);
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
     });
 
-    test('Sad Path: an AppearanceException lands in errorMessage and save '
+    test('Sad Path: an Err from saveBranding lands in errorMessage and save '
         'returns false', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
-      stubSave(() async => throw const AppearanceException('Nome inválido.'));
+      stubSave(() async {}, failure: 'Nome inválido.');
 
       // 2. Act
       final ok = await controller.save();
@@ -330,6 +348,49 @@ void main() {
         [ok, controller.state.errorMessage, onSavedWith],
         [false, 'Nome inválido.', isEmpty],
       );
+    });
+
+    test('Sad Path: a failed upload returns false with its message and '
+        'saves no branding', () async {
+      // 1. Arrange
+      final controller = await controllerFor(rotaSul);
+      await pickAndUse(controller);
+      when(
+        repository.uploadLogo(any, any),
+      ).thenAnswer((_) async => const Err('Não foi possível salvar agora.'));
+
+      // 2. Act
+      final ok = await controller.save();
+
+      // 3. Assert
+      expect(
+        [ok, controller.state.errorMessage, onSavedWith],
+        [false, 'Não foi possível salvar agora.', isEmpty],
+      );
+      verify(repository.uploadLogo('rotasul', convertedPng)).called(1);
+      verifyNoMoreInteractions(repository);
+      expect(controller.state.isSaving, isFalse);
+    });
+
+    test('Sad Path: a failed logo delete returns false with its message and '
+        'saves no branding', () async {
+      // 1. Arrange
+      final controller = await controllerFor(rotaSulWithLogo);
+      controller.removeLogo();
+      when(
+        repository.deleteLogo(any),
+      ).thenAnswer((_) async => const Err('Sem permissão.'));
+
+      // 2. Act
+      final ok = await controller.save();
+
+      // 3. Assert
+      expect(
+        [ok, controller.state.errorMessage, onSavedWith],
+        [false, 'Sem permissão.', isEmpty],
+      );
+      verify(repository.deleteLogo('rotasul')).called(1);
+      verifyNoMoreInteractions(repository);
     });
   });
 
@@ -363,7 +424,7 @@ void main() {
     });
 
     test('Edge Case: a second save while the first is in flight returns '
-        'false and does not call the backend again', () async {
+        'false and does not call the repository again', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
@@ -380,14 +441,14 @@ void main() {
       await first;
       expect(second, isFalse);
       savedBranding();
-      verifyNoMoreInteractions(backend);
+      verifyNoMoreInteractions(repository);
     });
 
-    test('Sad Path: isSaving is false after an AppearanceException', () async {
+    test('Sad Path: isSaving is false after an Err', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
-      stubSave(() async => throw const AppearanceException('Sem permissão.'));
+      stubSave(() async {}, failure: 'Sem permissão.');
 
       // 2. Act
       await controller.save();
@@ -532,7 +593,9 @@ void main() {
         'read', () async {
       // 1. Arrange
       final gate = Completer<List<OrganizationTheme>>();
-      when(backend.pickableThemes()).thenAnswer((_) => gate.future);
+      when(
+        repository.pickableThemes(),
+      ).thenAnswer((_) async => Ok(await gate.future));
       final controller = newController(rotaSul);
 
       // 2. Act
@@ -549,8 +612,8 @@ void main() {
         'picked', () async {
       // 1. Arrange
       when(
-        backend.pickableThemes(),
-      ).thenAnswer((_) async => <OrganizationTheme>[]);
+        repository.pickableThemes(),
+      ).thenAnswer((_) async => const Ok(<OrganizationTheme>[]));
       final controller = newController(rotaSul);
 
       // 2. Act
@@ -564,9 +627,12 @@ void main() {
     test('Sad Path: an unreadable catalog offers only the saved '
         'theme', () async {
       // 1. Arrange
-      when(
-        backend.pickableThemes(),
-      ).thenAnswer((_) async => throw StateError('offline'));
+      when(repository.pickableThemes()).thenAnswer(
+        (_) async => Err(
+          'Não foi possível carregar os temas.',
+          error: StateError('offline'),
+        ),
+      );
       final controller = newController(rotaSul);
 
       // 2. Act
@@ -624,10 +690,10 @@ void main() {
     test('Edge Case: reloading themes equal by content notifies only for '
         'the loading flag', () async {
       // 1. Arrange
-      // Fresh objects on every read, as the backend builds them from
+      // Fresh objects on every read, as the repository builds them from
       // Firestore documents.
-      when(backend.pickableThemes()).thenAnswer(
-        (_) async => [
+      when(repository.pickableThemes()).thenAnswer(
+        (_) async => Ok([
           OrganizationTheme(
             id: 'oceano',
             name: 'Oceano',
@@ -637,7 +703,7 @@ void main() {
             onPrimary: const Color(0xFFFFFFFF),
             onDark: const Color(0xFFFFFFFF),
           ),
-        ],
+        ]),
       );
       final controller = newController(rotaSul);
       await controller.load();

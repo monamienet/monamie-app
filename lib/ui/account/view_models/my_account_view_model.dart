@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:monamie_app/domain/models/account_deletion.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
+import 'package:monamie_app/utils/result.dart';
 import 'my_account_state.dart';
 
 export 'my_account_state.dart';
@@ -11,13 +12,13 @@ export 'my_account_state.dart';
 /// screen calls [loadOwnership] when it opens.
 class MyAccountViewModel extends ChangeNotifier {
   MyAccountViewModel({
-    required this._backend,
+    required this._repository,
     required this.organizationId,
     required this._checkOwner,
     required this._onDeleted,
   });
 
-  final AccountDeletionBackend _backend;
+  final AccountDeletionRepository _repository;
   final Future<bool> Function() _checkOwner;
   final Future<void> Function(AccountDeletion) _onDeleted;
 
@@ -83,13 +84,17 @@ class MyAccountViewModel extends ChangeNotifier {
     if (!canDelete) return;
     _emit(_state.copyWith(isDeleting: true, errorMessage: ''));
     try {
-      final deletion = await _backend.request(
+      final requested = await _repository.request(
         confirmIds: _state.isOwner == true ? [organizationId] : const [],
       );
-      await _onDeleted(deletion);
-    } on AccountDeletionException catch (e) {
-      _emit(_state.copyWith(errorMessage: e.message));
+      switch (requested) {
+        case Ok(value: final deletion):
+          await _onDeleted(deletion);
+        case Err(:final message):
+          _emit(_state.copyWith(errorMessage: message));
+      }
     } catch (e) {
+      // Signing out after the deletion was scheduled failed.
       debugPrint('[Account] Deletion failed: $e');
       _emit(
         _state.copyWith(

@@ -22,10 +22,10 @@ import 'package:monamie_app/data/repositories/organization/organization_session.
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/domain/models/account_deletion.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/domain/models/invite.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
 import 'package:monamie_app/ui/auth/view_models/auth_google_view_model.dart';
 import 'package:monamie_app/data/services/auth/auth_google_service.dart';
 import 'package:monamie_app/routing/routes.dart';
@@ -36,10 +36,10 @@ import 'package:monamie_app/utils/user_notice.dart';
 import '../../../support/test_organization.dart';
 
 @GenerateNiceMocks([
-  MockSpec<AccountDeletionBackend>(),
+  MockSpec<AccountDeletionRepository>(),
   MockSpec<AuthGoogleService>(),
   MockSpec<BackgroundTrackingStopper>(),
-  MockSpec<InvitesBackend>(),
+  MockSpec<InvitesRepository>(),
   MockSpec<NoticePresenter>(),
   MockSpec<OrganizationBinder>(),
   MockSpec<OrganizationBindingStore>(),
@@ -290,7 +290,7 @@ class _HarnessSignIn {
     Object? logoutError,
     Completer<void>? chooser,
     Completer<bool>? pendingStop,
-    AccountDeletionBackend? deletionBackend,
+    AccountDeletionRepository? deletionRepository,
   }) {
     authService = _authServiceSignIn(
       log,
@@ -316,8 +316,8 @@ class _HarnessSignIn {
       brandingLoader: _brandingLoader((_) => _kRotaSulName),
       organizationSession: session,
       organizationLocalData: MockOrganizationLocalData(),
-      invitesBackend: MockInvitesBackend(),
-      deletionBackend: deletionBackend ?? MockAccountDeletionBackend(),
+      invitesRepository: MockInvitesRepository(),
+      deletionRepository: deletionRepository ?? MockAccountDeletionRepository(),
       membershipCheck: membershipCheck,
       refreshTheme: () => log.add('refreshTheme'),
     );
@@ -415,15 +415,15 @@ MockOrganizationDirectory _sequencedDirectory(
   return directory;
 }
 
-/// A [MockInvitesBackend] whose `accept` returns the invite and `mine`
+/// A [MockInvitesRepository] whose `accept` returns the invite and `mine`
 /// answers no invite.
-MockInvitesBackend _invitesBackend() {
-  final backend = MockInvitesBackend();
-  when(backend.accept(any)).thenAnswer(
-    (invocation) async => invocation.positionalArguments.single as Invite,
+MockInvitesRepository _invitesRepository() {
+  final repository = MockInvitesRepository();
+  when(repository.accept(any)).thenAnswer(
+    (invocation) async => Ok(invocation.positionalArguments.single as Invite),
   );
-  when(backend.mine()).thenAnswer((_) async => const []);
-  return backend;
+  when(repository.mine()).thenAnswer((_) async => const Ok([]));
+  return repository;
 }
 
 final _kOtherInvite = Invite(
@@ -473,8 +473,8 @@ class _HarnessInvites {
       ),
       organizationSession: session,
       organizationLocalData: MockOrganizationLocalData(),
-      invitesBackend: backend,
-      deletionBackend: MockAccountDeletionBackend(),
+      invitesRepository: invites,
+      deletionRepository: MockAccountDeletionRepository(),
       membershipCheck: _membershipCheck(true),
       refreshTheme: () => log.add('refreshTheme'),
     );
@@ -482,7 +482,7 @@ class _HarnessInvites {
   }
 
   final List<String> log = <String>[];
-  final backend = _invitesBackend();
+  final invites = _invitesRepository();
   late final MockOrganizationDirectory directory;
   late final MockOrganizationBinder session;
 
@@ -544,8 +544,8 @@ AuthGoogleViewModel newController() => AuthGoogleViewModel(
   brandingLoader: MockOrganizationBrandingLoader(),
   organizationSession: MockOrganizationBinder(),
   organizationLocalData: MockOrganizationLocalData(),
-  invitesBackend: MockInvitesBackend(),
-  deletionBackend: MockAccountDeletionBackend(),
+  invitesRepository: MockInvitesRepository(),
+  deletionRepository: MockAccountDeletionRepository(),
   membershipCheck: MockOrganizationMembershipCheck(),
   refreshTheme: () {},
 );
@@ -650,8 +650,8 @@ class _HarnessLogout {
       trackingStopper: stopper,
       organizationDirectory: MockOrganizationDirectory(),
       brandingLoader: MockOrganizationBrandingLoader(),
-      invitesBackend: MockInvitesBackend(),
-      deletionBackend: MockAccountDeletionBackend(),
+      invitesRepository: MockInvitesRepository(),
+      deletionRepository: MockAccountDeletionRepository(),
       membershipCheck: MockOrganizationMembershipCheck(),
     );
     _followRoutes(controller, log);
@@ -727,6 +727,11 @@ Future<_LogoutRun> _runLogout(
 }
 
 void main() {
+  provideDummy<Result<List<Invite>>>(const Ok([]));
+  provideDummy<Result<Invite>>(Ok(_kInvite));
+  provideDummy<Result<AccountDeletion?>>(const Ok(null));
+  provideDummy<Result<void>>(const Ok(null));
+
   group('sign in', () {
     tearDown(() {
       Organization.bind(testOrganization);
@@ -2228,7 +2233,7 @@ void main() {
     });
 
     group('AuthGoogleViewModel.acceptInvite - Unit Test Suite', () {
-      testWidgets('Happy Path: accepts the invite through the backend', (
+      testWidgets('Happy Path: accepts the invite through the repository', (
         WidgetTester tester,
       ) async {
         // 1. Arrange
@@ -2239,7 +2244,7 @@ void main() {
         await _accept(tester, harness.controller);
 
         // 3. Assert
-        verify(harness.backend.accept(_kInvite)).called(1);
+        verify(harness.invites.accept(_kInvite)).called(1);
       });
 
       testWidgets('Happy Path: sets welcome to the accepted invite', (
@@ -2299,9 +2304,9 @@ void main() {
           // 1. Arrange
           final harness = _HarnessInvites();
           final gate = Completer<void>();
-          when(harness.backend.accept(any)).thenAnswer((_) async {
+          when(harness.invites.accept(any)).thenAnswer((_) async {
             await gate.future;
-            return _kInvite;
+            return Ok(_kInvite);
           });
           unawaited(harness.controller.acceptInvite(_kInvite));
 
@@ -2309,18 +2314,18 @@ void main() {
           await harness.controller.acceptInvite(_kInvite);
 
           // 3. Assert
-          verify(harness.backend.accept(_kInvite)).called(1);
+          verify(harness.invites.accept(_kInvite)).called(1);
           expect(harness.controller.state.acceptingInvite, 'inv1');
         },
       );
 
       test(
-        'Sad Path: an InvitesException sets inviteError and clears acceptingInvite',
+        'Sad Path: an Err sets inviteError and clears acceptingInvite',
         () async {
           // 1. Arrange
           final harness = _HarnessInvites();
-          when(harness.backend.accept(any)).thenAnswer(
-            (_) async => throw const InvitesException(
+          when(harness.invites.accept(any)).thenAnswer(
+            (_) async => const Err(
               'Este convite expirou. Peça um novo a quem convidou você.',
             ),
           );
@@ -2345,7 +2350,7 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessInvites();
-          when(harness.backend.mine()).thenAnswer((_) async => [_kInvite]);
+          when(harness.invites.mine()).thenAnswer((_) async => Ok([_kInvite]));
           await _pumpAppInvites(tester);
 
           // 2. Act
@@ -2371,8 +2376,8 @@ void main() {
             ],
           );
           when(
-            harness.backend.mine(),
-          ).thenAnswer((_) async => [_kInvite, _kOtherInvite]);
+            harness.invites.mine(),
+          ).thenAnswer((_) async => Ok([_kInvite, _kOtherInvite]));
           await _pumpAppInvites(tester);
 
           // 2. Act
@@ -2399,9 +2404,12 @@ void main() {
           // A first check loads one invite; the second read fails.
           final harness = _HarnessInvites();
           var reads = 0;
-          when(harness.backend.mine()).thenAnswer((_) async {
-            if (reads++ == 0) return [_kOtherInvite];
-            throw Exception('sem rede');
+          when(harness.invites.mine()).thenAnswer((_) async {
+            if (reads++ == 0) return Ok([_kOtherInvite]);
+            return Err(
+              'Não foi possível carregar os convites.',
+              error: Exception('sem rede'),
+            );
           });
           await _pumpAppInvites(tester);
           await _drive(
@@ -2880,8 +2888,8 @@ void main() {
           trackingStopper: _trackingStopper(log, entry: _kLogStop),
           organizationDirectory: MockOrganizationDirectory(),
           brandingLoader: MockOrganizationBrandingLoader(),
-          invitesBackend: MockInvitesBackend(),
-          deletionBackend: MockAccountDeletionBackend(),
+          invitesRepository: MockInvitesRepository(),
+          deletionRepository: MockAccountDeletionRepository(),
           membershipCheck: MockOrganizationMembershipCheck(),
         );
 
@@ -3315,11 +3323,13 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final deletion = AccountDeletion(deleteAt: DateTime.utc(2026, 12, 2));
-          final deletionBackend = MockAccountDeletionBackend();
-          when(deletionBackend.pending()).thenAnswer((_) async => deletion);
+          final deletionRepository = MockAccountDeletionRepository();
+          when(
+            deletionRepository.pending(),
+          ).thenAnswer((_) async => Ok(deletion));
           final harness = _HarnessSignIn(
             organizations: [_kRotaSul],
-            deletionBackend: deletionBackend,
+            deletionRepository: deletionRepository,
           );
           await _pumpAppSignIn(tester);
 
@@ -3336,10 +3346,126 @@ void main() {
             const SessionState.deletionPending(),
           );
           expect(harness.controller.state.accountDeletion, deletion);
-          verify(deletionBackend.pending()).called(1);
+          verify(deletionRepository.pending()).called(1);
           verifyNever(harness.directory.organizationsOfSignedInUser());
         },
       );
+
+      testWidgets(
+        'Sad Path: an unreadable pending deletion does not keep the person '
+        'out: the organizations are looked up as usual',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final deletionRepository = MockAccountDeletionRepository();
+          when(deletionRepository.pending()).thenAnswer(
+            (_) async => Err(
+              'Não foi possível ler a exclusão da conta.',
+              error: Exception('offline'),
+            ),
+          );
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul],
+            deletionRepository: deletionRepository,
+          );
+          await _pumpAppSignIn(tester);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            isNot(const SessionState.deletionPending()),
+          );
+          expect(harness.controller.state.accountDeletion, isNull);
+          verify(harness.directory.organizationsOfSignedInUser()).called(1);
+        },
+      );
+
+      group('AuthGoogleViewModel.cancelAccountDeletion - Unit Test Suite', () {
+        testWidgets(
+          'Happy Path: signs in again, cancels the deletion and marks it '
+          'restored',
+          (WidgetTester tester) async {
+            // 1. Arrange
+            final deletionRepository = MockAccountDeletionRepository();
+            when(
+              deletionRepository.cancel(),
+            ).thenAnswer((_) async => const Ok(null));
+            final harness = _HarnessSignIn(
+              deletionRepository: deletionRepository,
+            );
+            await _pumpAppSignIn(tester);
+
+            // 2. Act
+            await harness.controller.cancelAccountDeletion();
+            await tester.pumpAndSettle();
+
+            // 3. Assert
+            verify(deletionRepository.cancel()).called(1);
+            expect(harness.log, contains('signInGoogle'));
+            expect(harness.controller.state.deletionRestored, isTrue);
+            expect(harness.controller.state.deletionError, isEmpty);
+            expect(harness.controller.state.cancellingDeletion, isFalse);
+          },
+        );
+
+        testWidgets(
+          'Sad Path: an Err from the cancel shows its message and restores '
+          'nothing',
+          (WidgetTester tester) async {
+            // 1. Arrange
+            final deletionRepository = MockAccountDeletionRepository();
+            when(
+              deletionRepository.cancel(),
+            ).thenAnswer((_) async => const Err('Prazo encerrado.'));
+            final harness = _HarnessSignIn(
+              deletionRepository: deletionRepository,
+            );
+            await _pumpAppSignIn(tester);
+
+            // 2. Act
+            await harness.controller.cancelAccountDeletion();
+            await tester.pumpAndSettle();
+
+            // 3. Assert
+            expect(harness.controller.state.deletionError, 'Prazo encerrado.');
+            expect(harness.controller.state.deletionRestored, isFalse);
+            expect(harness.controller.state.cancellingDeletion, isFalse);
+          },
+        );
+
+        testWidgets(
+          'Sad Path: a failed Google sign-in shows a generic message and '
+          'cancels nothing',
+          (WidgetTester tester) async {
+            // 1. Arrange
+            final deletionRepository = MockAccountDeletionRepository();
+            final harness = _HarnessSignIn(
+              deletionRepository: deletionRepository,
+              signInError: Exception('offline'),
+            );
+            await _pumpAppSignIn(tester);
+
+            // 2. Act
+            await harness.controller.cancelAccountDeletion();
+            await tester.pumpAndSettle();
+
+            // 3. Assert
+            verifyNever(deletionRepository.cancel());
+            expect(
+              harness.controller.state.deletionError,
+              'Não foi possível cancelar agora. Verifique a conexão e tente '
+              'de novo.',
+            );
+            expect(harness.controller.state.deletionRestored, isFalse);
+          },
+        );
+      });
 
       testWidgets(
         'Sad Path: a failing organization lookup leaves the session signedOut',
@@ -3825,9 +3951,9 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessInvites();
-          when(harness.backend.accept(any)).thenAnswer(
-            (_) async => throw const InvitesException('Este convite expirou.'),
-          );
+          when(
+            harness.invites.accept(any),
+          ).thenAnswer((_) async => const Err('Este convite expirou.'));
           await _pumpAppInvites(tester);
 
           // 2. Act

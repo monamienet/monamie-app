@@ -6,7 +6,8 @@ import 'package:monamie_app/domain/models/organization/organization_theme.dart';
 import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
 
 import 'create_organization_state.dart';
-import 'package:monamie_app/data/repositories/creation/creation_backend.dart';
+import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
+import 'package:monamie_app/utils/result.dart';
 
 export 'create_organization_state.dart';
 
@@ -71,12 +72,12 @@ String? idFormatProblem(String id) {
 /// check.
 class CreateOrganizationViewModel extends ChangeNotifier {
   CreateOrganizationViewModel({
-    required this._backend,
+    required this._repository,
     required this._themes,
     this.debounce = const Duration(milliseconds: 500),
   });
 
-  final CreationBackend _backend;
+  final CreationRepository _repository;
   final ThemeCatalog _themes;
   final Duration debounce;
 
@@ -165,23 +166,24 @@ class CreateOrganizationViewModel extends ChangeNotifier {
   }
 
   Future<void> _check(String value) async {
-    try {
-      final problem = await _backend.idProblem(value);
-      if (_state.id != value) return; // typed on meanwhile
-      _emit(
-        _state.copyWith(
-          idCheck: problem == null ? IdCheck.available : IdCheck.unavailable,
-          idProblem: problem ?? '',
-        ),
-      );
-    } catch (e) {
-      if (_state.id != value) return;
-      _emit(
-        _state.copyWith(
-          idCheck: IdCheck.unavailable,
-          idProblem: 'Não foi possível verificar agora.',
-        ),
-      );
+    final checked = await _repository.idProblem(value);
+    if (_state.id != value) return; // typed on meanwhile
+    switch (checked) {
+      case Ok(value: final problem):
+        _emit(
+          _state.copyWith(
+            idCheck: problem == null ? IdCheck.available : IdCheck.unavailable,
+            idProblem: problem ?? '',
+          ),
+        );
+      case Err():
+        // Whatever failed, the field says only that it was not checked.
+        _emit(
+          _state.copyWith(
+            idCheck: IdCheck.unavailable,
+            idProblem: 'Não foi possível verificar agora.',
+          ),
+        );
     }
   }
 
@@ -201,27 +203,20 @@ class CreateOrganizationViewModel extends ChangeNotifier {
     if (_state.isCreating || !canContinueFromName) return false;
     _emit(_state.copyWith(isCreating: true, errorMessage: ''));
     try {
-      final result = await _backend.create(
+      final created = await _repository.create(
         id: _state.id,
         name: _state.name.trim(),
         themeId: _state.themeId,
         plan: _state.plan,
       );
-      _emit(_state.copyWith(result: result));
-      return true;
-    } on CreationException catch (e) {
-      _emit(_state.copyWith(errorMessage: e.message));
-      return false;
-    } catch (e) {
-      debugPrint('[Creation] Create failed: $e');
-      _emit(
-        _state.copyWith(
-          errorMessage:
-              'Não foi possível criar agora. Verifique a conexão e tente de '
-              'novo.',
-        ),
-      );
-      return false;
+      switch (created) {
+        case Ok(value: final result):
+          _emit(_state.copyWith(result: result));
+          return true;
+        case Err(:final message):
+          _emit(_state.copyWith(errorMessage: message));
+          return false;
+      }
     } finally {
       _emit(_state.copyWith(isCreating: false));
     }

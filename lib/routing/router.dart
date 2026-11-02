@@ -130,7 +130,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
             final organization = Organization.current!;
             return _owned(
               create: () => MyAccountViewModel(
-                backend: context.read(),
+                repository: context.read(),
                 organizationId: organization.id,
                 checkOwner: () => auth.ownsOrganization(organization.id),
                 onDeleted: auth.accountDeleted,
@@ -150,7 +150,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
             return _owned(
               create: () => GroupsViewModel(
                 organizationId: Organization.current!.id,
-                backend: context.read(),
+                repository: context.read(),
                 isAdmin: isAdmin,
               ),
               builder: (controller) => GroupsScreen(controller: controller),
@@ -182,7 +182,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
                         Organization.current?.name ?? groups.organizationId,
                     groups: groups.state.groups,
                     groupId: request.groupId,
-                    backend: context.read(),
+                    repository: context.read(),
                     canCreateFirstGroup: groups.isAdmin,
                   ),
                   builder: (controller) => InviteScreen(controller: controller),
@@ -196,7 +196,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
               builder: (context, state) => GroupScreen(
                 controller: state.extra! as GroupsViewModel,
                 groupId: state.pathParameters['groupId']!,
-                invitesBackend: context.read(),
+                invitesRepository: context.read(),
               ),
             ),
           ],
@@ -206,7 +206,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
           builder: (context, state) => _owned(
             create: () => AdministratorsViewModel(
               organizationId: Organization.current!.id,
-              backend: context.read(),
+              repository: context.read(),
             ),
             builder: (controller) =>
                 AdministratorsScreen(controller: controller),
@@ -217,7 +217,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
           builder: (context, state) => _owned(
             create: () => AppearanceViewModel(
               organization: Organization.current!,
-              backend: context.read(),
+              repository: context.read(),
               onSaved: context.read<OrganizationSession>().storeBranding,
             ),
             builder: (controller) => AppearanceScreen(controller: controller),
@@ -259,7 +259,7 @@ GoRoute _createOrganizationRoute() => GoRoute(
     return _owned(
       // A fresh one each time the flow opens; its screen loads the themes.
       create: () => CreateOrganizationViewModel(
-        backend: context.read(),
+        repository: context.read(),
         themes: context.read(),
       ),
       builder: (controller) => CreateOrganizationScreen(

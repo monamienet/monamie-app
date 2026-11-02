@@ -2,7 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/domain/models/group.dart';
 
 import 'package:monamie_app/domain/models/invite.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/domain/models/invite_send_result.dart';
 
 part 'invite_state.freezed.dart';
 

@@ -38,8 +38,8 @@ class _MonAmieAppState extends State<MonAmieApp> {
     brandingLoader: context.read(),
     organizationSession: context.read<OrganizationSession>(),
     organizationLocalData: context.read(),
-    invitesBackend: context.read(),
-    deletionBackend: context.read(),
+    invitesRepository: context.read(),
+    deletionRepository: context.read(),
     membershipCheck: context.read(),
   )..start();
 

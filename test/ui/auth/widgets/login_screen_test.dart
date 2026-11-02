@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
 import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
 import 'package:monamie_app/data/repositories/organization/organization_binder.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
@@ -21,10 +21,10 @@ import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
 // fails with "Bad state: No element"), so the screen gets a real one that
 // never starts: nothing it does here reaches its services.
 @GenerateNiceMocks([
-  MockSpec<AccountDeletionBackend>(),
+  MockSpec<AccountDeletionRepository>(),
   MockSpec<AuthGoogleService>(),
   MockSpec<BackgroundTrackingStopper>(),
-  MockSpec<InvitesBackend>(),
+  MockSpec<InvitesRepository>(),
   MockSpec<LoginViewModel>(),
   MockSpec<NoticePresenter>(),
   MockSpec<OrganizationBinder>(),
@@ -55,8 +55,8 @@ AuthGoogleViewModel _auth() => AuthGoogleViewModel(
   brandingLoader: MockOrganizationBrandingLoader(),
   organizationSession: MockOrganizationBinder(),
   organizationLocalData: MockOrganizationLocalData(),
-  invitesBackend: MockInvitesBackend(),
-  deletionBackend: MockAccountDeletionBackend(),
+  invitesRepository: MockInvitesRepository(),
+  deletionRepository: MockAccountDeletionRepository(),
   membershipCheck: MockOrganizationMembershipCheck(),
 );
 

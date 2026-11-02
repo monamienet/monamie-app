@@ -8,9 +8,10 @@ import 'package:mockito/mockito.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
 import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
-import 'package:monamie_app/data/repositories/creation/creation_backend.dart';
+import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
+import 'package:monamie_app/utils/result.dart';
 
-@GenerateNiceMocks([MockSpec<CreationBackend>(), MockSpec<ThemeCatalog>()])
+@GenerateNiceMocks([MockSpec<CreationRepository>(), MockSpec<ThemeCatalog>()])
 import 'create_organization_view_model_test.mocks.dart';
 
 const _white = Color(0xFFFFFFFF);
@@ -32,19 +33,24 @@ final sol = _theme('sol', 0);
 final lava = _theme('lava', 1, active: false);
 final oceano = _theme('oceano', 2);
 
-/// The `create` stub of [backend], with any arguments.
-Future<String> anyCreate() => backend.create(
+/// The `create` stub of [repository], with any arguments.
+Future<Result<String>> anyCreate() => repository.create(
   id: anyNamed('id'),
   name: anyNamed('name'),
   themeId: anyNamed('themeId'),
   plan: anyNamed('plan'),
 );
 
-/// Makes `create` run [answer] before returning [status].
-void stubCreate(Future<void> Function() answer, {String status = 'active'}) {
+/// Makes `create` wait on [wait] before returning [status] or, with
+/// [failure], an [Err] with that message.
+void stubCreate(
+  Future<void> Function() wait, {
+  String status = 'active',
+  String? failure,
+}) {
   when(anyCreate()).thenAnswer((_) async {
-    await answer();
-    return status;
+    await wait();
+    return failure == null ? Ok(status) : Err(failure);
   });
 }
 
@@ -61,11 +67,11 @@ MockThemeCatalog mockCatalog({bool failing = false}) {
   return catalog;
 }
 
-late MockCreationBackend backend;
+late MockCreationRepository repository;
 
 CreateOrganizationViewModel startedController({ThemeCatalog? themes}) =>
     CreateOrganizationViewModel(
-      backend: backend,
+      repository: repository,
       themes: themes ?? mockCatalog(),
       debounce: Duration.zero,
     )..load();
@@ -85,9 +91,12 @@ Future<CreateOrganizationViewModel> readyController() async {
 }
 
 void main() {
+  provideDummy<Result<String?>>(const Ok(null));
+  provideDummy<Result<String>>(const Ok('active'));
+
   setUp(() {
-    backend = MockCreationBackend();
-    when(backend.idProblem(any)).thenAnswer((_) async => null);
+    repository = MockCreationRepository();
+    when(repository.idProblem(any)).thenAnswer((_) async => const Ok(null));
     stubCreate(() async {});
   });
 
@@ -227,17 +236,17 @@ void main() {
 
         // 3. Assert
         expect(controller.state.idCheck, IdCheck.available);
-        expect(verify(backend.idProblem(captureAny)).captured, ['rotasul']);
+        expect(verify(repository.idProblem(captureAny)).captured, ['rotasul']);
       },
     );
 
     test(
-      'Sad Path: a taken id becomes unavailable with the backend problem',
+      'Sad Path: a taken id becomes unavailable with the repository problem',
       () async {
         // 1. Arrange
-        when(
-          backend.idProblem('rotasul'),
-        ).thenAnswer((_) async => 'Esse identificador já está em uso.');
+        when(repository.idProblem('rotasul')).thenAnswer(
+          (_) async => const Ok('Esse identificador já está em uso.'),
+        );
         final controller = startedController()..setId('rotasul');
 
         // 2. Act
@@ -253,7 +262,7 @@ void main() {
     );
 
     test(
-      'Sad Path: a bad format is unavailable without asking the backend',
+      'Sad Path: a bad format is unavailable without asking the repository',
       () async {
         // 1. Arrange
         final controller = startedController();
@@ -265,9 +274,25 @@ void main() {
         // 3. Assert
         expect(controller.state.idCheck, IdCheck.unavailable);
         expect(controller.state.idProblem, isNotEmpty);
-        verifyNever(backend.idProblem(any));
+        verifyNever(repository.idProblem(any));
       },
     );
+
+    test('Sad Path: a check that could not run is unavailable with a hint, '
+        'whatever the repository said', () async {
+      // 1. Arrange
+      when(
+        repository.idProblem('rotasul'),
+      ).thenAnswer((_) async => const Err('Sem conexão.'));
+      final controller = startedController()..setId('rotasul');
+
+      // 2. Act
+      await settle();
+
+      // 3. Assert
+      expect(controller.state.idCheck, IdCheck.unavailable);
+      expect(controller.state.idProblem, 'Não foi possível verificar agora.');
+    });
 
     test(
       'Edge Case: an answer for an id changed meanwhile is ignored',
@@ -276,11 +301,11 @@ void main() {
         final rotasulCheck = Completer<String?>();
         final rotanorteCheck = Completer<String?>();
         when(
-          backend.idProblem('rotasul'),
-        ).thenAnswer((_) => rotasulCheck.future);
+          repository.idProblem('rotasul'),
+        ).thenAnswer((_) async => Ok(await rotasulCheck.future));
         when(
-          backend.idProblem('rotanorte'),
-        ).thenAnswer((_) => rotanorteCheck.future);
+          repository.idProblem('rotanorte'),
+        ).thenAnswer((_) async => Ok(await rotanorteCheck.future));
         final controller = startedController()..setId('rotasul');
         await settle();
         controller.setId('rotanorte');
@@ -343,9 +368,9 @@ void main() {
         'Sad Path: a valid name with an unavailable id cannot continue',
         () async {
           // 1. Arrange
-          when(
-            backend.idProblem('rotasul'),
-          ).thenAnswer((_) async => 'Esse identificador já está em uso.');
+          when(repository.idProblem('rotasul')).thenAnswer(
+            (_) async => const Ok('Esse identificador já está em uso.'),
+          );
           final controller = startedController()..setName('Rota Sul');
           await settle();
 
@@ -372,7 +397,7 @@ void main() {
 
       // 3. Assert
       final sent = verify(
-        backend.create(
+        repository.create(
           id: captureAnyNamed('id'),
           name: captureAnyNamed('name'),
           themeId: captureAnyNamed('themeId'),
@@ -441,32 +466,25 @@ void main() {
       },
     );
 
-    test(
-      'Sad Path: a CreationException returns false with its message',
-      () async {
-        // 1. Arrange
-        stubCreate(
-          () async => throw const CreationException(
-            'Esse identificador já está em uso.',
-          ),
-        );
-        final controller = await readyController();
+    test('Sad Path: an Err returns false with its message', () async {
+      // 1. Arrange
+      stubCreate(() async {}, failure: 'Esse identificador já está em uso.');
+      final controller = await readyController();
 
-        // 2. Act
-        final ok = await controller.create();
+      // 2. Act
+      final ok = await controller.create();
 
-        // 3. Assert
-        expect(ok, isFalse);
-        expect(
-          controller.state.errorMessage,
-          'Esse identificador já está em uso.',
-        );
-      },
-    );
+      // 3. Assert
+      expect(ok, isFalse);
+      expect(
+        controller.state.errorMessage,
+        'Esse identificador já está em uso.',
+      );
+    });
 
     test('Sad Path: isCreating resets after a failure', () async {
       // 1. Arrange
-      stubCreate(() async => throw const CreationException('Falhou.'));
+      stubCreate(() async {}, failure: 'Falhou.');
       final controller = await readyController();
 
       // 2. Act
@@ -477,7 +495,7 @@ void main() {
     });
 
     test(
-      'Sad Path: refuses without calling the backend when the name step is invalid',
+      'Sad Path: refuses without calling the repository when the name step is invalid',
       () async {
         // 1. Arrange
         final controller = startedController()..setName('R');
@@ -600,7 +618,7 @@ void main() {
       final catalog = MockThemeCatalog();
       when(catalog.themes()).thenAnswer((_) async => {});
       final controller = CreateOrganizationViewModel(
-        backend: backend,
+        repository: repository,
         themes: catalog,
       );
 
@@ -618,7 +636,7 @@ void main() {
       fakeAsync((async) {
         // 1. Arrange
         final controller = CreateOrganizationViewModel(
-          backend: backend,
+          repository: repository,
           themes: mockCatalog(),
         )..setId('rotasul');
 
@@ -627,7 +645,7 @@ void main() {
         async.elapse(const Duration(seconds: 1));
 
         // 3. Assert
-        verifyNever(backend.idProblem(any));
+        verifyNever(repository.idProblem(any));
       });
     });
 
@@ -635,7 +653,9 @@ void main() {
         'does not throw', () async {
       // 1. Arrange
       final answer = Completer<String?>();
-      when(backend.idProblem('rotasul')).thenAnswer((_) => answer.future);
+      when(
+        repository.idProblem('rotasul'),
+      ).thenAnswer((_) async => Ok(await answer.future));
       final controller = startedController()..setId('rotasul');
       await settle();
       var notifications = 0;

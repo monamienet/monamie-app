@@ -4,12 +4,14 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i4;
+import 'dart:async' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:monamie_app/data/repositories/groups/groups_backend.dart'
-    as _i3;
-import 'package:monamie_app/domain/models/group.dart' as _i2;
+import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:monamie_app/data/repositories/groups/groups_repository.dart'
+    as _i2;
+import 'package:monamie_app/domain/models/group.dart' as _i5;
+import 'package:monamie_app/utils/result.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -27,93 +29,141 @@ import 'package:monamie_app/domain/models/group.dart' as _i2;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeGroup_0 extends _i1.SmartFake implements _i2.Group {
-  _FakeGroup_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-/// A class which mocks [GroupsBackend].
+/// A class which mocks [GroupsRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockGroupsBackend extends _i1.Mock implements _i3.GroupsBackend {
+class MockGroupsRepository extends _i1.Mock implements _i2.GroupsRepository {
   @override
-  _i4.Future<List<_i2.Group>> list(String? organizationId) =>
+  _i3.Future<_i4.Result<List<_i5.Group>>> list(String? organizationId) =>
       (super.noSuchMethod(
             Invocation.method(#list, [organizationId]),
-            returnValue: _i4.Future<List<_i2.Group>>.value(<_i2.Group>[]),
-            returnValueForMissingStub: _i4.Future<List<_i2.Group>>.value(
-              <_i2.Group>[],
+            returnValue: _i3.Future<_i4.Result<List<_i5.Group>>>.value(
+              _i6.dummyValue<_i4.Result<List<_i5.Group>>>(
+                this,
+                Invocation.method(#list, [organizationId]),
+              ),
             ),
+            returnValueForMissingStub:
+                _i3.Future<_i4.Result<List<_i5.Group>>>.value(
+                  _i6.dummyValue<_i4.Result<List<_i5.Group>>>(
+                    this,
+                    Invocation.method(#list, [organizationId]),
+                  ),
+                ),
           )
-          as _i4.Future<List<_i2.Group>>);
+          as _i3.Future<_i4.Result<List<_i5.Group>>>);
 
   @override
-  _i4.Future<_i2.Group> create(String? organizationId, String? name) =>
+  _i3.Future<_i4.Result<_i5.Group>> create(
+    String? organizationId,
+    String? name,
+  ) =>
       (super.noSuchMethod(
             Invocation.method(#create, [organizationId, name]),
-            returnValue: _i4.Future<_i2.Group>.value(
-              _FakeGroup_0(
+            returnValue: _i3.Future<_i4.Result<_i5.Group>>.value(
+              _i6.dummyValue<_i4.Result<_i5.Group>>(
                 this,
                 Invocation.method(#create, [organizationId, name]),
               ),
             ),
-            returnValueForMissingStub: _i4.Future<_i2.Group>.value(
-              _FakeGroup_0(
+            returnValueForMissingStub: _i3.Future<_i4.Result<_i5.Group>>.value(
+              _i6.dummyValue<_i4.Result<_i5.Group>>(
                 this,
                 Invocation.method(#create, [organizationId, name]),
               ),
             ),
           )
-          as _i4.Future<_i2.Group>);
+          as _i3.Future<_i4.Result<_i5.Group>>);
 
   @override
-  _i4.Future<void> rename(
+  _i3.Future<_i4.Result<void>> rename(
     String? organizationId,
     String? groupId,
     String? name,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#rename, [organizationId, groupId, name]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#rename, [organizationId, groupId, name]),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#rename, [organizationId, groupId, name]),
+              ),
+            ),
           )
-          as _i4.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 
   @override
-  _i4.Future<({List<String> loses, List<String> stays})> deletionImpact(
+  _i3.Future<_i4.Result<({List<String> loses, List<String> stays})>>
+  deletionImpact(String? organizationId, String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#deletionImpact, [organizationId, groupId]),
+            returnValue:
+                _i3.Future<
+                  _i4.Result<({List<String> loses, List<String> stays})>
+                >.value(
+                  _i6.dummyValue<
+                    _i4.Result<({List<String> loses, List<String> stays})>
+                  >(
+                    this,
+                    Invocation.method(#deletionImpact, [
+                      organizationId,
+                      groupId,
+                    ]),
+                  ),
+                ),
+            returnValueForMissingStub:
+                _i3.Future<
+                  _i4.Result<({List<String> loses, List<String> stays})>
+                >.value(
+                  _i6.dummyValue<
+                    _i4.Result<({List<String> loses, List<String> stays})>
+                  >(
+                    this,
+                    Invocation.method(#deletionImpact, [
+                      organizationId,
+                      groupId,
+                    ]),
+                  ),
+                ),
+          )
+          as _i3.Future<
+            _i4.Result<({List<String> loses, List<String> stays})>
+          >);
+
+  @override
+  _i3.Future<_i4.Result<void>> delete(
     String? organizationId,
     String? groupId,
   ) =>
       (super.noSuchMethod(
-            Invocation.method(#deletionImpact, [organizationId, groupId]),
-            returnValue:
-                _i4.Future<({List<String> loses, List<String> stays})>.value((
-                  loses: <String>[],
-                  stays: <String>[],
-                )),
-            returnValueForMissingStub:
-                _i4.Future<({List<String> loses, List<String> stays})>.value((
-                  loses: <String>[],
-                  stays: <String>[],
-                )),
-          )
-          as _i4.Future<({List<String> loses, List<String> stays})>);
-
-  @override
-  _i4.Future<void> delete(String? organizationId, String? groupId) =>
-      (super.noSuchMethod(
             Invocation.method(#delete, [organizationId, groupId]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#delete, [organizationId, groupId]),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#delete, [organizationId, groupId]),
+              ),
+            ),
           )
-          as _i4.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 
   @override
-  _i4.Future<void> setRoles(
+  _i3.Future<_i4.Result<void>> setRoles(
     String? organizationId,
     String? groupId,
     String? email,
-    Set<_i2.GroupRole>? roles,
+    Set<_i5.GroupRole>? roles,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#setRoles, [
@@ -122,21 +172,51 @@ class MockGroupsBackend extends _i1.Mock implements _i3.GroupsBackend {
               email,
               roles,
             ]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#setRoles, [
+                  organizationId,
+                  groupId,
+                  email,
+                  roles,
+                ]),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#setRoles, [
+                  organizationId,
+                  groupId,
+                  email,
+                  roles,
+                ]),
+              ),
+            ),
           )
-          as _i4.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 
   @override
-  _i4.Future<void> remove(
+  _i3.Future<_i4.Result<void>> remove(
     String? organizationId,
     String? groupId,
     String? email,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#remove, [organizationId, groupId, email]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#remove, [organizationId, groupId, email]),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#remove, [organizationId, groupId, email]),
+              ),
+            ),
           )
-          as _i4.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 }

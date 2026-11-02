@@ -219,3 +219,9 @@ Registro das escolhas feitas sem parada de revisão (A5, revisão 2).
 - `WidgetsBindingAppLifecycleEvents` é criado um por `PermissionsViewModel`, dentro do `OrganizationScope`: ao trocar de organização, o escopo novo começa a ouvir antes de o antigo parar, e um objeto compartilhado perderia o ouvinte.
 - O padrão `http.Client()` do leitor de aparência e o `FlutterBackgroundService()` do `FlutterBackgroundServiceTrackingStopper` ficam: são a borda com o plugin, que a fase 3 transforma em Services.
 - A regra de camadas que proíbe plugins na UI passa para o fim da fase 3. Hoje três ViewModels ainda usam plugins diretamente (`permission_handler`, `flutter_background_service`, `geolocator`), e os Services que os substituem são da fase 3.
+
+**Fase 3:**
+- As seis classes que chamavam funções do servidor (grupos, convites, administradores, aparência, criação e exclusão de conta) viraram um par: o Service (`CentralFunctionsService` ou `OrganizationFunctionsService`, e `OrganizationStorageService` para o logo) faz a chamada e lança `FunctionsFailure`; o Repository devolve `Result` e nunca lança. As mensagens de erro que os ViewModels escreviam para falhas inesperadas foram para os repositórios, com o mesmo texto.
+- Duas subclasses de `FunctionsService`, uma por projeto, porque o `provider` encontra cada objeto pelo tipo: assim um repositório não recebe por engano as funções do outro projeto.
+- Mudança visível pequena: se a troca de administrador funciona mas a recarga da lista falha por um erro inesperado, a tela diz "Não foi possível carregar os administradores." em vez da mensagem genérica de conexão.
+- O `setBranding` passou a declarar 60 s de tempo-limite; é o mesmo padrão do plugin (`cloud_functions_platform_interface`, `HttpsCallableOptions`).

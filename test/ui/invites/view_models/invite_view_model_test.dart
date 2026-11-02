@@ -6,9 +6,11 @@ import 'package:mockito/mockito.dart';
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/domain/models/invite.dart';
 import 'package:monamie_app/ui/invites/view_models/invite_view_model.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
+import 'package:monamie_app/domain/models/invite_send_result.dart';
+import 'package:monamie_app/utils/result.dart';
 
-@GenerateNiceMocks([MockSpec<InvitesBackend>()])
+@GenerateNiceMocks([MockSpec<InvitesRepository>()])
 import 'invite_view_model_test.mocks.dart';
 
 const norte = Group(id: '01', name: 'Equipe Norte', people: []);
@@ -31,8 +33,8 @@ typedef SendCall = ({
   List<({String email, Set<GroupRole> roles})> invites,
 });
 
-/// The `send` stub of [backend], with any arguments.
-Future<InviteSendResult> anySend() => backend.send(
+/// The `send` stub of [repository], with any arguments.
+Future<Result<InviteSendResult>> anySend() => repository.send(
   any,
   organizationName: anyNamed('organizationName'),
   groupId: anyNamed('groupId'),
@@ -40,18 +42,19 @@ Future<InviteSendResult> anySend() => backend.send(
   invites: anyNamed('invites'),
 );
 
-/// Makes `send` run [answer] before returning [_result].
-void stubSend(Future<void> Function() answer) {
+/// Makes `send` wait on [wait] before returning [_result] or, with
+/// [failure], an [Err] with that message.
+void stubSend(Future<void> Function() wait, {String? failure}) {
   when(anySend()).thenAnswer((_) async {
-    await answer();
-    return _result;
+    await wait();
+    return failure == null ? const Ok(_result) : Err(failure);
   });
 }
 
 /// Verifies `send` was called exactly once and returns its arguments.
 SendCall sentCall() {
   final captured = verify(
-    backend.send(
+    repository.send(
       captureAny,
       organizationName: captureAnyNamed('organizationName'),
       groupId: captureAnyNamed('groupId'),
@@ -69,7 +72,7 @@ SendCall sentCall() {
   );
 }
 
-late MockInvitesBackend backend;
+late MockInvitesRepository repository;
 
 InviteViewModel controllerWith({
   List<Group> groups = const [norte, leste],
@@ -79,7 +82,7 @@ InviteViewModel controllerWith({
   organizationId: 'rotasul',
   organizationName: 'Rota Sul',
   groups: groups,
-  backend: backend,
+  repository: repository,
   groupId: groupId,
   canCreateFirstGroup: canCreateFirstGroup,
 );
@@ -92,8 +95,10 @@ InviteViewModel readyController() {
 }
 
 void main() {
+  provideDummy<Result<InviteSendResult>>(const Ok(_result));
+
   setUp(() {
-    backend = MockInvitesBackend();
+    repository = MockInvitesRepository();
     stubSend(() async {});
   });
 
@@ -372,13 +377,11 @@ void main() {
     );
 
     test(
-      'Sad Path: an InvitesException returns false with its message and resets isSending',
+      'Sad Path: an Err returns false with its message and resets isSending',
       () async {
         // 1. Arrange
         final controller = readyController();
-        stubSend(
-          () async => throw const InvitesException('Escolha uma equipe.'),
-        );
+        stubSend(() async {}, failure: 'Escolha uma equipe.');
 
         // 2. Act
         final sent = await controller.send();

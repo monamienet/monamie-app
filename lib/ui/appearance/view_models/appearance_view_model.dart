@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
 
-import 'package:monamie_app/data/repositories/appearance/appearance_backend.dart';
+import 'package:monamie_app/data/repositories/appearance/appearance_repository.dart';
+import 'package:monamie_app/utils/result.dart';
 import 'appearance_state.dart';
 import 'package:monamie_app/data/services/logo_converter.dart';
 
@@ -13,7 +14,7 @@ export 'appearance_state.dart';
 class AppearanceViewModel extends ChangeNotifier {
   AppearanceViewModel({
     required this.organization,
-    required this._backend,
+    required this._repository,
     Future<Uint8List> Function(Uint8List bytes)? convertLogo,
     this._onSaved,
   }) : _convertLogo = convertLogo ?? toSquareLogoPng,
@@ -25,7 +26,7 @@ class AppearanceViewModel extends ChangeNotifier {
 
   /// The organization as it is now (bound).
   final OrganizationConfig organization;
-  final AppearanceBackend _backend;
+  final AppearanceRepository _repository;
   final Future<Uint8List> Function(Uint8List bytes) _convertLogo;
   final Future<void> Function(OrganizationConfig saved)? _onSaved;
 
@@ -56,11 +57,11 @@ class AppearanceViewModel extends ChangeNotifier {
   Future<void> load() async {
     _emit(_state.copyWith(isLoadingThemes: true));
     try {
-      final themes = await _backend.pickableThemes();
+      final themes = switch (await _repository.pickableThemes()) {
+        Ok(:final value) => value,
+        Err() => [organization.effectiveTheme],
+      };
       _emit(_state.copyWith(themes: themes));
-    } catch (e) {
-      debugPrint('[Appearance] Could not load the themes: $e');
-      _emit(_state.copyWith(themes: [organization.effectiveTheme]));
     } finally {
       _emit(_state.copyWith(isLoadingThemes: false));
     }
@@ -129,22 +130,31 @@ class AppearanceViewModel extends ChangeNotifier {
       String? logo;
       if (_logoChanged) {
         final png = _state.logoPng;
+        final Result<void> stored;
         if (png == null) {
-          await _backend.deleteLogo(organization.id);
+          stored = await _repository.deleteLogo(organization.id);
           logo = 'removed';
         } else {
-          await _backend.uploadLogo(organization.id, png);
+          stored = await _repository.uploadLogo(organization.id, png);
           logo = 'set';
+        }
+        if (stored case Err(:final message)) {
+          _emit(_state.copyWith(errorMessage: message));
+          return false;
         }
       }
       final newName = _state.name.trim();
       final themeId = _state.themeId;
-      await _backend.saveBranding(
+      final saved = await _repository.saveBranding(
         organization.id,
         name: newName != organization.name ? newName : null,
         themeId: themeId != organization.effectiveTheme.id ? themeId : null,
         logo: logo,
       );
+      if (saved case Err(:final message)) {
+        _emit(_state.copyWith(errorMessage: message));
+        return false;
+      }
       await _onSaved?.call(
         OrganizationConfig(
           id: organization.id,
@@ -160,10 +170,8 @@ class AppearanceViewModel extends ChangeNotifier {
         ),
       );
       return true;
-    } on AppearanceException catch (e) {
-      _emit(_state.copyWith(errorMessage: e.message));
-      return false;
     } catch (e) {
+      // Storing the saved branding on the device failed.
       debugPrint('[Appearance] Save failed: $e');
       _emit(
         _state.copyWith(

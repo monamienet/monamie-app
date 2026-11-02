@@ -5,7 +5,7 @@ import 'package:monamie_app/domain/models/group.dart';
 
 import 'package:monamie_app/domain/models/invite.dart';
 import 'package:monamie_app/ui/invites/view_models/invite_view_model.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/domain/models/invite_send_result.dart';
 
 const _ink = Color(0xFF1B1838);
 const _muted = Color(0xFF4A4858);

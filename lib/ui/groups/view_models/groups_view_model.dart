@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
-import 'package:monamie_app/data/repositories/groups/groups_backend.dart';
+import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
+import 'package:monamie_app/utils/result.dart';
 import 'groups_state.dart';
 
 export 'groups_state.dart';
@@ -19,7 +20,7 @@ export 'groups_state.dart';
 class GroupsViewModel extends ChangeNotifier {
   GroupsViewModel({
     required this.organizationId,
-    required this._backend,
+    required this._repository,
     this.isAdmin = false,
   });
 
@@ -36,7 +37,7 @@ class GroupsViewModel extends ChangeNotifier {
   /// Whether the person may remove [person] from a group.
   bool canRemove(GroupPerson person) =>
       canRemoveFromGroup(person, byAdmin: isAdmin);
-  final GroupsBackend _backend;
+  final GroupsRepository _repository;
 
   GroupsState _state = const GroupsState();
   bool _disposed = false;
@@ -70,67 +71,74 @@ class GroupsViewModel extends ChangeNotifier {
     if (_state.isLoading) return;
     _emit(_state.copyWith(isLoading: true, errorMessage: ''));
     try {
-      final groups = await _backend.list(organizationId);
-      _emit(_state.copyWith(groups: groups));
-    } on GroupsException catch (e) {
-      _emit(_state.copyWith(errorMessage: e.message));
-    } catch (e) {
-      debugPrint('[Groups] Could not load: $e');
-      _emit(
-        _state.copyWith(errorMessage: 'Não foi possível carregar os grupos.'),
-      );
+      switch (await _repository.list(organizationId)) {
+        case Ok(value: final groups):
+          _emit(_state.copyWith(groups: groups));
+        case Err(:final message):
+          _emit(_state.copyWith(errorMessage: message));
+      }
     } finally {
       _emit(_state.copyWith(isLoading: false));
     }
   }
 
-  /// Runs [operation] guarded; returns its result, or `null` when it did
-  /// not run or failed (the message is in [GroupsState.errorMessage]).
-  Future<T?> _guarded<T>(Future<T> Function() operation) async {
+  /// Runs [operation] guarded, then [onDone] with its value; returns
+  /// [onDone]'s result, or `null` when it did not run or failed (the
+  /// message is in [GroupsState.errorMessage]).
+  Future<R?> _guarded<T, R>(
+    Future<Result<T>> Function() operation,
+    Future<R> Function(T value) onDone,
+  ) async {
     if (_state.isWorking) return null;
     _emit(_state.copyWith(isWorking: true, errorMessage: ''));
     try {
-      return await operation();
-    } on GroupsException catch (e) {
-      _emit(_state.copyWith(errorMessage: e.message));
-      return null;
-    } catch (e) {
-      debugPrint('[Groups] Operation failed: $e');
-      _emit(
-        _state.copyWith(
-          errorMessage:
-              'Não foi possível concluir agora. Verifique a conexão e tente '
-              'de novo.',
-        ),
-      );
-      return null;
+      switch (await operation()) {
+        case Ok(:final value):
+          return await onDone(value);
+        case Err(:final message):
+          _emit(_state.copyWith(errorMessage: message));
+          return null;
+      }
     } finally {
       _emit(_state.copyWith(isWorking: false));
     }
   }
 
   /// Creates a group; returns it, or `null` on failure.
-  Future<Group?> create(String name) => _guarded(() async {
-    final group = await _backend.create(organizationId, name.trim());
-    _emit(_state.copyWith(groups: [..._state.groups, group]));
-    return group;
-  });
+  Future<Group?> create(String name) => _guarded(
+    () => _repository.create(organizationId, name.trim()),
+    (group) async {
+      _emit(_state.copyWith(groups: [..._state.groups, group]));
+      return group;
+    },
+  );
 
-  Future<bool> rename(String groupId, String name) async =>
-      await _guarded(() async {
-        await _backend.rename(organizationId, groupId, name.trim());
+  /// Runs [operation] guarded and reloads the groups after it; returns
+  /// whether it worked.
+  Future<bool> _changeAndReload(
+    Future<Result<void>> Function() operation,
+  ) async =>
+      await _guarded(operation, (_) async {
         await load();
         return true;
       }) ??
       false;
 
+  Future<bool> rename(String groupId, String name) => _changeAndReload(
+    () => _repository.rename(organizationId, groupId, name.trim()),
+  );
+
   Future<({List<String> loses, List<String> stays})?> deletionImpact(
     String groupId,
-  ) => _guarded(() => _backend.deletionImpact(organizationId, groupId));
+  ) => _guarded(
+    () => _repository.deletionImpact(organizationId, groupId),
+    (impact) async => impact,
+  );
 
   Future<bool> delete(String groupId) async =>
-      await _guarded(() async {
-        await _backend.delete(organizationId, groupId);
+      await _guarded(() => _repository.delete(organizationId, groupId), (
+        _,
+      ) async {
         _emit(
           _state.copyWith(
             groups: [
@@ -155,19 +163,12 @@ class GroupsViewModel extends ChangeNotifier {
       _emit(_state.copyWith(errorMessage: problem));
       return false;
     }
-    return await _guarded(() async {
-          await _backend.setRoles(organizationId, groupId, email, roles);
-          await load();
-          return true;
-        }) ??
-        false;
+    return _changeAndReload(
+      () => _repository.setRoles(organizationId, groupId, email, roles),
+    );
   }
 
-  Future<bool> remove(String groupId, String email) async =>
-      await _guarded(() async {
-        await _backend.remove(organizationId, groupId, email);
-        await load();
-        return true;
-      }) ??
-      false;
+  Future<bool> remove(String groupId, String email) => _changeAndReload(
+    () => _repository.remove(organizationId, groupId, email),
+  );
 }

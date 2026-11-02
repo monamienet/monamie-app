@@ -5,12 +5,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
-import 'package:monamie_app/data/repositories/administrators/administrators_backend.dart';
-import 'package:monamie_app/data/repositories/appearance/appearance_backend.dart';
-import 'package:monamie_app/data/repositories/creation/creation_backend.dart';
-import 'package:monamie_app/data/repositories/groups/groups_backend.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/domain/models/account_deletion.dart';
+import 'package:monamie_app/domain/models/group.dart';
+import 'package:monamie_app/domain/models/invite.dart';
+import 'package:monamie_app/domain/models/organization/organization_theme.dart';
+import 'package:monamie_app/utils/result.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
+import 'package:monamie_app/data/repositories/administrators/administrators_repository.dart';
+import 'package:monamie_app/data/repositories/appearance/appearance_repository.dart';
+import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
+import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
 import 'package:monamie_app/data/repositories/membership/membership_source.dart';
 import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
@@ -46,21 +51,21 @@ import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 @GenerateNiceMocks([
-  MockSpec<AccountDeletionBackend>(),
-  MockSpec<AdministratorsBackend>(),
-  MockSpec<AppearanceBackend>(),
+  MockSpec<AccountDeletionRepository>(),
+  MockSpec<AdministratorsRepository>(),
+  MockSpec<AppearanceRepository>(),
   MockSpec<AuthGoogleService>(),
   MockSpec<BackgroundRestrictionChecker>(),
   MockSpec<BackgroundTrackingStopper>(),
   MockSpec<BackgroundUsageSettingsLauncher>(),
   MockSpec<CallService>(),
-  MockSpec<CreationBackend>(),
+  MockSpec<CreationRepository>(),
   MockSpec<DeviceLocation>(),
   MockSpec<FirebaseProvider>(),
   MockSpec<FlutterBackgroundService>(),
   MockSpec<GoogleBondCheck>(),
-  MockSpec<GroupsBackend>(),
-  MockSpec<InvitesBackend>(),
+  MockSpec<GroupsRepository>(),
+  MockSpec<InvitesRepository>(),
   MockSpec<MembershipSource>(),
   MockSpec<NoticePresenter>(),
   MockSpec<OrganizationBinder>(),
@@ -91,7 +96,7 @@ class _App {
     // *Administradores* reads an organization with nobody in it.
     when(
       administrators.list(any),
-    ).thenAnswer((_) async => const OrganizationAdministrators());
+    ).thenAnswer((_) async => const Ok(OrganizationAdministrators()));
     auth = AuthGoogleViewModel(
       notices: MockNoticePresenter(),
       refreshTheme: () {},
@@ -102,8 +107,8 @@ class _App {
       brandingLoader: MockOrganizationBrandingLoader(),
       organizationSession: MockOrganizationBinder(),
       organizationLocalData: MockOrganizationLocalData(),
-      invitesBackend: invites,
-      deletionBackend: deletion,
+      invitesRepository: invites,
+      deletionRepository: deletion,
       membershipCheck: MockOrganizationMembershipCheck(),
     );
     router = buildAppRouter(auth: auth);
@@ -111,11 +116,11 @@ class _App {
 
   final stopper = MockBackgroundTrackingStopper();
   final userRepository = MockUserGoogleRepository();
-  final invites = MockInvitesBackend();
-  final deletion = MockAccountDeletionBackend();
+  final invites = MockInvitesRepository();
+  final deletion = MockAccountDeletionRepository();
   final positions = MockFirebaseProvider();
   final trackingSettings = MockTrackingSettingsRepository();
-  final administrators = MockAdministratorsBackend();
+  final administrators = MockAdministratorsRepository();
 
   /// The data layer the routes read, as `appDependencies` provides it in
   /// the app: every object a mock.
@@ -124,12 +129,12 @@ class _App {
     Provider<OrganizationSession>.value(value: MockOrganizationSession()),
     Provider<ThemeCatalog>.value(value: MockThemeCatalog()),
     Provider<GoogleBondCheck>.value(value: MockGoogleBondCheck()),
-    Provider<InvitesBackend>.value(value: invites),
-    Provider<AccountDeletionBackend>.value(value: deletion),
-    Provider<GroupsBackend>.value(value: MockGroupsBackend()),
-    Provider<AdministratorsBackend>.value(value: administrators),
-    Provider<AppearanceBackend>.value(value: MockAppearanceBackend()),
-    Provider<CreationBackend>.value(value: MockCreationBackend()),
+    Provider<InvitesRepository>.value(value: invites),
+    Provider<AccountDeletionRepository>.value(value: deletion),
+    Provider<GroupsRepository>.value(value: MockGroupsRepository()),
+    Provider<AdministratorsRepository>.value(value: administrators),
+    Provider<AppearanceRepository>.value(value: MockAppearanceRepository()),
+    Provider<CreationRepository>.value(value: MockCreationRepository()),
     Provider<TrackingSettingsRepository>.value(value: trackingSettings),
     Provider<MembershipSource>.value(value: MockMembershipSource()),
     Provider<FirebaseProvider>.value(value: positions),
@@ -209,6 +214,15 @@ const _permissionChannel = MethodChannel(
 );
 
 void main() {
+  provideDummy<Result<List<Invite>>>(const Ok([]));
+  provideDummy<Result<AccountDeletion?>>(const Ok(null));
+  provideDummy<Result<List<Group>>>(const Ok([]));
+  provideDummy<Result<OrganizationAdministrators>>(
+    const Ok(OrganizationAdministrators()),
+  );
+  provideDummy<Result<List<OrganizationTheme>>>(const Ok([]));
+  provideDummy<Result<String?>>(const Ok(null));
+
   // The organization's scope builds the real permissions view model: every
   // permission answers "denied".
   setUp(() {

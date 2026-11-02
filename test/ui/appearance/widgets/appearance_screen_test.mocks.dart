@@ -5,13 +5,15 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
 import 'dart:async' as _i3;
-import 'dart:typed_data' as _i5;
+import 'dart:typed_data' as _i7;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:monamie_app/data/repositories/appearance/appearance_backend.dart'
+import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:monamie_app/data/repositories/appearance/appearance_repository.dart'
     as _i2;
 import 'package:monamie_app/domain/models/organization/organization_theme.dart'
-    as _i4;
+    as _i5;
+import 'package:monamie_app/utils/result.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -29,44 +31,75 @@ import 'package:monamie_app/domain/models/organization/organization_theme.dart'
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-/// A class which mocks [AppearanceBackend].
+/// A class which mocks [AppearanceRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAppearanceBackend extends _i1.Mock implements _i2.AppearanceBackend {
+class MockAppearanceRepository extends _i1.Mock
+    implements _i2.AppearanceRepository {
   @override
-  _i3.Future<List<_i4.OrganizationTheme>> pickableThemes() =>
+  _i3.Future<_i4.Result<List<_i5.OrganizationTheme>>> pickableThemes() =>
       (super.noSuchMethod(
             Invocation.method(#pickableThemes, []),
-            returnValue: _i3.Future<List<_i4.OrganizationTheme>>.value(
-              <_i4.OrganizationTheme>[],
-            ),
+            returnValue:
+                _i3.Future<_i4.Result<List<_i5.OrganizationTheme>>>.value(
+                  _i6.dummyValue<_i4.Result<List<_i5.OrganizationTheme>>>(
+                    this,
+                    Invocation.method(#pickableThemes, []),
+                  ),
+                ),
             returnValueForMissingStub:
-                _i3.Future<List<_i4.OrganizationTheme>>.value(
-                  <_i4.OrganizationTheme>[],
+                _i3.Future<_i4.Result<List<_i5.OrganizationTheme>>>.value(
+                  _i6.dummyValue<_i4.Result<List<_i5.OrganizationTheme>>>(
+                    this,
+                    Invocation.method(#pickableThemes, []),
+                  ),
                 ),
           )
-          as _i3.Future<List<_i4.OrganizationTheme>>);
+          as _i3.Future<_i4.Result<List<_i5.OrganizationTheme>>>);
 
   @override
-  _i3.Future<void> uploadLogo(String? organizationId, _i5.Uint8List? png) =>
+  _i3.Future<_i4.Result<void>> uploadLogo(
+    String? organizationId,
+    _i7.Uint8List? png,
+  ) =>
       (super.noSuchMethod(
             Invocation.method(#uploadLogo, [organizationId, png]),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#uploadLogo, [organizationId, png]),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#uploadLogo, [organizationId, png]),
+              ),
+            ),
           )
-          as _i3.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 
   @override
-  _i3.Future<void> deleteLogo(String? organizationId) =>
+  _i3.Future<_i4.Result<void>> deleteLogo(String? organizationId) =>
       (super.noSuchMethod(
             Invocation.method(#deleteLogo, [organizationId]),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#deleteLogo, [organizationId]),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#deleteLogo, [organizationId]),
+              ),
+            ),
           )
-          as _i3.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 
   @override
-  _i3.Future<void> saveBranding(
+  _i3.Future<_i4.Result<void>> saveBranding(
     String? organizationId, {
     String? name,
     String? themeId,
@@ -78,8 +111,26 @@ class MockAppearanceBackend extends _i1.Mock implements _i2.AppearanceBackend {
               [organizationId],
               {#name: name, #themeId: themeId, #logo: logo},
             ),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #saveBranding,
+                  [organizationId],
+                  {#name: name, #themeId: themeId, #logo: logo},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i6.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #saveBranding,
+                  [organizationId],
+                  {#name: name, #themeId: themeId, #logo: logo},
+                ),
+              ),
+            ),
           )
-          as _i3.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 }

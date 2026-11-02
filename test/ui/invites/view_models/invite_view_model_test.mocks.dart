@@ -4,13 +4,16 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i4;
+import 'dart:async' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart'
+import 'package:mockito/src/dummies.dart' as _i7;
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart'
     as _i2;
-import 'package:monamie_app/domain/models/group.dart' as _i5;
-import 'package:monamie_app/domain/models/invite.dart' as _i3;
+import 'package:monamie_app/domain/models/group.dart' as _i6;
+import 'package:monamie_app/domain/models/invite.dart' as _i8;
+import 'package:monamie_app/domain/models/invite_send_result.dart' as _i5;
+import 'package:monamie_app/utils/result.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -28,28 +31,17 @@ import 'package:monamie_app/domain/models/invite.dart' as _i3;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeInviteSendResult_0 extends _i1.SmartFake
-    implements _i2.InviteSendResult {
-  _FakeInviteSendResult_0(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeInvite_1 extends _i1.SmartFake implements _i3.Invite {
-  _FakeInvite_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-/// A class which mocks [InvitesBackend].
+/// A class which mocks [InvitesRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockInvitesBackend extends _i1.Mock implements _i2.InvitesBackend {
+class MockInvitesRepository extends _i1.Mock implements _i2.InvitesRepository {
   @override
-  _i4.Future<_i2.InviteSendResult> send(
+  _i3.Future<_i4.Result<_i5.InviteSendResult>> send(
     String? organizationId, {
     required String? organizationName,
     String? groupId,
     String? firstGroupName,
-    required List<({String email, Set<_i5.GroupRole> roles})>? invites,
+    required List<({String email, Set<_i6.GroupRole> roles})>? invites,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
@@ -62,8 +54,8 @@ class MockInvitesBackend extends _i1.Mock implements _i2.InvitesBackend {
                 #invites: invites,
               },
             ),
-            returnValue: _i4.Future<_i2.InviteSendResult>.value(
-              _FakeInviteSendResult_0(
+            returnValue: _i3.Future<_i4.Result<_i5.InviteSendResult>>.value(
+              _i7.dummyValue<_i4.Result<_i5.InviteSendResult>>(
                 this,
                 Invocation.method(
                   #send,
@@ -77,77 +69,128 @@ class MockInvitesBackend extends _i1.Mock implements _i2.InvitesBackend {
                 ),
               ),
             ),
-            returnValueForMissingStub: _i4.Future<_i2.InviteSendResult>.value(
-              _FakeInviteSendResult_0(
-                this,
-                Invocation.method(
-                  #send,
-                  [organizationId],
-                  {
-                    #organizationName: organizationName,
-                    #groupId: groupId,
-                    #firstGroupName: firstGroupName,
-                    #invites: invites,
-                  },
+            returnValueForMissingStub:
+                _i3.Future<_i4.Result<_i5.InviteSendResult>>.value(
+                  _i7.dummyValue<_i4.Result<_i5.InviteSendResult>>(
+                    this,
+                    Invocation.method(
+                      #send,
+                      [organizationId],
+                      {
+                        #organizationName: organizationName,
+                        #groupId: groupId,
+                        #firstGroupName: firstGroupName,
+                        #invites: invites,
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ),
           )
-          as _i4.Future<_i2.InviteSendResult>);
+          as _i3.Future<_i4.Result<_i5.InviteSendResult>>);
 
   @override
-  _i4.Future<List<_i3.Invite>> listForGroup(
+  _i3.Future<_i4.Result<List<_i8.Invite>>> listForGroup(
     String? organizationId,
     String? groupId,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#listForGroup, [organizationId, groupId]),
-            returnValue: _i4.Future<List<_i3.Invite>>.value(<_i3.Invite>[]),
-            returnValueForMissingStub: _i4.Future<List<_i3.Invite>>.value(
-              <_i3.Invite>[],
+            returnValue: _i3.Future<_i4.Result<List<_i8.Invite>>>.value(
+              _i7.dummyValue<_i4.Result<List<_i8.Invite>>>(
+                this,
+                Invocation.method(#listForGroup, [organizationId, groupId]),
+              ),
             ),
+            returnValueForMissingStub:
+                _i3.Future<_i4.Result<List<_i8.Invite>>>.value(
+                  _i7.dummyValue<_i4.Result<List<_i8.Invite>>>(
+                    this,
+                    Invocation.method(#listForGroup, [organizationId, groupId]),
+                  ),
+                ),
           )
-          as _i4.Future<List<_i3.Invite>>);
+          as _i3.Future<_i4.Result<List<_i8.Invite>>>);
 
   @override
-  _i4.Future<void> resend(String? organizationId, String? inviteId) =>
+  _i3.Future<_i4.Result<void>> resend(
+    String? organizationId,
+    String? inviteId,
+  ) =>
       (super.noSuchMethod(
             Invocation.method(#resend, [organizationId, inviteId]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i7.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#resend, [organizationId, inviteId]),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i7.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#resend, [organizationId, inviteId]),
+              ),
+            ),
           )
-          as _i4.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 
   @override
-  _i4.Future<void> cancel(String? organizationId, String? inviteId) =>
+  _i3.Future<_i4.Result<void>> cancel(
+    String? organizationId,
+    String? inviteId,
+  ) =>
       (super.noSuchMethod(
             Invocation.method(#cancel, [organizationId, inviteId]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i7.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#cancel, [organizationId, inviteId]),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i7.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#cancel, [organizationId, inviteId]),
+              ),
+            ),
           )
-          as _i4.Future<void>);
+          as _i3.Future<_i4.Result<void>>);
 
   @override
-  _i4.Future<List<_i3.Invite>> mine() =>
+  _i3.Future<_i4.Result<List<_i8.Invite>>> mine() =>
       (super.noSuchMethod(
             Invocation.method(#mine, []),
-            returnValue: _i4.Future<List<_i3.Invite>>.value(<_i3.Invite>[]),
-            returnValueForMissingStub: _i4.Future<List<_i3.Invite>>.value(
-              <_i3.Invite>[],
+            returnValue: _i3.Future<_i4.Result<List<_i8.Invite>>>.value(
+              _i7.dummyValue<_i4.Result<List<_i8.Invite>>>(
+                this,
+                Invocation.method(#mine, []),
+              ),
             ),
+            returnValueForMissingStub:
+                _i3.Future<_i4.Result<List<_i8.Invite>>>.value(
+                  _i7.dummyValue<_i4.Result<List<_i8.Invite>>>(
+                    this,
+                    Invocation.method(#mine, []),
+                  ),
+                ),
           )
-          as _i4.Future<List<_i3.Invite>>);
+          as _i3.Future<_i4.Result<List<_i8.Invite>>>);
 
   @override
-  _i4.Future<_i3.Invite> accept(_i3.Invite? invite) =>
+  _i3.Future<_i4.Result<_i8.Invite>> accept(_i8.Invite? invite) =>
       (super.noSuchMethod(
             Invocation.method(#accept, [invite]),
-            returnValue: _i4.Future<_i3.Invite>.value(
-              _FakeInvite_1(this, Invocation.method(#accept, [invite])),
+            returnValue: _i3.Future<_i4.Result<_i8.Invite>>.value(
+              _i7.dummyValue<_i4.Result<_i8.Invite>>(
+                this,
+                Invocation.method(#accept, [invite]),
+              ),
             ),
-            returnValueForMissingStub: _i4.Future<_i3.Invite>.value(
-              _FakeInvite_1(this, Invocation.method(#accept, [invite])),
+            returnValueForMissingStub: _i3.Future<_i4.Result<_i8.Invite>>.value(
+              _i7.dummyValue<_i4.Result<_i8.Invite>>(
+                this,
+                Invocation.method(#accept, [invite]),
+              ),
             ),
           )
-          as _i4.Future<_i3.Invite>);
+          as _i3.Future<_i4.Result<_i8.Invite>>);
 }

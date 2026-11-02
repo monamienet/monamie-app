@@ -1,16 +1,16 @@
 import 'package:flutter_background_service/flutter_background_service.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
-import 'package:monamie_app/data/repositories/account/firebase_account_deletion_backend.dart';
-import 'package:monamie_app/data/repositories/administrators/administrators_backend.dart';
-import 'package:monamie_app/data/repositories/administrators/firebase_administrators_backend.dart';
-import 'package:monamie_app/data/repositories/appearance/appearance_backend.dart';
-import 'package:monamie_app/data/repositories/appearance/firebase_appearance_backend.dart';
-import 'package:monamie_app/data/repositories/creation/creation_backend.dart';
-import 'package:monamie_app/data/repositories/creation/firebase_creation_backend.dart';
-import 'package:monamie_app/data/repositories/groups/firebase_groups_backend.dart';
-import 'package:monamie_app/data/repositories/groups/groups_backend.dart';
-import 'package:monamie_app/data/repositories/invites/firebase_invites_backend.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_repository_remote.dart';
+import 'package:monamie_app/data/repositories/administrators/administrators_repository.dart';
+import 'package:monamie_app/data/repositories/administrators/administrators_repository_remote.dart';
+import 'package:monamie_app/data/repositories/appearance/appearance_repository.dart';
+import 'package:monamie_app/data/repositories/appearance/appearance_repository_remote.dart';
+import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
+import 'package:monamie_app/data/repositories/creation/creation_repository_remote.dart';
+import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
+import 'package:monamie_app/data/repositories/groups/groups_repository_remote.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository_remote.dart';
 import 'package:monamie_app/data/repositories/membership/firestore_membership_source.dart';
 import 'package:monamie_app/data/repositories/membership/firestore_organization_membership_check.dart';
 import 'package:monamie_app/data/repositories/membership/membership_source.dart';
@@ -38,9 +38,11 @@ import 'package:monamie_app/data/services/background_usage_settings_launcher.dar
 import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/data/services/flutter_background_service_tracking_stopper.dart';
+import 'package:monamie_app/data/services/functions/functions_service.dart';
 import 'package:monamie_app/data/services/geolocator_device_location.dart';
 import 'package:monamie_app/data/services/method_channel_background_restriction_checker.dart';
 import 'package:monamie_app/data/services/method_channel_background_usage_settings_launcher.dart';
+import 'package:monamie_app/data/services/storage/organization_storage_service.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
@@ -88,19 +90,39 @@ List<SingleChildWidget> appDependencies({
       service: context.read<FlutterBackgroundService>(),
     ),
   ),
-  Provider<InvitesBackend>(create: (_) => const FirebaseInvitesBackend()),
-  Provider<AccountDeletionBackend>(
-    create: (_) => const FirebaseAccountDeletionBackend(),
+  Provider<CentralFunctionsService>(
+    create: (_) => const CentralFunctionsService(),
   ),
-  Provider<GroupsBackend>(create: (_) => const FirebaseGroupsBackend()),
-  Provider<AdministratorsBackend>(
-    create: (_) => const FirebaseAdministratorsBackend(),
+  Provider<OrganizationFunctionsService>(
+    create: (_) => const OrganizationFunctionsService(),
   ),
-  Provider<AppearanceBackend>(
+  Provider<OrganizationStorageService>(
+    create: (_) => const OrganizationStorageService(),
+  ),
+  Provider<InvitesRepository>(
+    create: (context) => InvitesRepositoryRemote(functions: context.read()),
+  ),
+  Provider<AccountDeletionRepository>(
     create: (context) =>
-        FirebaseAppearanceBackend(themes: context.read<ThemeCatalog>()),
+        AccountDeletionRepositoryRemote(functions: context.read()),
   ),
-  Provider<CreationBackend>(create: (_) => const FirebaseCreationBackend()),
+  Provider<GroupsRepository>(
+    create: (context) => GroupsRepositoryRemote(functions: context.read()),
+  ),
+  Provider<AdministratorsRepository>(
+    create: (context) =>
+        AdministratorsRepositoryRemote(functions: context.read()),
+  ),
+  Provider<AppearanceRepository>(
+    create: (context) => AppearanceRepositoryRemote(
+      themes: context.read(),
+      functions: context.read(),
+      storage: context.read(),
+    ),
+  ),
+  Provider<CreationRepository>(
+    create: (context) => CreationRepositoryRemote(functions: context.read()),
+  ),
   Provider<TrackingSettingsRepository>(
     create: (_) => const FirestoreTrackingSettingsRepository(),
   ),

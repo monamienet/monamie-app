@@ -4,39 +4,41 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i9;
+import 'dart:async' as _i6;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i20;
-import 'package:monamie_app/data/model/user_google_model.dart' as _i7;
-import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart'
-    as _i8;
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart'
-    as _i3;
+import 'package:mockito/src/dummies.dart' as _i9;
+import 'package:monamie_app/data/model/user_google_model.dart' as _i4;
+import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart'
+    as _i5;
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart'
+    as _i13;
 import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart'
-    as _i17;
+    as _i20;
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart'
-    as _i14;
+    as _i17;
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart'
-    as _i15;
-import 'package:monamie_app/data/repositories/organization/organization_local_data.dart'
-    as _i16;
-import 'package:monamie_app/data/repositories/organization/organization_session.dart'
     as _i18;
-import 'package:monamie_app/data/repositories/user/user_google_repository.dart'
+import 'package:monamie_app/data/repositories/organization/organization_local_data.dart'
     as _i19;
+import 'package:monamie_app/data/repositories/organization/organization_session.dart'
+    as _i21;
+import 'package:monamie_app/data/repositories/user/user_google_repository.dart'
+    as _i22;
 import 'package:monamie_app/data/services/auth/auth_google_service.dart'
     as _i10;
 import 'package:monamie_app/data/services/auth/google_bond_check.dart' as _i12;
 import 'package:monamie_app/data/services/background_tracking_stopper.dart'
     as _i11;
-import 'package:monamie_app/domain/models/account_deletion.dart' as _i2;
-import 'package:monamie_app/domain/models/group.dart' as _i13;
-import 'package:monamie_app/domain/models/invite.dart' as _i4;
+import 'package:monamie_app/domain/models/account_deletion.dart' as _i8;
+import 'package:monamie_app/domain/models/group.dart' as _i15;
+import 'package:monamie_app/domain/models/invite.dart' as _i16;
+import 'package:monamie_app/domain/models/invite_send_result.dart' as _i14;
 import 'package:monamie_app/domain/models/organization/organization_binding.dart'
-    as _i5;
+    as _i2;
 import 'package:monamie_app/domain/models/organization/organization_config.dart'
-    as _i6;
+    as _i3;
+import 'package:monamie_app/utils/result.dart' as _i7;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -54,84 +56,89 @@ import 'package:monamie_app/domain/models/organization/organization_config.dart'
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeAccountDeletion_0 extends _i1.SmartFake
-    implements _i2.AccountDeletion {
-  _FakeAccountDeletion_0(Object parent, Invocation parentInvocation)
+class _FakeOrganizationBinding_0 extends _i1.SmartFake
+    implements _i2.OrganizationBinding {
+  _FakeOrganizationBinding_0(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeInviteSendResult_1 extends _i1.SmartFake
-    implements _i3.InviteSendResult {
-  _FakeInviteSendResult_1(Object parent, Invocation parentInvocation)
+class _FakeOrganizationConfig_1 extends _i1.SmartFake
+    implements _i3.OrganizationConfig {
+  _FakeOrganizationConfig_1(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeInvite_2 extends _i1.SmartFake implements _i4.Invite {
-  _FakeInvite_2(Object parent, Invocation parentInvocation)
+class _FakeUserGoogleModel_2 extends _i1.SmartFake
+    implements _i4.UserGoogleModel {
+  _FakeUserGoogleModel_2(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeOrganizationBinding_3 extends _i1.SmartFake
-    implements _i5.OrganizationBinding {
-  _FakeOrganizationBinding_3(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeOrganizationConfig_4 extends _i1.SmartFake
-    implements _i6.OrganizationConfig {
-  _FakeOrganizationConfig_4(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeUserGoogleModel_5 extends _i1.SmartFake
-    implements _i7.UserGoogleModel {
-  _FakeUserGoogleModel_5(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-/// A class which mocks [AccountDeletionBackend].
+/// A class which mocks [AccountDeletionRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAccountDeletionBackend extends _i1.Mock
-    implements _i8.AccountDeletionBackend {
+class MockAccountDeletionRepository extends _i1.Mock
+    implements _i5.AccountDeletionRepository {
   @override
-  _i9.Future<_i2.AccountDeletion> request({
+  _i6.Future<_i7.Result<_i8.AccountDeletion>> request({
     List<String>? confirmIds = const [],
   }) =>
       (super.noSuchMethod(
             Invocation.method(#request, [], {#confirmIds: confirmIds}),
-            returnValue: _i9.Future<_i2.AccountDeletion>.value(
-              _FakeAccountDeletion_0(
+            returnValue: _i6.Future<_i7.Result<_i8.AccountDeletion>>.value(
+              _i9.dummyValue<_i7.Result<_i8.AccountDeletion>>(
                 this,
                 Invocation.method(#request, [], {#confirmIds: confirmIds}),
               ),
             ),
-            returnValueForMissingStub: _i9.Future<_i2.AccountDeletion>.value(
-              _FakeAccountDeletion_0(
-                this,
-                Invocation.method(#request, [], {#confirmIds: confirmIds}),
-              ),
-            ),
+            returnValueForMissingStub:
+                _i6.Future<_i7.Result<_i8.AccountDeletion>>.value(
+                  _i9.dummyValue<_i7.Result<_i8.AccountDeletion>>(
+                    this,
+                    Invocation.method(#request, [], {#confirmIds: confirmIds}),
+                  ),
+                ),
           )
-          as _i9.Future<_i2.AccountDeletion>);
+          as _i6.Future<_i7.Result<_i8.AccountDeletion>>);
 
   @override
-  _i9.Future<void> cancel() =>
+  _i6.Future<_i7.Result<void>> cancel() =>
       (super.noSuchMethod(
             Invocation.method(#cancel, []),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<_i7.Result<void>>.value(
+              _i9.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#cancel, []),
+              ),
+            ),
+            returnValueForMissingStub: _i6.Future<_i7.Result<void>>.value(
+              _i9.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#cancel, []),
+              ),
+            ),
           )
-          as _i9.Future<void>);
+          as _i6.Future<_i7.Result<void>>);
 
   @override
-  _i9.Future<_i2.AccountDeletion?> pending() =>
+  _i6.Future<_i7.Result<_i8.AccountDeletion?>> pending() =>
       (super.noSuchMethod(
             Invocation.method(#pending, []),
-            returnValue: _i9.Future<_i2.AccountDeletion?>.value(),
-            returnValueForMissingStub: _i9.Future<_i2.AccountDeletion?>.value(),
+            returnValue: _i6.Future<_i7.Result<_i8.AccountDeletion?>>.value(
+              _i9.dummyValue<_i7.Result<_i8.AccountDeletion?>>(
+                this,
+                Invocation.method(#pending, []),
+              ),
+            ),
+            returnValueForMissingStub:
+                _i6.Future<_i7.Result<_i8.AccountDeletion?>>.value(
+                  _i9.dummyValue<_i7.Result<_i8.AccountDeletion?>>(
+                    this,
+                    Invocation.method(#pending, []),
+                  ),
+                ),
           )
-          as _i9.Future<_i2.AccountDeletion?>);
+          as _i6.Future<_i7.Result<_i8.AccountDeletion?>>);
 }
 
 /// A class which mocks [AuthGoogleService].
@@ -139,87 +146,87 @@ class MockAccountDeletionBackend extends _i1.Mock
 /// See the documentation for Mockito's code generation for more information.
 class MockAuthGoogleService extends _i1.Mock implements _i10.AuthGoogleService {
   @override
-  _i9.Stream<String?> get onWebSignIn =>
+  _i6.Stream<String?> get onWebSignIn =>
       (super.noSuchMethod(
             Invocation.getter(#onWebSignIn),
-            returnValue: _i9.Stream<String?>.empty(),
-            returnValueForMissingStub: _i9.Stream<String?>.empty(),
+            returnValue: _i6.Stream<String?>.empty(),
+            returnValueForMissingStub: _i6.Stream<String?>.empty(),
           )
-          as _i9.Stream<String?>);
+          as _i6.Stream<String?>);
 
   @override
-  _i9.Future<void> ensureInitialized() =>
+  _i6.Future<void> ensureInitialized() =>
       (super.noSuchMethod(
             Invocation.method(#ensureInitialized, []),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i9.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i9.Future<String?> signInGoogle({void Function()? onAccountChosen}) =>
+  _i6.Future<String?> signInGoogle({void Function()? onAccountChosen}) =>
       (super.noSuchMethod(
             Invocation.method(#signInGoogle, [], {
               #onAccountChosen: onAccountChosen,
             }),
-            returnValue: _i9.Future<String?>.value(),
-            returnValueForMissingStub: _i9.Future<String?>.value(),
+            returnValue: _i6.Future<String?>.value(),
+            returnValueForMissingStub: _i6.Future<String?>.value(),
           )
-          as _i9.Future<String?>);
+          as _i6.Future<String?>);
 
   @override
-  _i9.Future<String?> refreshGoogleIdToken() =>
+  _i6.Future<String?> refreshGoogleIdToken() =>
       (super.noSuchMethod(
             Invocation.method(#refreshGoogleIdToken, []),
-            returnValue: _i9.Future<String?>.value(),
-            returnValueForMissingStub: _i9.Future<String?>.value(),
+            returnValue: _i6.Future<String?>.value(),
+            returnValueForMissingStub: _i6.Future<String?>.value(),
           )
-          as _i9.Future<String?>);
+          as _i6.Future<String?>);
 
   @override
-  _i9.Future<void> signInToOrganization(String? idToken) =>
+  _i6.Future<void> signInToOrganization(String? idToken) =>
       (super.noSuchMethod(
             Invocation.method(#signInToOrganization, [idToken]),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i9.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i9.Future<_i7.UserGoogleModel?> saveOrganizationProfile() =>
+  _i6.Future<_i4.UserGoogleModel?> saveOrganizationProfile() =>
       (super.noSuchMethod(
             Invocation.method(#saveOrganizationProfile, []),
-            returnValue: _i9.Future<_i7.UserGoogleModel?>.value(),
-            returnValueForMissingStub: _i9.Future<_i7.UserGoogleModel?>.value(),
+            returnValue: _i6.Future<_i4.UserGoogleModel?>.value(),
+            returnValueForMissingStub: _i6.Future<_i4.UserGoogleModel?>.value(),
           )
-          as _i9.Future<_i7.UserGoogleModel?>);
+          as _i6.Future<_i4.UserGoogleModel?>);
 
   @override
-  _i9.Future<String?> centralEmail() =>
+  _i6.Future<String?> centralEmail() =>
       (super.noSuchMethod(
             Invocation.method(#centralEmail, []),
-            returnValue: _i9.Future<String?>.value(),
-            returnValueForMissingStub: _i9.Future<String?>.value(),
+            returnValue: _i6.Future<String?>.value(),
+            returnValueForMissingStub: _i6.Future<String?>.value(),
           )
-          as _i9.Future<String?>);
+          as _i6.Future<String?>);
 
   @override
-  _i9.Future<void> signOutOfOrganization() =>
+  _i6.Future<void> signOutOfOrganization() =>
       (super.noSuchMethod(
             Invocation.method(#signOutOfOrganization, []),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i9.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i9.Future<void> logoutGoogle() =>
+  _i6.Future<void> logoutGoogle() =>
       (super.noSuchMethod(
             Invocation.method(#logoutGoogle, []),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i9.Future<void>);
+          as _i6.Future<void>);
 
   @override
   void dispose() => super.noSuchMethod(
@@ -234,13 +241,13 @@ class MockAuthGoogleService extends _i1.Mock implements _i10.AuthGoogleService {
 class MockBackgroundTrackingStopper extends _i1.Mock
     implements _i11.BackgroundTrackingStopper {
   @override
-  _i9.Future<bool> stop({String? email}) =>
+  _i6.Future<bool> stop({String? email}) =>
       (super.noSuchMethod(
             Invocation.method(#stop, [], {#email: email}),
-            returnValue: _i9.Future<bool>.value(false),
-            returnValueForMissingStub: _i9.Future<bool>.value(false),
+            returnValue: _i6.Future<bool>.value(false),
+            returnValueForMissingStub: _i6.Future<bool>.value(false),
           )
-          as _i9.Future<bool>);
+          as _i6.Future<bool>);
 }
 
 /// A class which mocks [GoogleBondCheck].
@@ -248,26 +255,26 @@ class MockBackgroundTrackingStopper extends _i1.Mock
 /// See the documentation for Mockito's code generation for more information.
 class MockGoogleBondCheck extends _i1.Mock implements _i12.GoogleBondCheck {
   @override
-  _i9.Future<bool> hasActiveBond() =>
+  _i6.Future<bool> hasActiveBond() =>
       (super.noSuchMethod(
             Invocation.method(#hasActiveBond, []),
-            returnValue: _i9.Future<bool>.value(false),
-            returnValueForMissingStub: _i9.Future<bool>.value(false),
+            returnValue: _i6.Future<bool>.value(false),
+            returnValueForMissingStub: _i6.Future<bool>.value(false),
           )
-          as _i9.Future<bool>);
+          as _i6.Future<bool>);
 }
 
-/// A class which mocks [InvitesBackend].
+/// A class which mocks [InvitesRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockInvitesBackend extends _i1.Mock implements _i3.InvitesBackend {
+class MockInvitesRepository extends _i1.Mock implements _i13.InvitesRepository {
   @override
-  _i9.Future<_i3.InviteSendResult> send(
+  _i6.Future<_i7.Result<_i14.InviteSendResult>> send(
     String? organizationId, {
     required String? organizationName,
     String? groupId,
     String? firstGroupName,
-    required List<({String email, Set<_i13.GroupRole> roles})>? invites,
+    required List<({String email, Set<_i15.GroupRole> roles})>? invites,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
@@ -280,8 +287,8 @@ class MockInvitesBackend extends _i1.Mock implements _i3.InvitesBackend {
                 #invites: invites,
               },
             ),
-            returnValue: _i9.Future<_i3.InviteSendResult>.value(
-              _FakeInviteSendResult_1(
+            returnValue: _i6.Future<_i7.Result<_i14.InviteSendResult>>.value(
+              _i9.dummyValue<_i7.Result<_i14.InviteSendResult>>(
                 this,
                 Invocation.method(
                   #send,
@@ -295,233 +302,285 @@ class MockInvitesBackend extends _i1.Mock implements _i3.InvitesBackend {
                 ),
               ),
             ),
-            returnValueForMissingStub: _i9.Future<_i3.InviteSendResult>.value(
-              _FakeInviteSendResult_1(
-                this,
-                Invocation.method(
-                  #send,
-                  [organizationId],
-                  {
-                    #organizationName: organizationName,
-                    #groupId: groupId,
-                    #firstGroupName: firstGroupName,
-                    #invites: invites,
-                  },
+            returnValueForMissingStub:
+                _i6.Future<_i7.Result<_i14.InviteSendResult>>.value(
+                  _i9.dummyValue<_i7.Result<_i14.InviteSendResult>>(
+                    this,
+                    Invocation.method(
+                      #send,
+                      [organizationId],
+                      {
+                        #organizationName: organizationName,
+                        #groupId: groupId,
+                        #firstGroupName: firstGroupName,
+                        #invites: invites,
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ),
           )
-          as _i9.Future<_i3.InviteSendResult>);
+          as _i6.Future<_i7.Result<_i14.InviteSendResult>>);
 
   @override
-  _i9.Future<List<_i4.Invite>> listForGroup(
+  _i6.Future<_i7.Result<List<_i16.Invite>>> listForGroup(
     String? organizationId,
     String? groupId,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#listForGroup, [organizationId, groupId]),
-            returnValue: _i9.Future<List<_i4.Invite>>.value(<_i4.Invite>[]),
-            returnValueForMissingStub: _i9.Future<List<_i4.Invite>>.value(
-              <_i4.Invite>[],
+            returnValue: _i6.Future<_i7.Result<List<_i16.Invite>>>.value(
+              _i9.dummyValue<_i7.Result<List<_i16.Invite>>>(
+                this,
+                Invocation.method(#listForGroup, [organizationId, groupId]),
+              ),
             ),
+            returnValueForMissingStub:
+                _i6.Future<_i7.Result<List<_i16.Invite>>>.value(
+                  _i9.dummyValue<_i7.Result<List<_i16.Invite>>>(
+                    this,
+                    Invocation.method(#listForGroup, [organizationId, groupId]),
+                  ),
+                ),
           )
-          as _i9.Future<List<_i4.Invite>>);
+          as _i6.Future<_i7.Result<List<_i16.Invite>>>);
 
   @override
-  _i9.Future<void> resend(String? organizationId, String? inviteId) =>
+  _i6.Future<_i7.Result<void>> resend(
+    String? organizationId,
+    String? inviteId,
+  ) =>
       (super.noSuchMethod(
             Invocation.method(#resend, [organizationId, inviteId]),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<_i7.Result<void>>.value(
+              _i9.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#resend, [organizationId, inviteId]),
+              ),
+            ),
+            returnValueForMissingStub: _i6.Future<_i7.Result<void>>.value(
+              _i9.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#resend, [organizationId, inviteId]),
+              ),
+            ),
           )
-          as _i9.Future<void>);
+          as _i6.Future<_i7.Result<void>>);
 
   @override
-  _i9.Future<void> cancel(String? organizationId, String? inviteId) =>
+  _i6.Future<_i7.Result<void>> cancel(
+    String? organizationId,
+    String? inviteId,
+  ) =>
       (super.noSuchMethod(
             Invocation.method(#cancel, [organizationId, inviteId]),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<_i7.Result<void>>.value(
+              _i9.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#cancel, [organizationId, inviteId]),
+              ),
+            ),
+            returnValueForMissingStub: _i6.Future<_i7.Result<void>>.value(
+              _i9.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#cancel, [organizationId, inviteId]),
+              ),
+            ),
           )
-          as _i9.Future<void>);
+          as _i6.Future<_i7.Result<void>>);
 
   @override
-  _i9.Future<List<_i4.Invite>> mine() =>
+  _i6.Future<_i7.Result<List<_i16.Invite>>> mine() =>
       (super.noSuchMethod(
             Invocation.method(#mine, []),
-            returnValue: _i9.Future<List<_i4.Invite>>.value(<_i4.Invite>[]),
-            returnValueForMissingStub: _i9.Future<List<_i4.Invite>>.value(
-              <_i4.Invite>[],
+            returnValue: _i6.Future<_i7.Result<List<_i16.Invite>>>.value(
+              _i9.dummyValue<_i7.Result<List<_i16.Invite>>>(
+                this,
+                Invocation.method(#mine, []),
+              ),
             ),
+            returnValueForMissingStub:
+                _i6.Future<_i7.Result<List<_i16.Invite>>>.value(
+                  _i9.dummyValue<_i7.Result<List<_i16.Invite>>>(
+                    this,
+                    Invocation.method(#mine, []),
+                  ),
+                ),
           )
-          as _i9.Future<List<_i4.Invite>>);
+          as _i6.Future<_i7.Result<List<_i16.Invite>>>);
 
   @override
-  _i9.Future<_i4.Invite> accept(_i4.Invite? invite) =>
+  _i6.Future<_i7.Result<_i16.Invite>> accept(_i16.Invite? invite) =>
       (super.noSuchMethod(
             Invocation.method(#accept, [invite]),
-            returnValue: _i9.Future<_i4.Invite>.value(
-              _FakeInvite_2(this, Invocation.method(#accept, [invite])),
+            returnValue: _i6.Future<_i7.Result<_i16.Invite>>.value(
+              _i9.dummyValue<_i7.Result<_i16.Invite>>(
+                this,
+                Invocation.method(#accept, [invite]),
+              ),
             ),
-            returnValueForMissingStub: _i9.Future<_i4.Invite>.value(
-              _FakeInvite_2(this, Invocation.method(#accept, [invite])),
-            ),
+            returnValueForMissingStub:
+                _i6.Future<_i7.Result<_i16.Invite>>.value(
+                  _i9.dummyValue<_i7.Result<_i16.Invite>>(
+                    this,
+                    Invocation.method(#accept, [invite]),
+                  ),
+                ),
           )
-          as _i9.Future<_i4.Invite>);
+          as _i6.Future<_i7.Result<_i16.Invite>>);
 }
 
 /// A class which mocks [OrganizationBrandingLoader].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationBrandingLoader extends _i1.Mock
-    implements _i14.OrganizationBrandingLoader {
+    implements _i17.OrganizationBrandingLoader {
   @override
-  _i9.Future<_i5.OrganizationBinding> load(
-    _i15.OrganizationCandidate? candidate,
+  _i6.Future<_i2.OrganizationBinding> load(
+    _i18.OrganizationCandidate? candidate,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#load, [candidate]),
-            returnValue: _i9.Future<_i5.OrganizationBinding>.value(
-              _FakeOrganizationBinding_3(
+            returnValue: _i6.Future<_i2.OrganizationBinding>.value(
+              _FakeOrganizationBinding_0(
                 this,
                 Invocation.method(#load, [candidate]),
               ),
             ),
             returnValueForMissingStub:
-                _i9.Future<_i5.OrganizationBinding>.value(
-                  _FakeOrganizationBinding_3(
+                _i6.Future<_i2.OrganizationBinding>.value(
+                  _FakeOrganizationBinding_0(
                     this,
                     Invocation.method(#load, [candidate]),
                   ),
                 ),
           )
-          as _i9.Future<_i5.OrganizationBinding>);
+          as _i6.Future<_i2.OrganizationBinding>);
 
   @override
-  _i9.Future<_i6.OrganizationConfig> readBranding(
-    _i5.OrganizationBinding? binding,
+  _i6.Future<_i3.OrganizationConfig> readBranding(
+    _i2.OrganizationBinding? binding,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#readBranding, [binding]),
-            returnValue: _i9.Future<_i6.OrganizationConfig>.value(
-              _FakeOrganizationConfig_4(
+            returnValue: _i6.Future<_i3.OrganizationConfig>.value(
+              _FakeOrganizationConfig_1(
                 this,
                 Invocation.method(#readBranding, [binding]),
               ),
             ),
-            returnValueForMissingStub: _i9.Future<_i6.OrganizationConfig>.value(
-              _FakeOrganizationConfig_4(
+            returnValueForMissingStub: _i6.Future<_i3.OrganizationConfig>.value(
+              _FakeOrganizationConfig_1(
                 this,
                 Invocation.method(#readBranding, [binding]),
               ),
             ),
           )
-          as _i9.Future<_i6.OrganizationConfig>);
+          as _i6.Future<_i3.OrganizationConfig>);
 }
 
 /// A class which mocks [OrganizationDirectory].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationDirectory extends _i1.Mock
-    implements _i15.OrganizationDirectory {
+    implements _i18.OrganizationDirectory {
   @override
-  _i9.Future<List<_i15.OrganizationCandidate>> organizationsOfSignedInUser() =>
+  _i6.Future<List<_i18.OrganizationCandidate>> organizationsOfSignedInUser() =>
       (super.noSuchMethod(
             Invocation.method(#organizationsOfSignedInUser, []),
-            returnValue: _i9.Future<List<_i15.OrganizationCandidate>>.value(
-              <_i15.OrganizationCandidate>[],
+            returnValue: _i6.Future<List<_i18.OrganizationCandidate>>.value(
+              <_i18.OrganizationCandidate>[],
             ),
             returnValueForMissingStub:
-                _i9.Future<List<_i15.OrganizationCandidate>>.value(
-                  <_i15.OrganizationCandidate>[],
+                _i6.Future<List<_i18.OrganizationCandidate>>.value(
+                  <_i18.OrganizationCandidate>[],
                 ),
           )
-          as _i9.Future<List<_i15.OrganizationCandidate>>);
+          as _i6.Future<List<_i18.OrganizationCandidate>>);
 }
 
 /// A class which mocks [OrganizationLocalData].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationLocalData extends _i1.Mock
-    implements _i16.OrganizationLocalData {
+    implements _i19.OrganizationLocalData {
   @override
-  _i9.Future<void> clear() =>
+  _i6.Future<void> clear() =>
       (super.noSuchMethod(
             Invocation.method(#clear, []),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i9.Future<void>);
+          as _i6.Future<void>);
 }
 
 /// A class which mocks [OrganizationMembershipCheck].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationMembershipCheck extends _i1.Mock
-    implements _i17.OrganizationMembershipCheck {
+    implements _i20.OrganizationMembershipCheck {
   @override
-  _i9.Future<bool?> isMemberOf(String? organizationId) =>
+  _i6.Future<bool?> isMemberOf(String? organizationId) =>
       (super.noSuchMethod(
             Invocation.method(#isMemberOf, [organizationId]),
-            returnValue: _i9.Future<bool?>.value(),
-            returnValueForMissingStub: _i9.Future<bool?>.value(),
+            returnValue: _i6.Future<bool?>.value(),
+            returnValueForMissingStub: _i6.Future<bool?>.value(),
           )
-          as _i9.Future<bool?>);
+          as _i6.Future<bool?>);
 }
 
 /// A class which mocks [OrganizationSession].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationSession extends _i1.Mock
-    implements _i18.OrganizationSession {
+    implements _i21.OrganizationSession {
   @override
-  _i9.Future<void> bind(
-    _i5.OrganizationBinding? binding, {
+  _i6.Future<void> bind(
+    _i2.OrganizationBinding? binding, {
     bool? remember = true,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#bind, [binding], {#remember: remember}),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i9.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i9.Future<_i5.OrganizationBinding?> restore() =>
+  _i6.Future<_i2.OrganizationBinding?> restore() =>
       (super.noSuchMethod(
             Invocation.method(#restore, []),
-            returnValue: _i9.Future<_i5.OrganizationBinding?>.value(),
+            returnValue: _i6.Future<_i2.OrganizationBinding?>.value(),
             returnValueForMissingStub:
-                _i9.Future<_i5.OrganizationBinding?>.value(),
+                _i6.Future<_i2.OrganizationBinding?>.value(),
           )
-          as _i9.Future<_i5.OrganizationBinding?>);
+          as _i6.Future<_i2.OrganizationBinding?>);
 
   @override
-  _i9.Future<void> storeBranding(_i6.OrganizationConfig? organization) =>
+  _i6.Future<void> storeBranding(_i3.OrganizationConfig? organization) =>
       (super.noSuchMethod(
             Invocation.method(#storeBranding, [organization]),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i9.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i9.Future<void> forget() =>
+  _i6.Future<void> forget() =>
       (super.noSuchMethod(
             Invocation.method(#forget, []),
-            returnValue: _i9.Future<void>.value(),
-            returnValueForMissingStub: _i9.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i9.Future<void>);
+          as _i6.Future<void>);
 }
 
 /// A class which mocks [UserGoogleRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockUserGoogleRepository extends _i1.Mock
-    implements _i19.UserGoogleRepository {
+    implements _i22.UserGoogleRepository {
   @override
-  _i9.Future<_i7.UserGoogleModel> saveGoogleProfile(
+  _i6.Future<_i4.UserGoogleModel> saveGoogleProfile(
     String? email,
     String? name,
     String? uid,
@@ -534,8 +593,8 @@ class MockUserGoogleRepository extends _i1.Mock
               [email, name, uid, urlImage],
               {#avatarBase64: avatarBase64},
             ),
-            returnValue: _i9.Future<_i7.UserGoogleModel>.value(
-              _FakeUserGoogleModel_5(
+            returnValue: _i6.Future<_i4.UserGoogleModel>.value(
+              _FakeUserGoogleModel_2(
                 this,
                 Invocation.method(
                   #saveGoogleProfile,
@@ -544,8 +603,8 @@ class MockUserGoogleRepository extends _i1.Mock
                 ),
               ),
             ),
-            returnValueForMissingStub: _i9.Future<_i7.UserGoogleModel>.value(
-              _FakeUserGoogleModel_5(
+            returnValueForMissingStub: _i6.Future<_i4.UserGoogleModel>.value(
+              _FakeUserGoogleModel_2(
                 this,
                 Invocation.method(
                   #saveGoogleProfile,
@@ -555,80 +614,80 @@ class MockUserGoogleRepository extends _i1.Mock
               ),
             ),
           )
-          as _i9.Future<_i7.UserGoogleModel>);
+          as _i6.Future<_i4.UserGoogleModel>);
 
   @override
-  _i9.Future<String> saveUserGoogleModel(_i7.UserGoogleModel? user) =>
+  _i6.Future<String> saveUserGoogleModel(_i4.UserGoogleModel? user) =>
       (super.noSuchMethod(
             Invocation.method(#saveUserGoogleModel, [user]),
-            returnValue: _i9.Future<String>.value(
-              _i20.dummyValue<String>(
+            returnValue: _i6.Future<String>.value(
+              _i9.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
             ),
-            returnValueForMissingStub: _i9.Future<String>.value(
-              _i20.dummyValue<String>(
+            returnValueForMissingStub: _i6.Future<String>.value(
+              _i9.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
             ),
           )
-          as _i9.Future<String>);
+          as _i6.Future<String>);
 
   @override
-  _i9.Future<_i7.UserGoogleModel?> getUserGoogleModel() =>
+  _i6.Future<_i4.UserGoogleModel?> getUserGoogleModel() =>
       (super.noSuchMethod(
             Invocation.method(#getUserGoogleModel, []),
-            returnValue: _i9.Future<_i7.UserGoogleModel?>.value(),
-            returnValueForMissingStub: _i9.Future<_i7.UserGoogleModel?>.value(),
+            returnValue: _i6.Future<_i4.UserGoogleModel?>.value(),
+            returnValueForMissingStub: _i6.Future<_i4.UserGoogleModel?>.value(),
           )
-          as _i9.Future<_i7.UserGoogleModel?>);
+          as _i6.Future<_i4.UserGoogleModel?>);
 
   @override
-  _i9.Future<String> deleteUserGoogleModel() =>
+  _i6.Future<String> deleteUserGoogleModel() =>
       (super.noSuchMethod(
             Invocation.method(#deleteUserGoogleModel, []),
-            returnValue: _i9.Future<String>.value(
-              _i20.dummyValue<String>(
+            returnValue: _i6.Future<String>.value(
+              _i9.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
             ),
-            returnValueForMissingStub: _i9.Future<String>.value(
-              _i20.dummyValue<String>(
+            returnValueForMissingStub: _i6.Future<String>.value(
+              _i9.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
             ),
           )
-          as _i9.Future<String>);
+          as _i6.Future<String>);
 
   @override
-  _i9.Future<String> clearAllUserGoogle() =>
+  _i6.Future<String> clearAllUserGoogle() =>
       (super.noSuchMethod(
             Invocation.method(#clearAllUserGoogle, []),
-            returnValue: _i9.Future<String>.value(
-              _i20.dummyValue<String>(
+            returnValue: _i6.Future<String>.value(
+              _i9.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),
             ),
-            returnValueForMissingStub: _i9.Future<String>.value(
-              _i20.dummyValue<String>(
+            returnValueForMissingStub: _i6.Future<String>.value(
+              _i9.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),
             ),
           )
-          as _i9.Future<String>);
+          as _i6.Future<String>);
 
   @override
-  _i9.Future<bool> hasUserGoogle() =>
+  _i6.Future<bool> hasUserGoogle() =>
       (super.noSuchMethod(
             Invocation.method(#hasUserGoogle, []),
-            returnValue: _i9.Future<bool>.value(false),
-            returnValueForMissingStub: _i9.Future<bool>.value(false),
+            returnValue: _i6.Future<bool>.value(false),
+            returnValueForMissingStub: _i6.Future<bool>.value(false),
           )
-          as _i9.Future<bool>);
+          as _i6.Future<bool>);
 }

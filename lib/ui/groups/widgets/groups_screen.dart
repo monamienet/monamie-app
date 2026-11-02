@@ -4,8 +4,9 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 
 import 'package:monamie_app/domain/models/invite.dart';
-import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
 import 'package:monamie_app/routing/routes.dart';
+import 'package:monamie_app/utils/result.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
@@ -624,12 +625,12 @@ class GroupScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.groupId,
-    required this.invitesBackend,
+    required this.invitesRepository,
   });
 
   final GroupsViewModel controller;
   final String groupId;
-  final InvitesBackend invitesBackend;
+  final InvitesRepository invitesRepository;
 
   @override
   State<GroupScreen> createState() => _GroupScreenState();
@@ -653,24 +654,21 @@ class _GroupScreenState extends State<GroupScreen> {
   }
 
   Future<void> _loadInvites() async {
-    try {
-      final invites = await widget.invitesBackend.listForGroup(
-        c.organizationId,
-        widget.groupId,
-      );
-      if (mounted) {
+    final loaded = await widget.invitesRepository.listForGroup(
+      c.organizationId,
+      widget.groupId,
+    );
+    if (!mounted) return;
+    switch (loaded) {
+      case Ok(value: final invites):
         setState(() {
           _invites = invites;
           _invitesError = '';
         });
-      }
-    } catch (e) {
-      debugPrint('[Groups] Could not load invites: $e');
-      if (mounted) {
+      case Err():
         setState(
           () => _invitesError = 'Não foi possível carregar os convites.',
         );
-      }
     }
   }
 
@@ -1389,16 +1387,10 @@ class _GroupScreenState extends State<GroupScreen> {
 
   /// Runs an invite operation for [_actionSheet]: an error message or
   /// `null`, then reloads the invites.
-  Future<String?> _inviteOperation(Future<void> Function() operation) async {
-    try {
-      await operation();
-    } on InvitesException catch (e) {
-      return e.message;
-    } catch (e) {
-      debugPrint('[Groups] Invite operation failed: $e');
-      return 'Não foi possível concluir agora. Verifique a conexão e tente '
-          'de novo.';
-    }
+  Future<String?> _inviteOperation(
+    Future<Result<void>> Function() operation,
+  ) async {
+    if (await operation() case Err(:final message)) return message;
     await _loadInvites();
     return null;
   }
@@ -1414,7 +1406,7 @@ class _GroupScreenState extends State<GroupScreen> {
         'O novo convite vale por 14 dias.',
       ],
       onConfirm: () => _inviteOperation(
-        () => widget.invitesBackend.resend(c.organizationId, invite.id),
+        () => widget.invitesRepository.resend(c.organizationId, invite.id),
       ),
     );
     if (ok && mounted) _toast(context, 'Convite reenviado');
@@ -1432,7 +1424,7 @@ class _GroupScreenState extends State<GroupScreen> {
         'Você pode convidar de novo depois.',
       ],
       onConfirm: () => _inviteOperation(
-        () => widget.invitesBackend.cancel(c.organizationId, invite.id),
+        () => widget.invitesRepository.cancel(c.organizationId, invite.id),
       ),
     );
     if (ok && mounted) _toast(context, 'Convite cancelado');
