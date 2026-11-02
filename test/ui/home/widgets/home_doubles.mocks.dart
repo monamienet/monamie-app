@@ -5,23 +5,22 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
 import 'dart:async' as _i12;
-import 'dart:ui' as _i23;
+import 'dart:ui' as _i22;
 
 import 'package:flutter/foundation.dart' as _i2;
 import 'package:flutter_map/flutter_map.dart' as _i4;
-import 'package:geolocator/geolocator.dart' as _i3;
-import 'package:latlong2/latlong.dart' as _i19;
+import 'package:latlong2/latlong.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i10;
 import 'package:monamie_app/data/services/call_service.dart' as _i11;
 import 'package:monamie_app/domain/models/capabilities.dart' as _i14;
 import 'package:monamie_app/domain/models/group_member.dart' as _i17;
-import 'package:monamie_app/domain/models/location_point.dart' as _i20;
+import 'package:monamie_app/domain/models/history_month.dart' as _i9;
+import 'package:monamie_app/domain/models/location_point.dart' as _i19;
 import 'package:monamie_app/domain/models/map_group.dart' as _i15;
 import 'package:monamie_app/domain/models/user_model.dart' as _i16;
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart'
     as _i8;
-import 'package:monamie_app/ui/history/view_models/history_month.dart' as _i9;
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart' as _i13;
 import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart'
     as _i6;
@@ -29,8 +28,8 @@ import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart'
     as _i18;
 import 'package:monamie_app/ui/home/view_models/user_state.dart' as _i7;
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart' as _i5;
-import 'package:monamie_app/utils/result.dart' as _i21;
-import 'package:monamie_app/utils/user_notice.dart' as _i22;
+import 'package:monamie_app/utils/result.dart' as _i20;
+import 'package:monamie_app/utils/user_notice.dart' as _i21;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -54,8 +53,8 @@ class _FakeValueListenable_0<T> extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
-class _FakePosition_1 extends _i1.SmartFake implements _i3.Position {
-  _FakePosition_1(Object parent, Invocation parentInvocation)
+class _FakeLatLng_1 extends _i1.SmartFake implements _i3.LatLng {
+  _FakeLatLng_1(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -494,16 +493,16 @@ class MockGroupMapState extends _i1.Mock implements _i13.GroupMapState {
 /// See the documentation for Mockito's code generation for more information.
 class MockTrackingViewModel extends _i1.Mock implements _i18.TrackingViewModel {
   @override
-  _i3.Position get position =>
+  _i3.LatLng get position =>
       (super.noSuchMethod(
             Invocation.getter(#position),
-            returnValue: _FakePosition_1(this, Invocation.getter(#position)),
-            returnValueForMissingStub: _FakePosition_1(
+            returnValue: _FakeLatLng_1(this, Invocation.getter(#position)),
+            returnValueForMissingStub: _FakeLatLng_1(
               this,
               Invocation.getter(#position),
             ),
           )
-          as _i3.Position);
+          as _i3.LatLng);
 
   @override
   _i2.ValueListenable<List<_i16.UserModel>> get firebaseUsers =>
@@ -628,19 +627,19 @@ class MockTrackingViewModel extends _i1.Mock implements _i18.TrackingViewModel {
           as _i2.ValueListenable<double?>);
 
   @override
-  _i2.ValueListenable<_i19.LatLng?> get ownPosition =>
+  _i2.ValueListenable<_i3.LatLng?> get ownPosition =>
       (super.noSuchMethod(
             Invocation.getter(#ownPosition),
-            returnValue: _FakeValueListenable_0<_i19.LatLng?>(
+            returnValue: _FakeValueListenable_0<_i3.LatLng?>(
               this,
               Invocation.getter(#ownPosition),
             ),
-            returnValueForMissingStub: _FakeValueListenable_0<_i19.LatLng?>(
+            returnValueForMissingStub: _FakeValueListenable_0<_i3.LatLng?>(
               this,
               Invocation.getter(#ownPosition),
             ),
           )
-          as _i2.ValueListenable<_i19.LatLng?>);
+          as _i2.ValueListenable<_i3.LatLng?>);
 
   @override
   bool get isObservingToday =>
@@ -652,20 +651,20 @@ class MockTrackingViewModel extends _i1.Mock implements _i18.TrackingViewModel {
           as bool);
 
   @override
-  _i2.ValueListenable<Map<String, _i19.LatLng>> get animatedMarkerPositions =>
+  _i2.ValueListenable<Map<String, _i3.LatLng>> get animatedMarkerPositions =>
       (super.noSuchMethod(
             Invocation.getter(#animatedMarkerPositions),
-            returnValue: _FakeValueListenable_0<Map<String, _i19.LatLng>>(
+            returnValue: _FakeValueListenable_0<Map<String, _i3.LatLng>>(
               this,
               Invocation.getter(#animatedMarkerPositions),
             ),
             returnValueForMissingStub:
-                _FakeValueListenable_0<Map<String, _i19.LatLng>>(
+                _FakeValueListenable_0<Map<String, _i3.LatLng>>(
                   this,
                   Invocation.getter(#animatedMarkerPositions),
                 ),
           )
-          as _i2.ValueListenable<Map<String, _i19.LatLng>>);
+          as _i2.ValueListenable<Map<String, _i3.LatLng>>);
 
   @override
   _i2.ValueListenable<Set<String>> get usersWithPointsOnObservedDay =>
@@ -683,25 +682,25 @@ class MockTrackingViewModel extends _i1.Mock implements _i18.TrackingViewModel {
           as _i2.ValueListenable<Set<String>>);
 
   @override
-  _i2.ValueListenable<Map<String, List<_i20.LocationPoint>>>
+  _i2.ValueListenable<Map<String, List<_i19.LocationPoint>>>
   get highlightedTrajectories =>
       (super.noSuchMethod(
             Invocation.getter(#highlightedTrajectories),
             returnValue:
-                _FakeValueListenable_0<Map<String, List<_i20.LocationPoint>>>(
+                _FakeValueListenable_0<Map<String, List<_i19.LocationPoint>>>(
                   this,
                   Invocation.getter(#highlightedTrajectories),
                 ),
             returnValueForMissingStub:
-                _FakeValueListenable_0<Map<String, List<_i20.LocationPoint>>>(
+                _FakeValueListenable_0<Map<String, List<_i19.LocationPoint>>>(
                   this,
                   Invocation.getter(#highlightedTrajectories),
                 ),
           )
-          as _i2.ValueListenable<Map<String, List<_i20.LocationPoint>>>);
+          as _i2.ValueListenable<Map<String, List<_i19.LocationPoint>>>);
 
   @override
-  set position(_i3.Position? value) => super.noSuchMethod(
+  set position(_i3.LatLng? value) => super.noSuchMethod(
     Invocation.setter(#position, value),
     returnValueForMissingStub: null,
   );
@@ -737,24 +736,24 @@ class MockTrackingViewModel extends _i1.Mock implements _i18.TrackingViewModel {
           as _i12.Future<void>);
 
   @override
-  _i12.Future<_i21.Result<_i22.UserNotice?>> toggleService() =>
+  _i12.Future<_i20.Result<_i21.UserNotice?>> toggleService() =>
       (super.noSuchMethod(
             Invocation.method(#toggleService, []),
-            returnValue: _i12.Future<_i21.Result<_i22.UserNotice?>>.value(
-              _i10.dummyValue<_i21.Result<_i22.UserNotice?>>(
+            returnValue: _i12.Future<_i20.Result<_i21.UserNotice?>>.value(
+              _i10.dummyValue<_i20.Result<_i21.UserNotice?>>(
                 this,
                 Invocation.method(#toggleService, []),
               ),
             ),
             returnValueForMissingStub:
-                _i12.Future<_i21.Result<_i22.UserNotice?>>.value(
-                  _i10.dummyValue<_i21.Result<_i22.UserNotice?>>(
+                _i12.Future<_i20.Result<_i21.UserNotice?>>.value(
+                  _i10.dummyValue<_i20.Result<_i21.UserNotice?>>(
                     this,
                     Invocation.method(#toggleService, []),
                   ),
                 ),
           )
-          as _i12.Future<_i21.Result<_i22.UserNotice?>>);
+          as _i12.Future<_i20.Result<_i21.UserNotice?>>);
 
   @override
   void dispose() => super.noSuchMethod(
@@ -846,13 +845,13 @@ class MockUserViewModel extends _i1.Mock implements _i5.UserViewModel {
   );
 
   @override
-  void addListener(_i23.VoidCallback? listener) => super.noSuchMethod(
+  void addListener(_i22.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#addListener, [listener]),
     returnValueForMissingStub: null,
   );
 
   @override
-  void removeListener(_i23.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i22.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#removeListener, [listener]),
     returnValueForMissingStub: null,
   );

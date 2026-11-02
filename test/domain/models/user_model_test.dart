@@ -1,9 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 
 void main() {
-  group('UserModel - Testes Unitários de Inicialização e Serialização', () {
+  group('UserModel - Testes Unitários de Inicialização', () {
     // -------------------------------------------------------------
     // CONSTRUTOR PADRÃO
     // -------------------------------------------------------------
@@ -65,200 +64,39 @@ void main() {
         expect(user.email, isEmpty);
       },
     );
-
-    // -------------------------------------------------------------
-    // toMap()
-    // -------------------------------------------------------------
-    test(
-      'Happy Path: toMap() deve incluir todos os campos quando preenchidos',
-      () {
-        // 1. Arrange
-        final dataHora = DateTime(2026, 9, 16, 21, 0, 0);
-        final user = UserModel(
-          email: 'seguranca@monamienet.org',
-          name: 'Vigilante Silva',
-          lat: -22.9000,
-          lng: -43.1300,
-          capturedAt: dataHora,
-          isPublishing: true,
-        );
-
-        // 2. Act
-        final map = user.toMap();
-
-        // 3. Assert
-        expect(map, {
-          'email': 'seguranca@monamienet.org',
-          'name': 'Vigilante Silva',
-          'lat': -22.9000,
-          'lng': -43.1300,
-          'capturedAt': dataHora,
-          'isPublishing': true,
-        });
-      },
-    );
-
-    test(
-      'Edge Case: toMap() deve omitir todos os campos opcionais quando forem nulos',
-      () {
-        // 1. Arrange
-        final user = UserModel(email: 'apenas.email@monamienet.org');
-
-        // 2. Act
-        final map = user.toMap();
-
-        // 3. Assert
-        expect(map, {'email': 'apenas.email@monamienet.org'});
-      },
-    );
-
-    // -------------------------------------------------------------
-    // fromMap()
-    // -------------------------------------------------------------
-    test(
-      'Happy Path: fromMap() deve extrair todos os campos de dados válidos do Firestore',
-      () {
-        // 1. Arrange
-        final timestampEsperado = DateTime(2026, 9, 16, 15, 0);
-        final mapFirestore = {
-          'email': 'motorista@monamienet.org',
-          'name': 'Motorista Santos',
-          'lat': -22.8900,
-          'lng': -43.1200,
-          'capturedAt': Timestamp.fromDate(timestampEsperado),
-          'isPublishing': true,
-        };
-
-        // 2. Act
-        final user = UserModel.fromMap(mapFirestore);
-
-        // 3. Assert
-        expect(user.email, 'motorista@monamienet.org');
-        expect(user.name, 'Motorista Santos');
-        expect(user.lat, -22.8900);
-        expect(user.lng, -43.1200);
-        expect(user.capturedAt, timestampEsperado);
-        expect(user.isPublishing, isTrue);
-      },
-    );
-
-    test('Edge Case: fromMap() com coordenadas numéricas zero (0.0, 0.0)', () {
-      // 1. Arrange
-      final mapCoordenadasZero = {
-        'email': 'zero@monamienet.org',
-        'lat': 0.0,
-        'lng': 0.0,
-      };
-
-      // 2. Act
-      final user = UserModel.fromMap(mapCoordenadasZero);
-
-      // 3. Assert
-      expect(user.lat, 0.0);
-      expect(user.lng, 0.0);
-    });
-
-    test(
-      'Sad Path: fromMap() deve lançar TypeError quando lat não for numérico',
-      () {
-        // 1. Arrange
-        final mapComLatInvalida = {
-          'email': 'teste.invalido@monamienet.org',
-          'lat': 'coordenada_invalida_string',
-        };
-
-        // 2. Act
-        action() => UserModel.fromMap(mapComLatInvalida);
-
-        // 3. Assert
-        expect(action, throwsA(isA<TypeError>()));
-      },
-    );
-
-    test(
-      'Sad Path: fromMap() deve lançar TypeError quando isPublishing não for booleano',
-      () {
-        // 1. Arrange
-        final mapComTrackedInvalido = {
-          'email': 'teste.invalido@monamienet.org',
-          'isPublishing': 'nao_e_booleano',
-        };
-
-        // 2. Act
-        action() => UserModel.fromMap(mapComTrackedInvalido);
-
-        // 3. Assert
-        expect(action, throwsA(isA<TypeError>()));
-      },
-    );
-
-    // -------------------------------------------------------------
-    // IDEMPOTÊNCIA / RECONSTRUÇÃO
-    // -------------------------------------------------------------
-    test(
-      'Happy Path: UserModel reconstruído a partir de mapa serializado preserva todos os dados',
-      () {
-        // 1. Arrange
-        final mapaOriginal = {
-          'email': 'ronda.noturna@monamienet.org',
-          'name': 'Ronda Noturna',
-          'lat': -22.9100,
-          'lng': -43.1400,
-          'isPublishing': true,
-        };
-
-        // 2. Act
-        final reconstruido = UserModel.fromMap(mapaOriginal);
-
-        // 3. Assert
-        expect(reconstruido.email, mapaOriginal['email']);
-        expect(reconstruido.name, mapaOriginal['name']);
-        expect(reconstruido.lat, mapaOriginal['lat']);
-        expect(reconstruido.lng, mapaOriginal['lng']);
-        expect(reconstruido.isPublishing, mapaOriginal['isPublishing']);
-      },
-    );
   });
 
   group('UserModel - igualdade por conteúdo', () {
-    // The map compares each Firestore snapshot with the last one by content
-    // (`GroupMapViewModel`): two reads of the same document must be equal.
-    Map<String, dynamic> document() => {
-      'email': 'bia@example.com',
-      'name': 'Bia',
-      'lat': -22.9,
-      'lng': -43.1,
-      'capturedAt': Timestamp.fromDate(DateTime(2026, 11, 2, 9, 30)),
-      'isPublishing': true,
-    };
+    UserModel bia({DateTime? capturedAt}) => UserModel(
+      email: 'bia@example.com',
+      name: 'Bia',
+      lat: -22.9,
+      lng: -43.1,
+      capturedAt: capturedAt ?? DateTime(2026, 11, 2, 9, 30),
+      isPublishing: true,
+    );
 
-    test('Happy Path: Deve igualar duas leituras do mesmo documento', () {
+    test('Happy Path: Deve igualar dois modelos com os mesmos campos', () {
       // 1. Arrange
-      final first = UserModel.fromMap(document());
+      final first = bia();
 
       // 2. Act
-      final second = UserModel.fromMap(document());
+      final second = bia();
 
       // 3. Assert
       expect(second, first);
       expect(second.hashCode, first.hashCode);
     });
 
-    test(
-      'Sad Path: Deve diferenciar leituras com outro momento de captura',
-      () {
-        // 1. Arrange
-        final first = UserModel.fromMap(document());
+    test('Sad Path: Deve diferenciar modelos com outro momento de captura', () {
+      // 1. Arrange
+      final first = bia();
 
-        // 2. Act
-        final moved = UserModel.fromMap({
-          ...document(),
-          'capturedAt': Timestamp.fromDate(DateTime(2026, 11, 2, 9, 45)),
-        });
+      // 2. Act
+      final moved = bia(capturedAt: DateTime(2026, 11, 2, 9, 45));
 
-        // 3. Assert
-        expect(moved, isNot(first));
-      },
-    );
+      // 3. Assert
+      expect(moved, isNot(first));
+    });
   });
 }

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
 
 import 'invite_card.dart';

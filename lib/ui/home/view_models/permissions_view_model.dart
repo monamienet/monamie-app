@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:monamie_app/data/services/app_lifecycle_events.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
+import 'package:monamie_app/data/services/permissions_service.dart';
 import 'package:monamie_app/ui/home/view_models/permission_prompts.dart';
 import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
 import 'package:monamie_app/utils/user_notice.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 /// The permissions the tracking needs and the battery restriction, read
 /// from the system. Each one is its own [ValueListenable], so the tracking
@@ -17,11 +17,13 @@ import 'package:permission_handler/permission_handler.dart';
 /// Whoever creates it calls [start] once, which follows the app's return to
 /// the foreground and reads the statuses, and [dispose] once.
 class PermissionsViewModel {
-  /// [prompts] asks the questions in the middle of the permission flows;
-  /// [notices] shows the warning given on returning from the battery
-  /// settings, when no screen is waiting for it; [lifecycle] tells when the
-  /// app comes back to the foreground.
+  /// [permissions] reads and asks for the system's permissions; [prompts]
+  /// asks the questions in the middle of the permission flows; [notices]
+  /// shows the warning given on returning from the battery settings, when no
+  /// screen is waiting for it; [lifecycle] tells when the app comes back to
+  /// the foreground.
   PermissionsViewModel({
+    required this._permissions,
     required this._prompts,
     required this._notices,
     required this._backgroundRestrictionChecker,
@@ -29,6 +31,7 @@ class PermissionsViewModel {
     required this._lifecycle,
   });
 
+  final PermissionsService _permissions;
   final PermissionPrompts _prompts;
   final AppLifecycleEvents _lifecycle;
   final NoticePresenter _notices;
@@ -101,13 +104,16 @@ class PermissionsViewModel {
   Future<void> _refreshStatuses() async {
     _set(
       _hasWhenInUseLocationPermission,
-      await Permission.locationWhenInUse.isGranted,
+      await _permissions.isGranted(AppPermission.locationWhenInUse),
     );
     _set(
       _hasAlwaysLocationPermission,
-      await Permission.locationAlways.isGranted,
+      await _permissions.isGranted(AppPermission.locationAlways),
     );
-    _set(_hasNotificationPermission, await Permission.notification.isGranted);
+    _set(
+      _hasNotificationPermission,
+      await _permissions.isGranted(AppPermission.notification),
+    );
     await refreshBackgroundRestriction();
   }
 
@@ -119,39 +125,44 @@ class PermissionsViewModel {
   }
 
   Future<void> requestWhenInUsePermission() async {
-    if (await Permission.locationWhenInUse.isPermanentlyDenied) {
-      await openAppSettings();
+    if (await _permissions.isPermanentlyDenied(
+      AppPermission.locationWhenInUse,
+    )) {
+      await _permissions.openSettings();
     } else {
-      await Permission.locationWhenInUse.request();
+      await _permissions.request(AppPermission.locationWhenInUse);
     }
 
     _set(
       _hasWhenInUseLocationPermission,
-      await Permission.locationWhenInUse.isGranted,
+      await _permissions.isGranted(AppPermission.locationWhenInUse),
     );
   }
 
   Future<void> requestAlwaysPermission() async {
-    PermissionStatus locationWhenInUseStatus = await Permission
-        .locationWhenInUse
-        .request();
+    final locationWhenInUseStatus = await _permissions.request(
+      AppPermission.locationWhenInUse,
+    );
 
     if (locationWhenInUseStatus.isGranted) {
       bool userAgreed = await _prompts.confirmBackgroundLocation();
 
       if (userAgreed) {
-        PermissionStatus locationAlwaysStatus = await Permission.locationAlways
-            .request();
+        final locationAlwaysStatus = await _permissions.request(
+          AppPermission.locationAlways,
+        );
 
-        if (locationAlwaysStatus.isPermanentlyDenied) await openAppSettings();
+        if (locationAlwaysStatus.isPermanentlyDenied) {
+          await _permissions.openSettings();
+        }
       }
     } else if (locationWhenInUseStatus.isPermanentlyDenied) {
-      await openAppSettings();
+      await _permissions.openSettings();
     }
 
     _set(
       _hasAlwaysLocationPermission,
-      await Permission.locationAlways.isGranted,
+      await _permissions.isGranted(AppPermission.locationAlways),
     );
   }
 
@@ -160,13 +171,16 @@ class PermissionsViewModel {
   /// usuário quanto para o consumo de bateria. Sem notificações, o SO pode
   /// matar esses serviços.
   Future<void> requestNotificationPermission() async {
-    if (await Permission.notification.isPermanentlyDenied) {
-      await openAppSettings();
+    if (await _permissions.isPermanentlyDenied(AppPermission.notification)) {
+      await _permissions.openSettings();
     } else {
-      await Permission.notification.request();
+      await _permissions.request(AppPermission.notification);
     }
 
-    _set(_hasNotificationPermission, await Permission.notification.isGranted);
+    _set(
+      _hasNotificationPermission,
+      await _permissions.isGranted(AppPermission.notification),
+    );
   }
 
   /// Verifica se todas as permissões necessárias para o MonAmie funcionar

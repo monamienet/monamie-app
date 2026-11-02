@@ -6,7 +6,7 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/data/services/firebase/organization_firebase.dart';
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'package:monamie_app/data/repositories/organization/organization_binding_store.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 

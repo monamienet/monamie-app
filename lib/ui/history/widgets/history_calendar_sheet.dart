@@ -3,7 +3,7 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 
-import 'package:monamie_app/ui/history/view_models/history_month.dart';
+import 'package:monamie_app/domain/models/history_month.dart';
 
 const _ink = Color(0xFF1B1838);
 const _muted = Color(0xFF4A4858);

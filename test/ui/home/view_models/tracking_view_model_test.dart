@@ -2,13 +2,12 @@ import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:monamie_app/data/repositories/membership/membership_source.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/domain/models/capabilities.dart';
 import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
@@ -17,8 +16,8 @@ import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
 import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
-import 'package:monamie_app/data/repositories/positions/group_positions_source.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/location_point.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
@@ -30,13 +29,12 @@ import 'package:monamie_app/utils/user_notice.dart';
 @GenerateNiceMocks([
   MockSpec<CalendarViewModel>(),
   MockSpec<DeviceLocation>(),
-  MockSpec<FirebaseProvider>(),
-  MockSpec<FlutterBackgroundService>(),
+  MockSpec<BackgroundTrackingService>(),
   MockSpec<GroupMapState>(),
-  MockSpec<GroupPositionsSource>(),
-  MockSpec<MembershipSource>(),
+  MockSpec<MembershipService>(),
   MockSpec<NoticePresenter>(),
   MockSpec<PermissionsViewModel>(),
+  MockSpec<PositionsRepository>(),
   MockSpec<UserViewModel>(),
 ])
 import 'tracking_view_model_test.mocks.dart';
@@ -47,18 +45,8 @@ const _kBia = GroupMember(name: 'Bia', email: 'bia@example.com');
 final _kToday = DateTime(2026, 11, 2);
 final _kPastDay = DateTime(2026, 10, 30);
 
-Position _position(double latitude, double longitude) => Position(
-  latitude: latitude,
-  longitude: longitude,
-  timestamp: DateTime(2026, 11, 2, 9),
-  accuracy: 0,
-  altitude: 0,
-  altitudeAccuracy: 0,
-  heading: 0,
-  headingAccuracy: 0,
-  speed: 0,
-  speedAccuracy: 0,
-);
+LatLng _position(double latitude, double longitude) =>
+    LatLng(latitude, longitude);
 
 LocationPoint _point(double lat, double lng) =>
     LocationPoint(lat: lat, lng: lng, receivedAt: DateTime(2026, 10, 30, 9));
@@ -82,6 +70,12 @@ Matcher _okWithNoticeTitled(String title) => isA<Ok<UserNotice?>>().having(
   (ok) => ok.value?.title,
   'notice title',
   title,
+);
+
+/// Starting the tracking service, whatever notification it shows.
+Future<bool> _start(MockBackgroundTrackingService service) => service.start(
+  notificationTitle: anyNamed('notificationTitle'),
+  notificationContent: anyNamed('notificationContent'),
 );
 
 /// Puts [value] in one of the controller's values (exposed read-only).
@@ -119,14 +113,9 @@ class _Harness {
     when(user.isTrackable()).thenReturn(false);
 
     when(service.isRunning()).thenAnswer((_) async => false);
-    when(service.startService()).thenAnswer((_) async => true);
-    when(
-      service.configure(
-        iosConfiguration: anyNamed('iosConfiguration'),
-        androidConfiguration: anyNamed('androidConfiguration'),
-      ),
-    ).thenAnswer((_) async => true);
-    when(service.on(any)).thenAnswer((_) => const Stream.empty());
+    when(_start(service)).thenAnswer((_) async => true);
+    when(service.ready).thenAnswer((_) => const Stream.empty());
+    when(service.localPositions).thenAnswer((_) => const Stream.empty());
 
     when(location.isServiceEnabled()).thenAnswer((_) async => true);
     when(
@@ -161,9 +150,9 @@ class _Harness {
   final permissions = MockPermissionsViewModel();
   final calendar = MockCalendarViewModel();
   final groupMap = MockGroupMapState();
-  final service = MockFlutterBackgroundService();
+  final service = MockBackgroundTrackingService();
   final location = MockDeviceLocation();
-  final positions = MockFirebaseProvider();
+  final positions = MockPositionsRepository();
 
   final isBackgroundRestricted = ValueNotifier<bool>(false);
   final hasWhenInUsePermission = ValueNotifier<bool>(false);
@@ -233,9 +222,9 @@ void main() {
 
         // 3. Assert
         expect(result, isA<Ok<UserNotice?>>());
-        verify(harness.service.invoke('stopService'));
+        verify(harness.service.stop());
         verify(harness.positions.markNotPublishing(_kEmail)).called(1);
-        verifyNever(harness.service.startService());
+        verifyNever(_start(harness.service));
         expect(harness.controller.isTrackingEnabled.value, isFalse);
         expect(harness.controller.isTrackingLoading.value, isFalse);
       },
@@ -275,7 +264,7 @@ void main() {
           result,
           isA<Ok<UserNotice?>>().having((ok) => ok.value, 'value', isNull),
         );
-        verify(harness.service.startService()).called(1);
+        verify(_start(harness.service)).called(1);
         expect(harness.controller.isTrackingEnabled.value, isTrue);
         expect(
           harness.controller.ownPosition.value,
@@ -294,8 +283,8 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        final ready = StreamController<Map<String, dynamic>?>();
-        when(harness.service.on('ready')).thenAnswer((_) => ready.stream);
+        final ready = StreamController<void>();
+        when(harness.service.ready).thenAnswer((_) => ready.stream);
         await harness.controller.toggleService();
 
         // 2. Act
@@ -303,12 +292,7 @@ void main() {
         await pumpEventQueue();
 
         // 3. Assert
-        verify(
-          harness.service.invoke('setUserInfo', {
-            'email': _kEmail,
-            'name': 'Ana',
-          }),
-        ).called(1);
+        verify(harness.service.sendUser(email: _kEmail, name: 'Ana')).called(1);
         await ready.close();
       },
     );
@@ -328,7 +312,7 @@ void main() {
         // 3. Assert
         expect(result, isA<Ok<UserNotice?>>());
         verify(harness.permissions.openBackgroundUsageSettings()).called(1);
-        verifyNever(harness.service.startService());
+        verifyNever(_start(harness.service));
         expect(harness.controller.isTrackingEnabled.value, isFalse);
       },
     );
@@ -348,7 +332,7 @@ void main() {
         // 3. Assert
         expect(result, isA<Ok<UserNotice?>>());
         verify(harness.permissions.notifyGpsDisabled()).called(1);
-        verifyNever(harness.service.startService());
+        verifyNever(_start(harness.service));
         expect(harness.controller.isTrackingEnabled.value, isFalse);
       },
     );
@@ -365,7 +349,7 @@ void main() {
 
         // 3. Assert
         expect(result, _errTitled('Compartilhamento não autorizado'));
-        verifyNever(harness.service.startService());
+        verifyNever(_start(harness.service));
         expect(harness.controller.isTrackingEnabled.value, isFalse);
       },
     );
@@ -378,7 +362,7 @@ void main() {
           final harness = _Harness();
           when(
             harness.location.currentPosition(),
-          ).thenAnswer((_) => Completer<Position>().future);
+          ).thenAnswer((_) => Completer<LatLng>().future);
           Result<UserNotice?>? result;
 
           // 2. Act
@@ -387,7 +371,7 @@ void main() {
 
           // 3. Assert
           expect(result, _okWithNoticeTitled('Aguardando sinal de GPS'));
-          verify(harness.service.startService()).called(1);
+          verify(_start(harness.service)).called(1);
           expect(harness.controller.isTrackingEnabled.value, isTrue);
         });
       },
@@ -407,7 +391,7 @@ void main() {
 
         // 3. Assert
         expect(result, _okWithNoticeTitled('Aguardando sinal de GPS'));
-        verify(harness.service.startService()).called(1);
+        verify(_start(harness.service)).called(1);
       },
     );
 
@@ -1038,7 +1022,7 @@ void main() {
       roles = StreamController<Map<String, Object?>>();
       groupName = StreamController<String?>();
       live = StreamController<List<UserModel>>();
-      final memberships = MockMembershipSource();
+      final memberships = MockMembershipService();
       when(
         memberships.organizationMembership(any, any),
       ).thenAnswer((_) => organization.stream);
@@ -1046,7 +1030,7 @@ void main() {
       when(
         memberships.groupName(any, _kGroup.id),
       ).thenAnswer((_) => groupName.stream);
-      final sources = MockGroupPositionsSource();
+      final sources = MockPositionsRepository();
       when(
         sources.streamGroupPositions(_kGroup.id),
       ).thenAnswer((_) => live.stream);
@@ -1262,12 +1246,10 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        final ready = StreamController<Map<String, dynamic>?>();
-        final located = StreamController<Map<String, dynamic>?>();
-        when(harness.service.on('ready')).thenAnswer((_) => ready.stream);
-        when(
-          harness.service.on('updateLocationLocally'),
-        ).thenAnswer((_) => located.stream);
+        final ready = StreamController<void>();
+        final located = StreamController<LatLng>();
+        when(harness.service.ready).thenAnswer((_) => ready.stream);
+        when(harness.service.localPositions).thenAnswer((_) => located.stream);
         await harness.controller.toggleService();
 
         // 2. Act
@@ -1310,7 +1292,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        final fix = Completer<Position>();
+        final fix = Completer<LatLng>();
         when(harness.user.isTrackable()).thenReturn(true);
         when(harness.location.currentPosition()).thenAnswer((_) => fix.future);
         await harness.controller.start();
@@ -1422,13 +1404,11 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         final running = Completer<bool>();
-        final ready = StreamController<Map<String, dynamic>?>();
-        final located = StreamController<Map<String, dynamic>?>();
+        final ready = StreamController<void>();
+        final located = StreamController<LatLng>();
         when(harness.service.isRunning()).thenAnswer((_) => running.future);
-        when(harness.service.on('ready')).thenAnswer((_) => ready.stream);
-        when(
-          harness.service.on('updateLocationLocally'),
-        ).thenAnswer((_) => located.stream);
+        when(harness.service.ready).thenAnswer((_) => ready.stream);
+        when(harness.service.localPositions).thenAnswer((_) => located.stream);
         final toggling = harness.controller.toggleService();
         harness.controller.dispose();
 
@@ -1443,13 +1423,7 @@ void main() {
           ),
         );
         await pumpEventQueue();
-        verifyNever(harness.service.startService());
-        verifyNever(
-          harness.service.configure(
-            iosConfiguration: anyNamed('iosConfiguration'),
-            androidConfiguration: anyNamed('androidConfiguration'),
-          ),
-        );
+        verifyNever(_start(harness.service));
         expect(ready.hasListener, isFalse);
         expect(located.hasListener, isFalse);
         expect(

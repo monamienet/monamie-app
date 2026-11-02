@@ -1,4 +1,5 @@
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import 'device_location.dart';
 
@@ -10,5 +11,8 @@ class GeolocatorDeviceLocation implements DeviceLocation {
   Future<bool> isServiceEnabled() => Geolocator.isLocationServiceEnabled();
 
   @override
-  Future<Position> currentPosition() => Geolocator.getCurrentPosition();
+  Future<LatLng> currentPosition() async {
+    final position = await Geolocator.getCurrentPosition();
+    return LatLng(position.latitude, position.longitude);
+  }
 }

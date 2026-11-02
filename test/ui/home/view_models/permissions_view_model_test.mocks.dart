@@ -13,6 +13,7 @@ import 'package:monamie_app/data/services/background_restriction_checker.dart'
     as _i4;
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart'
     as _i6;
+import 'package:monamie_app/data/services/permissions_service.dart' as _i10;
 import 'package:monamie_app/ui/core/ui/notice_presenter.dart' as _i8;
 import 'package:monamie_app/ui/home/view_models/permission_prompts.dart' as _i7;
 import 'package:monamie_app/utils/user_notice.dart' as _i9;
@@ -123,4 +124,53 @@ class MockNoticePresenter extends _i1.Mock implements _i8.NoticePresenter {
     Invocation.method(#show, [notice]),
     returnValueForMissingStub: null,
   );
+}
+
+/// A class which mocks [PermissionsService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockPermissionsService extends _i1.Mock
+    implements _i10.PermissionsService {
+  @override
+  _i5.Future<bool> isGranted(_i10.AppPermission? permission) =>
+      (super.noSuchMethod(
+            Invocation.method(#isGranted, [permission]),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
+          )
+          as _i5.Future<bool>);
+
+  @override
+  _i5.Future<bool> isPermanentlyDenied(_i10.AppPermission? permission) =>
+      (super.noSuchMethod(
+            Invocation.method(#isPermanentlyDenied, [permission]),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
+          )
+          as _i5.Future<bool>);
+
+  @override
+  _i5.Future<_i10.AppPermissionStatus> request(
+    _i10.AppPermission? permission,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#request, [permission]),
+            returnValue: _i5.Future<_i10.AppPermissionStatus>.value(
+              _i10.AppPermissionStatus.granted,
+            ),
+            returnValueForMissingStub:
+                _i5.Future<_i10.AppPermissionStatus>.value(
+                  _i10.AppPermissionStatus.granted,
+                ),
+          )
+          as _i5.Future<_i10.AppPermissionStatus>);
+
+  @override
+  _i5.Future<bool> openSettings() =>
+      (super.noSuchMethod(
+            Invocation.method(#openSettings, []),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
+          )
+          as _i5.Future<bool>);
 }

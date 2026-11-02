@@ -6,11 +6,15 @@
 
 import 'dart:async' as _i3;
 
-import 'package:flutter_background_service/flutter_background_service.dart'
-    as _i2;
-import 'package:flutter_background_service_platform_interface/flutter_background_service_platform_interface.dart'
-    as _i4;
+import 'package:latlong2/latlong.dart' as _i4;
 import 'package:mockito/mockito.dart' as _i1;
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart'
+    as _i5;
+import 'package:monamie_app/data/services/background_tracking_service.dart'
+    as _i2;
+import 'package:monamie_app/domain/models/history_month.dart' as _i7;
+import 'package:monamie_app/domain/models/location_point.dart' as _i8;
+import 'package:monamie_app/domain/models/user_model.dart' as _i6;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -28,34 +32,28 @@ import 'package:mockito/mockito.dart' as _i1;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-/// A class which mocks [FlutterBackgroundService].
+/// A class which mocks [BackgroundTrackingService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockFlutterBackgroundService extends _i1.Mock
-    implements _i2.FlutterBackgroundService {
+class MockBackgroundTrackingService extends _i1.Mock
+    implements _i2.BackgroundTrackingService {
   @override
-  _i3.Future<bool> configure({
-    required _i4.IosConfiguration? iosConfiguration,
-    required _i4.AndroidConfiguration? androidConfiguration,
-  }) =>
+  _i3.Stream<void> get ready =>
       (super.noSuchMethod(
-            Invocation.method(#configure, [], {
-              #iosConfiguration: iosConfiguration,
-              #androidConfiguration: androidConfiguration,
-            }),
-            returnValue: _i3.Future<bool>.value(false),
-            returnValueForMissingStub: _i3.Future<bool>.value(false),
+            Invocation.getter(#ready),
+            returnValue: _i3.Stream<void>.empty(),
+            returnValueForMissingStub: _i3.Stream<void>.empty(),
           )
-          as _i3.Future<bool>);
+          as _i3.Stream<void>);
 
   @override
-  _i3.Future<bool> startService() =>
+  _i3.Stream<_i4.LatLng> get localPositions =>
       (super.noSuchMethod(
-            Invocation.method(#startService, []),
-            returnValue: _i3.Future<bool>.value(false),
-            returnValueForMissingStub: _i3.Future<bool>.value(false),
+            Invocation.getter(#localPositions),
+            returnValue: _i3.Stream<_i4.LatLng>.empty(),
+            returnValueForMissingStub: _i3.Stream<_i4.LatLng>.empty(),
           )
-          as _i3.Future<bool>);
+          as _i3.Stream<_i4.LatLng>);
 
   @override
   _i3.Future<bool> isRunning() =>
@@ -67,19 +65,140 @@ class MockFlutterBackgroundService extends _i1.Mock
           as _i3.Future<bool>);
 
   @override
-  void invoke(String? method, [Map<String, dynamic>? arg]) =>
-      super.noSuchMethod(
-        Invocation.method(#invoke, [method, arg]),
-        returnValueForMissingStub: null,
-      );
+  _i3.Future<bool> start({
+    required String? notificationTitle,
+    required String? notificationContent,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#start, [], {
+              #notificationTitle: notificationTitle,
+              #notificationContent: notificationContent,
+            }),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
 
   @override
-  _i3.Stream<Map<String, dynamic>?> on(String? method) =>
+  void stop() => super.noSuchMethod(
+    Invocation.method(#stop, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void sendUser({required String? email, required String? name}) =>
+      super.noSuchMethod(
+        Invocation.method(#sendUser, [], {#email: email, #name: name}),
+        returnValueForMissingStub: null,
+      );
+}
+
+/// A class which mocks [PositionsRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockPositionsRepository extends _i1.Mock
+    implements _i5.PositionsRepository {
+  @override
+  _i3.Stream<List<_i6.UserModel>> streamGroupPositions(String? groupId) =>
       (super.noSuchMethod(
-            Invocation.method(#on, [method]),
-            returnValue: _i3.Stream<Map<String, dynamic>?>.empty(),
-            returnValueForMissingStub:
-                _i3.Stream<Map<String, dynamic>?>.empty(),
+            Invocation.method(#streamGroupPositions, [groupId]),
+            returnValue: _i3.Stream<List<_i6.UserModel>>.empty(),
+            returnValueForMissingStub: _i3.Stream<List<_i6.UserModel>>.empty(),
           )
-          as _i3.Stream<Map<String, dynamic>?>);
+          as _i3.Stream<List<_i6.UserModel>>);
+
+  @override
+  _i3.Future<List<_i6.UserModel>> groupHistoryPeople(String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#groupHistoryPeople, [groupId]),
+            returnValue: _i3.Future<List<_i6.UserModel>>.value(
+              <_i6.UserModel>[],
+            ),
+            returnValueForMissingStub: _i3.Future<List<_i6.UserModel>>.value(
+              <_i6.UserModel>[],
+            ),
+          )
+          as _i3.Future<List<_i6.UserModel>>);
+
+  @override
+  _i3.Future<int> countPublishers(String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#countPublishers, [groupId]),
+            returnValue: _i3.Future<int>.value(0),
+            returnValueForMissingStub: _i3.Future<int>.value(0),
+          )
+          as _i3.Future<int>);
+
+  @override
+  _i3.Future<Set<String>> trailDays(
+    String? groupId,
+    Iterable<String>? emails,
+    _i7.HistoryMonth? month,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#trailDays, [groupId, emails, month]),
+            returnValue: _i3.Future<Set<String>>.value(<String>{}),
+            returnValueForMissingStub: _i3.Future<Set<String>>.value(
+              <String>{},
+            ),
+          )
+          as _i3.Future<Set<String>>);
+
+  @override
+  _i3.Future<_i8.LocationPoint?> getLastKnownPositionForDate(
+    String? groupId,
+    String? email, {
+    required DateTime? day,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #getLastKnownPositionForDate,
+              [groupId, email],
+              {#day: day},
+            ),
+            returnValue: _i3.Future<_i8.LocationPoint?>.value(),
+            returnValueForMissingStub: _i3.Future<_i8.LocationPoint?>.value(),
+          )
+          as _i3.Future<_i8.LocationPoint?>);
+
+  @override
+  _i3.Future<bool> hasPointsOnDate(
+    String? groupId,
+    String? email,
+    DateTime? day,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#hasPointsOnDate, [groupId, email, day]),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
+
+  @override
+  _i3.Stream<List<_i8.LocationPoint>> getTrajectoryForDate(
+    String? groupId,
+    String? email, {
+    required DateTime? day,
+    int? limit = 100,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #getTrajectoryForDate,
+              [groupId, email],
+              {#day: day, #limit: limit},
+            ),
+            returnValue: _i3.Stream<List<_i8.LocationPoint>>.empty(),
+            returnValueForMissingStub:
+                _i3.Stream<List<_i8.LocationPoint>>.empty(),
+          )
+          as _i3.Stream<List<_i8.LocationPoint>>);
+
+  @override
+  _i3.Future<void> markNotPublishing(String? email) =>
+      (super.noSuchMethod(
+            Invocation.method(#markNotPublishing, [email]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 }

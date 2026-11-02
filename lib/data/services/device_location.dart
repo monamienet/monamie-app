@@ -1,6 +1,6 @@
 // check_layers: state_contract
 
-import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 /// Reads this device's location hardware, so the code that decides what to
 /// do with a fix (or the lack of one) can be tested without the plugin.
@@ -10,5 +10,5 @@ abstract interface class DeviceLocation {
 
   /// The device's current position. It may never complete on a cold start
   /// or with a weak signal: callers guard it with a timeout.
-  Future<Position> currentPosition();
+  Future<LatLng> currentPosition();
 }

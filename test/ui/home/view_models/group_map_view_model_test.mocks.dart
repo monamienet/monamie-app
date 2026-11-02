@@ -7,10 +7,12 @@
 import 'dart:async' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:monamie_app/data/repositories/membership/membership_source.dart'
-    as _i2;
-import 'package:monamie_app/data/repositories/positions/group_positions_source.dart'
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart'
     as _i4;
+import 'package:monamie_app/data/services/firestore/membership_service.dart'
+    as _i2;
+import 'package:monamie_app/domain/models/history_month.dart' as _i6;
+import 'package:monamie_app/domain/models/location_point.dart' as _i7;
 import 'package:monamie_app/domain/models/user_model.dart' as _i5;
 
 // ignore_for_file: type=lint
@@ -29,10 +31,10 @@ import 'package:monamie_app/domain/models/user_model.dart' as _i5;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-/// A class which mocks [MembershipSource].
+/// A class which mocks [MembershipService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockMembershipSource extends _i1.Mock implements _i2.MembershipSource {
+class MockMembershipService extends _i1.Mock implements _i2.MembershipService {
   @override
   _i3.Stream<Map<String, Object?>?> organizationMembership(
     String? organizationId,
@@ -59,6 +61,22 @@ class MockMembershipSource extends _i1.Mock implements _i2.MembershipSource {
           as _i3.Stream<Map<String, Object?>>);
 
   @override
+  _i3.Future<Map<String, Object?>> readGroupRoles(
+    String? organizationId,
+    String? email,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#readGroupRoles, [organizationId, email]),
+            returnValue: _i3.Future<Map<String, Object?>>.value(
+              <String, Object?>{},
+            ),
+            returnValueForMissingStub: _i3.Future<Map<String, Object?>>.value(
+              <String, Object?>{},
+            ),
+          )
+          as _i3.Future<Map<String, Object?>>);
+
+  @override
   _i3.Stream<Map<String, String>> allGroupNames(String? organizationId) =>
       (super.noSuchMethod(
             Invocation.method(#allGroupNames, [organizationId]),
@@ -75,13 +93,22 @@ class MockMembershipSource extends _i1.Mock implements _i2.MembershipSource {
             returnValueForMissingStub: _i3.Stream<String?>.empty(),
           )
           as _i3.Stream<String?>);
+
+  @override
+  _i3.Future<bool?> isMemberOf(String? organizationId) =>
+      (super.noSuchMethod(
+            Invocation.method(#isMemberOf, [organizationId]),
+            returnValue: _i3.Future<bool?>.value(),
+            returnValueForMissingStub: _i3.Future<bool?>.value(),
+          )
+          as _i3.Future<bool?>);
 }
 
-/// A class which mocks [GroupPositionsSource].
+/// A class which mocks [PositionsRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockGroupPositionsSource extends _i1.Mock
-    implements _i4.GroupPositionsSource {
+class MockPositionsRepository extends _i1.Mock
+    implements _i4.PositionsRepository {
   @override
   _i3.Stream<List<_i5.UserModel>> streamGroupPositions(String? groupId) =>
       (super.noSuchMethod(
@@ -112,4 +139,77 @@ class MockGroupPositionsSource extends _i1.Mock
             returnValueForMissingStub: _i3.Future<int>.value(0),
           )
           as _i3.Future<int>);
+
+  @override
+  _i3.Future<Set<String>> trailDays(
+    String? groupId,
+    Iterable<String>? emails,
+    _i6.HistoryMonth? month,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#trailDays, [groupId, emails, month]),
+            returnValue: _i3.Future<Set<String>>.value(<String>{}),
+            returnValueForMissingStub: _i3.Future<Set<String>>.value(
+              <String>{},
+            ),
+          )
+          as _i3.Future<Set<String>>);
+
+  @override
+  _i3.Future<_i7.LocationPoint?> getLastKnownPositionForDate(
+    String? groupId,
+    String? email, {
+    required DateTime? day,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #getLastKnownPositionForDate,
+              [groupId, email],
+              {#day: day},
+            ),
+            returnValue: _i3.Future<_i7.LocationPoint?>.value(),
+            returnValueForMissingStub: _i3.Future<_i7.LocationPoint?>.value(),
+          )
+          as _i3.Future<_i7.LocationPoint?>);
+
+  @override
+  _i3.Future<bool> hasPointsOnDate(
+    String? groupId,
+    String? email,
+    DateTime? day,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#hasPointsOnDate, [groupId, email, day]),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
+
+  @override
+  _i3.Stream<List<_i7.LocationPoint>> getTrajectoryForDate(
+    String? groupId,
+    String? email, {
+    required DateTime? day,
+    int? limit = 100,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #getTrajectoryForDate,
+              [groupId, email],
+              {#day: day, #limit: limit},
+            ),
+            returnValue: _i3.Stream<List<_i7.LocationPoint>>.empty(),
+            returnValueForMissingStub:
+                _i3.Stream<List<_i7.LocationPoint>>.empty(),
+          )
+          as _i3.Stream<List<_i7.LocationPoint>>);
+
+  @override
+  _i3.Future<void> markNotPublishing(String? email) =>
+      (super.noSuchMethod(
+            Invocation.method(#markNotPublishing, [email]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 }

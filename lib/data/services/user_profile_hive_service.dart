@@ -5,8 +5,11 @@ import 'package:hive/hive.dart';
 enum UserRole { user }
 
 /// The signed-in person's Google profile, kept on the device (Hive): the
-/// login reads it back (for example, the e-mail of who signed in).
-class UserGoogleProvider {
+/// login reads it back (for example, the e-mail of who signed in). Used
+/// through `UserGoogleRepository`.
+class UserProfileHiveService {
+  const UserProfileHiveService();
+
   final String _hiveBox = 'user_google_data';
   final String _hiveKey = 'current_user';
 

@@ -7,7 +7,7 @@ import 'package:monamie_app/domain/models/invite.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
-import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
@@ -30,7 +30,7 @@ import 'package:provider/provider.dart';
   MockSpec<OrganizationBrandingLoader>(),
   MockSpec<OrganizationDirectory>(),
   MockSpec<OrganizationLocalData>(),
-  MockSpec<OrganizationMembershipCheck>(),
+  MockSpec<MembershipService>(),
   MockSpec<OrganizationSession>(),
   MockSpec<UserGoogleRepository>(),
 ])
@@ -66,9 +66,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
         Provider<AccountDeletionRepository>.value(
           value: MockAccountDeletionRepository(),
         ),
-        Provider<OrganizationMembershipCheck>.value(
-          value: MockOrganizationMembershipCheck(),
-        ),
+        Provider<MembershipService>.value(value: MockMembershipService()),
         Provider<GoogleBondCheck>.value(value: MockGoogleBondCheck()),
       ],
       child: const MonAmieApp(),

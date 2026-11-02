@@ -1,14 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/data/services/flutter_background_service_tracking_stopper.dart';
 
-@GenerateNiceMocks([MockSpec<FlutterBackgroundService>()])
+@GenerateNiceMocks([
+  MockSpec<BackgroundTrackingService>(),
+  MockSpec<PositionsRepository>(),
+])
 import 'flutter_background_service_tracking_stopper_test.mocks.dart';
 
 /// Tempos curtos para manter a suíte rápida. Os testes usam tempo real
@@ -17,7 +21,7 @@ const Duration _kTimeout = Duration(milliseconds: 200);
 const Duration _kPollInterval = Duration(milliseconds: 10);
 
 /// Limite generoso para considerar que `stop` "não travou": bem acima do
-/// pior caso esperado (espera pela parada + espera por `markUntracked`),
+/// pior caso esperado (espera pela parada + espera por `markNotPublishing`),
 /// mas finito.
 const Duration _kHangGuard = Duration(seconds: 3);
 
@@ -26,20 +30,20 @@ const String _kEmail = 'ana.souza@monamie.net';
 /// Sentinela devolvida quando `stop` não conclui dentro de [_kHangGuard].
 const Object _kDidNotComplete = 'stop-nao-concluiu';
 
-/// Mock do `FlutterBackgroundService` cujo `isRunning()` segue um estado
-/// guardado aqui e que para depois de [stopAfterInvokes] eventos
-/// `stopService` recebidos via `invoke` (`null` = nunca para).
+/// Mock do `BackgroundTrackingService` cujo `isRunning()` segue um estado
+/// guardado aqui e que para depois de [stopAfterInvokes] pedidos `stop()`
+/// (o evento `stopService`) recebidos (`null` = nunca para).
 ///
 /// [isRunningError] é lançado por toda chamada a `isRunning()` (plugin
 /// indisponível). Com [throwOnIsRunningAfterInvoke], `isRunning()` passa a
 /// lançar depois do primeiro `stopService` recebido.
-MockFlutterBackgroundService _mockService({
+MockBackgroundTrackingService _mockService({
   bool running = false,
   int? stopAfterInvokes = 1,
   Object? isRunningError,
   bool throwOnIsRunningAfterInvoke = false,
 }) {
-  final service = MockFlutterBackgroundService();
+  final service = MockBackgroundTrackingService();
   var stopServiceInvocations = 0;
   when(service.isRunning()).thenAnswer((_) async {
     if (isRunningError != null) throw isRunningError;
@@ -48,8 +52,7 @@ MockFlutterBackgroundService _mockService({
     }
     return running;
   });
-  when(service.invoke(any, any)).thenAnswer((invocation) {
-    if (invocation.positionalArguments[0] != 'stopService') return;
+  when(service.stop()).thenAnswer((_) {
     stopServiceInvocations++;
     final threshold = stopAfterInvokes;
     if (threshold != null && stopServiceInvocations >= threshold) {
@@ -59,15 +62,15 @@ MockFlutterBackgroundService _mockService({
   return service;
 }
 
-/// Os métodos enviados a [service] via `invoke`, em ordem; falha se não
-/// houve nenhum.
-List<Object?> _invokedMethods(MockFlutterBackgroundService service) =>
-    verify(service.invoke(captureAny, any)).captured;
+/// Quantas vezes `stop()` (o evento `stopService`) foi enviado a
+/// [service]; falha se não houve nenhuma.
+int _stopRequests(MockBackgroundTrackingService service) =>
+    verify(service.stop()).callCount;
 
-/// Registro das chamadas ao callback `markUntracked`, com comportamento
-/// configurável (sucesso, erro ou nunca completar).
-class _MarkUntrackedSpy {
-  _MarkUntrackedSpy({this.error, this.neverCompletes = false});
+/// Registro das chamadas a `PositionsRepository.markNotPublishing`, com
+/// comportamento configurável (sucesso, erro ou nunca completar).
+class _MarkNotPublishingSpy {
+  _MarkNotPublishingSpy({this.error, this.neverCompletes = false});
 
   final Object? error;
   final bool neverCompletes;
@@ -83,12 +86,17 @@ class _MarkUntrackedSpy {
 }
 
 FlutterBackgroundServiceTrackingStopper _buildStopper(
-  MockFlutterBackgroundService service,
-  _MarkUntrackedSpy markUntracked,
+  MockBackgroundTrackingService service,
+  _MarkNotPublishingSpy markNotPublishing,
 ) {
+  final positions = MockPositionsRepository();
+  when(positions.markNotPublishing(any)).thenAnswer(
+    (invocation) =>
+        markNotPublishing(invocation.positionalArguments[0] as String),
+  );
   return FlutterBackgroundServiceTrackingStopper(
     service: service,
-    markUntracked: markUntracked.call,
+    positions: positions,
     timeout: _kTimeout,
     pollInterval: _kPollInterval,
   );
@@ -116,7 +124,7 @@ void main() {
       () async {
         // 1. Arrange
         final service = _mockService(running: true);
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         final stopped = await stopper.stop(email: _kEmail);
@@ -127,35 +135,33 @@ void main() {
     );
 
     test(
-      'Happy Path: Deve enviar o evento stopService via invoke quando o serviço estiver em execução',
+      'Happy Path: Deve enviar o evento stopService quando o serviço estiver em execução',
       () async {
         // 1. Arrange
         final service = _mockService(running: true);
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         await stopper.stop(email: _kEmail);
 
         // 3. Assert
-        final invoked = _invokedMethods(service);
-        expect(invoked, isNotEmpty);
-        expect(invoked, everyElement('stopService'));
+        expect(_stopRequests(service), greaterThan(0));
       },
     );
 
     test(
-      'Happy Path: Deve chamar markUntracked uma única vez com o e-mail informado quando o serviço estava em execução',
+      'Happy Path: Deve chamar markNotPublishing uma única vez com o e-mail informado quando o serviço estava em execução',
       () async {
         // 1. Arrange
         final service = _mockService(running: true);
-        final markUntracked = _MarkUntrackedSpy();
-        final stopper = _buildStopper(service, markUntracked);
+        final markNotPublishing = _MarkNotPublishingSpy();
+        final stopper = _buildStopper(service, markNotPublishing);
 
         // 2. Act
         await stopper.stop(email: _kEmail);
 
         // 3. Assert
-        expect(markUntracked.emails, [_kEmail]);
+        expect(markNotPublishing.emails, [_kEmail]);
       },
     );
 
@@ -164,7 +170,7 @@ void main() {
       () async {
         // 1. Arrange
         final service = _mockService(running: true);
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         await stopper.stop();
@@ -183,7 +189,7 @@ void main() {
       () async {
         // 1. Arrange
         final service = _mockService(running: false);
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         final stopped = await stopper.stop(email: _kEmail);
@@ -198,29 +204,29 @@ void main() {
       () async {
         // 1. Arrange
         final service = _mockService(running: false);
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         await stopper.stop(email: _kEmail);
 
         // 3. Assert
-        verifyNever(service.invoke(any, any));
+        verifyNever(service.stop());
       },
     );
 
     test(
-      'Edge Case: Não deve chamar markUntracked quando o serviço não estiver em execução, mesmo com e-mail',
+      'Edge Case: Não deve chamar markNotPublishing quando o serviço não estiver em execução, mesmo com e-mail',
       () async {
         // 1. Arrange
         final service = _mockService(running: false);
-        final markUntracked = _MarkUntrackedSpy();
-        final stopper = _buildStopper(service, markUntracked);
+        final markNotPublishing = _MarkNotPublishingSpy();
+        final stopper = _buildStopper(service, markNotPublishing);
 
         // 2. Act
         await stopper.stop(email: _kEmail);
 
         // 3. Assert
-        expect(markUntracked.emails, isEmpty);
+        expect(markNotPublishing.emails, isEmpty);
       },
     );
 
@@ -229,7 +235,7 @@ void main() {
       () async {
         // 1. Arrange
         final service = _mockService(running: true, stopAfterInvokes: 3);
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         final stopped = await stopper.stop();
@@ -244,64 +250,61 @@ void main() {
       () async {
         // 1. Arrange
         final service = _mockService(running: true, stopAfterInvokes: 3);
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         await stopper.stop();
 
         // 3. Assert
-        expect(
-          _invokedMethods(service).where((m) => m == 'stopService'),
-          hasLength(greaterThanOrEqualTo(3)),
-        );
+        expect(_stopRequests(service), greaterThanOrEqualTo(3));
       },
     );
 
     test(
-      'Edge Case: Não deve chamar markUntracked quando o e-mail for nulo',
+      'Edge Case: Não deve chamar markNotPublishing quando o e-mail for nulo',
       () async {
         // 1. Arrange
         final service = _mockService(running: true);
-        final markUntracked = _MarkUntrackedSpy();
-        final stopper = _buildStopper(service, markUntracked);
+        final markNotPublishing = _MarkNotPublishingSpy();
+        final stopper = _buildStopper(service, markNotPublishing);
 
         // 2. Act
         await stopper.stop(email: null);
 
         // 3. Assert
-        expect(markUntracked.emails, isEmpty);
+        expect(markNotPublishing.emails, isEmpty);
       },
     );
 
     test(
-      'Edge Case: Não deve chamar markUntracked quando o e-mail for uma string vazia',
+      'Edge Case: Não deve chamar markNotPublishing quando o e-mail for uma string vazia',
       () async {
         // 1. Arrange
         final service = _mockService(running: true);
-        final markUntracked = _MarkUntrackedSpy();
-        final stopper = _buildStopper(service, markUntracked);
+        final markNotPublishing = _MarkNotPublishingSpy();
+        final stopper = _buildStopper(service, markNotPublishing);
 
         // 2. Act
         await stopper.stop(email: '');
 
         // 3. Assert
-        expect(markUntracked.emails, isEmpty);
+        expect(markNotPublishing.emails, isEmpty);
       },
     );
 
     test(
-      'Edge Case: Deve chamar markUntracked uma única vez mesmo quando a parada do serviço expirar',
+      'Edge Case: Deve chamar markNotPublishing uma única vez mesmo quando a parada do serviço expirar',
       () async {
         // 1. Arrange
         final service = _mockService(running: true, stopAfterInvokes: null);
-        final markUntracked = _MarkUntrackedSpy();
-        final stopper = _buildStopper(service, markUntracked);
+        final markNotPublishing = _MarkNotPublishingSpy();
+        final stopper = _buildStopper(service, markNotPublishing);
 
         // 2. Act
         await stopper.stop(email: _kEmail);
 
         // 3. Assert
-        expect(markUntracked.emails, [_kEmail]);
+        expect(markNotPublishing.emails, [_kEmail]);
       },
     );
 
@@ -314,7 +317,7 @@ void main() {
           stopAfterInvokes: null,
           throwOnIsRunningAfterInvoke: true,
         );
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         final outcome = await _stopWithinGuard(stopper);
@@ -332,7 +335,7 @@ void main() {
       () async {
         // 1. Arrange
         final service = _mockService(running: true, stopAfterInvokes: null);
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         final outcome = await _stopWithinGuard(stopper);
@@ -347,7 +350,7 @@ void main() {
       () async {
         // 1. Arrange
         final service = _mockService(running: true, stopAfterInvokes: null);
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
         final stopwatch = Stopwatch();
 
         // 2. Act
@@ -363,14 +366,14 @@ void main() {
     );
 
     test(
-      'Sad Path: Não deve lançar e deve retornar true quando markUntracked lançar após o serviço parar',
+      'Sad Path: Não deve lançar e deve retornar true quando markNotPublishing lançar após o serviço parar',
       () async {
         // 1. Arrange
         final service = _mockService(running: true);
-        final markUntracked = _MarkUntrackedSpy(
+        final markNotPublishing = _MarkNotPublishingSpy(
           error: StateError('Firestore recusou a escrita'),
         );
-        final stopper = _buildStopper(service, markUntracked);
+        final stopper = _buildStopper(service, markNotPublishing);
 
         // 2. Act
         final outcome = await _stopWithinGuard(stopper, email: _kEmail);
@@ -381,14 +384,14 @@ void main() {
     );
 
     test(
-      'Sad Path: Não deve lançar e deve retornar false quando markUntracked lançar e o serviço não parar',
+      'Sad Path: Não deve lançar e deve retornar false quando markNotPublishing lançar e o serviço não parar',
       () async {
         // 1. Arrange
         final service = _mockService(running: true, stopAfterInvokes: null);
-        final markUntracked = _MarkUntrackedSpy(
+        final markNotPublishing = _MarkNotPublishingSpy(
           error: StateError('Firestore recusou a escrita'),
         );
-        final stopper = _buildStopper(service, markUntracked);
+        final stopper = _buildStopper(service, markNotPublishing);
 
         // 2. Act
         final outcome = await _stopWithinGuard(stopper, email: _kEmail);
@@ -399,12 +402,12 @@ void main() {
     );
 
     test(
-      'Sad Path: Deve retornar true sem travar quando markUntracked nunca completar (aparelho offline)',
+      'Sad Path: Deve retornar true sem travar quando markNotPublishing nunca completar (aparelho offline)',
       () async {
         // 1. Arrange
         final service = _mockService(running: true);
-        final markUntracked = _MarkUntrackedSpy(neverCompletes: true);
-        final stopper = _buildStopper(service, markUntracked);
+        final markNotPublishing = _MarkNotPublishingSpy(neverCompletes: true);
+        final stopper = _buildStopper(service, markNotPublishing);
 
         // 2. Act
         final outcome = await _stopWithinGuard(stopper, email: _kEmail);
@@ -415,12 +418,12 @@ void main() {
     );
 
     test(
-      'Sad Path: Deve limitar a espera por markUntracked ao timeout quando ele nunca completar',
+      'Sad Path: Deve limitar a espera por markNotPublishing ao timeout quando ele nunca completar',
       () async {
         // 1. Arrange
         final service = _mockService(running: true);
-        final markUntracked = _MarkUntrackedSpy(neverCompletes: true);
-        final stopper = _buildStopper(service, markUntracked);
+        final markNotPublishing = _MarkNotPublishingSpy(neverCompletes: true);
+        final stopper = _buildStopper(service, markNotPublishing);
         final stopwatch = Stopwatch();
 
         // 2. Act
@@ -430,7 +433,7 @@ void main() {
 
         // 3. Assert
         // O serviço para no primeiro ciclo; a espera restante é a de
-        // markUntracked, que deve ser cortada pelo timeout.
+        // markNotPublishing, que deve ser cortada pelo timeout.
         expect(stopwatch.elapsed, lessThan(_kTimeout * 2));
       },
     );
@@ -443,7 +446,7 @@ void main() {
           running: true,
           isRunningError: MissingPluginException('isServiceRunning'),
         );
-        final stopper = _buildStopper(service, _MarkUntrackedSpy());
+        final stopper = _buildStopper(service, _MarkNotPublishingSpy());
 
         // 2. Act
         final outcome = await _stopWithinGuard(stopper, email: _kEmail);
@@ -454,22 +457,22 @@ void main() {
     );
 
     test(
-      'Sad Path: Não deve enviar stopService nem chamar markUntracked quando isRunning lançar',
+      'Sad Path: Não deve enviar stopService nem chamar markNotPublishing quando isRunning lançar',
       () async {
         // 1. Arrange
         final service = _mockService(
           running: true,
           isRunningError: MissingPluginException('isServiceRunning'),
         );
-        final markUntracked = _MarkUntrackedSpy();
-        final stopper = _buildStopper(service, markUntracked);
+        final markNotPublishing = _MarkNotPublishingSpy();
+        final stopper = _buildStopper(service, markNotPublishing);
 
         // 2. Act
         await _stopWithinGuard(stopper, email: _kEmail);
 
         // 3. Assert
-        verifyNever(service.invoke(any, any));
-        expect(markUntracked.emails, isEmpty);
+        verifyNever(service.stop());
+        expect(markNotPublishing.emails, isEmpty);
       },
     );
   });

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_android/shared_preferences_android.dart';
 
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'organization_binding_store.dart';
 
 /// File and key of the binding on Android. `MonAmieApplication.kt` reads

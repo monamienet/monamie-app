@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:monamie_app/data/repositories/membership/membership_source.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
-import 'package:monamie_app/data/repositories/positions/group_positions_source.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
+import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/data/services/geolocator_device_location.dart';
 import 'package:monamie_app/data/services/method_channel_background_restriction_checker.dart';
 import 'package:monamie_app/data/services/method_channel_background_usage_settings_launcher.dart';
+import 'package:monamie_app/data/services/permissions_service.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_controller.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
@@ -31,8 +30,10 @@ import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 @GenerateNiceMocks([
-  MockSpec<FirebaseProvider>(),
-  MockSpec<MembershipSource>(),
+  MockSpec<BackgroundTrackingService>(),
+  MockSpec<MembershipService>(),
+  MockSpec<PermissionsService>(),
+  MockSpec<PositionsRepository>(),
   MockSpec<TrackingSettingsRepository>(),
   MockSpec<UserGoogleRepository>(),
 ])
@@ -58,9 +59,8 @@ TrackingSettingsController? adminSettings;
 ///
 /// The data layer comes from [pumpRouter] ([dependencies]). With
 /// [withTracking], the page also reads the tracking
-/// controller (and so the permissions one): see [tracked].
+/// controller (and so the permissions one).
 GoRouter buildRouter({bool withTracking = false}) {
-  if (withTracking) tracked();
   return GoRouter(
     initialLocation: '/start',
     routes: [
@@ -95,7 +95,6 @@ GoRouter buildRouter({bool withTracking = false}) {
 /// whose page reads every organization controller, and *Grupos*, whose
 /// page reads some of them again.
 GoRouter buildSessionRouter(ValueNotifier<SessionState> session) {
-  tracked();
   return GoRouter(
     initialLocation: Routes.login,
     refreshListenable: session,
@@ -159,10 +158,11 @@ Future<void> pumpRouter(WidgetTester tester, GoRouter router) async {
 }
 
 /// The data layer [OrganizationScope] reads. The profile, the tracking
-/// settings, the memberships and the positions are mocks (nobody signed
-/// in, the default settings, no group); the tracking service, the GPS and
-/// the background checks are the app's own, and [tracked] answers the
-/// tracking service's and the permissions' channels.
+/// settings, the memberships, the positions, the tracking service and the
+/// permissions are mocks (nobody signed in, the default settings, no group,
+/// the service stopped, every permission denied), which keeps the real
+/// tracking and permissions view models the scope builds away from the
+/// device; the GPS and the background checks are the app's own.
 List<SingleChildWidget> dependencies() {
   final profile = MockUserGoogleRepository();
   when(profile.getUserGoogleModel()).thenAnswer((_) async => null);
@@ -170,16 +170,21 @@ List<SingleChildWidget> dependencies() {
   when(
     repository.watch(),
   ).thenAnswer((_) => Stream.value(TrackingSettings.defaults));
-  final positions = MockFirebaseProvider();
+  final service = MockBackgroundTrackingService();
+  when(service.isRunning()).thenAnswer((_) async => false);
+  final permissions = MockPermissionsService();
+  when(permissions.isGranted(any)).thenAnswer((_) async => false);
+  when(permissions.isPermanentlyDenied(any)).thenAnswer((_) async => false);
+  when(
+    permissions.request(any),
+  ).thenAnswer((_) async => AppPermissionStatus.denied);
   return [
     Provider<UserGoogleRepository>.value(value: profile),
     Provider<TrackingSettingsRepository>.value(value: repository),
-    Provider<MembershipSource>.value(value: MockMembershipSource()),
-    Provider<FirebaseProvider>.value(value: positions),
-    Provider<GroupPositionsSource>.value(value: positions),
-    Provider<FlutterBackgroundService>(
-      create: (_) => FlutterBackgroundService(),
-    ),
+    Provider<MembershipService>.value(value: MockMembershipService()),
+    Provider<PositionsRepository>.value(value: MockPositionsRepository()),
+    Provider<BackgroundTrackingService>.value(value: service),
+    Provider<PermissionsService>.value(value: permissions),
     Provider<DeviceLocation>.value(value: const GeolocatorDeviceLocation()),
     Provider<BackgroundRestrictionChecker>(
       create: (_) => MethodChannelBackgroundRestrictionChecker(),
@@ -189,28 +194,6 @@ List<SingleChildWidget> dependencies() {
     ),
   ];
 }
-
-/// Keeps the real tracking and permissions controllers the scope builds
-/// away from the device: the tracking service answers "stopped" and every
-/// permission "denied".
-void tracked() {
-  FlutterBackgroundServiceAndroid.registerWith();
-  final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  messenger.setMockMethodCallHandler(_serviceChannel, (call) async => false);
-  messenger.setMockMethodCallHandler(_permissionChannel, (call) async => 0);
-}
-
-/// The tracking service plugin's channel (Android).
-const _serviceChannel = MethodChannel(
-  'id.flutter/background_service/android/method',
-  JSONMethodCodec(),
-);
-
-/// The permission_handler plugin's channel.
-const _permissionChannel = MethodChannel(
-  'flutter.baseflow.com/permissions/methods',
-);
 
 /// Whether [listenable] was disposed (a disposed `ChangeNotifier` refuses
 /// new listeners).
@@ -237,13 +220,6 @@ void main() {
     adminGroupMap = null;
     adminUser = null;
     adminSettings = null;
-  });
-
-  tearDown(() {
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(_serviceChannel, null);
-    messenger.setMockMethodCallHandler(_permissionChannel, null);
   });
 
   group('OrganizationScope (organization shell) - Widget Test Suite', () {

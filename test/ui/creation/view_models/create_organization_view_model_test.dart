@@ -6,12 +6,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
 import 'package:monamie_app/utils/result.dart';
 
-@GenerateNiceMocks([MockSpec<CreationRepository>(), MockSpec<ThemeCatalog>()])
+@GenerateNiceMocks([
+  MockSpec<CreationRepository>(),
+  MockSpec<ThemeRepository>(),
+])
 import 'create_organization_view_model_test.mocks.dart';
 
 const _white = Color(0xFFFFFFFF);
@@ -54,10 +57,10 @@ void stubCreate(
   });
 }
 
-/// A [MockThemeCatalog] returning four themes (one retired), or failing
+/// A [MockThemeRepository] returning four themes (one retired), or failing
 /// when [failing].
-MockThemeCatalog mockCatalog({bool failing = false}) {
-  final catalog = MockThemeCatalog();
+MockThemeRepository mockCatalog({bool failing = false}) {
+  final catalog = MockThemeRepository();
   when(catalog.themes()).thenAnswer((_) async {
     if (failing) throw Exception('catalog unavailable');
     return {
@@ -69,7 +72,7 @@ MockThemeCatalog mockCatalog({bool failing = false}) {
 
 late MockCreationRepository repository;
 
-CreateOrganizationViewModel startedController({ThemeCatalog? themes}) =>
+CreateOrganizationViewModel startedController({ThemeRepository? themes}) =>
     CreateOrganizationViewModel(
       repository: repository,
       themes: themes ?? mockCatalog(),
@@ -615,7 +618,7 @@ void main() {
     test('Edge Case: an empty catalog leaves no theme to pick and the '
         'default theme picked', () async {
       // 1. Arrange
-      final catalog = MockThemeCatalog();
+      final catalog = MockThemeRepository();
       when(catalog.themes()).thenAnswer((_) async => {});
       final controller = CreateOrganizationViewModel(
         repository: repository,

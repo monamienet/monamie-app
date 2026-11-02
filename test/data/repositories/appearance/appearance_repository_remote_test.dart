@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/data/repositories/appearance/appearance_repository_remote.dart';
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/data/services/functions/functions_service.dart';
 import 'package:monamie_app/data/services/storage/organization_storage_service.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
@@ -14,7 +14,7 @@ import 'package:monamie_app/utils/result.dart';
 @GenerateNiceMocks([
   MockSpec<OrganizationFunctionsService>(),
   MockSpec<OrganizationStorageService>(),
-  MockSpec<ThemeCatalog>(),
+  MockSpec<ThemeRepository>(),
 ])
 import 'appearance_repository_remote_test.mocks.dart';
 
@@ -40,7 +40,7 @@ final _png = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
 
 late MockOrganizationFunctionsService functions;
 late MockOrganizationStorageService storage;
-late MockThemeCatalog themes;
+late MockThemeRepository themes;
 late AppearanceRepositoryRemote repository;
 
 /// Makes `setBranding` fail with [error].
@@ -67,7 +67,7 @@ void main() {
   setUp(() {
     functions = MockOrganizationFunctionsService();
     storage = MockOrganizationStorageService();
-    themes = MockThemeCatalog();
+    themes = MockThemeRepository();
     repository = AppearanceRepositoryRemote(
       themes: themes,
       functions: functions,

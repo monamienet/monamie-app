@@ -1,6 +1,6 @@
 // check_layers: state_contract
 
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 
 /// Binds and forgets the organization in the current isolate: what the
 /// sign-in flow needs from `OrganizationSession`.

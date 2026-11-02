@@ -6,9 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'organization_directory.dart';
 import 'organization_session.dart';
 import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
@@ -25,7 +25,7 @@ class OrganizationBrandingLoader {
   OrganizationBrandingLoader({required this._themes, http.Client? client})
     : _http = client ?? http.Client();
 
-  final ThemeCatalog _themes;
+  final ThemeRepository _themes;
   final http.Client _http;
 
   /// The binding of [candidate]. A branding that cannot be read never blocks

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/domain/models/organization/organization_id.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 
 import 'create_organization_state.dart';
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
@@ -78,7 +78,7 @@ class CreateOrganizationViewModel extends ChangeNotifier {
   });
 
   final CreationRepository _repository;
-  final ThemeCatalog _themes;
+  final ThemeRepository _themes;
   final Duration debounce;
 
   CreateOrganizationState _state = CreateOrganizationState(

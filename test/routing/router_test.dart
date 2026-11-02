@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mockito/annotations.dart';
@@ -16,20 +14,20 @@ import 'package:monamie_app/data/repositories/appearance/appearance_repository.d
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
 import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
-import 'package:monamie_app/data/repositories/membership/membership_source.dart';
-import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
-import 'package:monamie_app/data/repositories/positions/group_positions_source.dart';
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
 import 'package:monamie_app/data/services/auth/google_bond_check.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
+import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
+import 'package:monamie_app/data/services/permissions_service.dart';
 import 'package:monamie_app/domain/models/administrators.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/repositories/organization/organization_binder.dart';
@@ -56,25 +54,25 @@ import 'package:provider/single_child_widget.dart';
   MockSpec<AppearanceRepository>(),
   MockSpec<AuthGoogleService>(),
   MockSpec<BackgroundRestrictionChecker>(),
+  MockSpec<BackgroundTrackingService>(),
   MockSpec<BackgroundTrackingStopper>(),
   MockSpec<BackgroundUsageSettingsLauncher>(),
   MockSpec<CallService>(),
   MockSpec<CreationRepository>(),
   MockSpec<DeviceLocation>(),
-  MockSpec<FirebaseProvider>(),
-  MockSpec<FlutterBackgroundService>(),
   MockSpec<GoogleBondCheck>(),
   MockSpec<GroupsRepository>(),
   MockSpec<InvitesRepository>(),
-  MockSpec<MembershipSource>(),
+  MockSpec<MembershipService>(),
   MockSpec<NoticePresenter>(),
   MockSpec<OrganizationBinder>(),
   MockSpec<OrganizationBrandingLoader>(),
   MockSpec<OrganizationDirectory>(),
   MockSpec<OrganizationLocalData>(),
-  MockSpec<OrganizationMembershipCheck>(),
   MockSpec<OrganizationSession>(),
-  MockSpec<ThemeCatalog>(),
+  MockSpec<PermissionsService>(),
+  MockSpec<PositionsRepository>(),
+  MockSpec<ThemeRepository>(),
   MockSpec<TrackingSettingsRepository>(),
   MockSpec<UserGoogleRepository>(),
 ])
@@ -90,6 +88,13 @@ import 'router_test.mocks.dart';
 class _App {
   _App() {
     when(stopper.stop(email: anyNamed('email'))).thenAnswer((_) async => true);
+    // The organization's scope builds the real permissions view model: every
+    // permission answers "denied".
+    when(permissions.isGranted(any)).thenAnswer((_) async => false);
+    when(permissions.isPermanentlyDenied(any)).thenAnswer((_) async => false);
+    when(
+      permissions.request(any),
+    ).thenAnswer((_) async => AppPermissionStatus.denied);
     when(
       trackingSettings.watch(),
     ).thenAnswer((_) => Stream.value(TrackingSettings.defaults));
@@ -109,7 +114,7 @@ class _App {
       organizationLocalData: MockOrganizationLocalData(),
       invitesRepository: invites,
       deletionRepository: deletion,
-      membershipCheck: MockOrganizationMembershipCheck(),
+      membershipCheck: MockMembershipService(),
     );
     router = buildAppRouter(auth: auth);
   }
@@ -118,7 +123,8 @@ class _App {
   final userRepository = MockUserGoogleRepository();
   final invites = MockInvitesRepository();
   final deletion = MockAccountDeletionRepository();
-  final positions = MockFirebaseProvider();
+  final positions = MockPositionsRepository();
+  final permissions = MockPermissionsService();
   final trackingSettings = MockTrackingSettingsRepository();
   final administrators = MockAdministratorsRepository();
 
@@ -127,7 +133,7 @@ class _App {
   late final List<SingleChildWidget> dependencies = [
     Provider<UserGoogleRepository>.value(value: userRepository),
     Provider<OrganizationSession>.value(value: MockOrganizationSession()),
-    Provider<ThemeCatalog>.value(value: MockThemeCatalog()),
+    Provider<ThemeRepository>.value(value: MockThemeRepository()),
     Provider<GoogleBondCheck>.value(value: MockGoogleBondCheck()),
     Provider<InvitesRepository>.value(value: invites),
     Provider<AccountDeletionRepository>.value(value: deletion),
@@ -136,12 +142,12 @@ class _App {
     Provider<AppearanceRepository>.value(value: MockAppearanceRepository()),
     Provider<CreationRepository>.value(value: MockCreationRepository()),
     Provider<TrackingSettingsRepository>.value(value: trackingSettings),
-    Provider<MembershipSource>.value(value: MockMembershipSource()),
-    Provider<FirebaseProvider>.value(value: positions),
-    Provider<GroupPositionsSource>.value(value: positions),
-    Provider<FlutterBackgroundService>.value(
-      value: MockFlutterBackgroundService(),
+    Provider<MembershipService>.value(value: MockMembershipService()),
+    Provider<PositionsRepository>.value(value: positions),
+    Provider<BackgroundTrackingService>.value(
+      value: MockBackgroundTrackingService(),
     ),
+    Provider<PermissionsService>.value(value: permissions),
     Provider<DeviceLocation>.value(value: MockDeviceLocation()),
     Provider<BackgroundRestrictionChecker>.value(
       value: MockBackgroundRestrictionChecker(),
@@ -208,11 +214,6 @@ bool _isDisposed(Listenable listenable) {
 
 void _noop() {}
 
-/// The permission_handler plugin's channel.
-const _permissionChannel = MethodChannel(
-  'flutter.baseflow.com/permissions/methods',
-);
-
 void main() {
   provideDummy<Result<List<Invite>>>(const Ok([]));
   provideDummy<Result<AccountDeletion?>>(const Ok(null));
@@ -222,20 +223,6 @@ void main() {
   );
   provideDummy<Result<List<OrganizationTheme>>>(const Ok([]));
   provideDummy<Result<String?>>(const Ok(null));
-
-  // The organization's scope builds the real permissions view model: every
-  // permission answers "denied".
-  setUp(() {
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(_permissionChannel, (_) async => 0);
-  });
-
-  tearDown(() {
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(_permissionChannel, null);
-  });
 
   group('buildAppRouter sign-in flow - Widget Test Suite', () {
     testWidgets('Happy Path: the app starts on Login while signed out', (

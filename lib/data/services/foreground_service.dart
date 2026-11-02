@@ -7,15 +7,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
-import 'package:monamie_app/data/repositories/membership/firestore_membership_source.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
+import 'package:monamie_app/data/services/firestore/positions_firestore_service.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 import 'package:monamie_app/data/repositories/organization/shared_preferences_organization_binding_store.dart';
-import 'package:monamie_app/domain/models/capabilities.dart';
 import 'package:monamie_app/data/repositories/tracking/firestore_tracking_settings_repository.dart';
 import 'package:monamie_app/data/services/group_publisher.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
 import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
 
 Timer? _heartbeatTimer;
@@ -168,7 +167,7 @@ const int _maxConsecutivePermissionErrors = 3;
 Future<void> _followPublisherGroups(String email) async {
   if (_membershipSubscription != null) return;
   final first = Completer<void>();
-  _membershipSubscription = const FirestoreMembershipSource()
+  _membershipSubscription = const MembershipService()
       .groupRoles(
         CurrentOrganizationFirebase.instance.organizationData.id,
         email,
@@ -199,7 +198,7 @@ Future<bool> _publish(String email, String name, Position position) async {
     lng: position.longitude,
     capturedAt: DateTime.now(),
   );
-  final writer = FirebaseProvider();
+  const writer = PositionsFirestoreService();
   final outcome = await publishToGroups(
     _publisherGroupIds,
     (groupId) => writer.publish(groupId, published),
@@ -261,7 +260,8 @@ Future<void> updateLocation(
   // published has no position to update yet: the first publish creates it.
   await publishToGroups(
     _publisherGroupIds,
-    (groupId) => FirebaseProvider().setPublishing(groupId, email, true),
+    (groupId) =>
+        const PositionsFirestoreService().setPublishing(groupId, email, true),
   );
 
   final period = _settings.periodMinutes;
@@ -295,7 +295,7 @@ Future<void> updateLocation(
   _heartbeatTimer = Timer.periodic(heartbeat, (timer) async {
     final outcome = await publishToGroups(
       _publisherGroupIds,
-      (groupId) => FirebaseProvider().heartbeat(groupId, email),
+      (groupId) => const PositionsFirestoreService().heartbeat(groupId, email),
     );
     if (outcome.failed.isNotEmpty) {
       debugPrint(

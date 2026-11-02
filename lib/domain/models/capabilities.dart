@@ -1,40 +1,17 @@
-import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
+import 'package:monamie_app/domain/models/role_names.dart';
 
 /// What the signed-in person may do in the bound organization, read from
 /// their own membership documents (the same ones `firestore.rules` reads):
 /// `organizationMemberships/{personKey}` (belongs, and whether as an
 /// administrator) and `groups/{groupId}/groupMemberships/{personKey}`
-/// (their roles in each group).
+/// (their roles in each group). The data layer reads them
+/// (`capabilitiesFromMemberships` in `membership_service.dart`).
 class Capabilities {
   const Capabilities({
     this.isMember = false,
     this.isAdmin = false,
     this.rolesByGroup = const {},
   });
-
-  /// Reads the documents. [organizationMembership] is the data of
-  /// `organizationMemberships/{personKey}`, `null` when it does not exist;
-  /// [groupRoles] the raw `roles` of each of the person's group memberships,
-  /// by group id. Without an organization membership the person belongs to
-  /// nothing there, whatever group memberships are left. A malformed field
-  /// counts as absent, never as an error; unknown roles are kept but grant
-  /// nothing.
-  factory Capabilities.fromMemberships({
-    required Map<String, Object?>? organizationMembership,
-    required Map<String, Object?> groupRoles,
-  }) {
-    if (organizationMembership == null) return const Capabilities();
-    return Capabilities(
-      isMember: true,
-      isAdmin:
-          organizationMembership[OrganizationMembershipFields.role] ==
-          OrganizationRoles.admin,
-      rolesByGroup: {
-        for (final MapEntry(:key, :value) in groupRoles.entries)
-          if (rolesOf(value) case final roles when roles.isNotEmpty) key: roles,
-      },
-    );
-  }
 
   /// Whether the person belongs to the organization at all.
   final bool isMember;
@@ -93,19 +70,3 @@ class Capabilities {
   @override
   int get hashCode => Object.hash(isMember, isAdmin, rolesByGroup.length);
 }
-
-/// The role names in a raw `roles` field: the strings of a list, anything
-/// else none.
-Set<String> rolesOf(Object? raw) => {
-  if (raw is List)
-    for (final role in raw)
-      if (role is String && role.isNotEmpty) role,
-};
-
-/// The ids in [groupRoles] (raw `roles` by group id) whose roles include
-/// [role], sorted. The background service uses it for the groups it
-/// publishes to.
-List<String> groupsWithRole(Map<String, Object?> groupRoles, String role) => [
-  for (final MapEntry(:key, :value) in groupRoles.entries)
-    if (rolesOf(value).contains(role)) key,
-]..sort();

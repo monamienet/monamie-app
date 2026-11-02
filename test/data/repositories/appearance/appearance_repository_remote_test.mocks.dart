@@ -8,7 +8,8 @@ import 'dart:async' as _i3;
 import 'dart:typed_data' as _i5;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart' as _i6;
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart'
+    as _i6;
 import 'package:monamie_app/data/services/functions/functions_service.dart'
     as _i2;
 import 'package:monamie_app/data/services/storage/organization_storage_service.dart'
@@ -83,10 +84,10 @@ class MockOrganizationStorageService extends _i1.Mock
           as _i3.Future<void>);
 }
 
-/// A class which mocks [ThemeCatalog].
+/// A class which mocks [ThemeRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockThemeCatalog extends _i1.Mock implements _i6.ThemeCatalog {
+class MockThemeRepository extends _i1.Mock implements _i6.ThemeRepository {
   @override
   _i3.Future<Map<String, _i7.OrganizationTheme>> themes() =>
       (super.noSuchMethod(

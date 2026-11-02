@@ -5,7 +5,7 @@ import 'package:monamie_app/data/services/firebase/current_organization_firebase
 import 'package:monamie_app/data/services/firebase/firebase_app_organization_firebase.dart';
 
 import 'organization_binder.dart';
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'organization_binding_store.dart';
 
 /// Binds, restores and forgets the organization in the current isolate.

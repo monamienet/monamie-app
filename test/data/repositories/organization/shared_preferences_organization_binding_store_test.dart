@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'package:monamie_app/data/repositories/organization/shared_preferences_organization_binding_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // The platform interface is a transitive dependency of shared_preferences

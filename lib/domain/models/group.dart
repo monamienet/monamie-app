@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
+import 'package:monamie_app/domain/models/role_names.dart';
 
 part 'group.freezed.dart';
 

@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
-import 'package:monamie_app/data/repositories/membership/membership_source.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/domain/models/capabilities.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
 import 'package:monamie_app/ui/home/view_models/map_groups.dart';
-import 'package:monamie_app/data/repositories/positions/group_positions_source.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
@@ -36,8 +36,8 @@ class GroupMapViewModel implements GroupMapState {
                ? CurrentOrganizationFirebase.instance.auth.currentUser?.email
                : null);
 
-  final MembershipSource _memberships;
-  final GroupPositionsSource _positions;
+  final MembershipService _memberships;
+  final PositionsRepository _positions;
   final Future<void> Function() _onAccessLost;
   final String? Function() _organizationId;
   final String? Function() _email;
@@ -187,7 +187,7 @@ class GroupMapViewModel implements GroupMapState {
     final membership = _organizationMembership;
     final roles = _groupRoles;
     if (membership == null || roles == null || _accessLost) return;
-    final next = Capabilities.fromMemberships(
+    final next = capabilitiesFromMemberships(
       organizationMembership: membership,
       groupRoles: roles,
     );

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:monamie_app/ui/history/view_models/history_month.dart';
+import 'package:monamie_app/domain/models/history_month.dart';
 
 /// 27 October 2026, mid-afternoon: the time of day must be ignored.
 final today = DateTime(2026, 10, 27, 15, 30);

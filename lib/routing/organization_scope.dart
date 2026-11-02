@@ -67,6 +67,7 @@ class OrganizationScope extends StatelessWidget {
       ),
       Provider<PermissionsViewModel>(
         create: (context) => PermissionsViewModel(
+          permissions: context.read(),
           prompts: const DialogPermissionPrompts(),
           notices: const ScaffoldNoticePresenter(),
           backgroundRestrictionChecker: context.read(),

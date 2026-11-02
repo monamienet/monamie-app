@@ -5,8 +5,10 @@ import 'package:path/path.dart' as p;
 import 'src/state_layer_imports.dart';
 
 /// Fails (exit code 1) when a view model or state contract under `lib/`
-/// imports one of Flutter's UI libraries, or any file under `lib/` imports
-/// GetX (see `src/state_layer_imports.dart`).
+/// imports one of Flutter's UI libraries, any file under `lib/` imports
+/// GetX, a file under `lib/ui/` or `lib/domain/` imports a plugin, or a file
+/// under `lib/domain/` imports another layer of the app (see
+/// `src/state_layer_imports.dart`).
 /// Run from anywhere in the repo: `dart run tool/check_layers.dart`.
 void main() {
   // tool/check_layers.dart -> repository root, independent of the working

@@ -4,7 +4,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
-import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/repositories/organization/organization_binder.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
@@ -31,7 +31,7 @@ import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
   MockSpec<OrganizationBrandingLoader>(),
   MockSpec<OrganizationDirectory>(),
   MockSpec<OrganizationLocalData>(),
-  MockSpec<OrganizationMembershipCheck>(),
+  MockSpec<MembershipService>(),
   MockSpec<UserGoogleRepository>(),
 ])
 import 'login_screen_test.mocks.dart';
@@ -57,7 +57,7 @@ AuthGoogleViewModel _auth() => AuthGoogleViewModel(
   organizationLocalData: MockOrganizationLocalData(),
   invitesRepository: MockInvitesRepository(),
   deletionRepository: MockAccountDeletionRepository(),
-  membershipCheck: MockOrganizationMembershipCheck(),
+  membershipCheck: MockMembershipService(),
 );
 
 void main() {

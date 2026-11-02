@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/data/services/app_lifecycle_events.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
+import 'package:monamie_app/data/services/permissions_service.dart';
 import 'package:monamie_app/ui/home/view_models/permission_prompts.dart';
 import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
 import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
@@ -20,6 +20,7 @@ import 'package:monamie_app/utils/user_notice.dart';
   MockSpec<BackgroundUsageSettingsLauncher>(),
   MockSpec<PermissionPrompts>(),
   MockSpec<NoticePresenter>(),
+  MockSpec<PermissionsService>(),
 ])
 import 'permissions_view_model_test.mocks.dart';
 
@@ -61,13 +62,40 @@ MockPermissionPrompts mockPrompts({bool agree = false}) {
   return prompts;
 }
 
+/// A [MockPermissionsService] in which every permission has [status]:
+/// asking answers it, and the checks follow it. Opening the settings works.
+MockPermissionsService mockPermissions({
+  AppPermissionStatus status = AppPermissionStatus.denied,
+}) {
+  final permissions = MockPermissionsService();
+  answerAll(permissions, status);
+  when(permissions.openSettings()).thenAnswer((_) async => true);
+  return permissions;
+}
+
+/// Makes [permissions] answer [status] for every permission, as after the
+/// person changes them in the settings.
+void answerAll(MockPermissionsService permissions, AppPermissionStatus status) {
+  when(permissions.request(any)).thenAnswer((_) async => status);
+  when(permissions.isGranted(any)).thenAnswer((_) async => status.isGranted);
+  when(
+    permissions.isPermanentlyDenied(any),
+  ).thenAnswer((_) async => status.isPermanentlyDenied);
+}
+
+/// The permissions [_build] gives a controller when a test passes none;
+/// a fresh one for each test.
+late MockPermissionsService _permissions;
+
 PermissionsViewModel _build({
   required BackgroundRestrictionChecker backgroundRestrictionChecker,
+  PermissionsService? permissions,
   BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
   PermissionPrompts? prompts,
   NoticePresenter? notices,
   AppLifecycleEvents? lifecycle,
 }) => PermissionsViewModel(
+  permissions: permissions ?? _permissions,
   prompts: prompts ?? mockPrompts(),
   notices: notices ?? MockNoticePresenter(),
   lifecycle: lifecycle ?? MockAppLifecycleEvents(),
@@ -80,21 +108,6 @@ PermissionsViewModel _build({
 /// answered it (the controller exposes them read-only).
 void _seed(ValueListenable<bool> listenable, bool value) =>
     (listenable as ValueNotifier<bool>).value = value;
-
-/// Canal de métodos usado pelo permission_handler. O controller não deve
-/// acionar `openAppSettings` para a restrição de bateria: abrir as
-/// configurações é responsabilidade do launcher injetado.
-const MethodChannel _permissionChannel = MethodChannel(
-  'flutter.baseflow.com/permissions/methods',
-);
-
-/// Valores de `PermissionStatus` e de `Permission` no protocolo do
-/// permission_handler.
-const int _denied = 0;
-const int _granted = 1;
-const int _permanentlyDenied = 4;
-const int _locationAlways = 4;
-const int _locationWhenInUse = 5;
 
 const String _noticeTitle = 'Uso em segundo plano ainda restrito';
 
@@ -119,6 +132,8 @@ Future<void> _returnToApp(PermissionsViewModel controller) async {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() => _permissions = mockPermissions());
 
   group('background restriction', () {
     group('PermissionsViewModel - Restrição de Segundo Plano', () {
@@ -344,23 +359,6 @@ void main() {
 
   group('open background usage settings', () {
     group('PermissionsViewModel - openBackgroundUsageSettings', () {
-      late List<MethodCall> permissionCalls;
-
-      setUp(() {
-        permissionCalls = <MethodCall>[];
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(_permissionChannel, (call) async {
-              permissionCalls.add(call);
-              if (call.method == 'openAppSettings') return true;
-              return null;
-            });
-      });
-
-      tearDown(() {
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(_permissionChannel, null);
-      });
-
       test(
         'Happy Path: Deve retornar sem perguntar nem abrir configurações quando o app não está restrito',
         () async {
@@ -382,7 +380,7 @@ void main() {
           expect(controller.isBackgroundRestricted.value, isFalse);
           verify(checker.isRestricted()).called(1);
           verifyNever(launcher.open());
-          expect(permissionCalls, isEmpty);
+          verifyZeroInteractions(_permissions);
         },
       );
 
@@ -407,7 +405,7 @@ void main() {
           verifyNever(prompts.confirmBackgroundUsageSettings());
           expect(controller.isBackgroundRestricted.value, isFalse);
           verifyNever(launcher.open());
-          expect(permissionCalls, isEmpty);
+          verifyZeroInteractions(_permissions);
         },
       );
 
@@ -448,7 +446,7 @@ void main() {
 
           // 3. Assert
           verifyNever(launcher.open());
-          expect(permissionCalls, isEmpty);
+          verifyZeroInteractions(_permissions);
           expect(controller.isBackgroundRestricted.value, isTrue);
         },
       );
@@ -469,7 +467,7 @@ void main() {
 
           // 3. Assert
           verify(launcher.open()).called(1);
-          expect(permissionCalls, isEmpty);
+          verifyZeroInteractions(_permissions);
         },
       );
 
@@ -490,7 +488,7 @@ void main() {
           // 3. Assert
           await expectLater(future, completes);
           verify(launcher.open()).called(1);
-          expect(permissionCalls, isEmpty);
+          verifyZeroInteractions(_permissions);
         },
       );
 
@@ -544,7 +542,7 @@ void main() {
           await expectLater(future, throwsA(isA<StateError>()));
           verifyNever(prompts.confirmBackgroundUsageSettings());
           verifyNever(launcher.open());
-          expect(permissionCalls, isEmpty);
+          verifyZeroInteractions(_permissions);
         },
       );
 
@@ -576,19 +574,7 @@ void main() {
 
   group('return from settings', () {
     group('PermissionsViewModel - Aviso ao retornar das configurações de bateria', () {
-      setUp(() {
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(_permissionChannel, (call) async {
-              if (call.method == 'checkPermissionStatus') return _granted;
-              if (call.method == 'openAppSettings') return true;
-              return null;
-            });
-      });
-
-      tearDown(() {
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(_permissionChannel, null);
-      });
+      setUp(() => answerAll(_permissions, AppPermissionStatus.granted));
 
       test(
         'Happy Path: Deve avisar "Uso em segundo plano ainda restrito" quando o usuário volta das configurações e a restrição continua',
@@ -779,44 +765,27 @@ void main() {
   });
 
   group('PermissionsViewModel - requestAlwaysPermission', () {
-    late List<List<int>> requested;
-    late List<String> methods;
-
-    /// Responde aos pedidos de permissão: "durante o uso" com [whenInUse],
-    /// "sempre" com [always]; as consultas de status respondem [always].
-    void answerPermissions({required int whenInUse, int always = _granted}) {
-      requested = <List<int>>[];
-      methods = <String>[];
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(_permissionChannel, (call) async {
-            methods.add(call.method);
-            switch (call.method) {
-              case 'requestPermissions':
-                final permissions = List<int>.from(call.arguments as List);
-                requested.add(permissions);
-                return {
-                  for (final p in permissions)
-                    p: p == _locationWhenInUse ? whenInUse : always,
-                };
-              case 'checkPermissionStatus':
-                return always;
-              case 'openAppSettings':
-                return true;
-            }
-            return null;
-          });
+    /// Answers the permission requests: "durante o uso" with [whenInUse],
+    /// "sempre" with [always]; the status checks answer [always].
+    void answerPermissions({
+      required AppPermissionStatus whenInUse,
+      AppPermissionStatus always = AppPermissionStatus.granted,
+    }) {
+      answerAll(_permissions, always);
+      when(
+        _permissions.request(AppPermission.locationWhenInUse),
+      ).thenAnswer((_) async => whenInUse);
     }
 
-    tearDown(() {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(_permissionChannel, null);
-    });
+    /// The permissions asked for, in order.
+    List<AppPermission> requested() =>
+        verify(_permissions.request(captureAny)).captured.cast<AppPermission>();
 
     test(
       'Happy Path: Deve pedir a localização "sempre" quando o usuário confirma o aviso',
       () async {
         // 1. Arrange
-        answerPermissions(whenInUse: _granted);
+        answerPermissions(whenInUse: AppPermissionStatus.granted);
         final prompts = mockPrompts(agree: true);
         final controller = _build(
           backgroundRestrictionChecker: mockChecker(),
@@ -828,9 +797,9 @@ void main() {
 
         // 3. Assert
         verify(prompts.confirmBackgroundLocation()).called(1);
-        expect(requested, [
-          [_locationWhenInUse],
-          [_locationAlways],
+        expect(requested(), [
+          AppPermission.locationWhenInUse,
+          AppPermission.locationAlways,
         ]);
         expect(controller.hasAlwaysLocationPermission.value, isTrue);
       },
@@ -840,7 +809,10 @@ void main() {
       'Sad Path: Deve parar sem pedir a localização "sempre" quando o usuário recusa o aviso',
       () async {
         // 1. Arrange
-        answerPermissions(whenInUse: _granted, always: _denied);
+        answerPermissions(
+          whenInUse: AppPermissionStatus.granted,
+          always: AppPermissionStatus.denied,
+        );
         final prompts = mockPrompts(agree: false);
         final controller = _build(
           backgroundRestrictionChecker: mockChecker(),
@@ -852,9 +824,7 @@ void main() {
 
         // 3. Assert
         verify(prompts.confirmBackgroundLocation()).called(1);
-        expect(requested, [
-          [_locationWhenInUse],
-        ]);
+        expect(requested(), [AppPermission.locationWhenInUse]);
         expect(controller.hasAlwaysLocationPermission.value, isFalse);
       },
     );
@@ -863,7 +833,10 @@ void main() {
       'Edge Case: Deve abrir as configurações do app quando a localização "sempre" foi negada de vez',
       () async {
         // 1. Arrange
-        answerPermissions(whenInUse: _granted, always: _permanentlyDenied);
+        answerPermissions(
+          whenInUse: AppPermissionStatus.granted,
+          always: AppPermissionStatus.permanentlyDenied,
+        );
         final controller = _build(
           backgroundRestrictionChecker: mockChecker(),
           prompts: mockPrompts(agree: true),
@@ -873,7 +846,7 @@ void main() {
         await controller.requestAlwaysPermission();
 
         // 3. Assert
-        expect(methods, contains('openAppSettings'));
+        verify(_permissions.openSettings()).called(1);
       },
     );
 
@@ -881,7 +854,10 @@ void main() {
       'Sad Path: Deve não exibir o aviso quando a localização "durante o uso" é negada',
       () async {
         // 1. Arrange
-        answerPermissions(whenInUse: _denied, always: _denied);
+        answerPermissions(
+          whenInUse: AppPermissionStatus.denied,
+          always: AppPermissionStatus.denied,
+        );
         final prompts = mockPrompts(agree: true);
         final controller = _build(
           backgroundRestrictionChecker: mockChecker(),
@@ -893,9 +869,7 @@ void main() {
 
         // 3. Assert
         verifyNever(prompts.confirmBackgroundLocation());
-        expect(requested, [
-          [_locationWhenInUse],
-        ]);
+        expect(requested(), [AppPermission.locationWhenInUse]);
       },
     );
   });
@@ -921,24 +895,6 @@ void main() {
   });
 
   group('PermissionsViewModel - start e dispose', () {
-    /// The status the permission_handler channel answers for every
-    /// permission; tests change it to simulate the person's choice.
-    late int status;
-
-    setUp(() {
-      status = _denied;
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(_permissionChannel, (call) async {
-            if (call.method == 'checkPermissionStatus') return status;
-            return null;
-          });
-    });
-
-    tearDown(() {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(_permissionChannel, null);
-    });
-
     test(
       'Happy Path: Deve passar a seguir o ciclo de vida do app ao começar',
       () async {
@@ -1049,7 +1005,7 @@ void main() {
         await controller.start();
         var notified = 0;
         controller.hasWhenInUseLocationPermission.addListener(() => notified++);
-        status = _granted;
+        answerAll(_permissions, AppPermissionStatus.granted);
 
         // 2. Act
         await _returnToApp(controller);
@@ -1065,7 +1021,7 @@ void main() {
       'Edge Case: Não deve avisar nenhuma permissão quando o sistema responde o mesmo ao voltar ao app',
       () async {
         // 1. Arrange
-        status = _granted;
+        answerAll(_permissions, AppPermissionStatus.granted);
         final controller = _build(
           backgroundRestrictionChecker: mockChecker(result: true),
           lifecycle: MockAppLifecycleEvents(),

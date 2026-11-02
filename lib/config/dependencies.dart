@@ -11,10 +11,6 @@ import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
 import 'package:monamie_app/data/repositories/groups/groups_repository_remote.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository_remote.dart';
-import 'package:monamie_app/data/repositories/membership/firestore_membership_source.dart';
-import 'package:monamie_app/data/repositories/membership/firestore_organization_membership_check.dart';
-import 'package:monamie_app/data/repositories/membership/membership_source.dart';
-import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
 import 'package:monamie_app/data/repositories/organization/central_organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/hive_organization_local_data.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
@@ -22,10 +18,10 @@ import 'package:monamie_app/data/repositories/organization/organization_director
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 import 'package:monamie_app/data/repositories/organization/shared_preferences_organization_binding_store.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
-import 'package:monamie_app/data/repositories/positions/group_positions_source.dart';
-import 'package:monamie_app/data/repositories/theme/firestore_theme_catalog.dart';
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository_firestore.dart';
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
+import 'package:monamie_app/data/repositories/theme/theme_repository_firestore.dart';
 import 'package:monamie_app/data/repositories/tracking/firestore_tracking_settings_repository.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
@@ -33,16 +29,21 @@ import 'package:monamie_app/data/services/auth/auth_google_service.dart';
 import 'package:monamie_app/data/services/auth/google_bond_check.dart';
 import 'package:monamie_app/data/services/auth/stored_google_bond_check.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
+import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
+import 'package:monamie_app/data/services/firestore/positions_firestore_service.dart';
 import 'package:monamie_app/data/services/flutter_background_service_tracking_stopper.dart';
 import 'package:monamie_app/data/services/functions/functions_service.dart';
 import 'package:monamie_app/data/services/geolocator_device_location.dart';
 import 'package:monamie_app/data/services/method_channel_background_restriction_checker.dart';
 import 'package:monamie_app/data/services/method_channel_background_usage_settings_launcher.dart';
+import 'package:monamie_app/data/services/permissions_service.dart';
 import 'package:monamie_app/data/services/storage/organization_storage_service.dart';
+import 'package:monamie_app/data/services/user_profile_hive_service.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
@@ -65,10 +66,17 @@ List<SingleChildWidget> appDependencies({
   required OrganizationSession organizationSession,
   required OrganizationBrandingLoader brandingLoader,
 }) => [
-  Provider<AuthGoogleService>(create: (_) => AuthGoogleService()),
-  Provider<UserGoogleRepository>(create: (_) => UserGoogleRepository()),
+  Provider<UserProfileHiveService>(
+    create: (_) => const UserProfileHiveService(),
+  ),
+  Provider<UserGoogleRepository>(
+    create: (context) => UserGoogleRepository(service: context.read()),
+  ),
+  Provider<AuthGoogleService>(
+    create: (context) => AuthGoogleService(userRepository: context.read()),
+  ),
   Provider<OrganizationSession>.value(value: organizationSession),
-  Provider<ThemeCatalog>(create: (_) => const FirestoreThemeCatalog()),
+  Provider<ThemeRepository>(create: (_) => const ThemeRepositoryFirestore()),
   Provider<OrganizationBrandingLoader>.value(value: brandingLoader),
   Provider<OrganizationDirectory>(
     create: (_) => CentralOrganizationDirectory(),
@@ -76,18 +84,32 @@ List<SingleChildWidget> appDependencies({
   Provider<OrganizationLocalData>(
     create: (_) => const HiveOrganizationLocalData(),
   ),
-  Provider<OrganizationMembershipCheck>(
-    create: (_) => const FirestoreOrganizationMembershipCheck(),
+  // The membership documents: the check on entering an organization and
+  // the map's live capabilities.
+  Provider<MembershipService>(create: (_) => const MembershipService()),
+  Provider<PositionsFirestoreService>(
+    create: (_) => const PositionsFirestoreService(),
+  ),
+  // The map, the calendar and tracking read positions, trails and days.
+  Provider<PositionsRepository>(
+    create: (context) => PositionsRepositoryFirestore(
+      positions: context.read(),
+      memberships: context.read(),
+    ),
   ),
   Provider<GoogleBondCheck>(
     create: (context) => StoredGoogleBondCheck(
       userRepository: context.read<UserGoogleRepository>(),
     ),
   ),
-  Provider<FlutterBackgroundService>(create: (_) => FlutterBackgroundService()),
+  Provider<BackgroundTrackingService>(
+    create: (_) =>
+        BackgroundTrackingService(service: FlutterBackgroundService()),
+  ),
   Provider<BackgroundTrackingStopper>(
     create: (context) => FlutterBackgroundServiceTrackingStopper(
-      service: context.read<FlutterBackgroundService>(),
+      service: context.read(),
+      positions: context.read(),
     ),
   ),
   Provider<CentralFunctionsService>(
@@ -126,14 +148,8 @@ List<SingleChildWidget> appDependencies({
   Provider<TrackingSettingsRepository>(
     create: (_) => const FirestoreTrackingSettingsRepository(),
   ),
-  Provider<MembershipSource>(create: (_) => const FirestoreMembershipSource()),
-  // One object behind both contracts: the map reads the positions, the
-  // calendar and tracking also read trails and days.
-  Provider<FirebaseProvider>(create: (_) => FirebaseProvider()),
-  ProxyProvider<FirebaseProvider, GroupPositionsSource>(
-    update: (_, positions, _) => positions,
-  ),
   Provider<DeviceLocation>(create: (_) => const GeolocatorDeviceLocation()),
+  Provider<PermissionsService>(create: (_) => const PermissionsService()),
   Provider<BackgroundRestrictionChecker>(
     create: (_) => MethodChannelBackgroundRestrictionChecker(),
   ),
@@ -150,4 +166,4 @@ OrganizationSession createOrganizationSession() =>
 
 /// Reads organizations' branding, with themes from the central catalog.
 OrganizationBrandingLoader createBrandingLoader() =>
-    OrganizationBrandingLoader(themes: const FirestoreThemeCatalog());
+    OrganizationBrandingLoader(themes: const ThemeRepositoryFirestore());

@@ -581,6 +581,397 @@ import 'package:get/get.dart';
     });
   });
 
+  group('findLayerViolations: ui_imports_plugin', () {
+    const pluginUris = [
+      'package:geolocator/geolocator.dart',
+      'package:permission_handler/permission_handler.dart',
+      'package:flutter_background_service/flutter_background_service.dart',
+      'package:shared_preferences/shared_preferences.dart',
+      'package:google_sign_in/google_sign_in.dart',
+      'package:http/http.dart',
+      'package:firebase_core/firebase_core.dart',
+      'package:firebase_auth/firebase_auth.dart',
+      'package:cloud_firestore/cloud_firestore.dart',
+      'package:cloud_functions/cloud_functions.dart',
+      'package:hive/hive.dart',
+      'package:hive_flutter/hive_flutter.dart',
+    ];
+
+    for (final path in [
+      'lib/ui/x/widgets/x_screen.dart',
+      'lib/domain/models/x.dart',
+      r'lib\ui\x\widgets\x_screen.dart',
+    ]) {
+      for (final uri in pluginUris) {
+        test('$uri under $path is a violation', () {
+          // 1. Arrange
+          final content = "import '$uri';\n";
+
+          // 2. Act
+          final result = findLayerViolations(path, content);
+
+          // 3. Assert
+          expect(result.map((v) => (v.uri, v.rule)), [(uri, uiImportsPlugin)]);
+        });
+      }
+    }
+
+    test('an export of a plugin under lib/ui/ is a violation', () {
+      // 1. Arrange
+      const content =
+          "export 'package:geolocator/geolocator.dart' show Position;\n";
+
+      // 2. Act
+      final result = findLayerViolations('lib/ui/x/x.dart', content);
+
+      // 3. Assert
+      expect(result.single.rule, uiImportsPlugin);
+    });
+
+    for (final path in [
+      'lib/data/services/x_service.dart',
+      'lib/routing/router.dart',
+      'lib/config/dependencies.dart',
+      'lib/main.dart',
+      'lib/ui/x/x.g.dart',
+      'lib/domain/models/x.freezed.dart',
+      'lib/ui/x/x_view_model.mocks.dart',
+      'test/ui/x/x_test.dart',
+      'tool/x.dart',
+    ]) {
+      test('a plugin is allowed outside lib/ui/ and lib/domain/ sources: '
+          '$path', () {
+        // 1. Arrange
+        const content =
+            "import 'package:cloud_firestore/cloud_firestore.dart';\n";
+
+        // 2. Act
+        final result = findLayerViolations(path, content);
+
+        // 3. Assert
+        expect(result, isEmpty);
+      });
+    }
+
+    for (final uri in [
+      'package:google_sign_in_web/web_only.dart',
+      'package:http_parser/http_parser.dart',
+      'package:geolocator_android/geolocator_android.dart',
+      'package:firebase/firebase.dart',
+      'package:latlong2/latlong.dart',
+      'package:flutter_map/flutter_map.dart',
+      'package:monamie_app/data/services/firestore/membership_service.dart',
+      'cloud_firestore/cloud_firestore.dart',
+    ]) {
+      test('a URI that is not one of the wrapped plugins is allowed: $uri', () {
+        // 1. Arrange
+        final content = "import '$uri';\n";
+
+        // 2. Act
+        final result = findLayerViolations(
+          'lib/ui/x/widgets/x_screen.dart',
+          content,
+        );
+
+        // 3. Assert
+        expect(result, isEmpty);
+      });
+    }
+
+    test('a plugin as the default URI of a conditional import is reported', () {
+      // 1. Arrange
+      const content = '''
+import 'package:shared_preferences/shared_preferences.dart'
+    if (dart.library.js_interop) 'src/web_stub.dart';
+''';
+
+      // 2. Act
+      final result = findLayerViolations('lib/ui/x/x.dart', content);
+
+      // 3. Assert
+      expect(
+        (result.single.uri, result.single.rule),
+        ('package:shared_preferences/shared_preferences.dart', uiImportsPlugin),
+      );
+    });
+
+    test('a plugin in a conditional branch is reported at the branch', () {
+      // 1. Arrange
+      const content = """
+import 'src/stub.dart'
+    if (dart.library.io) 'package:hive/hive.dart';
+""";
+
+      // 2. Act
+      final result = findLayerViolations('lib/ui/x/x.dart', content);
+
+      // 3. Assert
+      expect(
+        (result.single.line, result.single.column, result.single.rule),
+        (2, 26, uiImportsPlugin),
+      );
+    });
+
+    test('a plugin import inside a comment is not a violation', () {
+      // 1. Arrange
+      const content = """
+// import 'package:geolocator/geolocator.dart';
+/* import 'package:hive/hive.dart'; */
+""";
+
+      // 2. Act
+      final result = findLayerViolations('lib/ui/x/x.dart', content);
+
+      // 3. Assert
+      expect(result, isEmpty);
+    });
+
+    test('a view model importing material and a plugin reports both', () {
+      // 1. Arrange
+      const content = '''
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart' as geo;
+''';
+
+      // 2. Act
+      final result = findLayerViolations(viewModelPath, content);
+
+      // 3. Assert
+      expect(result.map((v) => (v.line, v.rule)), [
+        (1, stateImportsFlutterUi),
+        (2, uiImportsPlugin),
+      ]);
+    });
+
+    test('the plugin message names the file, position, URI and rule', () {
+      // 1. Arrange
+      const path = 'lib/ui/x/widgets/x_screen.dart';
+      const content =
+          "import 'dart:async';\nimport 'package:hive/hive.dart';\n";
+
+      // 2. Act
+      final message = findLayerViolations(path, content).single.toString();
+
+      // 3. Assert
+      expect(
+        message,
+        allOf(
+          startsWith('$path:2:8 - Files under lib/ui/ and lib/domain/ must '),
+          contains("'package:hive/hive.dart'"),
+          contains('lib/data/'),
+          endsWith(' - $uiImportsPlugin'),
+        ),
+      );
+    });
+  });
+
+  group('isPluginUri', () {
+    test('a wrapped plugin package is a plugin', () {
+      // 1. Arrange
+      const uri = 'package:permission_handler/permission_handler.dart';
+
+      // 2. Act
+      final result = isPluginUri(uri);
+
+      // 3. Assert
+      expect(result, isTrue);
+    });
+
+    test('a package starting with a plugin prefix is a plugin', () {
+      // 1. Arrange
+      const uri = 'package:firebase_storage/firebase_storage.dart';
+
+      // 2. Act
+      final result = isPluginUri(uri);
+
+      // 3. Assert
+      expect(result, isTrue);
+    });
+
+    for (final uri in [
+      'dart:io',
+      'src/hive.dart',
+      'package:geolocatorx/x.dart',
+    ]) {
+      test('$uri is not a plugin', () {
+        // 1. Arrange (uri from the table)
+
+        // 2. Act
+        final result = isPluginUri(uri);
+
+        // 3. Assert
+        expect(result, isFalse);
+      });
+    }
+  });
+
+  group('findLayerViolations: domain_imports_outer', () {
+    const domainPath = 'lib/domain/models/x.dart';
+
+    for (final uri in [
+      'package:monamie_app/data/services/firebase/firestore_paths.dart',
+      'package:monamie_app/ui/core/ui/notice_presenter.dart',
+      'package:monamie_app/routing/routes.dart',
+      'package:monamie_app/config/dependencies.dart',
+    ]) {
+      test('$uri in the domain is a violation', () {
+        // 1. Arrange
+        final content = "import '$uri';\n";
+
+        // 2. Act
+        final result = findLayerViolations(domainPath, content);
+
+        // 3. Assert
+        expect(result.map((v) => (v.uri, v.rule)), [(uri, domainImportsOuter)]);
+      });
+    }
+
+    for (final (uri, label) in [
+      ('../../data/model/organization_binding.dart', 'up to lib/data/'),
+      ('../../ui/x/x.dart', 'up to lib/ui/'),
+      ('../../../lib/routing/routes.dart', 'out of lib/ and back'),
+      ('./../../config/dependencies.dart', 'starting with ./'),
+    ]) {
+      test('a relative import $label is a violation: $uri', () {
+        // 1. Arrange
+        final content = "import '$uri';\n";
+
+        // 2. Act
+        final result = findLayerViolations(domainPath, content);
+
+        // 3. Assert
+        expect(result.single.rule, domainImportsOuter);
+      });
+    }
+
+    test('a relative import resolves from a Windows path', () {
+      // 1. Arrange
+      const content = "import '../../data/x.dart';\n";
+
+      // 2. Act
+      final result = findLayerViolations(r'lib\domain\models\x.dart', content);
+
+      // 3. Assert
+      expect(result.single.rule, domainImportsOuter);
+    });
+
+    for (final uri in [
+      'package:monamie_app/domain/models/role_names.dart',
+      'package:monamie_app/utils/result.dart',
+      'package:monamie_app/main.dart',
+      'role_names.dart',
+      '../models/role_names.dart',
+      '../../utils/result.dart',
+      'package:freezed_annotation/freezed_annotation.dart',
+      'package:flutter/foundation.dart',
+      'package:monamie_app_extra/data/x.dart',
+      'dart:ui',
+    ]) {
+      test('$uri is allowed in the domain', () {
+        // 1. Arrange
+        final content = "import '$uri';\n";
+
+        // 2. Act
+        final result = findLayerViolations(domainPath, content);
+
+        // 3. Assert
+        expect(result, isEmpty);
+      });
+    }
+
+    test('an outer layer as the default URI of a conditional import is '
+        'reported', () {
+      // 1. Arrange
+      const content = '''
+import 'package:monamie_app/data/x.dart'
+    if (dart.library.io) 'x_io.dart';
+''';
+
+      // 2. Act
+      final result = findLayerViolations(domainPath, content);
+
+      // 3. Assert
+      expect(result.single.rule, domainImportsOuter);
+    });
+
+    test('an outer layer in a conditional branch is reported there', () {
+      // 1. Arrange
+      const content = """
+import 'x_stub.dart'
+    if (dart.library.io) '../../data/x_io.dart';
+""";
+
+      // 2. Act
+      final result = findLayerViolations(domainPath, content);
+
+      // 3. Assert
+      expect(
+        (result.single.line, result.single.uri, result.single.rule),
+        (2, '../../data/x_io.dart', domainImportsOuter),
+      );
+    });
+
+    for (final path in [
+      'lib/domain/models/x.freezed.dart',
+      'lib/domain/models/x.g.dart',
+      'lib/data/model/x.dart',
+      'lib/ui/x/x.dart',
+      'test/domain/models/x_test.dart',
+    ]) {
+      test('outer layers are allowed outside hand-written domain files: '
+          '$path', () {
+        // 1. Arrange
+        const content =
+            "import 'package:monamie_app/data/services/firebase/firestore_paths.dart';\n";
+
+        // 2. Act
+        final result = findLayerViolations(path, content);
+
+        // 3. Assert
+        expect(result, isEmpty);
+      });
+    }
+
+    test('a domain file importing a plugin reports the plugin rule only', () {
+      // 1. Arrange
+      const content = '''
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:monamie_app/data/x.dart';
+''';
+
+      // 2. Act
+      final result = findLayerViolations(domainPath, content);
+
+      // 3. Assert
+      expect(result.map((v) => (v.line, v.rule)), [
+        (1, uiImportsPlugin),
+        (2, domainImportsOuter),
+      ]);
+    });
+
+    test('the domain message names the file, position, URI and rule', () {
+      // 1. Arrange
+      const content = "import 'dart:async';\nexport '../../ui/x.dart';\n";
+
+      // 2. Act
+      final message = findLayerViolations(
+        domainPath,
+        content,
+      ).single.toString();
+
+      // 3. Assert
+      expect(
+        message,
+        allOf(
+          startsWith('$domainPath:2:8 - Files under lib/domain/ must not '),
+          contains("'../../ui/x.dart'"),
+          contains('depends on no other layer'),
+          endsWith(' - $domainImportsOuter'),
+        ),
+      );
+    });
+  });
+
   group('check_layers.dart', () {
     late Directory root;
 
@@ -662,5 +1053,32 @@ import 'package:get/get.dart';
         ),
       );
     });
+
+    test(
+      'exits 1 for a plugin in the UI and an outer layer in the domain',
+      () async {
+        // 1. Arrange
+        writeLib('ui/a/a_screen.dart', "import 'package:hive/hive.dart';\n");
+        writeLib('domain/b.dart', "import '../data/c.dart';\n");
+        writeLib('data/c.dart', "import 'package:hive/hive.dart';\n");
+
+        // 2. Act
+        final result = await runTool();
+
+        // 3. Assert
+        expect(result.exitCode, 1);
+        expect(
+          result.stderr,
+          allOf(
+            contains('${p.join('lib', 'ui', 'a', 'a_screen.dart')}:1:8'),
+            contains('${p.join('lib', 'domain', 'b.dart')}:1:8'),
+            isNot(contains(p.join('lib', 'data', 'c.dart'))),
+            contains(uiImportsPlugin),
+            contains(domainImportsOuter),
+            contains('2 violation(s) found.'),
+          ),
+        );
+      },
+    );
   });
 }

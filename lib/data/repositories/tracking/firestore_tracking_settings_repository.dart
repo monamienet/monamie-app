@@ -34,7 +34,7 @@ class FirestoreTrackingSettingsRepository
         .doc(FirestorePaths.tracking)
         .snapshots()
         .map(
-          (doc) => TrackingSettings.fromMap(
+          (doc) => trackingSettingsFromFirestore(
             doc.data(),
             minPeriodMinutes: min,
           ).withinOffered(),
@@ -44,9 +44,28 @@ class FirestoreTrackingSettingsRepository
   @override
   Future<void> save(TrackingSettings settings) =>
       _config.doc(FirestorePaths.tracking).set({
-        ...settings.toMap(),
+        ...trackingSettingsToFirestore(settings),
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy':
             CurrentOrganizationFirebase.instance.auth.currentUser?.email,
       });
 }
+
+/// Reads `config/tracking`, whose stored fields keep their first names
+/// (`intervalMinutes` for the period, `distanceMeters` for the radius). A
+/// missing document or a value that is not allowed falls back field by field
+/// (see [TrackingSettings.validated]).
+TrackingSettings trackingSettingsFromFirestore(
+  Map<String, Object?>? data, {
+  int minPeriodMinutes = 0,
+}) => TrackingSettings.validated(
+  periodMinutes: data?['intervalMinutes'],
+  radiusMeters: data?['distanceMeters'],
+  minPeriodMinutes: minPeriodMinutes,
+);
+
+/// The stored fields of [settings] in `config/tracking`.
+Map<String, Object?> trackingSettingsToFirestore(TrackingSettings settings) => {
+  'intervalMinutes': settings.periodMinutes,
+  'distanceMeters': settings.radiusMeters,
+};

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/ui/history/widgets/history_calendar_sheet.dart';
-import 'package:monamie_app/ui/history/view_models/history_month.dart';
+import 'package:monamie_app/domain/models/history_month.dart';
 
 import '../../home/widgets/home_doubles.mocks.dart';
 

@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'package:monamie_app/ui/auth/view_models/session_state.dart';
 import 'package:monamie_app/routing/session_redirect.dart';
 

@@ -42,26 +42,25 @@ class TrackingSettings {
     required this.radiusMeters,
   });
 
-  /// Reads `config/tracking`, whose stored fields keep their first names
-  /// (`intervalMinutes` for the period, `distanceMeters` for the radius). A
-  /// missing document, or a value that is not one of the allowed ones, falls
-  /// back to [defaults] field by field. The plan's [minPeriodMinutes]
-  /// (*período mínimo*, Community) raises a shorter period to the first
-  /// allowed one at or above it.
-  factory TrackingSettings.fromMap(
-    Map<String, Object?>? data, {
+  /// Settings from stored values of unknown type: a value that is not one of
+  /// the allowed ones (or is missing) falls back to [defaults] field by
+  /// field. The plan's [minPeriodMinutes] (*período mínimo*, Community)
+  /// raises a shorter period to the first allowed one at or above it. The
+  /// data layer reads the stored fields (`config/tracking`).
+  factory TrackingSettings.validated({
+    required Object? periodMinutes,
+    required Object? radiusMeters,
     int minPeriodMinutes = 0,
   }) {
-    final interval = data?['intervalMinutes'];
-    final distance = data?['distanceMeters'];
     final settings = TrackingSettings(
       // `is int` first: a double such as 20.0 equals 20 in `contains`, but
       // is not an allowed value.
-      periodMinutes: interval is int && trackingPeriods.contains(interval)
-          ? interval
+      periodMinutes:
+          periodMinutes is int && trackingPeriods.contains(periodMinutes)
+          ? periodMinutes
           : defaults.periodMinutes,
-      radiusMeters: distance is int && trackingRadii.contains(distance)
-          ? distance
+      radiusMeters: radiusMeters is int && trackingRadii.contains(radiusMeters)
+          ? radiusMeters
           : defaults.radiusMeters,
     );
     return settings.withinPlan(minPeriodMinutes);
@@ -123,11 +122,6 @@ class TrackingSettings {
         preset.radiusMeters == radiusMeters,
     orElse: () => TrackingPreset.personalizado,
   );
-
-  Map<String, Object?> toMap() => {
-    'intervalMinutes': periodMinutes,
-    'distanceMeters': radiusMeters,
-  };
 
   @override
   bool operator ==(Object other) =>

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
-import 'package:monamie_app/ui/history/view_models/history_month.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/domain/models/history_month.dart';
 
 /// The day the map shows (today or a past day) and the month of the history
 /// calendar. Each value is its own [ValueListenable], so the tracking
@@ -13,7 +13,7 @@ class CalendarViewModel {
   CalendarViewModel({required this._groupMap, required this._positions});
 
   final GroupMapState _groupMap;
-  final FirebaseProvider _positions;
+  final PositionsRepository _positions;
 
   final _observedDay = ValueNotifier<DateTime>(_today());
 

@@ -5,24 +5,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
-import 'package:monamie_app/data/repositories/membership/membership_source.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_view_model.dart';
-import 'package:monamie_app/data/repositories/positions/group_positions_source.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 
 @GenerateNiceMocks([
-  MockSpec<MembershipSource>(),
-  MockSpec<GroupPositionsSource>(),
+  MockSpec<MembershipService>(),
+  MockSpec<PositionsRepository>(),
 ])
 import 'group_map_view_model_test.mocks.dart';
 
 const member = <String, Object?>{'email': 'ana@x.com', 'role': 'member'};
 const admin = <String, Object?>{'email': 'ana@x.com', 'role': 'admin'};
 
-late MockMembershipSource memberships;
-late MockGroupPositionsSource positions;
+late MockMembershipService memberships;
+late MockPositionsRepository positions;
 late int accessLost;
 
 // The streams [memberships] returns. Each buffers what the test adds until
@@ -39,9 +39,9 @@ StreamController<String?> nameOf(String groupId) =>
 /// The people [positions] answers with, by group id.
 late Map<String, List<UserModel>> groupPeople;
 
-/// A [MockMembershipSource] answering from the streams above.
-MockMembershipSource mockMemberships() {
-  final source = MockMembershipSource();
+/// A [MockMembershipService] answering from the streams above.
+MockMembershipService mockMemberships() {
+  final source = MockMembershipService();
   when(
     source.organizationMembership(any, any),
   ).thenAnswer((_) => organization.stream);
@@ -53,9 +53,9 @@ MockMembershipSource mockMemberships() {
   return source;
 }
 
-/// A [MockGroupPositionsSource] answering from [groupPeople].
-MockGroupPositionsSource mockPositions() {
-  final source = MockGroupPositionsSource();
+/// A [MockPositionsRepository] answering from [groupPeople].
+MockPositionsRepository mockPositions() {
+  final source = MockPositionsRepository();
   when(source.streamGroupPositions(any)).thenAnswer(
     (invocation) => Stream.value(
       groupPeople[invocation.positionalArguments[0]] ?? const [],

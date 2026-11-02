@@ -1,3 +1,11 @@
+/// Firestore names and fields. The role values ([OrganizationRoles],
+/// [GroupRoles]) belong to the domain and are exported from here, next to
+/// the fields that hold them.
+library;
+
+export 'package:monamie_app/domain/models/role_names.dart'
+    show GroupRoles, OrganizationRoles;
+
 /// The Firestore collection and document names the app and `tool/` use, in
 /// one place, so a rename cannot miss one. `firestore.rules` and the
 /// functions (`firestore_paths.js` in `functions/` and `central/functions/`)
@@ -81,16 +89,9 @@ abstract final class FirestorePaths {
 abstract final class OrganizationMembershipFields {
   static const email = 'email';
 
-  /// `admin` or `member`.
+  /// `admin` or `member` ([OrganizationRoles]).
   static const role = 'role';
   static const addedAt = 'addedAt';
-}
-
-/// The two values of [OrganizationMembershipFields.role].
-abstract final class OrganizationRoles {
-  /// Manages the organization and sees every group.
-  static const admin = 'admin';
-  static const member = 'member';
 }
 
 /// Fields of `organizations/{id}/groups/{groupId}`.
@@ -110,19 +111,6 @@ abstract final class GroupMembershipFields {
   /// A sorted, non-empty subset of [GroupRoles].
   static const roles = 'roles';
   static const addedAt = 'addedAt';
-}
-
-/// The values of [GroupMembershipFields.roles].
-abstract final class GroupRoles {
-  /// Shares their own location in the group.
-  static const publisher = 'publisher';
-
-  /// Sees the group's map and history.
-  static const subscriber = 'subscriber';
-
-  /// Manages the group's people, invites and name through the central
-  /// functions (*Gestor do grupo*); given only by administrators.
-  static const maintainer = 'maintainer';
 }
 
 /// Fields of `accounts/{personKey}` (central project).

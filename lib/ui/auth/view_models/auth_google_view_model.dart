@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
@@ -74,7 +74,7 @@ class AuthGoogleViewModel extends ChangeNotifier
   final OrganizationLocalData _organizationLocalData;
   final InvitesRepository _invitesRepository;
   final AccountDeletionRepository _deletionRepository;
-  final OrganizationMembershipCheck _membershipCheck;
+  final MembershipService _membershipCheck;
 
   /// Rebuilds the theme from the bound organization (or MonAmie when none).
   final void Function() _refreshTheme;

@@ -1,8 +1,12 @@
 import 'package:monamie_app/data/model/user_google_model.dart';
-import 'package:monamie_app/data/repositories/user/user_google_provider.dart';
+import 'package:monamie_app/data/services/user_profile_hive_service.dart';
 
+/// The signed-in person's Google profile on the device, read and kept
+/// through [UserProfileHiveService].
 class UserGoogleRepository {
-  final UserGoogleProvider _provider = UserGoogleProvider();
+  UserGoogleRepository({required this._service});
+
+  final UserProfileHiveService _service;
 
   Future<UserGoogleModel> saveGoogleProfile(
     String email,
@@ -11,7 +15,7 @@ class UserGoogleRepository {
     String urlImage, {
     String? avatarBase64,
   }) async {
-    UserGoogleModel user = await _provider.saveGoogleProfile(
+    UserGoogleModel user = await _service.saveGoogleProfile(
       email,
       name,
       uid,
@@ -23,22 +27,22 @@ class UserGoogleRepository {
   }
 
   Future<String> saveUserGoogleModel(UserGoogleModel user) {
-    return _provider.saveUserGoogleModel(user);
+    return _service.saveUserGoogleModel(user);
   }
 
   Future<UserGoogleModel?> getUserGoogleModel() {
-    return _provider.getUserGoogleModel();
+    return _service.getUserGoogleModel();
   }
 
   Future<String> deleteUserGoogleModel() {
-    return _provider.deleteUserGoogleModel();
+    return _service.deleteUserGoogleModel();
   }
 
   Future<String> clearAllUserGoogle() {
-    return _provider.clearAllUserGoogle();
+    return _service.clearAllUserGoogle();
   }
 
   Future<bool> hasUserGoogle() {
-    return _provider.hasUserGoogle();
+    return _service.hasUserGoogle();
   }
 }

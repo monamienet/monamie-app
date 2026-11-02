@@ -8,13 +8,12 @@ import 'dart:async' as _i6;
 
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i9;
+import 'package:monamie_app/data/model/organization_binding.dart' as _i2;
 import 'package:monamie_app/data/model/user_google_model.dart' as _i4;
 import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart'
     as _i5;
 import 'package:monamie_app/data/repositories/invites/invites_repository.dart'
     as _i13;
-import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart'
-    as _i20;
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart'
     as _i17;
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart'
@@ -30,12 +29,12 @@ import 'package:monamie_app/data/services/auth/auth_google_service.dart'
 import 'package:monamie_app/data/services/auth/google_bond_check.dart' as _i12;
 import 'package:monamie_app/data/services/background_tracking_stopper.dart'
     as _i11;
+import 'package:monamie_app/data/services/firestore/membership_service.dart'
+    as _i20;
 import 'package:monamie_app/domain/models/account_deletion.dart' as _i8;
 import 'package:monamie_app/domain/models/group.dart' as _i15;
 import 'package:monamie_app/domain/models/invite.dart' as _i16;
 import 'package:monamie_app/domain/models/invite_send_result.dart' as _i14;
-import 'package:monamie_app/domain/models/organization/organization_binding.dart'
-    as _i2;
 import 'package:monamie_app/domain/models/organization/organization_config.dart'
     as _i3;
 import 'package:monamie_app/utils/result.dart' as _i7;
@@ -513,11 +512,69 @@ class MockOrganizationLocalData extends _i1.Mock
           as _i6.Future<void>);
 }
 
-/// A class which mocks [OrganizationMembershipCheck].
+/// A class which mocks [MembershipService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockOrganizationMembershipCheck extends _i1.Mock
-    implements _i20.OrganizationMembershipCheck {
+class MockMembershipService extends _i1.Mock implements _i20.MembershipService {
+  @override
+  _i6.Stream<Map<String, Object?>?> organizationMembership(
+    String? organizationId,
+    String? email,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#organizationMembership, [organizationId, email]),
+            returnValue: _i6.Stream<Map<String, Object?>?>.empty(),
+            returnValueForMissingStub:
+                _i6.Stream<Map<String, Object?>?>.empty(),
+          )
+          as _i6.Stream<Map<String, Object?>?>);
+
+  @override
+  _i6.Stream<Map<String, Object?>> groupRoles(
+    String? organizationId,
+    String? email,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#groupRoles, [organizationId, email]),
+            returnValue: _i6.Stream<Map<String, Object?>>.empty(),
+            returnValueForMissingStub: _i6.Stream<Map<String, Object?>>.empty(),
+          )
+          as _i6.Stream<Map<String, Object?>>);
+
+  @override
+  _i6.Future<Map<String, Object?>> readGroupRoles(
+    String? organizationId,
+    String? email,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#readGroupRoles, [organizationId, email]),
+            returnValue: _i6.Future<Map<String, Object?>>.value(
+              <String, Object?>{},
+            ),
+            returnValueForMissingStub: _i6.Future<Map<String, Object?>>.value(
+              <String, Object?>{},
+            ),
+          )
+          as _i6.Future<Map<String, Object?>>);
+
+  @override
+  _i6.Stream<Map<String, String>> allGroupNames(String? organizationId) =>
+      (super.noSuchMethod(
+            Invocation.method(#allGroupNames, [organizationId]),
+            returnValue: _i6.Stream<Map<String, String>>.empty(),
+            returnValueForMissingStub: _i6.Stream<Map<String, String>>.empty(),
+          )
+          as _i6.Stream<Map<String, String>>);
+
+  @override
+  _i6.Stream<String?> groupName(String? organizationId, String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#groupName, [organizationId, groupId]),
+            returnValue: _i6.Stream<String?>.empty(),
+            returnValueForMissingStub: _i6.Stream<String?>.empty(),
+          )
+          as _i6.Stream<String?>);
+
   @override
   _i6.Future<bool?> isMemberOf(String? organizationId) =>
       (super.noSuchMethod(

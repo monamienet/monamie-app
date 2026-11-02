@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:monamie_app/data/repositories/functions_result.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/data/services/functions/functions_service.dart';
 import 'package:monamie_app/data/services/storage/organization_storage_service.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart'
@@ -23,7 +23,7 @@ class AppearanceRepositoryRemote implements AppearanceRepository {
     required this._storage,
   });
 
-  final ThemeCatalog _themes;
+  final ThemeRepository _themes;
   final OrganizationFunctionsService _functions;
   final OrganizationStorageService _storage;
 

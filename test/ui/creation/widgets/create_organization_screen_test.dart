@@ -6,13 +6,16 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
 import 'package:monamie_app/ui/creation/widgets/create_organization_screen.dart';
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
 import 'package:monamie_app/utils/result.dart';
 
-@GenerateNiceMocks([MockSpec<CreationRepository>(), MockSpec<ThemeCatalog>()])
+@GenerateNiceMocks([
+  MockSpec<CreationRepository>(),
+  MockSpec<ThemeRepository>(),
+])
 import 'create_organization_screen_test.mocks.dart';
 
 const _white = Color(0xFFFFFFFF);
@@ -47,7 +50,7 @@ void stubCreate(Future<void> Function() wait, {String? failure}) {
 }
 
 late MockCreationRepository repository;
-late MockThemeCatalog catalog;
+late MockThemeRepository catalog;
 
 final _createButton = find.widgetWithText(FilledButton, 'Criar organização');
 final _enterButton = find.widgetWithText(FilledButton, 'Entrar na Rota Sul');
@@ -115,7 +118,7 @@ void main() {
     repository = MockCreationRepository();
     when(repository.idProblem(any)).thenAnswer((_) async => const Ok(null));
     stubCreate(() async {});
-    catalog = MockThemeCatalog();
+    catalog = MockThemeRepository();
     when(catalog.themes()).thenAnswer(
       (_) async => {
         for (final t in [defaultOrganizationTheme, oceano]) t.id: t,

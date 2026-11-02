@@ -1,7 +1,7 @@
 // check_layers: state_contract
 
 import 'package:flutter/foundation.dart';
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'package:monamie_app/domain/models/invite.dart';
 import 'package:monamie_app/ui/auth/view_models/auth_google_state.dart';
 import 'package:monamie_app/ui/auth/view_models/session_state.dart';

@@ -10,10 +10,10 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/data/services/firebase/organization_firebase.dart';
-import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
+import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/model/user_google_model.dart';
 import 'package:monamie_app/data/repositories/organization/organization_binder.dart';
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 import 'package:monamie_app/data/repositories/organization/organization_binding_store.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
@@ -47,7 +47,7 @@ import '../../../support/test_organization.dart';
   MockSpec<OrganizationDirectory>(),
   MockSpec<OrganizationFirebase>(),
   MockSpec<OrganizationLocalData>(),
-  MockSpec<OrganizationMembershipCheck>(),
+  MockSpec<MembershipService>(),
   MockSpec<UserGoogleRepository>(),
 ])
 import 'auth_google_view_model_test.mocks.dart';
@@ -214,11 +214,11 @@ MockOrganizationBrandingLoader _brandingLoader(
   return loader;
 }
 
-/// A [MockOrganizationMembershipCheck] that answers [member] for every
+/// A [MockMembershipService] that answers [member] for every
 /// organization: `true` belongs, `false` was removed, `null` could not be
 /// read.
-MockOrganizationMembershipCheck _membershipCheck(bool? member) {
-  final check = MockOrganizationMembershipCheck();
+MockMembershipService _membershipCheck(bool? member) {
+  final check = MockMembershipService();
   when(check.isMemberOf(any)).thenAnswer((_) async => member);
   return check;
 }
@@ -326,7 +326,7 @@ class _HarnessSignIn {
 
   final List<String> log = <String>[];
   final notices = MockNoticePresenter();
-  late final MockOrganizationMembershipCheck membershipCheck;
+  late final MockMembershipService membershipCheck;
   late final MockAuthGoogleService authService;
   late final MockOrganizationDirectory directory;
   late final MockOrganizationBinder session;
@@ -546,7 +546,7 @@ AuthGoogleViewModel newController() => AuthGoogleViewModel(
   organizationLocalData: MockOrganizationLocalData(),
   invitesRepository: MockInvitesRepository(),
   deletionRepository: MockAccountDeletionRepository(),
-  membershipCheck: MockOrganizationMembershipCheck(),
+  membershipCheck: MockMembershipService(),
   refreshTheme: () {},
 );
 
@@ -652,7 +652,7 @@ class _HarnessLogout {
       brandingLoader: MockOrganizationBrandingLoader(),
       invitesRepository: MockInvitesRepository(),
       deletionRepository: MockAccountDeletionRepository(),
-      membershipCheck: MockOrganizationMembershipCheck(),
+      membershipCheck: MockMembershipService(),
     );
     _followRoutes(controller, log);
   }
@@ -2890,7 +2890,7 @@ void main() {
           brandingLoader: MockOrganizationBrandingLoader(),
           invitesRepository: MockInvitesRepository(),
           deletionRepository: MockAccountDeletionRepository(),
-          membershipCheck: MockOrganizationMembershipCheck(),
+          membershipCheck: MockMembershipService(),
         );
 
         // 3. Assert

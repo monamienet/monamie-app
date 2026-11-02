@@ -6,12 +6,12 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
-import 'package:monamie_app/ui/history/view_models/history_month.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/domain/models/history_month.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 
-@GenerateNiceMocks([MockSpec<FirebaseProvider>(), MockSpec<GroupMapState>()])
+@GenerateNiceMocks([MockSpec<PositionsRepository>(), MockSpec<GroupMapState>()])
 import 'calendar_view_model_test.mocks.dart';
 
 const _kGroup = MapGroup(id: 'g1', name: 'Equipe Norte');
@@ -36,7 +36,7 @@ class _Harness {
   }
 
   final groupMap = MockGroupMapState();
-  final positions = MockFirebaseProvider();
+  final positions = MockPositionsRepository();
   late final CalendarViewModel controller;
 }
 

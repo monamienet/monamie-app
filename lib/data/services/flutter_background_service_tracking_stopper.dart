@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
 
 /// Para o serviço do `flutter_background_service` enviando o evento
 /// `stopService` ao isolate de rastreamento (ver `foreground_service.dart`).
@@ -11,27 +11,23 @@ import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
 /// [pollInterval] até `isRunning()` retornar `false` ou o [timeout] expirar.
 class FlutterBackgroundServiceTrackingStopper
     implements BackgroundTrackingStopper {
+  /// [service] is the tracking service; [positions] marks the person as
+  /// not sharing.
   FlutterBackgroundServiceTrackingStopper({
-    FlutterBackgroundService? service,
-    Future<void> Function(String email)? markUntracked,
+    required this._service,
+    required this._positions,
     this.timeout = const Duration(seconds: 5),
     this.pollInterval = const Duration(milliseconds: 250),
-  }) : _injectedService = service,
-       _markUntracked =
-           markUntracked ??
-           ((email) => FirebaseProvider().markNotPublishing(email));
+  });
 
-  final FlutterBackgroundService? _injectedService;
-  final Future<void> Function(String email) _markUntracked;
+  final BackgroundTrackingService _service;
+  final PositionsRepository _positions;
 
   /// Tempo máximo de espera pela parada do serviço e, separadamente, pela
   /// escrita de `isPublishing` (que nunca completa enquanto o aparelho está
   /// offline).
   final Duration timeout;
   final Duration pollInterval;
-
-  FlutterBackgroundService get _service =>
-      _injectedService ?? FlutterBackgroundService();
 
   @override
   Future<bool> stop({String? email}) async {
@@ -40,7 +36,7 @@ class FlutterBackgroundServiceTrackingStopper
     final stopwatch = Stopwatch()..start();
     var stopped = false;
     while (!stopped && stopwatch.elapsed < timeout) {
-      _service.invoke('stopService');
+      _service.stop();
       await Future<void>.delayed(pollInterval);
       stopped = !await _isRunning();
     }
@@ -54,7 +50,7 @@ class FlutterBackgroundServiceTrackingStopper
 
     if (email != null && email.isNotEmpty) {
       try {
-        await _markUntracked(email).timeout(timeout);
+        await _positions.markNotPublishing(email).timeout(timeout);
       } catch (e) {
         debugPrint(
           '[BackgroundTrackingStopper] Erro ao desativar isPublishing: $e',

@@ -11,12 +11,11 @@ import 'package:cloud_functions/cloud_functions.dart' as _i4;
 import 'package:firebase_auth/firebase_auth.dart' as _i2;
 import 'package:firebase_storage/firebase_storage.dart' as _i5;
 import 'package:mockito/mockito.dart' as _i1;
+import 'package:monamie_app/data/model/organization_binding.dart' as _i8;
 import 'package:monamie_app/data/repositories/organization/organization_binding_store.dart'
     as _i6;
 import 'package:monamie_app/data/services/firebase/organization_firebase.dart'
     as _i9;
-import 'package:monamie_app/domain/models/organization/organization_binding.dart'
-    as _i8;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values

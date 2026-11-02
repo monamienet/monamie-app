@@ -20,7 +20,7 @@ import 'package:monamie_app/data/services/firebase/current_organization_firebase
 ///    which accepts the central web client under "Allowed client IDs".
 class AuthGoogleService {
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-  final UserGoogleRepository _userRepository = UserGoogleRepository();
+  final UserGoogleRepository _userRepository;
 
   fb.FirebaseAuth get _organizationAuth =>
       CurrentOrganizationFirebase.instance.auth;
@@ -34,7 +34,8 @@ class AuthGoogleService {
 
   Future<void> ensureInitialized() => _init;
 
-  AuthGoogleService();
+  /// [userRepository] keeps the Google profile of who signs in.
+  AuthGoogleService({required this._userRepository});
 
   Future<void> _initialize() async {
     debugPrint('AuthGoogleService: initialize start');

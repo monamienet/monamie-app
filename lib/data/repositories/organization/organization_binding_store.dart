@@ -1,4 +1,4 @@
-import 'package:monamie_app/domain/models/organization/organization_binding.dart';
+import 'package:monamie_app/data/model/organization_binding.dart';
 
 /// Where the device keeps the [OrganizationBinding] between launches.
 abstract interface class OrganizationBindingStore {

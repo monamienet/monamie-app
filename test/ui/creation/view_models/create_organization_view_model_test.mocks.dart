@@ -10,7 +10,8 @@ import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i5;
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart'
     as _i2;
-import 'package:monamie_app/data/repositories/theme/theme_catalog.dart' as _i7;
+import 'package:monamie_app/data/repositories/theme/theme_repository.dart'
+    as _i7;
 import 'package:monamie_app/domain/models/creation.dart' as _i6;
 import 'package:monamie_app/domain/models/organization/organization_theme.dart'
     as _i8;
@@ -116,10 +117,10 @@ class MockCreationRepository extends _i1.Mock
           as _i3.Future<_i4.Result<List<_i6.Creation>>>);
 }
 
-/// A class which mocks [ThemeCatalog].
+/// A class which mocks [ThemeRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockThemeCatalog extends _i1.Mock implements _i7.ThemeCatalog {
+class MockThemeRepository extends _i1.Mock implements _i7.ThemeRepository {
   @override
   _i3.Future<Map<String, _i8.OrganizationTheme>> themes() =>
       (super.noSuchMethod(

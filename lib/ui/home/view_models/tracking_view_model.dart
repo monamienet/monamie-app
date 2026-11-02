@@ -1,23 +1,21 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 //import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
 import 'package:monamie_app/ui/home/view_models/live_users.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/ui/home/widgets/animated_user_marker.dart';
 import 'package:monamie_app/domain/models/location_point.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
-import 'package:monamie_app/data/services/foreground_service.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_toggle_view_model.dart';
 import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
 import 'package:monamie_app/utils/result.dart';
@@ -34,8 +32,8 @@ import 'package:monamie_app/utils/user_notice.dart';
 class TrackingViewModel implements TrackingToggleViewModel {
   /// [notices] shows the warnings raised by background changes, which no
   /// screen is waiting for. [userCtrl], [permissionsCtrl], [calendar] and
-  /// [groupMap] are the other home view models this one reacts to. The
-  /// plugins come in too: [service] (the tracking service), [location] (the
+  /// [groupMap] are the other home view models this one reacts to. The data
+  /// layer comes in too: [service] (the tracking service), [location] (the
   /// GPS) and [positions] (the groups' positions and trails).
   TrackingViewModel({
     required this._notices,
@@ -51,21 +49,12 @@ class TrackingViewModel implements TrackingToggleViewModel {
   final NoticePresenter _notices;
   final CalendarViewModel _calendar;
   final GroupMapState _groupMap;
-  final FlutterBackgroundService _service;
+  final BackgroundTrackingService _service;
   final DeviceLocation _location;
-  final FirebaseProvider _positions;
-  Position position = Position(
-    latitude: -22.9041, // latitude em Niterói
-    longitude: -43.1329, // longitude em Niterói
-    timestamp: DateTime.now(),
-    accuracy: 0,
-    altitude: 0,
-    altitudeAccuracy: 0,
-    heading: 0,
-    headingAccuracy: 0,
-    speed: 0,
-    speedAccuracy: 0,
-  );
+  final PositionsRepository _positions;
+
+  /// The device's last known position; Niterói until a fix arrives.
+  LatLng position = const LatLng(-22.9041, -43.1329);
   final _firebaseUsers = ValueNotifier<List<UserModel>>(const []);
   final _groupUsers = ValueNotifier<List<UserModel>>(const []);
   final _isTrackingEnabled = ValueNotifier<bool>(false);
@@ -198,8 +187,8 @@ class TrackingViewModel implements TrackingToggleViewModel {
   final Map<String, StreamSubscription<List<LocationPoint>>>
   _highlightedTrajectorySubscriptions = {};
 
-  StreamSubscription<Map<String, dynamic>?>? _readySubscription;
-  StreamSubscription<Map<String, dynamic>?>? _locationSubscription;
+  StreamSubscription<void>? _readySubscription;
+  StreamSubscription<LatLng>? _locationSubscription;
 
   /// Timer para debounce do listener de highlightedObservedUsers.
   Timer? _highlightedUsersDebounce;
@@ -455,7 +444,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
         return;
       }
 
-      mapController.move(LatLng(position.latitude, position.longitude), 15.0);
+      mapController.move(position, 15.0);
     } catch (e) {
       if (kDebugMode) print('Error moving map: $e');
     }
@@ -540,9 +529,9 @@ class TrackingViewModel implements TrackingToggleViewModel {
     _set(_isTrackingEnabled, running);
   }
 
-  void _setPosition(Position value) {
+  void _setPosition(LatLng value) {
     position = value;
-    _set(_ownPosition, LatLng(value.latitude, value.longitude));
+    _set(_ownPosition, value);
   }
 
   bool _locating = false;
@@ -686,28 +675,6 @@ class TrackingViewModel implements TrackingToggleViewModel {
     }
   }
 
-  Future<void> _setPlatformSpecifics() async {
-    await _service.configure(
-      iosConfiguration: IosConfiguration(
-        autoStart: false,
-        onForeground: onStart,
-        onBackground: onIosBackground,
-      ),
-      androidConfiguration: AndroidConfiguration(
-        // Esta linha conecta os isolates.
-        onStart: onStart,
-        // true -> Foreground
-        // false -> Background
-        isForegroundMode: true,
-        autoStart: false,
-        autoStartOnBoot: false,
-        initialNotificationTitle: "Sua localização está sendo compartilhada",
-        initialNotificationContent:
-            "O compartilhamento está ligado. Para preservar sua privacidade, certifique-se de desativá-lo assim que terminar suas atividades.",
-      ),
-    );
-  }
-
   Future<Result<UserNotice?>> _startService() async {
     // No modo de bateria "Restrito" o Android remove o status de foreground
     // do serviço assim que o app sai da tela; não adianta iniciar.
@@ -753,29 +720,32 @@ class TrackingViewModel implements TrackingToggleViewModel {
       );
     }
 
-    await _setPlatformSpecifics();
     await _readySubscription?.cancel();
     await _locationSubscription?.cancel();
-    await _service.startService();
+    await _service.start(
+      notificationTitle: "Sua localização está sendo compartilhada",
+      notificationContent:
+          "O compartilhamento está ligado. Para preservar sua privacidade, certifique-se de desativá-lo assim que terminar suas atividades.",
+    );
 
     // Este listener ouve o serviço em foreground avisar que está pronto para
     // receber informações do usuário.
-    _readySubscription = _service.on('ready').listen((event) async {
-      _service.invoke("setUserInfo", {
-        "email": userCtrl.user!.email,
-        "name": userCtrl.getUserName(),
-      });
+    _readySubscription = _service.ready.listen((_) {
+      _service.sendUser(
+        email: userCtrl.user!.email,
+        name: userCtrl.getUserName(),
+      );
     });
 
     // Este listener ouve atualizações da posição por parte do serviço em
     // foreground.
-    _locationSubscription = _service.on('updateLocationLocally').listen((
-      event,
-    ) {
-      if (event != null) {
-        _setPosition(Position.fromMap(event['position']));
-      }
-    });
+    _locationSubscription = _service.localPositions.listen(
+      _setPosition,
+      // A malformed event from the service skips one fix; the next one
+      // moves the marker again.
+      onError: (Object e) =>
+          debugPrint('[TrackingViewModel] Unreadable local position: $e'),
+    );
 
     // Atualiza UI (botão).
     _set(_isTrackingEnabled, true);
@@ -793,7 +763,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
     _readySubscription = null;
     await _locationSubscription?.cancel();
     _locationSubscription = null;
-    _service.invoke("stopService");
+    _service.stop();
     _set(_isTrackingEnabled, false);
     try {
       await _positions.markNotPublishing(userCtrl.user!.email);
