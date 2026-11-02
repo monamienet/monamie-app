@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/ui/core/ui/monamie_mark.dart';
 import 'package:monamie_app/ui/core/ui/monamie_wordmark.dart';
-import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
 import 'package:monamie_app/ui/auth/view_models/login_view_model.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 
@@ -13,12 +12,9 @@ import 'google_button.dart';
 ///
 /// Restores a remembered session after its first frame.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.controller, required this.auth});
+  const LoginScreen({super.key, required this.controller});
 
   final LoginViewModel controller;
-
-  /// The sign-in in progress (Google readiness, the entry's busy state).
-  final SessionFlow auth;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -76,16 +72,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _action(BuildContext context) {
     return ListenableBuilder(
-      listenable: Listenable.merge([controller, widget.auth]),
+      listenable: controller,
       builder: (context, _) {
-        final auth = widget.auth.state;
-        if (controller.state.isRestoringSession || !auth.googleReady) {
+        final state = controller.state;
+        if (state.isRestoringSession || !state.googleReady) {
           return const Center(
             child: CircularProgressIndicator(color: MonAmieBrand.cream),
           );
         }
-        if (auth.isLoading) {
-          final name = auth.enteringOrganizationName;
+        if (state.isLoading) {
+          final name = state.enteringOrganizationName;
           return SizedBox(
             height: 56,
             child: Row(

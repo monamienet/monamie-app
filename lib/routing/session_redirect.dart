@@ -1,4 +1,4 @@
-import 'package:monamie_app/ui/auth/view_models/session_state.dart';
+import 'package:monamie_app/data/repositories/session/session_state.dart';
 import 'package:monamie_app/routing/routes.dart';
 
 /// The screen a person whose sign-in stands at [session] belongs on.

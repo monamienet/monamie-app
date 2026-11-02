@@ -14,8 +14,8 @@ import 'package:monamie_app/data/services/background_restriction_checker.dart'
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart'
     as _i6;
 import 'package:monamie_app/data/services/permissions_service.dart' as _i10;
-import 'package:monamie_app/ui/core/ui/notice_presenter.dart' as _i8;
 import 'package:monamie_app/ui/home/view_models/permission_prompts.dart' as _i7;
+import 'package:monamie_app/utils/notice_presenter.dart' as _i8;
 import 'package:monamie_app/utils/user_notice.dart' as _i9;
 
 // ignore_for_file: type=lint

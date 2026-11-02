@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
+import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
+import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
 import 'package:monamie_app/ui/account/widgets/my_account_screen.dart';
 
-@GenerateNiceMocks([MockSpec<AccountDeletionRepository>()])
+@GenerateNiceMocks([
+  MockSpec<AccountDeletionRepository>(),
+  MockSpec<OrganizationDirectory>(),
+  MockSpec<SignOut>(),
+])
 import 'my_account_screen_test.mocks.dart';
 
 void main() {
@@ -14,15 +21,15 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      var checks = 0;
+      final directory = MockOrganizationDirectory();
+      when(
+        directory.organizationsOfSignedInUser(),
+      ).thenAnswer((_) async => const []);
       final controller = MyAccountViewModel(
         repository: MockAccountDeletionRepository(),
         organizationId: 'rotasul',
-        checkOwner: () async {
-          checks++;
-          return false;
-        },
-        onDeleted: (_) async {},
+        directory: directory,
+        signOut: MockSignOut(),
       );
 
       // 2. Act
@@ -38,7 +45,7 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      expect(checks, 1);
+      verify(directory.organizationsOfSignedInUser()).called(1);
       expect(controller.state.isOwner, isFalse);
     });
   });

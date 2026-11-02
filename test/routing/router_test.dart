@@ -37,14 +37,17 @@ import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
 import 'package:monamie_app/ui/groups/widgets/groups_screen.dart';
 import 'package:monamie_app/ui/creation/widgets/create_organization_screen.dart';
-import 'package:monamie_app/ui/auth/view_models/auth_google_view_model.dart';
+import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/data/repositories/session/session_repository_google.dart';
 import 'package:monamie_app/data/services/auth/auth_google_service.dart';
+import 'package:monamie_app/domain/use_cases/enter_organization.dart';
+import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/auth/widgets/login_screen.dart';
 import 'package:monamie_app/ui/auth/widgets/no_organization_screen.dart';
 import 'package:monamie_app/ui/home/widgets/home_screen.dart';
 import 'package:monamie_app/routing/router.dart';
 import 'package:monamie_app/routing/routes.dart';
-import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
+import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
@@ -78,13 +81,12 @@ import 'package:provider/single_child_widget.dart';
 ])
 import 'router_test.mocks.dart';
 
-/// The app's router ([buildAppRouter]) over a real [AuthGoogleViewModel]
-/// whose services are mocks; never started, so Google Sign-In is never
-/// initialized. The session moves only through the controller's own
-/// methods: [AuthGoogleViewModel.sessionRestored] (what *Login* calls for
-/// a remembered session) binds it, [AuthGoogleViewModel.logout] signs out
-/// and [AuthGoogleViewModel.forgetRemovedOrganization] leads to *Sem
-/// organização*.
+/// The app's router ([buildAppRouter]) over a real [SessionRepository]
+/// and real use cases whose services are mocks; the session is never
+/// started, so Google Sign-In is never initialized. The session moves only
+/// as in the app: [SessionRepository.moveTo] to bound (what *Login* does for
+/// a remembered session), [SignOut.call] signs out and
+/// [SignOut.afterAccessLost] leads to *Sem organização*.
 class _App {
   _App() {
     when(stopper.stop(email: anyNamed('email'))).thenAnswer((_) async => true);
@@ -102,23 +104,34 @@ class _App {
     when(
       administrators.list(any),
     ).thenAnswer((_) async => const Ok(OrganizationAdministrators()));
-    auth = AuthGoogleViewModel(
-      notices: MockNoticePresenter(),
-      refreshTheme: () {},
-      authGoogle: MockAuthGoogleService(),
-      userRepository: userRepository,
+    when(auth.onWebSignIn).thenAnswer((_) => const Stream<String?>.empty());
+    session = SessionRepositoryGoogle(auth: auth);
+    signOut = SignOut(
+      session: session,
       trackingStopper: stopper,
-      organizationDirectory: MockOrganizationDirectory(),
+      userRepository: userRepository,
+      binder: MockOrganizationBinder(),
+      localData: MockOrganizationLocalData(),
+      directory: directory,
       brandingLoader: MockOrganizationBrandingLoader(),
-      organizationSession: MockOrganizationBinder(),
-      organizationLocalData: MockOrganizationLocalData(),
-      invitesRepository: invites,
-      deletionRepository: deletion,
-      membershipCheck: MockMembershipService(),
+      invites: invites,
+      notices: MockNoticePresenter(),
     );
-    router = buildAppRouter(auth: auth);
+    enterOrganization = EnterOrganization(
+      session: session,
+      directory: directory,
+      brandingLoader: MockOrganizationBrandingLoader(),
+      binder: MockOrganizationBinder(),
+      memberships: MockMembershipService(),
+      userRepository: userRepository,
+      deletions: deletion,
+      invites: invites,
+    );
+    router = buildAppRouter(session: session);
   }
 
+  final auth = MockAuthGoogleService();
+  final directory = MockOrganizationDirectory();
   final stopper = MockBackgroundTrackingStopper();
   final userRepository = MockUserGoogleRepository();
   final invites = MockInvitesRepository();
@@ -156,16 +169,22 @@ class _App {
       value: MockBackgroundUsageSettingsLauncher(),
     ),
     Provider<CallService>.value(value: MockCallService()),
+    Provider<OrganizationDirectory>.value(value: directory),
+    Provider<SessionRepository>.value(value: session),
+    Provider<EnterOrganization>.value(value: enterOrganization),
+    Provider<SignOut>.value(value: signOut),
   ];
-  late final AuthGoogleViewModel auth;
+  late final SessionRepository session;
+  late final SignOut signOut;
+  late final EnterOrganization enterOrganization;
   late final GoRouter router;
 
   /// The path of the screen on top (pushed screens included).
   String get location => router.state.uri.path;
 }
 
-/// Opens [app] as `main` and `MonAmieApp` do (the data layer and the
-/// controller provided above the router), on *Login*.
+/// Opens [app] as `main` and `MonAmieApp` do (the data layer, the session
+/// and the use cases provided above the router), on *Login*.
 Future<void> _pump(WidgetTester tester, _App app) async {
   // Larger than a phone (800 x 2000): the test font's square glyphs take
   // more room than the real font's (the map's attribution needs ~600).
@@ -175,10 +194,7 @@ Future<void> _pump(WidgetTester tester, _App app) async {
   addTearDown(app.router.dispose);
   await tester.pumpWidget(
     MultiProvider(
-      providers: [
-        ...app.dependencies,
-        ChangeNotifierProvider<AuthGoogleViewModel>.value(value: app.auth),
-      ],
+      providers: app.dependencies,
       child: MaterialApp.router(routerConfig: app.router),
     ),
   );
@@ -196,7 +212,7 @@ Future<void> _settle(WidgetTester tester) async {
 /// Opens [app] and binds its session: the person is on the map.
 Future<void> _pumpBound(WidgetTester tester, _App app) async {
   await _pump(tester, app);
-  app.auth.sessionRestored();
+  app.session.moveTo(const SessionState.bound());
   await _settle(tester);
 }
 
@@ -247,7 +263,7 @@ void main() {
       await _pump(tester, app);
 
       // 2. Act
-      app.auth.sessionRestored();
+      app.session.moveTo(const SessionState.bound());
       await _settle(tester);
 
       // 3. Assert
@@ -264,7 +280,7 @@ void main() {
       await _pumpBound(tester, app);
 
       // 2. Act
-      await app.auth.logout();
+      await app.signOut();
       await _settle(tester);
 
       // 3. Assert
@@ -280,7 +296,7 @@ void main() {
       await _pumpBound(tester, app);
 
       // 2. Act
-      await app.auth.forgetRemovedOrganization();
+      await app.signOut.afterAccessLost();
       await _settle(tester);
 
       // 3. Assert
@@ -297,7 +313,7 @@ void main() {
       await _settle(tester);
 
       // 2. Act
-      await app.auth.logout();
+      await app.signOut();
       await _settle(tester);
 
       // 3. Assert
@@ -533,7 +549,7 @@ void main() {
           .controller;
 
       // 2. Act
-      await app.auth.logout();
+      await app.signOut();
       await _settle(tester);
 
       // 3. Assert
@@ -545,7 +561,7 @@ void main() {
       // 1. Arrange
       final app = _App();
       await _pumpBound(tester, app);
-      await app.auth.forgetRemovedOrganization();
+      await app.signOut.afterAccessLost();
       await _settle(tester);
       app.router.go(Routes.createOrganizationOver(Routes.noOrganization));
       await _settle(tester);

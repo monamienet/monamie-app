@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
-import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
+import 'package:monamie_app/ui/account/view_models/deletion_pending_view_model.dart';
 
 import 'package:monamie_app/domain/models/account_deletion.dart';
 
@@ -12,7 +12,7 @@ import 'package:monamie_app/domain/models/account_deletion.dart';
 class DeletionPendingScreen extends StatelessWidget {
   const DeletionPendingScreen({super.key, required this.controller});
 
-  final SessionFlow controller;
+  final DeletionPendingViewModel controller;
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -101,10 +101,7 @@ class DeletionPendingScreen extends StatelessWidget {
                       onPressed: busy
                           ? null
                           : restored
-                          ? () => runReportingErrors(
-                              context,
-                              controller.recheckOrganizations,
-                            )
+                          ? () => runReportingErrors(context, controller.enter)
                           : controller.cancelAccountDeletion,
                       child: busy
                           ? const SizedBox(

@@ -2,17 +2,35 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/data/model/organization_binding.dart';
-import 'package:monamie_app/ui/auth/view_models/session_state.dart';
+import 'package:monamie_app/domain/models/account_deletion.dart';
+import 'package:monamie_app/domain/models/group.dart';
+import 'package:monamie_app/domain/models/invite.dart';
+import 'package:monamie_app/data/repositories/session/session_state.dart';
 import 'package:monamie_app/routing/session_redirect.dart';
 
+/// The invite of the welcome session.
+final _invite = Invite(
+  id: 'inv1',
+  organizationId: 'rotasul',
+  organizationName: 'Rota Sul',
+  groupId: '01',
+  groupName: 'Equipe Norte',
+  email: 'ana.souza@monamie.net',
+  roles: const {GroupRole.publisher},
+  inviterName: 'Rita Lima',
+  expiresAt: DateTime.utc(2026, 11, 9, 12),
+);
+
 /// Every session, by the name used in the test descriptions.
-const _sessions = <String, SessionState>{
-  'signedOut': SessionState.signedOut(),
-  'noOrganization': SessionState.noOrganization(),
-  'picking': SessionState.picking([]),
-  'deletionPending': SessionState.deletionPending(),
-  'welcome': SessionState.welcome(),
-  'bound': SessionState.bound(),
+final _sessions = <String, SessionState>{
+  'signedOut': const SessionState.signedOut(),
+  'noOrganization': const SessionState.noOrganization(),
+  'picking': const SessionState.picking([]),
+  'deletionPending': SessionState.deletionPending(
+    AccountDeletion(deleteAt: DateTime.utc(2026, 12, 2)),
+  ),
+  'welcome': SessionState.welcome(_invite),
+  'bound': const SessionState.bound(),
 };
 
 /// The screen each session belongs on, written out (not derived from the

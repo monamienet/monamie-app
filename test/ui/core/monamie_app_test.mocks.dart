@@ -21,9 +21,9 @@ import 'package:monamie_app/data/repositories/organization/organization_director
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart'
     as _i19;
 import 'package:monamie_app/data/repositories/organization/organization_session.dart'
-    as _i21;
+    as _i23;
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart'
-    as _i22;
+    as _i24;
 import 'package:monamie_app/data/services/auth/auth_google_service.dart'
     as _i10;
 import 'package:monamie_app/data/services/auth/google_bond_check.dart' as _i12;
@@ -37,7 +37,9 @@ import 'package:monamie_app/domain/models/invite.dart' as _i16;
 import 'package:monamie_app/domain/models/invite_send_result.dart' as _i14;
 import 'package:monamie_app/domain/models/organization/organization_config.dart'
     as _i3;
+import 'package:monamie_app/utils/notice_presenter.dart' as _i21;
 import 'package:monamie_app/utils/result.dart' as _i7;
+import 'package:monamie_app/utils/user_notice.dart' as _i22;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -585,11 +587,22 @@ class MockMembershipService extends _i1.Mock implements _i20.MembershipService {
           as _i6.Future<bool?>);
 }
 
+/// A class which mocks [NoticePresenter].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockNoticePresenter extends _i1.Mock implements _i21.NoticePresenter {
+  @override
+  void show(_i22.UserNotice? notice) => super.noSuchMethod(
+    Invocation.method(#show, [notice]),
+    returnValueForMissingStub: null,
+  );
+}
+
 /// A class which mocks [OrganizationSession].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationSession extends _i1.Mock
-    implements _i21.OrganizationSession {
+    implements _i23.OrganizationSession {
   @override
   _i6.Future<void> bind(
     _i2.OrganizationBinding? binding, {
@@ -635,7 +648,7 @@ class MockOrganizationSession extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockUserGoogleRepository extends _i1.Mock
-    implements _i22.UserGoogleRepository {
+    implements _i24.UserGoogleRepository {
   @override
   _i6.Future<_i4.UserGoogleModel> saveGoogleProfile(
     String? email,

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:monamie_app/data/repositories/organization/organization_session.dart';
+import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
-import 'package:monamie_app/ui/auth/view_models/auth_google_view_model.dart';
 import 'package:monamie_app/routing/router.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/app_theme.dart';
@@ -11,11 +10,10 @@ import 'package:provider/provider.dart';
 
 /// The app scope: what lives as long as the app, above the router.
 ///
-/// It reads the data layer from the providers of `appDependencies` (in
-/// `main`, above it), creates and starts the [AuthGoogleViewModel] once (web sign-in
-/// listener, Google Sign-In initialization), provides it to the routes,
-/// builds the router that follows its session, and holds the theme, which
-/// the controller rebuilds when an organization is bound or forgotten.
+/// It reads the [SessionRepository] from the providers of `appDependencies`
+/// (in `main`, above it), builds the router that follows its session, and
+/// holds the theme, which follows the session too: the bound organization's
+/// when the session changes while one is bound, MonAmie's when none.
 class MonAmieApp extends StatefulWidget {
   const MonAmieApp({super.key});
 
@@ -27,50 +25,39 @@ class _MonAmieAppState extends State<MonAmieApp> {
   /// The light theme of the bound organization (MonAmie's when none).
   final _theme = ValueNotifier<ThemeData>(AppTheme.lightTheme);
 
-  late final AuthGoogleViewModel _auth = AuthGoogleViewModel(
-    // Messages no screen waits for go through the root messenger.
-    notices: const ScaffoldNoticePresenter(),
-    refreshTheme: () => _theme.value = AppTheme.lightTheme,
-    authGoogle: context.read(),
-    userRepository: context.read(),
-    trackingStopper: context.read(),
-    organizationDirectory: context.read(),
-    brandingLoader: context.read(),
-    organizationSession: context.read<OrganizationSession>(),
-    organizationLocalData: context.read(),
-    invitesRepository: context.read(),
-    deletionRepository: context.read(),
-    membershipCheck: context.read(),
-  )..start();
+  late final SessionRepository _session = context.read<SessionRepository>()
+    ..session.addListener(_refreshTheme);
 
-  late final GoRouter _router = buildAppRouter(auth: _auth);
+  late final GoRouter _router = buildAppRouter(session: _session);
+
+  /// Rebuilds the theme from the bound organization (or MonAmie's when
+  /// none). The session changes only after the organization is bound and
+  /// the person is known to belong to it, or after it is forgotten, so a
+  /// removed person never sees its brand (#78).
+  void _refreshTheme() => _theme.value = AppTheme.lightTheme;
 
   @override
   void dispose() {
+    _session.session.removeListener(_refreshTheme);
     _router.dispose();
-    _auth.dispose();
     _theme.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) =>
-      ChangeNotifierProvider<AuthGoogleViewModel>.value(
-        value: _auth,
-        child: ValueListenableBuilder<ThemeData>(
-          valueListenable: _theme,
-          builder: (context, theme, _) => MaterialApp.router(
-            debugShowCheckedModeBanner: false,
-            // Messages shown by controllers, which have no BuildContext of
-            // their own, go through this key (the router holds the root
-            // navigator's key, for their dialogs).
-            scaffoldMessengerKey: rootScaffoldMessengerKey,
-            title: Organization.current?.name ?? MonAmieBrand.name,
-            theme: theme,
-            darkTheme: AppTheme.darkTheme,
-            themeMode: ThemeMode.light,
-            routerConfig: _router,
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => ValueListenableBuilder<ThemeData>(
+    valueListenable: _theme,
+    builder: (context, theme, _) => MaterialApp.router(
+      debugShowCheckedModeBanner: false,
+      // Messages shown by view models, which have no BuildContext of their
+      // own, go through this key (the router holds the root navigator's
+      // key, for their dialogs).
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
+      title: Organization.current?.name ?? MonAmieBrand.name,
+      theme: theme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.light,
+      routerConfig: _router,
+    ),
+  );
 }

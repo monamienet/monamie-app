@@ -844,6 +844,30 @@ import 'package:geolocator/geolocator.dart' as geo;
       });
     }
 
+    test('a package URI with `..` that leaves lib/domain/ is a violation', () {
+      // 1. Arrange
+      const uri = 'package:monamie_app/domain/../data/x.dart';
+      const content = "import '$uri';\n";
+
+      // 2. Act
+      final result = findLayerViolations(domainPath, content);
+
+      // 3. Assert
+      expect(result.map((v) => (v.uri, v.rule)), [(uri, domainImportsOuter)]);
+    });
+
+    test('a package URI with `..` that stays inside lib/domain/ is allowed', () {
+      // 1. Arrange
+      const content =
+          "import 'package:monamie_app/domain/models/../models/x.dart';\n";
+
+      // 2. Act
+      final result = findLayerViolations(domainPath, content);
+
+      // 3. Assert
+      expect(result, isEmpty);
+    });
+
     test('a relative import resolves from a Windows path', () {
       // 1. Arrange
       const content = "import '../../data/x.dart';\n";
@@ -966,6 +990,194 @@ import 'package:monamie_app/data/x.dart';
           startsWith('$domainPath:2:8 - Files under lib/domain/ must not '),
           contains("'../../ui/x.dart'"),
           contains('depends on no other layer'),
+          endsWith(' - $domainImportsOuter'),
+        ),
+      );
+    });
+  });
+
+  group('findLayerViolations: domain_imports_outer (use cases)', () {
+    const useCasePath = 'lib/domain/use_cases/x.dart';
+
+    test('the use cases folder and its data folders are the documented '
+        'ones', () {
+      // 1. Arrange
+      // 2. Act
+      // 3. Assert
+      expect(useCasesFolder, 'lib/domain/use_cases/');
+      expect(useCaseDataFolders, [
+        'lib/data/repositories/',
+        'lib/data/services/',
+        'lib/data/model/',
+      ]);
+    });
+
+    for (final uri in [
+      'package:monamie_app/data/repositories/session/session_repository.dart',
+      'package:monamie_app/data/services/background_tracking_stopper.dart',
+      'package:monamie_app/data/model/organization_binding.dart',
+      '../../data/repositories/invites/invites_repository.dart',
+      '../../data/services/firestore/membership_service.dart',
+      '../../data/model/user_google_model.dart',
+      './../../data/model/x.dart',
+      '../models/invite.dart',
+      'package:monamie_app/utils/result.dart',
+    ]) {
+      test('Happy Path: $uri is allowed in a use case', () {
+        // 1. Arrange
+        final content = "import '$uri';\n";
+
+        // 2. Act
+        final result = findLayerViolations(useCasePath, content);
+
+        // 3. Assert
+        expect(result, isEmpty);
+      });
+    }
+
+    test('Happy Path: an export of a repository from a use case is '
+        'allowed', () {
+      // 1. Arrange
+      const content =
+          "export 'package:monamie_app/data/repositories/x/x.dart';\n";
+
+      // 2. Act
+      final result = findLayerViolations(useCasePath, content);
+
+      // 3. Assert
+      expect(result, isEmpty);
+    });
+
+    test('Sad Path: a `..` package URI from a use case reaching the UI is a '
+        'violation', () {
+      // 1. Arrange
+      const uri = 'package:monamie_app/data/repositories/../../ui/x.dart';
+      const content = "import '$uri';\n";
+
+      // 2. Act
+      final result = findLayerViolations(useCasePath, content);
+
+      // 3. Assert
+      expect(result.map((v) => (v.uri, v.rule)), [(uri, domainImportsOuter)]);
+    });
+
+    test('Edge Case: a `..` package URI between data folders is allowed in a '
+        'use case', () {
+      // 1. Arrange
+      const content =
+          "import 'package:monamie_app/data/services/../repositories/x.dart';\n";
+
+      // 2. Act
+      final result = findLayerViolations(useCasePath, content);
+
+      // 3. Assert
+      expect(result, isEmpty);
+    });
+
+    test('Edge Case: a use case in a subfolder may import the data layer', () {
+      // 1. Arrange
+      const content = "import '../../../data/model/x.dart';\n";
+
+      // 2. Act
+      final result = findLayerViolations(
+        'lib/domain/use_cases/session/x.dart',
+        content,
+      );
+
+      // 3. Assert
+      expect(result, isEmpty);
+    });
+
+    test('Edge Case: a relative import resolves from a Windows path', () {
+      // 1. Arrange
+      const content = "import '../../data/repositories/x.dart';\n";
+
+      // 2. Act
+      final result = findLayerViolations(
+        r'lib\domain\use_cases\x.dart',
+        content,
+      );
+
+      // 3. Assert
+      expect(result, isEmpty);
+    });
+
+    for (final uri in [
+      'package:monamie_app/ui/core/ui/app_messenger.dart',
+      'package:monamie_app/routing/routes.dart',
+      'package:monamie_app/config/dependencies.dart',
+      'package:monamie_app/data/x.dart',
+      'package:monamie_app/data/repositories_extra/x.dart',
+      'package:monamie_app/data/models/x.dart',
+      '../../ui/x/x.dart',
+      '../../routing/routes.dart',
+      '../../data/repositories/../../ui/x.dart',
+      '../../data/x.dart',
+    ]) {
+      test('Sad Path: $uri in a use case is a violation', () {
+        // 1. Arrange
+        final content = "import '$uri';\n";
+
+        // 2. Act
+        final result = findLayerViolations(useCasePath, content);
+
+        // 3. Assert
+        expect(result.map((v) => (v.uri, v.rule)), [(uri, domainImportsOuter)]);
+      });
+    }
+
+    for (final path in [
+      'lib/domain/models/x.dart',
+      'lib/domain/x.dart',
+      'lib/domain/use_cases_extra/x.dart',
+      'lib/domain/models/use_cases/x.dart',
+    ]) {
+      test('Sad Path: the data layer stays forbidden outside the use cases: '
+          '$path', () {
+        // 1. Arrange
+        const content =
+            "import 'package:monamie_app/data/repositories/x/x.dart';\n";
+
+        // 2. Act
+        final result = findLayerViolations(path, content);
+
+        // 3. Assert
+        expect(result.single.rule, domainImportsOuter);
+      });
+    }
+
+    test('Sad Path: a use case importing a plugin still breaks the plugin '
+        'rule', () {
+      // 1. Arrange
+      const content = """
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:monamie_app/data/repositories/x/x.dart';
+""";
+
+      // 2. Act
+      final result = findLayerViolations(useCasePath, content);
+
+      // 3. Assert
+      expect(result.map((v) => (v.line, v.rule)), [(1, uiImportsPlugin)]);
+    });
+
+    test('Sad Path: a use case importing the UI is reported with the use '
+        'case exception in the message', () {
+      // 1. Arrange
+      const content = "import '../../ui/x.dart';\n";
+
+      // 2. Act
+      final message = findLayerViolations(
+        useCasePath,
+        content,
+      ).single.toString();
+
+      // 3. Assert
+      expect(
+        message,
+        allOf(
+          startsWith('$useCasePath:1:8 - Files under lib/domain/ must not '),
+          contains('lib/domain/use_cases/'),
           endsWith(' - $domainImportsOuter'),
         ),
       );

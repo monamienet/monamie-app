@@ -11,7 +11,7 @@ import 'package:monamie_app/data/services/background_usage_settings_launcher.dar
 import 'package:monamie_app/data/services/permissions_service.dart';
 import 'package:monamie_app/ui/home/view_models/permission_prompts.dart';
 import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
-import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
+import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:monamie_app/utils/user_notice.dart';
 
 @GenerateNiceMocks([

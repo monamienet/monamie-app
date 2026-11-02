@@ -3,6 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_controller.dart';
+import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/domain/use_cases/enter_organization.dart';
+import 'package:monamie_app/domain/use_cases/sign_out.dart';
+import 'package:monamie_app/ui/account/view_models/deletion_pending_view_model.dart';
 import 'package:monamie_app/ui/account/widgets/deletion_pending_screen.dart';
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
 import 'package:monamie_app/ui/account/widgets/my_account_screen.dart';
@@ -18,13 +22,15 @@ import 'package:monamie_app/ui/creation/view_models/create_organization_view_mod
 import 'package:monamie_app/ui/creation/widgets/create_organization_screen.dart';
 import 'package:monamie_app/ui/invites/view_models/invite_view_model.dart';
 import 'package:monamie_app/ui/invites/widgets/invite_screen.dart';
+import 'package:monamie_app/ui/invites/view_models/welcome_view_model.dart';
 import 'package:monamie_app/ui/invites/widgets/welcome_screen.dart';
-import 'package:monamie_app/ui/auth/view_models/auth_google_view_model.dart';
 import 'package:monamie_app/ui/auth/view_models/login_view_model.dart';
+import 'package:monamie_app/ui/auth/view_models/organization_choice_view_model.dart';
 import 'package:monamie_app/ui/auth/widgets/login_screen.dart';
 import 'package:monamie_app/ui/auth/widgets/no_organization_screen.dart';
 import 'package:monamie_app/ui/auth/widgets/organization_picker_screen.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/routing/organization_scope.dart';
 import 'package:monamie_app/ui/home/widgets/home_screen.dart';
@@ -36,7 +42,8 @@ import 'package:provider/provider.dart';
 
 /// The app's router.
 ///
-/// The sign-in flow navigates only through [auth]'s session: the router
+/// The sign-in flow navigates only through [session]'s
+/// [SessionRepository.session], the app-wide session: the router
 /// listens to it ([GoRouter.refreshListenable]) and [sessionRedirect] decides
 /// the screen, on every navigation and on every change of session. Leaving
 /// the organization (sign-out, switch, lost access) is always such a
@@ -46,94 +53,115 @@ import 'package:provider/provider.dart';
 /// Inside the shell, screens open over the map with `push` (going back
 /// returns to the map); screens opened from outside never push over it.
 ///
-/// Route builders read controllers from the providers (the app scope's
-/// [AuthGoogleViewModel], the organization's scope) and hand them to the
-/// screens; screens never read providers themselves. A route-only
-/// controller is created by its route ([_owned]) and disposed when the route
+/// Route builders read view models from the organization's scope, and the
+/// repositories and use cases from `appDependencies`, and hand them to the
+/// screens; screens never read providers themselves. A route-only view
+/// model is created by its route ([_owned]) and disposed when the route
 /// closes.
-GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
+GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: Routes.login,
-  refreshListenable: auth.session,
+  refreshListenable: session.session,
   redirect: (context, state) =>
-      sessionRedirect(auth.session.value, state.uri.path),
+      sessionRedirect(session.session.value, state.uri.path),
   // An unknown path (typed on the web) goes to the session's screen.
   onException: (context, state, router) =>
-      router.go(sessionLocation(auth.session.value)),
+      router.go(sessionLocation(session.session.value)),
   routes: [
     // *Login* restores a remembered session when it opens: the session
     // becomes bound and the redirect opens the map.
     GoRoute(
       path: Routes.login,
-      builder: (context, state) {
-        final auth = context.read<AuthGoogleViewModel>();
-        return _owned(
-          create: () => LoginViewModel(signIn: auth, bondCheck: context.read()),
-          builder: (login) => LoginScreen(controller: login, auth: auth),
-        );
-      },
+      builder: (context, state) => _owned(
+        create: () => LoginViewModel(
+          session: context.read(),
+          enterOrganization: context.read(),
+          bondCheck: context.read(),
+          // The web sign-in's failures arrive with no tap waiting for them.
+          notices: const ScaffoldNoticePresenter(),
+        ),
+        builder: (login) => LoginScreen(controller: login),
+      ),
     ),
     GoRoute(
       path: Routes.noOrganization,
-      builder: (context, state) => NoOrganizationScreen(
-        controller: context.read<AuthGoogleViewModel>(),
-        onCreateOrganization: () =>
-            context.go(Routes.createOrganizationOver(Routes.noOrganization)),
+      builder: (context, state) => _owned(
+        create: () => _organizationChoice(context),
+        builder: (controller) => NoOrganizationScreen(
+          controller: controller,
+          onCreateOrganization: () =>
+              context.go(Routes.createOrganizationOver(Routes.noOrganization)),
+        ),
       ),
       routes: [_createOrganizationRoute()],
     ),
     GoRoute(
       path: Routes.organizationPicker,
-      builder: (context, state) => OrganizationPickerScreen(
-        controller: context.read<AuthGoogleViewModel>(),
-        onCreateOrganization: () => context.go(
-          Routes.createOrganizationOver(Routes.organizationPicker),
+      builder: (context, state) => _owned(
+        create: () => _organizationChoice(context),
+        builder: (controller) => OrganizationPickerScreen(
+          controller: controller,
+          onCreateOrganization: () => context.go(
+            Routes.createOrganizationOver(Routes.organizationPicker),
+          ),
         ),
       ),
       routes: [_createOrganizationRoute()],
     ),
     GoRoute(
       path: Routes.welcome,
-      builder: (context, state) =>
-          WelcomeScreen(controller: context.read<AuthGoogleViewModel>()),
+      builder: (context, state) => _owned(
+        create: () => WelcomeViewModel(session: context.read()),
+        builder: (controller) => WelcomeScreen(controller: controller),
+      ),
     ),
     GoRoute(
       path: Routes.deletionPending,
-      builder: (context, state) => DeletionPendingScreen(
-        controller: context.read<AuthGoogleViewModel>(),
+      builder: (context, state) => _owned(
+        create: () => DeletionPendingViewModel(
+          session: context.read(),
+          enterOrganization: context.read(),
+          signOut: context.read(),
+          repository: context.read(),
+        ),
+        builder: (controller) => DeletionPendingScreen(controller: controller),
       ),
     ),
     ShellRoute(
       builder: (context, state, child) => OrganizationScope(
-        onAccessLost: context
-            .read<AuthGoogleViewModel>()
-            .forgetRemovedOrganization,
+        onAccessLost: context.read<SignOut>().afterAccessLost,
         child: child,
       ),
       routes: [
         GoRoute(
           path: Routes.monamie,
-          builder: (context, state) => HomeScreen(
-            userCtrl: context.read(),
-            permissionsCtrl: context.read(),
-            trackingCtrl: context.read(),
-            groupMap: context.read(),
-            calendar: context.read(),
-            calls: context.read(),
-            authCtrl: context.read<AuthGoogleViewModel>(),
+          builder: (context, state) => _owned(
+            create: () => HomeSessionViewModel(
+              session: context.read(),
+              signOut: context.read(),
+              directory: context.read(),
+            ),
+            builder: (session) => HomeScreen(
+              userCtrl: context.read(),
+              permissionsCtrl: context.read(),
+              trackingCtrl: context.read(),
+              groupMap: context.read(),
+              calendar: context.read(),
+              calls: context.read(),
+              session: session,
+            ),
           ),
         ),
         GoRoute(
           path: Routes.myAccount,
           builder: (context, state) {
-            final auth = context.read<AuthGoogleViewModel>();
             final organization = Organization.current!;
             return _owned(
               create: () => MyAccountViewModel(
                 repository: context.read(),
                 organizationId: organization.id,
-                checkOwner: () => auth.ownsOrganization(organization.id),
-                onDeleted: auth.accountDeleted,
+                directory: context.read(),
+                signOut: context.read(),
               ),
               builder: (controller) => MyAccountScreen(
                 controller: controller,
@@ -255,7 +283,8 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
 GoRoute _createOrganizationRoute() => GoRoute(
   path: Routes.createOrganizationSegment,
   builder: (context, state) {
-    final auth = context.read<AuthGoogleViewModel>();
+    final session = context.read<SessionRepository>();
+    final enterOrganization = context.read<EnterOrganization>();
     return _owned(
       // A fresh one each time the flow opens; its screen loads the themes.
       create: () => CreateOrganizationViewModel(
@@ -264,13 +293,15 @@ GoRoute _createOrganizationRoute() => GoRoute(
       ),
       builder: (controller) => CreateOrganizationScreen(
         controller: controller,
-        ownerEmail: auth.state.signedInEmail ?? '',
+        ownerEmail: session.signedInEmail ?? '',
+        // "A `<nome>` está pronta · Entrar": enters the organization just
+        // created, without the picker in between.
         onReady: () async {
-          final result = await auth.enterCreatedOrganization(
-            controller.state.id,
+          final result = await enterOrganization.withKeptSignIn(
+            enter: controller.state.id,
           );
           if (result is Ok &&
-              auth.session.value is SessionPicking &&
+              session.session.value is SessionPicking &&
               context.mounted) {
             context.go(Routes.organizationPicker);
           }
@@ -280,6 +311,15 @@ GoRoute _createOrganizationRoute() => GoRoute(
     );
   },
 );
+
+/// *Sem organização*'s and the picker's view model.
+OrganizationChoiceViewModel _organizationChoice(BuildContext context) =>
+    OrganizationChoiceViewModel(
+      session: context.read(),
+      enterOrganization: context.read(),
+      signOut: context.read(),
+      invites: context.read(),
+    );
 
 /// A screen whose controller lives as long as its route: [create] runs
 /// once, when the route is first built, and the controller is disposed when

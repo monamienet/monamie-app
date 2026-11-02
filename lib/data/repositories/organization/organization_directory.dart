@@ -24,3 +24,13 @@ abstract interface class OrganizationDirectory {
   /// when none. An accepted invite or a new organization is listed at once.
   Future<List<OrganizationCandidate>> organizationsOfSignedInUser();
 }
+
+/// Whether the signed-in user owns an organization, read from the directory.
+extension OrganizationOwnership on OrganizationDirectory {
+  /// Whether the signed-in user owns organization [organizationId]
+  /// (*titular*), as the server says now. Throws when it cannot be read.
+  Future<bool> ownsOrganization(String organizationId) async {
+    final candidates = await organizationsOfSignedInUser();
+    return candidates.any((c) => c.id == organizationId && c.owner);
+  }
+}

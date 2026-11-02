@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/domain/models/invite.dart';
-import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
+import 'package:monamie_app/ui/auth/view_models/organization_choice_view_model.dart';
 
 /// A pending invite with *Aceitar e entrar*, on *Sem organização* and
 /// *Escolher organização*.
@@ -10,7 +10,7 @@ class InviteCard extends StatelessWidget {
   const InviteCard({super.key, required this.invite, required this.controller});
 
   final Invite invite;
-  final SessionFlow controller;
+  final OrganizationChoiceViewModel controller;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(

@@ -24,7 +24,6 @@ import 'package:monamie_app/domain/models/history_month.dart' as _i6;
 import 'package:monamie_app/domain/models/location_point.dart' as _i22;
 import 'package:monamie_app/domain/models/map_group.dart' as _i13;
 import 'package:monamie_app/domain/models/user_model.dart' as _i14;
-import 'package:monamie_app/ui/core/ui/notice_presenter.dart' as _i17;
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart'
     as _i5;
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart' as _i11;
@@ -32,6 +31,7 @@ import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart'
     as _i19;
 import 'package:monamie_app/ui/home/view_models/user_state.dart' as _i4;
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart' as _i23;
+import 'package:monamie_app/utils/notice_presenter.dart' as _i17;
 import 'package:monamie_app/utils/user_notice.dart' as _i18;
 
 // ignore_for_file: type=lint

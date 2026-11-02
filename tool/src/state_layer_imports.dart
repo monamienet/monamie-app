@@ -2,7 +2,8 @@
 /// libraries stay out of the state layer (view models and state contracts),
 /// no file under `lib/` uses GetX, which the app no longer depends on, the
 /// UI and the domain reach plugins only through the data layer's services,
-/// and the domain imports no outer layer.
+/// and the domain imports no outer layer (its use cases only the data
+/// layer's repositories, services and models).
 library;
 
 import 'package:analyzer/dart/analysis/utilities.dart';
@@ -56,6 +57,19 @@ const List<String> pluginPackagePrefixes = ['firebase_', 'cloud_', 'hive'];
 /// The app's own folders the domain must not import.
 const List<String> _outerLayers = ['data', 'ui', 'routing', 'config'];
 
+/// The folder of the use cases, the one part of the domain that reaches the
+/// data layer: as in the official architecture guide, a use case combines
+/// repositories (and the services and models they speak in).
+const String useCasesFolder = 'lib/domain/use_cases/';
+
+/// The data layer's folders a use case may import: never the UI, the
+/// routing or the composition root.
+const List<String> useCaseDataFolders = [
+  'lib/data/repositories/',
+  'lib/data/services/',
+  'lib/data/model/',
+];
+
 const String _appPackage = 'package:monamie_app/';
 
 const List<String> _generatedSuffixes = [
@@ -97,7 +111,9 @@ class LayerViolation {
           'repository under lib/data/. - $uiImportsPlugin',
     domainImportsOuter =>
       "$path:$line:$column - Files under lib/domain/ must not import or "
-          "export '$uri': the domain depends on no other layer. Move the "
+          "export '$uri': the domain depends on no other layer, except its "
+          'use cases (lib/domain/use_cases/), which may import the '
+          "repositories, services and models of lib/data/. Move the "
           'conversion to lib/data/ or the shared piece to lib/domain/. - '
           '$domainImportsOuter',
     _ =>
@@ -129,11 +145,13 @@ bool isPluginUri(String uri) {
 
 /// Whether [uri], imported by the file at [path] (relative to the package
 /// root), reaches one of the app's outer layers ([_outerLayers]): by its
-/// `package:` URI, or by a relative URI resolved against [path].
+/// `package:` URI, or by a relative URI resolved against [path]. A use case
+/// (under [useCasesFolder]) may reach [useCaseDataFolders].
 bool _isOuterLayerUri(String path, String uri) {
   final String target;
   if (uri.startsWith(_appPackage)) {
-    target = 'lib/${uri.substring(_appPackage.length)}';
+    // Normalized too: `..` segments must not hide the folder reached.
+    target = p.posix.normalize('lib/${uri.substring(_appPackage.length)}');
   } else if (!uri.contains(':')) {
     final from = p.posix.dirname(_segments(path).join('/'));
     target = p.posix.normalize(p.posix.join(from, uri));
@@ -141,9 +159,13 @@ bool _isOuterLayerUri(String path, String uri) {
     return false;
   }
   final segments = target.split('/');
-  return segments.length > 2 &&
+  final outer =
+      segments.length > 2 &&
       segments.first == 'lib' &&
       _outerLayers.contains(segments[1]);
+  if (!outer) return false;
+  final useCase = _segments(path).join('/').startsWith(useCasesFolder);
+  return !(useCase && useCaseDataFolders.any(target.startsWith));
 }
 
 /// The folder segments of [path] (`/` or `\` separated).
@@ -167,7 +189,8 @@ bool _isLibSource(String path) {
 /// GetX in any hand-written file under `lib/`, Flutter's UI libraries in
 /// state files, plugin packages under `lib/ui/` and `lib/domain/`, and the
 /// app's outer layers (`data/`, `ui/`, `routing/`, `config/`) under
-/// `lib/domain/`. Each URI reports its first broken rule.
+/// `lib/domain/`, where only the use cases may import [useCaseDataFolders].
+/// Each URI reports its first broken rule.
 List<LayerViolation> findLayerViolations(String path, String content) {
   if (!_isLibSource(path)) return const [];
   final stateFile = isStateFile(path, content);

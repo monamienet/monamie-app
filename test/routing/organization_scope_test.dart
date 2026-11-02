@@ -17,7 +17,7 @@ import 'package:monamie_app/data/services/permissions_service.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_controller.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
-import 'package:monamie_app/ui/auth/view_models/session_state.dart';
+import 'package:monamie_app/data/repositories/session/session_state.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
 import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';

@@ -27,7 +27,7 @@ import 'package:provider/provider.dart';
 /// get view models by parameter, never through `context.read`.
 class OrganizationScope extends StatelessWidget {
   /// [onAccessLost] runs when the person's organization membership
-  /// disappears (the sign-in flow forgets the organization).
+  /// disappears (`SignOut.afterAccessLost` forgets the organization).
   const OrganizationScope({
     super.key,
     required this.onAccessLost,

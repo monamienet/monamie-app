@@ -4,7 +4,7 @@ import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/data/model/organization_binding.dart';
-import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
+import 'package:monamie_app/ui/auth/view_models/organization_choice_view_model.dart';
 
 import 'invite_card.dart';
 import 'monamie_account_header.dart';
@@ -17,7 +17,7 @@ class OrganizationPickerScreen extends StatelessWidget {
     required this.onCreateOrganization,
   });
 
-  final SessionFlow controller;
+  final OrganizationChoiceViewModel controller;
 
   /// "Criar nova organização": opens the creation flow over this screen.
   final VoidCallback onCreateOrganization;

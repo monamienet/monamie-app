@@ -3,7 +3,7 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 import 'package:monamie_app/domain/models/group.dart';
-import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
+import 'package:monamie_app/ui/invites/view_models/welcome_view_model.dart';
 
 /// *Boas-vindas*: shown once, after accepting an invite: the organization,
 /// the group and what the person does in the app. People in the field go on
@@ -11,13 +11,12 @@ import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key, required this.controller});
 
-  final SessionFlow controller;
+  final WelcomeViewModel controller;
 
   @override
   Widget build(BuildContext context) {
-    // Read once: the screen shows the invite it opened with, and leaving it
-    // clears the invite.
-    final invite = controller.state.welcome;
+    // The invite the screen opened with.
+    final invite = controller.invite;
     final organization = Organization.current;
     final palette = OrganizationPalette.fromConfig(organization);
     final shares = invite?.roles.contains(GroupRole.publisher) ?? false;

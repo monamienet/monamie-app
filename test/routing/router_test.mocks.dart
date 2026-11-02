@@ -72,7 +72,7 @@ import 'package:monamie_app/domain/models/organization/organization_theme.dart'
     as _i14;
 import 'package:monamie_app/domain/models/tracking_settings.dart' as _i46;
 import 'package:monamie_app/domain/models/user_model.dart' as _i41;
-import 'package:monamie_app/ui/core/ui/notice_presenter.dart' as _i32;
+import 'package:monamie_app/utils/notice_presenter.dart' as _i32;
 import 'package:monamie_app/utils/result.dart' as _i8;
 import 'package:monamie_app/utils/user_notice.dart' as _i33;
 

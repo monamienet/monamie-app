@@ -20,6 +20,8 @@ import 'package:monamie_app/data/repositories/organization/organization_session.
 import 'package:monamie_app/data/repositories/organization/shared_preferences_organization_binding_store.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository_firestore.dart';
+import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/data/repositories/session/session_repository_google.dart';
 import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/data/repositories/theme/theme_repository_firestore.dart';
 import 'package:monamie_app/data/repositories/tracking/firestore_tracking_settings_repository.dart';
@@ -44,11 +46,15 @@ import 'package:monamie_app/data/services/method_channel_background_usage_settin
 import 'package:monamie_app/data/services/permissions_service.dart';
 import 'package:monamie_app/data/services/storage/organization_storage_service.dart';
 import 'package:monamie_app/data/services/user_profile_hive_service.dart';
+import 'package:monamie_app/domain/use_cases/enter_organization.dart';
+import 'package:monamie_app/domain/use_cases/sign_out.dart';
+import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 /// The composition root: the one place that creates the app's concrete data
-/// layer (Firebase, Hive, SharedPreferences, the plugins).
+/// layer (Firebase, Hive, SharedPreferences, the plugins), the
+/// [SessionRepository] the router follows and the use cases.
 ///
 /// Each object is provided under its contract, above the router, and lives
 /// as long as the app. Route assembly reads them (`context.read<T>()`) to
@@ -74,6 +80,14 @@ List<SingleChildWidget> appDependencies({
   ),
   Provider<AuthGoogleService>(
     create: (context) => AuthGoogleService(userRepository: context.read()),
+    // Stops the web sign-in events.
+    dispose: (_, auth) => auth.dispose(),
+  ),
+  // The session the router follows; Google Sign-In starts initializing at
+  // once (*Login* waits for it).
+  Provider<SessionRepository>(
+    create: (context) => SessionRepositoryGoogle(auth: context.read())..start(),
+    dispose: (_, session) => session.dispose(),
   ),
   Provider<OrganizationSession>.value(value: organizationSession),
   Provider<ThemeRepository>(create: (_) => const ThemeRepositoryFirestore()),
@@ -157,6 +171,33 @@ List<SingleChildWidget> appDependencies({
     create: (_) => MethodChannelBackgroundUsageSettingsLauncher(),
   ),
   Provider<CallService>(create: (_) => CallService()),
+  // The use cases: the logic that crosses repositories.
+  Provider<EnterOrganization>(
+    create: (context) => EnterOrganization(
+      session: context.read(),
+      directory: context.read(),
+      brandingLoader: context.read(),
+      binder: context.read<OrganizationSession>(),
+      memberships: context.read(),
+      userRepository: context.read(),
+      deletions: context.read(),
+      invites: context.read(),
+    ),
+  ),
+  Provider<SignOut>(
+    create: (context) => SignOut(
+      session: context.read(),
+      trackingStopper: context.read(),
+      userRepository: context.read(),
+      binder: context.read<OrganizationSession>(),
+      localData: context.read(),
+      directory: context.read(),
+      brandingLoader: context.read(),
+      invites: context.read(),
+      // Messages no screen waits for go through the root messenger.
+      notices: const ScaffoldNoticePresenter(),
+    ),
+  ),
 ];
 
 /// The organization binding of the UI isolate, remembered in

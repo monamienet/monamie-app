@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
-import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/home_colors.dart';
@@ -31,13 +31,13 @@ class HomeMenu extends StatelessWidget {
   final GroupMapState groups;
   final UserViewModel user;
 
-  /// The sign-in flow: sign-out, switching organization, ownership.
-  final SessionFlow session;
+  /// The session: sign-out, switching organization, ownership.
+  final HomeSessionViewModel session;
   final TrackingViewModel tracking;
 
   GroupMapState get _groups => groups;
   UserViewModel get _user => user;
-  SessionFlow get _auth => session;
+  HomeSessionViewModel get _auth => session;
   TrackingViewModel get _tracking => tracking;
 
   /// Closes the menu, then opens [route] over the map. A push, not a go:

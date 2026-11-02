@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import 'package:monamie_app/domain/models/account_deletion.dart';
 import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
+import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
+import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'my_account_state.dart';
 
@@ -9,18 +11,19 @@ export 'my_account_state.dart';
 
 /// State of *Minha conta*: deleting the account. The owner (*titular*)
 /// deletes their organization with it and confirms by typing its id. The
-/// screen calls [loadOwnership] when it opens.
+/// screen calls [loadOwnership] when it opens. Once the deletion is
+/// scheduled, [SignOut] signs out of everything and shows *Em exclusão*.
 class MyAccountViewModel extends ChangeNotifier {
   MyAccountViewModel({
     required this._repository,
     required this.organizationId,
-    required this._checkOwner,
-    required this._onDeleted,
+    required this._directory,
+    required this._signOut,
   });
 
   final AccountDeletionRepository _repository;
-  final Future<bool> Function() _checkOwner;
-  final Future<void> Function(AccountDeletion) _onDeleted;
+  final OrganizationDirectory _directory;
+  final SignOut _signOut;
 
   /// The bound organization.
   final String organizationId;
@@ -50,7 +53,7 @@ class MyAccountViewModel extends ChangeNotifier {
     if (_state.isCheckingOwner) return;
     _emit(_state.copyWith(isCheckingOwner: true, errorMessage: ''));
     try {
-      final owner = await _checkOwner();
+      final owner = await _directory.ownsOrganization(organizationId);
       _emit(_state.copyWith(isOwner: owner));
     } catch (e) {
       debugPrint('[Account] Could not read the ownership: $e');
@@ -89,7 +92,7 @@ class MyAccountViewModel extends ChangeNotifier {
       );
       switch (requested) {
         case Ok(value: final deletion):
-          await _onDeleted(deletion);
+          await _signOut.afterAccountDeleted(deletion);
         case Err(:final message):
           _emit(_state.copyWith(errorMessage: message));
       }

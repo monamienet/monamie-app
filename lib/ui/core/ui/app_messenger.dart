@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
+import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
 

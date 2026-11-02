@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
 import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
@@ -21,8 +21,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 
 /// The map of the bound organization, with its header, sheet and menu. The
-/// organization's route hands it the controllers of the organization's
-/// scope and the app's sign-in flow.
+/// organization's route hands it the view models of the organization's
+/// scope and its own [HomeSessionViewModel].
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
@@ -32,7 +32,7 @@ class HomeScreen extends StatelessWidget {
     required this.groupMap,
     required this.calendar,
     required this.calls,
-    required this.authCtrl,
+    required this.session,
   });
 
   final UserViewModel userCtrl;
@@ -42,8 +42,8 @@ class HomeScreen extends StatelessWidget {
   final CalendarViewModel calendar;
   final CallService calls;
 
-  /// The sign-in flow: the menu's sign-out and switch, and their overlay.
-  final SessionFlow authCtrl;
+  /// The session: the menu's sign-out and switch, and their overlay.
+  final HomeSessionViewModel session;
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +54,7 @@ class HomeScreen extends StatelessWidget {
         drawer: HomeMenu(
           groups: groupMap,
           user: userCtrl,
-          session: authCtrl,
+          session: session,
           tracking: trackingCtrl,
         ),
         body: Stack(
@@ -71,10 +71,10 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
             ListenableBuilder(
-              listenable: authCtrl,
-              builder: (context, _) => authCtrl.state.isLoggingOut
+              listenable: session,
+              builder: (context, _) => session.state.isLoggingOut
                   ? LogoutProgressOverlay(
-                      message: authCtrl.state.isSwitchingOrganization
+                      message: session.state.isSwitchingOrganization
                           ? 'Trocando de organização…'
                           : 'Encerrando sessão…',
                     )

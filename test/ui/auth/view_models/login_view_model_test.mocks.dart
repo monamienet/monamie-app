@@ -7,10 +7,14 @@
 import 'dart:async' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i6;
-import 'package:monamie_app/data/services/auth/google_bond_check.dart' as _i2;
-import 'package:monamie_app/ui/auth/view_models/sign_in_actions.dart' as _i4;
-import 'package:monamie_app/utils/result.dart' as _i5;
+import 'package:mockito/src/dummies.dart' as _i5;
+import 'package:monamie_app/data/model/organization_binding.dart' as _i7;
+import 'package:monamie_app/data/services/auth/google_bond_check.dart' as _i8;
+import 'package:monamie_app/domain/models/invite.dart' as _i6;
+import 'package:monamie_app/domain/use_cases/enter_organization.dart' as _i2;
+import 'package:monamie_app/utils/notice_presenter.dart' as _i9;
+import 'package:monamie_app/utils/result.dart' as _i4;
+import 'package:monamie_app/utils/user_notice.dart' as _i10;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -28,10 +32,119 @@ import 'package:monamie_app/utils/result.dart' as _i5;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
+/// A class which mocks [EnterOrganization].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockEnterOrganization extends _i1.Mock implements _i2.EnterOrganization {
+  @override
+  _i3.Future<_i4.Result<void>> afterSignIn(
+    String? idToken, {
+    bool? checkDeletion = true,
+    void Function(String)? onEntering,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #afterSignIn,
+              [idToken],
+              {#checkDeletion: checkDeletion, #onEntering: onEntering},
+            ),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #afterSignIn,
+                  [idToken],
+                  {#checkDeletion: checkDeletion, #onEntering: onEntering},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #afterSignIn,
+                  [idToken],
+                  {#checkDeletion: checkDeletion, #onEntering: onEntering},
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<_i4.Result<void>>);
+
+  @override
+  _i3.Future<_i4.Result<void>> withKeptSignIn({
+    String? enter,
+    _i6.Invite? welcome,
+    bool? checkDeletion = true,
+    void Function(String)? onEntering,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#withKeptSignIn, [], {
+              #enter: enter,
+              #welcome: welcome,
+              #checkDeletion: checkDeletion,
+              #onEntering: onEntering,
+            }),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#withKeptSignIn, [], {
+                  #enter: enter,
+                  #welcome: welcome,
+                  #checkDeletion: checkDeletion,
+                  #onEntering: onEntering,
+                }),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#withKeptSignIn, [], {
+                  #enter: enter,
+                  #welcome: welcome,
+                  #checkDeletion: checkDeletion,
+                  #onEntering: onEntering,
+                }),
+              ),
+            ),
+          )
+          as _i3.Future<_i4.Result<void>>);
+
+  @override
+  _i3.Future<_i4.Result<void>> choose(
+    _i7.OrganizationBinding? binding, {
+    void Function(String)? onEntering,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#choose, [binding], {#onEntering: onEntering}),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #choose,
+                  [binding],
+                  {#onEntering: onEntering},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #choose,
+                  [binding],
+                  {#onEntering: onEntering},
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<_i4.Result<void>>);
+}
+
 /// A class which mocks [GoogleBondCheck].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockGoogleBondCheck extends _i1.Mock implements _i2.GoogleBondCheck {
+class MockGoogleBondCheck extends _i1.Mock implements _i8.GoogleBondCheck {
   @override
   _i3.Future<bool> hasActiveBond() =>
       (super.noSuchMethod(
@@ -42,51 +155,13 @@ class MockGoogleBondCheck extends _i1.Mock implements _i2.GoogleBondCheck {
           as _i3.Future<bool>);
 }
 
-/// A class which mocks [SignInActions].
+/// A class which mocks [NoticePresenter].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockSignInActions extends _i1.Mock implements _i4.SignInActions {
+class MockNoticePresenter extends _i1.Mock implements _i9.NoticePresenter {
   @override
-  _i3.Future<_i5.Result<void>> loginGoogle() =>
-      (super.noSuchMethod(
-            Invocation.method(#loginGoogle, []),
-            returnValue: _i3.Future<_i5.Result<void>>.value(
-              _i6.dummyValue<_i5.Result<void>>(
-                this,
-                Invocation.method(#loginGoogle, []),
-              ),
-            ),
-            returnValueForMissingStub: _i3.Future<_i5.Result<void>>.value(
-              _i6.dummyValue<_i5.Result<void>>(
-                this,
-                Invocation.method(#loginGoogle, []),
-              ),
-            ),
-          )
-          as _i3.Future<_i5.Result<void>>);
-
-  @override
-  _i3.Future<_i5.Result<bool>> logout() =>
-      (super.noSuchMethod(
-            Invocation.method(#logout, []),
-            returnValue: _i3.Future<_i5.Result<bool>>.value(
-              _i6.dummyValue<_i5.Result<bool>>(
-                this,
-                Invocation.method(#logout, []),
-              ),
-            ),
-            returnValueForMissingStub: _i3.Future<_i5.Result<bool>>.value(
-              _i6.dummyValue<_i5.Result<bool>>(
-                this,
-                Invocation.method(#logout, []),
-              ),
-            ),
-          )
-          as _i3.Future<_i5.Result<bool>>);
-
-  @override
-  void sessionRestored() => super.noSuchMethod(
-    Invocation.method(#sessionRestored, []),
+  void show(_i10.UserNotice? notice) => super.noSuchMethod(
+    Invocation.method(#show, [notice]),
     returnValueForMissingStub: null,
   );
 }

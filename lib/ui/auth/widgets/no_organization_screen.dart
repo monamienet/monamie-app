@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
-import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
+import 'package:monamie_app/ui/auth/view_models/organization_choice_view_model.dart';
 
 import 'invite_card.dart';
 import 'monamie_account_header.dart';
@@ -17,7 +17,7 @@ class NoOrganizationScreen extends StatelessWidget {
     required this.onCreateOrganization,
   });
 
-  final SessionFlow controller;
+  final OrganizationChoiceViewModel controller;
 
   /// "Criar minha organização": opens the creation flow over this screen.
   final VoidCallback onCreateOrganization;

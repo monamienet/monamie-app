@@ -1,14 +1,21 @@
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/domain/models/account_deletion.dart';
 import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
+import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
+import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
 import 'package:monamie_app/utils/result.dart';
 
-@GenerateNiceMocks([MockSpec<AccountDeletionRepository>()])
+@GenerateNiceMocks([
+  MockSpec<AccountDeletionRepository>(),
+  MockSpec<OrganizationDirectory>(),
+  MockSpec<SignOut>(),
+])
 import 'my_account_view_model_test.mocks.dart';
 
 final _deletion = AccountDeletion(
@@ -33,8 +40,16 @@ List<Object?> requestedConfirmIds() => verify(
   repository.request(confirmIds: captureAnyNamed('confirmIds')),
 ).captured;
 
-/// A `checkOwner` that counts its calls, optionally waits on [gate] and
-/// fails with [failure].
+const _options = FirebaseOptions(
+  apiKey: 'api-key',
+  appId: '1:111:android:abc',
+  projectId: 'monamienet-rotasul',
+  messagingSenderId: '111',
+);
+
+/// What the directory answers for the ownership read: `rotasul`, owned by
+/// the signed-in user when [owner]. It counts its calls, optionally waits on
+/// [gate] and fails with [failure].
 class FakeOwnerCheck {
   FakeOwnerCheck(this.owner);
 
@@ -43,23 +58,32 @@ class FakeOwnerCheck {
   Completer<void>? gate;
   Object? failure;
 
-  Future<bool> call() async {
+  Future<List<OrganizationCandidate>> call() async {
     calls++;
     await gate?.future;
     if (failure case final failure?) throw failure;
-    return owner;
+    return [
+      OrganizationCandidate(id: 'rotasul', options: _options, owner: owner),
+    ];
   }
 }
 
 late MockAccountDeletionRepository repository;
+late MockSignOut signOut;
 late List<AccountDeletion> deleted;
 
-MyAccountViewModel newController(FakeOwnerCheck check) => MyAccountViewModel(
-  repository: repository,
-  organizationId: 'rotasul',
-  checkOwner: check.call,
-  onDeleted: (deletion) async => deleted.add(deletion),
-);
+/// A [MyAccountViewModel] whose directory answers through [check] and whose
+/// sign-out after the deletion records it in [deleted].
+MyAccountViewModel newController(FakeOwnerCheck check) {
+  final directory = MockOrganizationDirectory();
+  when(directory.organizationsOfSignedInUser()).thenAnswer((_) => check());
+  return MyAccountViewModel(
+    repository: repository,
+    organizationId: 'rotasul',
+    directory: directory,
+    signOut: signOut,
+  );
+}
 
 /// A controller whose ownership has already been read as [isOwner].
 Future<MyAccountViewModel> controllerFor({required bool isOwner}) async {
@@ -75,6 +99,10 @@ void main() {
     repository = MockAccountDeletionRepository();
     stubRequest(() async {});
     deleted = [];
+    signOut = MockSignOut();
+    when(signOut.afterAccountDeleted(any)).thenAnswer((invocation) async {
+      deleted.add(invocation.positionalArguments.single as AccountDeletion);
+    });
   });
 
   group('MyAccountViewModel.loadOwnership - Unit Test Suite', () {
@@ -391,16 +419,13 @@ void main() {
       expect(controller.state.isDeleting, isFalse);
     });
 
-    test('Sad Path: a failure after the deletion was scheduled (onDeleted '
-        'throws) shows a generic message', () async {
+    test('Sad Path: a failure after the deletion was scheduled (the '
+        'sign-out throws) shows a generic message', () async {
       // 1. Arrange
-      final controller = MyAccountViewModel(
-        repository: repository,
-        organizationId: 'rotasul',
-        checkOwner: FakeOwnerCheck(false).call,
-        onDeleted: (_) async => throw StateError('offline'),
-      );
-      await controller.loadOwnership();
+      when(
+        signOut.afterAccountDeleted(any),
+      ).thenAnswer((_) async => throw StateError('offline'));
+      final controller = await controllerFor(isOwner: false);
 
       // 2. Act
       await controller.deleteAccount();

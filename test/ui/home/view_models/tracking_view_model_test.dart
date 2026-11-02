@@ -22,7 +22,7 @@ import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/location_point.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
-import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
+import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
 

@@ -17,7 +17,7 @@ import 'package:monamie_app/domain/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_toggle_view_model.dart';
-import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
+import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
 

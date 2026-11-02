@@ -16,7 +16,14 @@ T _$identity<T>(T value) => value;
 mixin _$LoginState {
 
 /// Whether a session remembered from a previous run is being checked.
- bool get isRestoringSession;
+ bool get isRestoringSession;/// Whether Google Sign-In finished initializing (or failed to).
+ bool get googleReady;/// Whether a sign-in or an organization entry runs.
+ bool get isLoading;/// The login button was tapped and the sign-in has not finished:
+/// Google's account chooser may be open. Guards against a second tap
+/// without showing [isLoading]'s "Procurando sua organização…", which
+/// only makes sense once an account is chosen.
+ bool get isChoosingAccount;/// Name of the organization being entered, for "Entrando em ...".
+ String? get enteringOrganizationName;
 /// Create a copy of LoginState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,20 +35,20 @@ $LoginStateCopyWith<LoginState> get copyWith => _$LoginStateCopyWithImpl<LoginSt
 @override
 bool operator ==(Object other) {
   final _this = this as LoginState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginState&&(identical(other.isRestoringSession, _this.isRestoringSession) || other.isRestoringSession == _this.isRestoringSession));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginState&&(identical(other.isRestoringSession, _this.isRestoringSession) || other.isRestoringSession == _this.isRestoringSession)&&(identical(other.googleReady, _this.googleReady) || other.googleReady == _this.googleReady)&&(identical(other.isLoading, _this.isLoading) || other.isLoading == _this.isLoading)&&(identical(other.isChoosingAccount, _this.isChoosingAccount) || other.isChoosingAccount == _this.isChoosingAccount)&&(identical(other.enteringOrganizationName, _this.enteringOrganizationName) || other.enteringOrganizationName == _this.enteringOrganizationName));
 }
 
 
 @override
 int get hashCode {
   final _this = this as LoginState;
-  return Object.hash(runtimeType,_this.isRestoringSession);
+  return Object.hash(runtimeType,_this.isRestoringSession,_this.googleReady,_this.isLoading,_this.isChoosingAccount,_this.enteringOrganizationName);
 }
 
 @override
 String toString() {
   final _this = this as LoginState;
-  return 'LoginState(isRestoringSession: ${_this.isRestoringSession})';
+  return 'LoginState(isRestoringSession: ${_this.isRestoringSession}, googleReady: ${_this.googleReady}, isLoading: ${_this.isLoading}, isChoosingAccount: ${_this.isChoosingAccount}, enteringOrganizationName: ${_this.enteringOrganizationName})';
 }
 
 
@@ -52,7 +59,7 @@ abstract mixin class $LoginStateCopyWith<$Res>  {
   factory $LoginStateCopyWith(LoginState value, $Res Function(LoginState) _then) = _$LoginStateCopyWithImpl;
 @useResult
 $Res call({
- bool isRestoringSession
+ bool isRestoringSession, bool googleReady, bool isLoading, bool isChoosingAccount, String? enteringOrganizationName
 });
 
 
@@ -69,10 +76,14 @@ class _$LoginStateCopyWithImpl<$Res>
 
 /// Create a copy of LoginState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? isRestoringSession = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? isRestoringSession = null,Object? googleReady = null,Object? isLoading = null,Object? isChoosingAccount = null,Object? enteringOrganizationName = freezed,}) {
   return _then(LoginState(
 isRestoringSession: null == isRestoringSession ? _self.isRestoringSession : isRestoringSession // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,googleReady: null == googleReady ? _self.googleReady : googleReady // ignore: cast_nullable_to_non_nullable
+as bool,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as bool,isChoosingAccount: null == isChoosingAccount ? _self.isChoosingAccount : isChoosingAccount // ignore: cast_nullable_to_non_nullable
+as bool,enteringOrganizationName: freezed == enteringOrganizationName ? _self.enteringOrganizationName : enteringOrganizationName // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -157,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool isRestoringSession)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool isRestoringSession,  bool googleReady,  bool isLoading,  bool isChoosingAccount,  String? enteringOrganizationName)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _LoginState() when $default != null:
-return $default(_that.isRestoringSession);case _:
+return $default(_that.isRestoringSession,_that.googleReady,_that.isLoading,_that.isChoosingAccount,_that.enteringOrganizationName);case _:
   return orElse();
 
 }
@@ -178,10 +189,10 @@ return $default(_that.isRestoringSession);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool isRestoringSession)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool isRestoringSession,  bool googleReady,  bool isLoading,  bool isChoosingAccount,  String? enteringOrganizationName)  $default,) {final _that = this;
 switch (_that) {
 case _LoginState():
-return $default(_that.isRestoringSession);case _:
+return $default(_that.isRestoringSession,_that.googleReady,_that.isLoading,_that.isChoosingAccount,_that.enteringOrganizationName);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +209,10 @@ return $default(_that.isRestoringSession);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool isRestoringSession)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool isRestoringSession,  bool googleReady,  bool isLoading,  bool isChoosingAccount,  String? enteringOrganizationName)?  $default,) {final _that = this;
 switch (_that) {
 case _LoginState() when $default != null:
-return $default(_that.isRestoringSession);case _:
+return $default(_that.isRestoringSession,_that.googleReady,_that.isLoading,_that.isChoosingAccount,_that.enteringOrganizationName);case _:
   return null;
 
 }
@@ -213,11 +224,22 @@ return $default(_that.isRestoringSession);case _:
 
 
 class _LoginState implements LoginState {
-  const _LoginState({this.isRestoringSession = true});
+  const _LoginState({this.isRestoringSession = true, this.googleReady = false, this.isLoading = false, this.isChoosingAccount = false, this.enteringOrganizationName});
   
 
 /// Whether a session remembered from a previous run is being checked.
 @override@JsonKey() final  bool isRestoringSession;
+/// Whether Google Sign-In finished initializing (or failed to).
+@override@JsonKey() final  bool googleReady;
+/// Whether a sign-in or an organization entry runs.
+@override@JsonKey() final  bool isLoading;
+/// The login button was tapped and the sign-in has not finished:
+/// Google's account chooser may be open. Guards against a second tap
+/// without showing [isLoading]'s "Procurando sua organização…", which
+/// only makes sense once an account is chosen.
+@override@JsonKey() final  bool isChoosingAccount;
+/// Name of the organization being entered, for "Entrando em ...".
+@override final  String? enteringOrganizationName;
 
 /// Create a copy of LoginState
 /// with the given fields replaced by the non-null parameter values.
@@ -229,18 +251,18 @@ _$LoginStateCopyWith<_LoginState> get copyWith => __$LoginStateCopyWithImpl<_Log
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _LoginState&&(identical(other.isRestoringSession, isRestoringSession) || other.isRestoringSession == isRestoringSession));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _LoginState&&(identical(other.isRestoringSession, isRestoringSession) || other.isRestoringSession == isRestoringSession)&&(identical(other.googleReady, googleReady) || other.googleReady == googleReady)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.isChoosingAccount, isChoosingAccount) || other.isChoosingAccount == isChoosingAccount)&&(identical(other.enteringOrganizationName, enteringOrganizationName) || other.enteringOrganizationName == enteringOrganizationName));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,isRestoringSession);
+    return Object.hash(runtimeType,isRestoringSession,googleReady,isLoading,isChoosingAccount,enteringOrganizationName);
 }
 
 @override
 String toString() {
-    return 'LoginState(isRestoringSession: $isRestoringSession)';
+    return 'LoginState(isRestoringSession: $isRestoringSession, googleReady: $googleReady, isLoading: $isLoading, isChoosingAccount: $isChoosingAccount, enteringOrganizationName: $enteringOrganizationName)';
 }
 
 
@@ -251,7 +273,7 @@ abstract mixin class _$LoginStateCopyWith<$Res> implements $LoginStateCopyWith<$
   factory _$LoginStateCopyWith(_LoginState value, $Res Function(_LoginState) _then) = __$LoginStateCopyWithImpl;
 @override @useResult
 $Res call({
- bool isRestoringSession
+ bool isRestoringSession, bool googleReady, bool isLoading, bool isChoosingAccount, String? enteringOrganizationName
 });
 
 
@@ -268,10 +290,14 @@ class __$LoginStateCopyWithImpl<$Res>
 
 /// Create a copy of LoginState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? isRestoringSession = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? isRestoringSession = null,Object? googleReady = null,Object? isLoading = null,Object? isChoosingAccount = null,Object? enteringOrganizationName = freezed,}) {
   return _then(_LoginState(
 isRestoringSession: null == isRestoringSession ? _self.isRestoringSession : isRestoringSession // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,googleReady: null == googleReady ? _self.googleReady : googleReady // ignore: cast_nullable_to_non_nullable
+as bool,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as bool,isChoosingAccount: null == isChoosingAccount ? _self.isChoosingAccount : isChoosingAccount // ignore: cast_nullable_to_non_nullable
+as bool,enteringOrganizationName: freezed == enteringOrganizationName ? _self.enteringOrganizationName : enteringOrganizationName // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
