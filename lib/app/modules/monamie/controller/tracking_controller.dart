@@ -6,6 +6,8 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 //import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:monamie_app/app/data/services/device_location.dart';
+import 'package:monamie_app/app/data/services/geolocator_device_location.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
@@ -28,11 +30,31 @@ class TrackingController extends GetxController
     with WidgetsBindingObserver
     implements TrackingToggleController {
   /// [notices] shows the warnings raised by background changes, which no
-  /// screen is waiting for.
-  TrackingController({required this._notices});
+  /// screen is waiting for. [userCtrl], [permissionsCtrl], [calendar] and
+  /// [groupMap] are the other home controllers this one reacts to. The
+  /// plugins come in too, with the real ones by default: [service] (the
+  /// tracking service, [FlutterBackgroundService]), [location] (the GPS,
+  /// [GeolocatorDeviceLocation]) and [positions] (the groups' positions and
+  /// trails, [FirebaseProvider]).
+  TrackingController({
+    required this._notices,
+    required this.userCtrl,
+    required this.permissionsCtrl,
+    required this._calendar,
+    required this._groupMap,
+    FlutterBackgroundService? service,
+    DeviceLocation? location,
+    FirebaseProvider? positions,
+  }) : _service = service ?? FlutterBackgroundService(),
+       _location = location ?? const GeolocatorDeviceLocation(),
+       _positions = positions ?? FirebaseProvider();
 
   final NoticePresenter _notices;
-  final FlutterBackgroundService _service = FlutterBackgroundService();
+  final CalendarController _calendar;
+  final GroupMapState _groupMap;
+  final FlutterBackgroundService _service;
+  final DeviceLocation _location;
+  final FirebaseProvider _positions;
   Position position = Position(
     latitude: -22.9041, // latitude em Niterói
     longitude: -43.1329, // longitude em Niterói
@@ -55,9 +77,8 @@ class TrackingController extends GetxController
   final isTrackingEnabled = false.obs;
   @override
   final isTrackingLoading = false.obs;
-  final UserController userCtrl = Get.find<UserController>();
-  final PermissionsController permissionsCtrl =
-      Get.find<PermissionsController>();
+  final UserController userCtrl;
+  final PermissionsController permissionsCtrl;
   final Rx<double?> heading = Rx<double?>(null);
 
   /// Where this device is, once a fix is known. It is the person's own
@@ -67,7 +88,7 @@ class TrackingController extends GetxController
   //StreamSubscription<CompassEvent>? _compassSubscription;
 
   /// Indica se o dia observado no calendário é o dia atual.
-  bool get isObservingToday => Get.find<CalendarController>().isObservingToday;
+  bool get isObservingToday => _calendar.isObservingToday;
 
   /// Mapa de usuários com suas posições animadas para renderização suave.
   final Map<String, AnimatedUserMarker> _animatedMarkers =
@@ -103,8 +124,6 @@ class TrackingController extends GetxController
   StreamSubscription? _readySubscription;
   StreamSubscription? _locationSubscription;
 
-  GroupMapState get _groupMap => Get.find<GroupMapState>();
-
   /// Timer para debounce do listener de highlightedObservedUsers.
   Timer? _highlightedUsersDebounce;
 
@@ -124,8 +143,7 @@ class TrackingController extends GetxController
   /// Sincroniza as subscriptions de trajetórias com a lista atual de
   /// highlightedObservedUsers.
   void _syncHighlightedTrajectories() {
-    final calendarCtrl = Get.find<CalendarController>();
-    final day = calendarCtrl.observedDay.value;
+    final day = _calendar.observedDay.value;
     final members = _groupMap.highlightedObservedUsers;
 
     final currentEmails = members.map((m) => m.email).toSet();
@@ -151,11 +169,7 @@ class TrackingController extends GetxController
   void _subscribeToHighlightedTrajectory(String email, DateTime day) {
     final groupId = _groupMap.selectedGroup.value?.id;
     if (groupId == null) return;
-    final stream = FirebaseProvider().getTrajectoryForDate(
-      groupId,
-      email,
-      day: day,
-    );
+    final stream = _positions.getTrajectoryForDate(groupId, email, day: day);
 
     final subscription = stream.listen((points) {
       highlightedTrajectories[email] = points;
@@ -201,7 +215,7 @@ class TrackingController extends GetxController
       final futures = <Future<void>>[];
       for (final email in observedEmails) {
         futures.add(() async {
-          final hasPoints = await FirebaseProvider().hasPointsOnDate(
+          final hasPoints = await _positions.hasPointsOnDate(
             groupId,
             email,
             day,
@@ -256,7 +270,7 @@ class TrackingController extends GetxController
     final futures = <Future<void>>[];
     for (final email in observedEmails) {
       futures.add(() async {
-        final point = await FirebaseProvider().getLastKnownPositionForDate(
+        final point = await _positions.getLastKnownPositionForDate(
           groupId,
           email,
           day: day,
@@ -389,13 +403,13 @@ class TrackingController extends GetxController
     _setupHighlightedUsersListener();
 
     // Observa mudanças no observedDay para recarregar trajetórias destacadas
-    ever(Get.find<CalendarController>().observedDay, (DateTime day) {
+    ever(_calendar.observedDay, (DateTime day) {
       onObservedDayChanged(day);
     });
 
     // Observa mudanças nos membros observados para atualizar marcadores ao trocar de grupo
     ever(_groupMap.observedMembers, (_) {
-      final day = Get.find<CalendarController>().observedDay.value;
+      final day = _calendar.observedDay.value;
       _refreshMarkersForObservedDay(day);
     });
 
@@ -425,9 +439,7 @@ class TrackingController extends GetxController
     _locating = true;
     try {
       _setPosition(
-        await Geolocator.getCurrentPosition().timeout(
-          const Duration(seconds: 5),
-        ),
+        await _location.currentPosition().timeout(const Duration(seconds: 5)),
       );
       // A person who only shares has no group on the map: show them.
       if (!_groupMap.canWatch) {
@@ -599,7 +611,7 @@ class TrackingController extends GetxController
     }
 
     // Verifica se GPS está ativado.
-    bool gpsEnabled = await Geolocator.isLocationServiceEnabled();
+    bool gpsEnabled = await _location.isServiceEnabled();
     if (!gpsEnabled) {
       permissionsCtrl.notifyGpsDisabled();
       // Interrompe a execução para não iniciar o serviço sem GPS
@@ -621,9 +633,7 @@ class TrackingController extends GetxController
     UserNotice? notice;
     try {
       _setPosition(
-        await Geolocator.getCurrentPosition().timeout(
-          const Duration(seconds: 5),
-        ),
+        await _location.currentPosition().timeout(const Duration(seconds: 5)),
       );
     } catch (e) {
       debugPrint(
@@ -680,7 +690,7 @@ class TrackingController extends GetxController
     _service.invoke("stopService");
     isTrackingEnabled.value = false;
     try {
-      await FirebaseProvider().markNotPublishing(userCtrl.user!.email);
+      await _positions.markNotPublishing(userCtrl.user!.email);
     } catch (e) {
       debugPrint('[TrackingController] Erro ao desativar isPublishing: $e');
     }

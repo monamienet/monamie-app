@@ -4,9 +4,15 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
+import 'dart:async' as _i3;
+
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:monamie_app/app/utils/notice_presenter.dart' as _i2;
-import 'package:monamie_app/app/utils/user_notice.dart' as _i3;
+import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:monamie_app/app/modules/login/controllers/sign_in_actions.dart'
+    as _i4;
+import 'package:monamie_app/app/modules/login/services/google_bond_check.dart'
+    as _i2;
+import 'package:monamie_app/app/utils/result.dart' as _i5;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -24,13 +30,59 @@ import 'package:monamie_app/app/utils/user_notice.dart' as _i3;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-/// A class which mocks [NoticePresenter].
+/// A class which mocks [GoogleBondCheck].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockNoticePresenter extends _i1.Mock implements _i2.NoticePresenter {
+class MockGoogleBondCheck extends _i1.Mock implements _i2.GoogleBondCheck {
   @override
-  void show(_i3.UserNotice? notice) => super.noSuchMethod(
-    Invocation.method(#show, [notice]),
-    returnValueForMissingStub: null,
-  );
+  _i3.Future<bool> hasActiveBond() =>
+      (super.noSuchMethod(
+            Invocation.method(#hasActiveBond, []),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
+}
+
+/// A class which mocks [SignInActions].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockSignInActions extends _i1.Mock implements _i4.SignInActions {
+  @override
+  _i3.Future<_i5.Result<void>> loginGoogle() =>
+      (super.noSuchMethod(
+            Invocation.method(#loginGoogle, []),
+            returnValue: _i3.Future<_i5.Result<void>>.value(
+              _i6.dummyValue<_i5.Result<void>>(
+                this,
+                Invocation.method(#loginGoogle, []),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i5.Result<void>>.value(
+              _i6.dummyValue<_i5.Result<void>>(
+                this,
+                Invocation.method(#loginGoogle, []),
+              ),
+            ),
+          )
+          as _i3.Future<_i5.Result<void>>);
+
+  @override
+  _i3.Future<_i5.Result<bool>> logout() =>
+      (super.noSuchMethod(
+            Invocation.method(#logout, []),
+            returnValue: _i3.Future<_i5.Result<bool>>.value(
+              _i6.dummyValue<_i5.Result<bool>>(
+                this,
+                Invocation.method(#logout, []),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i5.Result<bool>>.value(
+              _i6.dummyValue<_i5.Result<bool>>(
+                this,
+                Invocation.method(#logout, []),
+              ),
+            ),
+          )
+          as _i3.Future<_i5.Result<bool>>);
 }

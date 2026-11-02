@@ -9,6 +9,18 @@ import 'package:get/get.dart';
 /// sign-in. Their positions are written by the tracking service, one per
 /// group where they publish; nothing is created here.
 class UserController extends GetxController {
+  /// [groupMap] says whether the person publishes in some group;
+  /// [repository] reads the profile saved at sign-in (Hive),
+  /// [UserGoogleRepository] by default.
+  UserController({required this._groupMap, UserGoogleRepository? repository})
+    : _injectedRepository = repository;
+
+  final GroupMapState _groupMap;
+  final UserGoogleRepository? _injectedRepository;
+
+  late final UserGoogleRepository _repository =
+      _injectedRepository ?? UserGoogleRepository();
+
   final _user = Rxn<UserModel>();
   UserModel? get user => _user.value;
 
@@ -26,7 +38,7 @@ class UserController extends GetxController {
   Future<void> loadCurrentUser() async {
     isLoading.value = true;
     try {
-      final googleUser = await UserGoogleRepository().getUserGoogleModel();
+      final googleUser = await _repository.getUserGoogleModel();
       debugPrint('Hive user: ${googleUser?.email} / ${googleUser?.name}');
       _googleUser.value = googleUser;
       final email = googleUser?.email ?? '';
@@ -40,8 +52,7 @@ class UserController extends GetxController {
 
   /// Whether the person shares their location in some group, so the map
   /// shows the sharing switch.
-  bool isTrackable() =>
-      _user.value?.email != null && Get.find<GroupMapState>().canPublish;
+  bool isTrackable() => _user.value?.email != null && _groupMap.canPublish;
 
   String getUserName() {
     final name = user?.name?.trim();

@@ -14,9 +14,19 @@ import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart'
 class MonamieBindings implements Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<UserController>(() => UserController());
+    // The factories run on first use, so each one can find the others no
+    // matter the order they are registered in.
+    Get.lazyPut<UserController>(
+      () => UserController(groupMap: Get.find<GroupMapState>()),
+    );
     Get.lazyPut<TrackingController>(
-      () => TrackingController(notices: const ScaffoldNoticePresenter()),
+      () => TrackingController(
+        notices: const ScaffoldNoticePresenter(),
+        userCtrl: Get.find<UserController>(),
+        permissionsCtrl: Get.find<PermissionsController>(),
+        calendar: Get.find<CalendarController>(),
+        groupMap: Get.find<GroupMapState>(),
+      ),
     );
     Get.lazyPut<PermissionsController>(
       () => PermissionsController(
@@ -32,8 +42,13 @@ class MonamieBindings implements Bindings {
     }
     // Registered under its contract: screens and controllers find
     // [GroupMapState], never the Firestore-backed class.
-    Get.lazyPut<GroupMapState>(() => GroupMapController());
-    Get.lazyPut(() => CalendarController());
+    Get.lazyPut<GroupMapState>(
+      () => GroupMapController(
+        onAccessLost: () =>
+            Get.find<AuthGoogleController>().forgetRemovedOrganization(),
+      ),
+    );
+    Get.lazyPut(() => CalendarController(groupMap: Get.find<GroupMapState>()));
     Get.lazyPut(() => CallController());
     // Created with the home screen, not on first use: it must already hold
     // the saved settings when *Ajustes de acompanhamento* opens, and a lazy

@@ -1,20 +1,16 @@
 import 'dart:async';
 
-import 'package:firebase_core/firebase_core.dart';
-// O pacote de interface de plataforma é dependência transitiva de
-// firebase_core e expõe os mocks oficiais do Firebase Core para testes.
-// ignore: depend_on_referenced_packages
-import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/login/controllers/login_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/sign_in_actions.dart';
+import 'package:monamie_app/app/modules/login/services/google_bond_check.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
-import 'package:monamie_app/app/utils/notice_presenter.dart';
 
-@GenerateNiceMocks([MockSpec<NoticePresenter>()])
+@GenerateNiceMocks([MockSpec<GoogleBondCheck>(), MockSpec<SignInActions>()])
 import 'login_controller_test.mocks.dart';
 
 /// Rota fictícia de login usada como rota inicial nos testes de navegação.
@@ -22,39 +18,25 @@ const String _kLoginRoute = '/login-test';
 const String _kLoginPlaceholder = 'login-placeholder';
 const String _kMonamiePlaceholder = 'monamie-placeholder';
 
-/// Fake do AuthGoogleController: sobrescreve `onInit` para NÃO assinar o
-/// stream de login web nem inicializar o GoogleSignIn. Como os serviços do
-/// controller real são `late final`, eles nunca chegam a ser instanciados.
-class _FakeAuthGoogleController extends AuthGoogleController {
-  _FakeAuthGoogleController() : super(notices: MockNoticePresenter());
-
-  @override
-  // ignore: must_call_super
-  void onInit() {
-    // Intencionalmente vazio: evita chamadas a Google Sign-In/Firebase.
-  }
+/// A [MockGoogleBondCheck] whose `hasActiveBond` answers [hasBond], throws
+/// [error] or waits for [pending].
+MockGoogleBondCheck _bondCheck({
+  bool hasBond = false,
+  Object? error,
+  Completer<bool>? pending,
+}) {
+  final check = MockGoogleBondCheck();
+  when(check.hasActiveBond()).thenAnswer((_) {
+    if (pending != null) return pending.future;
+    if (error != null) return Future.error(error);
+    return Future.value(hasBond);
+  });
+  return check;
 }
 
-/// Subclasse de teste do LoginController que substitui a verificação real
-/// (FirebaseAuth + Hive) por uma resposta determinística.
-class _FakeLoginController extends LoginController {
-  _FakeLoginController({this.hasBond = false, this.error, this.pending});
-
-  final bool hasBond;
-  final Object? error;
-  final Completer<bool>? pending;
-  int hasActiveGoogleBondCalls = 0;
-
-  @override
-  Future<bool> hasActiveGoogleBond() async {
-    hasActiveGoogleBondCalls++;
-    final pendingCheck = pending;
-    if (pendingCheck != null) return pendingCheck.future;
-    final failure = error;
-    if (failure != null) throw failure;
-    return hasBond;
-  }
-}
+/// A [LoginController] over [bondCheck] and a [MockSignInActions].
+LoginController _controller(MockGoogleBondCheck bondCheck) =>
+    LoginController(signIn: MockSignInActions(), bondCheck: bondCheck);
 
 Widget _buildTestApp() {
   return GetMaterialApp(
@@ -75,16 +57,8 @@ Widget _buildTestApp() {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(() async {
-    // O construtor do LoginController instancia UserGoogleRepository, que
-    // chama `Firebase.app()`. Os mocks oficiais evitam canais nativos.
-    setupFirebaseCoreMocks();
-    await Firebase.initializeApp();
-  });
-
   setUp(() {
     Get.testMode = true;
-    Get.put<AuthGoogleController>(_FakeAuthGoogleController());
   });
 
   tearDown(() {
@@ -99,7 +73,7 @@ void main() {
         const hasBond = true;
 
         // 2. Act
-        final controller = _FakeLoginController(hasBond: hasBond);
+        final controller = _controller(_bondCheck(hasBond: hasBond));
 
         // 3. Assert
         expect(controller.isRestoringSession.value, isTrue);
@@ -111,7 +85,7 @@ void main() {
       (WidgetTester tester) async {
         // 1. Arrange
         await tester.pumpWidget(_buildTestApp());
-        final controller = _FakeLoginController(hasBond: true);
+        final controller = _controller(_bondCheck(hasBond: true));
 
         // 2. Act
         Get.put<LoginController>(controller);
@@ -128,7 +102,7 @@ void main() {
       (WidgetTester tester) async {
         // 1. Arrange
         await tester.pumpWidget(_buildTestApp());
-        final controller = _FakeLoginController(hasBond: true);
+        final controller = _controller(_bondCheck(hasBond: true));
 
         // 2. Act
         Get.put<LoginController>(controller);
@@ -144,14 +118,15 @@ void main() {
       (WidgetTester tester) async {
         // 1. Arrange
         await tester.pumpWidget(_buildTestApp());
-        final controller = _FakeLoginController(hasBond: true);
+        final bondCheck = _bondCheck(hasBond: true);
+        final controller = _controller(bondCheck);
 
         // 2. Act
         Get.put<LoginController>(controller);
         await tester.pumpAndSettle();
 
         // 3. Assert
-        expect(controller.hasActiveGoogleBondCalls, 1);
+        verify(bondCheck.hasActiveBond()).called(1);
       },
     );
 
@@ -161,7 +136,7 @@ void main() {
         // 1. Arrange
         await tester.pumpWidget(_buildTestApp());
         final pending = Completer<bool>();
-        final controller = _FakeLoginController(pending: pending);
+        final controller = _controller(_bondCheck(pending: pending));
 
         // 2. Act
         Get.put<LoginController>(controller);
@@ -178,7 +153,7 @@ void main() {
       (WidgetTester tester) async {
         // 1. Arrange
         await tester.pumpWidget(_buildTestApp());
-        final controller = _FakeLoginController(hasBond: false);
+        final controller = _controller(_bondCheck(hasBond: false));
 
         // 2. Act
         Get.put<LoginController>(controller);
@@ -196,7 +171,7 @@ void main() {
       (WidgetTester tester) async {
         // 1. Arrange
         await tester.pumpWidget(_buildTestApp());
-        final controller = _FakeLoginController(hasBond: false);
+        final controller = _controller(_bondCheck(hasBond: false));
 
         // 2. Act
         Get.put<LoginController>(controller);
@@ -213,7 +188,7 @@ void main() {
         // 1. Arrange
         await tester.pumpWidget(_buildTestApp());
         final failure = StateError('falha simulada ao verificar sessão');
-        final controller = _FakeLoginController(error: failure);
+        final controller = _controller(_bondCheck(error: failure));
         final uncaughtErrors = <Object>[];
 
         // 2. Act

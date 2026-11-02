@@ -1,27 +1,26 @@
-import 'package:flutter/material.dart';
-import 'package:monamie_app/app/data/repository/user_google_repository.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/sign_in_actions.dart';
+import 'package:monamie_app/app/modules/login/services/google_bond_check.dart';
+import 'package:monamie_app/app/modules/login/services/stored_google_bond_check.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
-import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/app/utils/result.dart';
 
 class LoginController extends GetxController {
-  late final AuthGoogleController _loginGoogleController;
+  /// [signIn] runs the sign-in and sign-out (the `AuthGoogleController`);
+  /// [bondCheck] tells whether a sign-in survives from a previous run,
+  /// [StoredGoogleBondCheck] by default.
+  LoginController({required this._signIn, GoogleBondCheck? bondCheck})
+    : _injectedBondCheck = bondCheck;
 
-  UserGoogleRepository userGoogleRepository = UserGoogleRepository();
+  final SignInActions _signIn;
+  final GoogleBondCheck? _injectedBondCheck;
+
+  // Created on first use: the default reads Firebase and Hive.
+  late final GoogleBondCheck _bondCheck =
+      _injectedBondCheck ?? StoredGoogleBondCheck();
 
   /// `true` enquanto verifica se há uma sessão válida para restaurar.
   final isRestoringSession = true.obs;
-
-  //UserData _user = UserData();
-
-  @override
-  Future<void> onInit() async {
-    _loginGoogleController = Get.find<AuthGoogleController>();
-
-    super.onInit();
-  }
 
   /// Restaura a sessão quando o app é recriado do zero — por exemplo, depois
   /// que o Android encerra o processo enquanto o usuário está nas
@@ -38,27 +37,12 @@ class LoginController extends GetxController {
     }
   }
 
-  Future<bool> hasActiveGoogleBond() async {
-    try {
-      // No bound organization: the user must sign in and pick one first.
-      if (!CurrentOrganizationFirebase.isSet) return false;
-      final currentUser = CurrentOrganizationFirebase.instance.auth.currentUser;
-      final storedUser = await userGoogleRepository.getUserGoogleModel();
-      final hasStoredUser = storedUser != null && storedUser.email.isNotEmpty;
-      return currentUser != null && hasStoredUser;
-    } catch (e) {
-      debugPrint("Error checking Google bond: $e");
-      return false;
-    }
-  }
+  /// See [GoogleBondCheck.hasActiveBond].
+  Future<bool> hasActiveGoogleBond() => _bondCheck.hasActiveBond();
 
-  /// See [AuthGoogleController.loginGoogle].
-  Future<Result<void>> loginGoogle() => _loginGoogleController.loginGoogle();
+  /// See [SignInActions.loginGoogle].
+  Future<Result<void>> loginGoogle() => _signIn.loginGoogle();
 
-  //void loginAnonimous() {
-  //  Get.offAllNamed(Routes.HOME);
-  //}
-
-  /// See [AuthGoogleController.logout].
-  Future<Result<bool>> logoutGoogle() => _loginGoogleController.logout();
+  /// See [SignInActions.logout].
+  Future<Result<bool>> logoutGoogle() => _signIn.logout();
 }

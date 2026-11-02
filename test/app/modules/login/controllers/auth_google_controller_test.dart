@@ -12,6 +12,7 @@ import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart
 import 'package:monamie_app/app/data/firebase/organization_firebase.dart';
 import 'package:monamie_app/app/data/groups/organization_membership_check.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
+import 'package:monamie_app/app/data/organization/organization_binder.dart';
 import 'package:monamie_app/app/data/organization/organization_binding.dart';
 import 'package:monamie_app/app/data/organization/organization_binding_store.dart';
 import 'package:monamie_app/app/data/organization/organization_branding_loader.dart';
@@ -37,6 +38,7 @@ import '../../../../support/test_organization.dart';
   MockSpec<InvitesBackend>(),
   MockSpec<NavigatorObserver>(),
   MockSpec<NoticePresenter>(),
+  MockSpec<OrganizationBinder>(),
   MockSpec<OrganizationBindingStore>(),
   MockSpec<OrganizationBrandingLoader>(),
   MockSpec<OrganizationDirectory>(),
@@ -202,28 +204,31 @@ MockUserGoogleRepository _userRepository() {
   return repository;
 }
 
-/// [OrganizationSession] that binds without creating a real [FirebaseApp]: it
-/// sets [Organization.current] and a mock [OrganizationFirebase].
-class _FakeOrganizationSessionSignIn extends OrganizationSession {
-  _FakeOrganizationSessionSignIn(this.log)
-    : super(store: MockOrganizationBindingStore());
-
-  final List<String> log;
-  int forgetCalls = 0;
-
-  @override
-  Future<void> bind(OrganizationBinding binding, {bool remember = true}) async {
+/// A [MockOrganizationBinder] that binds without creating a real
+/// [FirebaseApp]: `bind` logs, records the organization id in [boundIds] and
+/// sets [Organization.current] and a mock [OrganizationFirebase]; `forget`
+/// logs and clears both, as `OrganizationSession.forget` does.
+MockOrganizationBinder _organizationBinder(
+  List<String> log, [
+  List<String>? boundIds,
+]) {
+  final binder = MockOrganizationBinder();
+  when(binder.bind(any, remember: anyNamed('remember'))).thenAnswer((
+    invocation,
+  ) async {
+    final binding =
+        invocation.positionalArguments.single as OrganizationBinding;
     log.add('bind');
+    boundIds?.add(binding.organization.id);
     Organization.bind(binding.organization);
     CurrentOrganizationFirebase.set(MockOrganizationFirebase());
-  }
-
-  @override
-  Future<void> forget() async {
-    forgetCalls++;
+  });
+  when(binder.forget()).thenAnswer((_) async {
     log.add('forget');
-    await super.forget();
-  }
+    Organization.unbind();
+    CurrentOrganizationFirebase.clear();
+  });
+  return binder;
 }
 
 // ---------------------------------------------------------------------------
@@ -254,7 +259,7 @@ class _HarnessSignIn {
       organizations: organizations,
       error: directoryError,
     );
-    session = _FakeOrganizationSessionSignIn(log);
+    session = _organizationBinder(log);
     membershipCheck = _membershipCheck(member);
     controller = AuthGoogleController(
       notices: notices,
@@ -275,7 +280,7 @@ class _HarnessSignIn {
   late final MockOrganizationMembershipCheck membershipCheck;
   late final MockAuthGoogleService authService;
   late final MockOrganizationDirectory directory;
-  late final _FakeOrganizationSessionSignIn session;
+  late final MockOrganizationBinder session;
   late final AuthGoogleController controller;
 }
 
@@ -358,34 +363,6 @@ const Map<String, String> _kOrganizationNames = {
 // Mocks
 // ---------------------------------------------------------------------------
 
-/// [OrganizationSession] that binds without creating a real [FirebaseApp]: it
-/// sets [Organization.current] and a mock [OrganizationFirebase].
-class _FakeOrganizationSessionInvites extends OrganizationSession {
-  _FakeOrganizationSessionInvites(this.log)
-    : super(store: MockOrganizationBindingStore());
-
-  final List<String> log;
-  int forgetCalls = 0;
-
-  /// Id of every organization bound, in order.
-  final boundIds = <String>[];
-
-  @override
-  Future<void> bind(OrganizationBinding binding, {bool remember = true}) async {
-    log.add('bind');
-    boundIds.add(binding.organization.id);
-    Organization.bind(binding.organization);
-    CurrentOrganizationFirebase.set(MockOrganizationFirebase());
-  }
-
-  @override
-  Future<void> forget() async {
-    forgetCalls++;
-    log.add('forget');
-    await super.forget();
-  }
-}
-
 /// A [MockOrganizationDirectory] that answers the n-th call with
 /// `answers[n]` (the last answer repeats).
 MockOrganizationDirectory _sequencedDirectory(
@@ -446,7 +423,7 @@ class _HarnessInvites {
     ],
   }) {
     directory = _sequencedDirectory(answers);
-    session = _FakeOrganizationSessionInvites(log);
+    session = _organizationBinder(log, boundIds);
     controller = AuthGoogleController(
       notices: MockNoticePresenter(),
       authGoogleService: _authServiceSignIn(log, refreshedToken: null),
@@ -467,7 +444,10 @@ class _HarnessInvites {
   final List<String> log = <String>[];
   final backend = _invitesBackend();
   late final MockOrganizationDirectory directory;
-  late final _FakeOrganizationSessionInvites session;
+  late final MockOrganizationBinder session;
+
+  /// Id of every organization bound, in order.
+  final boundIds = <String>[];
   late final AuthGoogleController controller;
 }
 
@@ -982,7 +962,7 @@ void main() {
             // 3. Assert
             expect(harness.log, isNot(contains('bind')));
             expect(harness.log, isNot(contains('signInToOrganization')));
-            expect(harness.session.forgetCalls, 0);
+            verifyNever(harness.session.forget());
           },
         );
 
@@ -1130,7 +1110,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(harness.session.forgetCalls, greaterThanOrEqualTo(1));
+            verify(harness.session.forget());
             expect(Organization.current, isNull);
           },
         );
@@ -2354,7 +2334,7 @@ void main() {
             await _accept(tester, harness.controller);
 
             // 3. Assert
-            expect(harness.session.boundIds, ['rotasul']);
+            expect(harness.boundIds, ['rotasul']);
           },
         );
 
@@ -2392,7 +2372,7 @@ void main() {
 
             // 3. Assert
             verify(harness.directory.organizationsOfSignedInUser()).called(1);
-            expect(harness.session.boundIds, isEmpty);
+            expect(harness.boundIds, isEmpty);
             expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
           },
         );
@@ -2412,7 +2392,7 @@ void main() {
             await _accept(tester, harness.controller);
 
             // 3. Assert
-            expect(harness.session.boundIds, isEmpty);
+            expect(harness.boundIds, isEmpty);
             expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
           },
         );
@@ -2439,7 +2419,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.session.boundIds, ['verdemar']);
+          expect(harness.boundIds, ['verdemar']);
         },
       );
 
@@ -2485,7 +2465,7 @@ void main() {
 
           // 3. Assert
           verify(harness.directory.organizationsOfSignedInUser()).called(1);
-          expect(harness.session.boundIds, isEmpty);
+          expect(harness.boundIds, isEmpty);
           expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
         },
       );
@@ -2505,7 +2485,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.session.boundIds, isEmpty);
+          expect(harness.boundIds, isEmpty);
           expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
         },
       );

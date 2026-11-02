@@ -5,6 +5,14 @@ import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.
 import 'package:monamie_app/app/modules/monamie/history/history_month.dart';
 
 class CalendarController extends GetxController {
+  /// [groupMap] gives the observed group and its history members;
+  /// [positions] reads the trail days, [FirebaseProvider] by default.
+  CalendarController({required this._groupMap, FirebaseProvider? positions})
+    : _positions = positions ?? FirebaseProvider();
+
+  final GroupMapState _groupMap;
+  final FirebaseProvider _positions;
+
   final _observedDay = DateTime(
     DateTime.now().year,
     DateTime.now().month,
@@ -71,15 +79,14 @@ class CalendarController extends GetxController {
   /// (one summary read per person and day).
   Future<void> _loadTrailDays() async {
     final month = viewMonth.value;
-    final groupMap = Get.find<GroupMapState>();
-    final groupId = groupMap.selectedGroup.value?.id;
+    final groupId = _groupMap.selectedGroup.value?.id;
     if (groupId == null) return;
     isLoadingMonth.value = true;
     try {
       final emails = [
-        for (final member in await groupMap.loadHistoryMembers()) member.email,
+        for (final member in await _groupMap.loadHistoryMembers()) member.email,
       ];
-      final days = await FirebaseProvider().trailDays(groupId, emails, month);
+      final days = await _positions.trailDays(groupId, emails, month);
       if (viewMonth.value.first == month.first) {
         viewMonth.value = month.shift(0, trailDays: days);
       }

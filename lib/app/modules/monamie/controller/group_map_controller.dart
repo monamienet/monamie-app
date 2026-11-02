@@ -7,7 +7,6 @@ import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart
 import 'package:monamie_app/app/data/groups/firestore_membership_source.dart';
 import 'package:monamie_app/app/data/groups/membership_source.dart';
 import 'package:monamie_app/app/data/services/capabilities.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/map_groups.dart';
 import 'package:monamie_app/app/modules/monamie/data/group_positions_source.dart';
@@ -25,16 +24,13 @@ import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 /// forgets the organization ([onAccessLost]).
 class GroupMapController extends GetxController implements GroupMapState {
   GroupMapController({
+    required this._onAccessLost,
     MembershipSource? memberships,
     GroupPositionsSource? positions,
-    Future<void> Function()? onAccessLost,
     String? Function()? organizationId,
     String? Function()? email,
   }) : _memberships = memberships ?? const FirestoreMembershipSource(),
        _positions = positions ?? FirebaseProvider(),
-       _onAccessLost =
-           onAccessLost ??
-           (() => Get.find<AuthGoogleController>().forgetRemovedOrganization()),
        _organizationId = organizationId ?? (() => Organization.current?.id),
        _email =
            email ??

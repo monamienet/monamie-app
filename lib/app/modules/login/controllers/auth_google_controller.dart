@@ -9,6 +9,7 @@ import 'package:monamie_app/app/data/organization/organization_branding_loader.d
 import 'package:monamie_app/app/data/organization/hive_organization_local_data.dart';
 import 'package:monamie_app/app/data/organization/organization_directory.dart';
 import 'package:monamie_app/app/data/organization/organization_local_data.dart';
+import 'package:monamie_app/app/data/organization/organization_binder.dart';
 import 'package:monamie_app/app/data/organization/organization_session.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
@@ -24,6 +25,7 @@ import 'package:monamie_app/app/modules/creation/firebase_creation_backend.dart'
 import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
+import 'package:monamie_app/app/modules/login/controllers/sign_in_actions.dart';
 import 'package:monamie_app/app/modules/login/id_token_expiry.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
@@ -41,7 +43,7 @@ import 'package:monamie_app/app/utils/user_notice.dart';
 /// an organization binds its Firebase project and branding together, signs
 /// in to the organization project and checks there that the person still
 /// has a membership.
-class AuthGoogleController extends GetxController {
+class AuthGoogleController extends GetxController implements SignInActions {
   /// [notices] shows the messages no screen is waiting for: those of the web
   /// sign-in (a stream), of a sign-out started by a controller (removal from
   /// the organization, account deletion) and the tracking warning, which
@@ -53,7 +55,7 @@ class AuthGoogleController extends GetxController {
     BackgroundTrackingStopper? trackingStopper,
     OrganizationDirectory? organizationDirectory,
     OrganizationBrandingLoader? brandingLoader,
-    OrganizationSession? organizationSession,
+    OrganizationBinder? organizationSession,
     OrganizationLocalData? organizationLocalData,
     InvitesBackend? invitesBackend,
     AccountDeletionBackend? deletionBackend,
@@ -81,7 +83,7 @@ class AuthGoogleController extends GetxController {
   final BackgroundTrackingStopper? _injectedTrackingStopper;
   final OrganizationDirectory? _injectedOrganizationDirectory;
   final OrganizationBrandingLoader _brandingLoader;
-  final OrganizationSession? _injectedOrganizationSession;
+  final OrganizationBinder? _injectedOrganizationSession;
   final OrganizationLocalData _organizationLocalData;
   final InvitesBackend _invitesBackend;
   final AccountDeletionBackend _deletionBackend;
@@ -113,7 +115,7 @@ class AuthGoogleController extends GetxController {
 
   late final OrganizationDirectory _organizationDirectory =
       _injectedOrganizationDirectory ?? CentralOrganizationDirectory();
-  late final OrganizationSession _organizationSession =
+  late final OrganizationBinder _organizationSession =
       _injectedOrganizationSession ?? OrganizationSession();
 
   late final AuthGoogleService _authGoogle =
@@ -610,6 +612,7 @@ class AuthGoogleController extends GetxController {
 
   /// "Entrar com o Google". [Err] says why the sign-in failed; [Ok] also
   /// while another sign-in runs.
+  @override
   Future<Result<void>> loginGoogle() async {
     if (isLoading.value || isChoosingAccount.value) return const Ok(null);
     isChoosingAccount.value = true;
@@ -635,6 +638,7 @@ class AuthGoogleController extends GetxController {
 
   /// "Sair". [Ok] holds whether the sign-out finished (`false` while another
   /// one runs); [Err] says why it failed.
+  @override
   Future<Result<bool>> logout() => _signOut();
 
   /// Forgets the organization after the user's membership was removed:
