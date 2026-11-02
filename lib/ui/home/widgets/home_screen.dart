@@ -4,11 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
 import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/home_header.dart';
@@ -21,13 +21,14 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 
 /// The map of the bound organization, with its header, sheet and menu. The
-/// organization's route hands it the view models of the organization's
+/// organization's route hands it the view models and shared state
+/// ([MembershipRepository], [PermissionsRepository]) of the organization's
 /// scope and its own [HomeSessionViewModel].
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
     required this.userCtrl,
-    required this.permissionsCtrl,
+    required this.permissions,
     required this.trackingCtrl,
     required this.groupMap,
     required this.calendar,
@@ -36,9 +37,9 @@ class HomeScreen extends StatelessWidget {
   });
 
   final UserViewModel userCtrl;
-  final PermissionsViewModel permissionsCtrl;
+  final PermissionsRepository permissions;
   final TrackingViewModel trackingCtrl;
-  final GroupMapState groupMap;
+  final MembershipRepository groupMap;
   final CalendarViewModel calendar;
   final CallService calls;
 
@@ -91,18 +92,18 @@ class HomeScreen extends StatelessWidget {
   Listenable get _trackable =>
       Listenable.merge([userCtrl, groupMap.capabilities]);
 
-  /// What [PermissionsViewModel.arePermissionsGranted] reads.
+  /// What [PermissionsRepository.arePermissionsGranted] reads.
   Listenable get _granted => Listenable.merge([
-    permissionsCtrl.hasAlwaysLocationPermission,
-    permissionsCtrl.hasNotificationPermission,
-    permissionsCtrl.isBackgroundRestricted,
+    permissions.hasAlwaysLocationPermission,
+    permissions.hasNotificationPermission,
+    permissions.isBackgroundRestricted,
   ]);
 
   Widget _centralizeButton() {
     return ListenableBuilder(
       listenable: Listenable.merge([_trackable, _granted]),
       builder: (context, _) =>
-          permissionsCtrl.arePermissionsGranted() && userCtrl.isTrackable()
+          permissions.arePermissionsGranted() && userCtrl.isTrackable()
           ? Positioned(
               bottom: 16,
               right: 16,
@@ -121,7 +122,7 @@ class HomeScreen extends StatelessWidget {
     return ListenableBuilder(
       listenable: Listenable.merge([_trackable, _granted]),
       builder: (context, _) {
-        final granted = permissionsCtrl.arePermissionsGranted();
+        final granted = permissions.arePermissionsGranted();
         if (userCtrl.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -318,10 +319,10 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(gradient: AppColors.appBarBottomGradient()),
       child: ListenableBuilder(
         listenable: Listenable.merge([
-          permissionsCtrl.hasNotificationPermission,
-          permissionsCtrl.hasWhenInUseLocationPermission,
-          permissionsCtrl.hasAlwaysLocationPermission,
-          permissionsCtrl.isBackgroundRestricted,
+          permissions.hasNotificationPermission,
+          permissions.hasWhenInUseLocationPermission,
+          permissions.hasAlwaysLocationPermission,
+          permissions.isBackgroundRestricted,
         ]),
         builder: (context, _) => Align(
           alignment: Alignment.center,
@@ -339,14 +340,13 @@ class HomeScreen extends StatelessWidget {
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.darkBlue(),
                         ),
-                        onPressed:
-                            permissionsCtrl.requestNotificationPermission,
+                        onPressed: permissions.requestNotificationPermission,
                         child: const Text("Permitir notificação"),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      permissionsCtrl.hasNotificationPermission.value
+                      permissions.hasNotificationPermission.value
                           ? Icons.check_box
                           : Icons.check_box_outline_blank,
                       color: Colors.white,
@@ -363,13 +363,13 @@ class HomeScreen extends StatelessWidget {
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.darkBlue(),
                         ),
-                        onPressed: permissionsCtrl.requestWhenInUsePermission,
+                        onPressed: permissions.requestWhenInUsePermission,
                         child: const Text("Permitir localização (durante uso)"),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      permissionsCtrl.hasWhenInUseLocationPermission.value
+                      permissions.hasWhenInUseLocationPermission.value
                           ? Icons.check_box
                           : Icons.check_box_outline_blank,
                       color: Colors.white,
@@ -386,13 +386,13 @@ class HomeScreen extends StatelessWidget {
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.darkBlue(),
                         ),
-                        onPressed: permissionsCtrl.requestAlwaysPermission,
+                        onPressed: permissions.requestAlwaysPermission,
                         child: const Text("Permitir localização (sempre)"),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      permissionsCtrl.hasAlwaysLocationPermission.value
+                      permissions.hasAlwaysLocationPermission.value
                           ? Icons.check_box
                           : Icons.check_box_outline_blank,
                       color: Colors.white,
@@ -409,13 +409,13 @@ class HomeScreen extends StatelessWidget {
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.darkBlue(),
                         ),
-                        onPressed: permissionsCtrl.openBackgroundUsageSettings,
+                        onPressed: permissions.openBackgroundUsageSettings,
                         child: const Text("Permitir uso em segundo plano"),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      permissionsCtrl.isBackgroundRestricted.value
+                      permissions.isBackgroundRestricted.value
                           ? Icons.check_box_outline_blank
                           : Icons.check_box,
                       color: Colors.white,
@@ -552,8 +552,7 @@ class HomeScreen extends StatelessWidget {
               return isObservedMember;
             })
             .map((user) {
-              final isCurrentUser =
-                  user.email == trackingCtrl.userCtrl.user?.email;
+              final isCurrentUser = user.email == userCtrl.user?.email;
               // The signed-in person's pin has a colour of its own.
               final markerColor = isCurrentUser
                   ? Colors.indigo

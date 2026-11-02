@@ -1,3 +1,5 @@
+// check_layers: state_contract
+
 import 'dart:ui' show AppLifecycleState;
 
 import 'package:flutter/foundation.dart';
@@ -6,23 +8,25 @@ import 'package:monamie_app/data/services/app_lifecycle_events.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/data/services/permissions_service.dart';
-import 'package:monamie_app/ui/home/view_models/permission_prompts.dart';
 import 'package:monamie_app/utils/notice_presenter.dart';
+import 'package:monamie_app/utils/permission_prompts.dart';
 import 'package:monamie_app/utils/user_notice.dart';
 
 /// The permissions the tracking needs and the battery restriction, read
-/// from the system. Each one is its own [ValueListenable], so the tracking
-/// controller reacts to the one it needs.
+/// from the system: the bound organization's shared state that the home
+/// screen, the tracking view model and the `StartSharing` use case read.
+/// Each one is its own [ValueListenable], so a reader reacts to the one it
+/// needs.
 ///
 /// Whoever creates it calls [start] once, which follows the app's return to
 /// the foreground and reads the statuses, and [dispose] once.
-class PermissionsViewModel {
+class PermissionsRepository {
   /// [permissions] reads and asks for the system's permissions; [prompts]
   /// asks the questions in the middle of the permission flows; [notices]
   /// shows the warning given on returning from the battery settings, when no
   /// screen is waiting for it; [lifecycle] tells when the app comes back to
   /// the foreground.
-  PermissionsViewModel({
+  PermissionsRepository({
     required this._permissions,
     required this._prompts,
     required this._notices,

@@ -9,8 +9,8 @@ import 'package:monamie_app/data/services/app_lifecycle_events.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/data/services/permissions_service.dart';
-import 'package:monamie_app/ui/home/view_models/permission_prompts.dart';
-import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
+import 'package:monamie_app/utils/permission_prompts.dart';
+import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
 import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:monamie_app/utils/user_notice.dart';
 
@@ -22,7 +22,7 @@ import 'package:monamie_app/utils/user_notice.dart';
   MockSpec<NoticePresenter>(),
   MockSpec<PermissionsService>(),
 ])
-import 'permissions_view_model_test.mocks.dart';
+import 'permissions_repository_test.mocks.dart';
 
 /// Um [MockBackgroundRestrictionChecker] que responde [result] (ou lança
 /// [error]) a cada consulta.
@@ -87,14 +87,14 @@ void answerAll(MockPermissionsService permissions, AppPermissionStatus status) {
 /// a fresh one for each test.
 late MockPermissionsService _permissions;
 
-PermissionsViewModel _build({
+PermissionsRepository _build({
   required BackgroundRestrictionChecker backgroundRestrictionChecker,
   PermissionsService? permissions,
   BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
   PermissionPrompts? prompts,
   NoticePresenter? notices,
   AppLifecycleEvents? lifecycle,
-}) => PermissionsViewModel(
+}) => PermissionsRepository(
   permissions: permissions ?? _permissions,
   prompts: prompts ?? mockPrompts(),
   notices: notices ?? MockNoticePresenter(),
@@ -120,12 +120,12 @@ final Matcher _stillRestrictedNotice = isA<UserNotice>().having(
 
 /// Leva o usuário às configurações pelo fluxo do controller (a pergunta
 /// precisa ser confirmada e o checker indicar restrição).
-Future<void> _goToSettings(PermissionsViewModel controller) =>
+Future<void> _goToSettings(PermissionsRepository controller) =>
     controller.openBackgroundUsageSettings();
 
 /// Simula o retorno ao app e conclui o trabalho assíncrono que ele dispara
 /// (`didChangeAppLifecycleState` não devolve o `Future`).
-Future<void> _returnToApp(PermissionsViewModel controller) async {
+Future<void> _returnToApp(PermissionsRepository controller) async {
   controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
   await pumpEventQueue();
 }
@@ -136,7 +136,7 @@ void main() {
   setUp(() => _permissions = mockPermissions());
 
   group('background restriction', () {
-    group('PermissionsViewModel - Restrição de Segundo Plano', () {
+    group('PermissionsRepository - Restrição de Segundo Plano', () {
       test('Happy Path: Deve iniciar isBackgroundRestricted como false', () {
         // 1. Arrange
         final checker = mockChecker(result: true);
@@ -216,8 +216,8 @@ void main() {
       );
     });
 
-    group('PermissionsViewModel - arePermissionsGranted', () {
-      PermissionsViewModel buildController({
+    group('PermissionsRepository - arePermissionsGranted', () {
+      PermissionsRepository buildController({
         required bool always,
         required bool notification,
         required bool restricted,
@@ -358,7 +358,7 @@ void main() {
   });
 
   group('open background usage settings', () {
-    group('PermissionsViewModel - openBackgroundUsageSettings', () {
+    group('PermissionsRepository - openBackgroundUsageSettings', () {
       test(
         'Happy Path: Deve retornar sem perguntar nem abrir configurações quando o app não está restrito',
         () async {
@@ -573,7 +573,7 @@ void main() {
   });
 
   group('return from settings', () {
-    group('PermissionsViewModel - Aviso ao retornar das configurações de bateria', () {
+    group('PermissionsRepository - Aviso ao retornar das configurações de bateria', () {
       setUp(() => answerAll(_permissions, AppPermissionStatus.granted));
 
       test(
@@ -764,7 +764,7 @@ void main() {
     });
   });
 
-  group('PermissionsViewModel - requestAlwaysPermission', () {
+  group('PermissionsRepository - requestAlwaysPermission', () {
     /// Answers the permission requests: "durante o uso" with [whenInUse],
     /// "sempre" with [always]; the status checks answer [always].
     void answerPermissions({
@@ -874,7 +874,7 @@ void main() {
     );
   });
 
-  group('PermissionsViewModel - notifyGpsDisabled', () {
+  group('PermissionsRepository - notifyGpsDisabled', () {
     test(
       'Happy Path: Deve delegar o aviso de GPS desligado às perguntas',
       () async {
@@ -894,7 +894,7 @@ void main() {
     );
   });
 
-  group('PermissionsViewModel - start e dispose', () {
+  group('PermissionsRepository - start e dispose', () {
     test(
       'Happy Path: Deve passar a seguir o ciclo de vida do app ao começar',
       () async {

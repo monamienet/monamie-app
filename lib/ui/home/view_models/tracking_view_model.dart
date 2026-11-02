@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 //import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/data/repositories/observed_day/observed_day_repository.dart';
+import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
+import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
-import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
-import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/domain/use_cases/start_sharing.dart';
 import 'package:monamie_app/ui/home/view_models/live_users.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/ui/home/widgets/animated_user_marker.dart';
@@ -26,32 +27,44 @@ import 'package:monamie_app/utils/user_notice.dart';
 ///
 /// Each value is its own [ValueListenable] and notifies only when it
 /// changes: lists, sets and maps are replaced whole, never changed in
-/// place. Whoever creates it calls [start] once, which begins listening to
-/// the other home controllers, and [dispose] once, which removes every
-/// listener and cancels every timer and trail subscription.
+/// place. Whoever creates it calls [start] once, which reads the person's
+/// profile and begins listening to the organization's repositories, and
+/// [dispose] once, which removes every listener and cancels every timer and
+/// trail subscription.
 class TrackingViewModel implements TrackingToggleViewModel {
   /// [notices] shows the warnings raised by background changes, which no
-  /// screen is waiting for. [userCtrl], [permissionsCtrl], [calendar] and
-  /// [groupMap] are the other home view models this one reacts to. The data
-  /// layer comes in too: [service] (the tracking service), [location] (the
-  /// GPS) and [positions] (the groups' positions and trails).
+  /// screen is waiting for. [memberships] (capabilities, the observed group
+  /// and its positions), [observedDay] (the day the map shows) and
+  /// [permissions] are the organization's shared state this one reacts to;
+  /// [profiles] reads the profile saved at sign-in. [startSharing] turns
+  /// sharing on. The data layer comes in too: [service] (the tracking
+  /// service), [location] (the GPS) and [positions] (the groups' positions
+  /// and trails).
   TrackingViewModel({
     required this._notices,
-    required this.userCtrl,
-    required this.permissionsCtrl,
-    required this._calendar,
-    required this._groupMap,
+    required this._memberships,
+    required this._observedDay,
+    required this._permissions,
+    required this._profiles,
+    required this._startSharing,
     required this._service,
     required this._location,
     required this._positions,
   });
 
   final NoticePresenter _notices;
-  final CalendarViewModel _calendar;
-  final GroupMapState _groupMap;
+  final MembershipRepository _memberships;
+  final ObservedDayRepository _observedDay;
+  final PermissionsRepository _permissions;
+  final UserGoogleRepository _profiles;
+  final StartSharing _startSharing;
   final BackgroundTrackingService _service;
   final DeviceLocation _location;
   final PositionsRepository _positions;
+
+  /// The signed-in person (e-mail and name) from the profile saved at
+  /// sign-in, once read by [start]; `null` without one.
+  UserModel? _user;
 
   /// The device's last known position; Niterói until a fix arrives.
   LatLng position = const LatLng(-22.9041, -43.1329);
@@ -79,8 +92,6 @@ class TrackingViewModel implements TrackingToggleViewModel {
   ValueListenable<bool> get isTrackingEnabled => _isTrackingEnabled;
   @override
   ValueListenable<bool> get isTrackingLoading => _isTrackingLoading;
-  final UserViewModel userCtrl;
-  final PermissionsViewModel permissionsCtrl;
 
   /// The compass heading, in degrees, or `null` (the compass is off).
   ValueListenable<double?> get heading => _heading;
@@ -151,7 +162,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
   //StreamSubscription<CompassEvent>? _compassSubscription;
 
   /// Indica se o dia observado no calendário é o dia atual.
-  bool get isObservingToday => _calendar.isObservingToday;
+  bool get isObservingToday => _observedDay.isObservingToday;
 
   /// Mapa de usuários com suas posições animadas para renderização suave.
   final Map<String, AnimatedUserMarker> _animatedMarkers =
@@ -206,31 +217,30 @@ class TrackingViewModel implements TrackingToggleViewModel {
 
   /// Reacts to a new observed group's positions.
   void _onGroupPositionsChanged() =>
-      _onGroupPositions(_groupMap.groupPositions.value);
+      _onGroupPositions(_memberships.groupPositions.value);
 
   /// Recarrega trajetórias destacadas quando o dia observado muda.
   void _onObservedDayChanged() =>
-      onObservedDayChanged(_calendar.observedDay.value);
+      onObservedDayChanged(_observedDay.observedDay.value);
 
   /// Atualiza marcadores ao trocar de grupo (membros observados mudaram).
   void _onObservedMembersChanged() =>
-      _refreshMarkersForObservedDay(_calendar.observedDay.value);
+      _refreshMarkersForObservedDay(_observedDay.observedDay.value);
 
-  /// The person's capabilities arrive after this controller starts: look
+  /// The person's capabilities arrive after this view model starts: look
   /// for the device again when they do.
   void _onCapabilitiesChanged() => _initPosition();
 
-  /// The location permission arrives after this controller starts: look
+  /// The location permission arrives after this view model starts: look
   /// for the device again when it is granted.
   void _onWhenInUsePermissionChanged() {
-    if (permissionsCtrl.hasWhenInUseLocationPermission.value) _initPosition();
+    if (_permissions.hasWhenInUseLocationPermission.value) _initPosition();
   }
 
   /// Avisa se o app passou a ser restrito em segundo plano durante uma
   /// jornada ativa: o rastreamento vai parar quando o app sair da tela.
   void _onBackgroundRestrictedChanged() {
-    if (permissionsCtrl.isBackgroundRestricted.value &&
-        _isTrackingEnabled.value) {
+    if (_permissions.isBackgroundRestricted.value && _isTrackingEnabled.value) {
       _notices.show(
         const UserNotice(
           'O aparelho está restringindo o MonAmie em segundo plano. '
@@ -249,8 +259,8 @@ class TrackingViewModel implements TrackingToggleViewModel {
   /// highlightedObservedUsers.
   void _syncHighlightedTrajectories() {
     if (_disposed) return;
-    final day = _calendar.observedDay.value;
-    final members = _groupMap.highlightedObservedUsers.value;
+    final day = _observedDay.observedDay.value;
+    final members = _memberships.highlightedObservedUsers.value;
 
     final currentEmails = members.map((m) => m.email).toSet();
 
@@ -276,7 +286,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
   /// Inscreve-se na trajetória de um usuário destacado, no grupo observado.
   void _subscribeToHighlightedTrajectory(String email, DateTime day) {
     if (_disposed) return;
-    final groupId = _groupMap.selectedGroup.value?.id;
+    final groupId = _memberships.selectedGroup.value?.id;
     if (groupId == null) return;
     final stream = _positions.getTrajectoryForDate(groupId, email, day: day);
 
@@ -297,7 +307,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
     _highlightedTrajectorySubscriptions.clear();
     _setTrajectories(const {});
 
-    for (final member in _groupMap.highlightedObservedUsers.value) {
+    for (final member in _memberships.highlightedObservedUsers.value) {
       _subscribeToHighlightedTrajectory(member.email, day);
     }
 
@@ -312,11 +322,11 @@ class TrackingViewModel implements TrackingToggleViewModel {
   /// última localização conhecida de cada usuário observado no histórico.
   Future<void> _refreshMarkersForObservedDay(DateTime day) async {
     if (_disposed) return;
-    final groupId = _groupMap.selectedGroup.value?.id;
+    final groupId = _memberships.selectedGroup.value?.id;
     if (groupId == null) return;
 
     if (isObservingToday) {
-      final observedEmails = _groupMap.observedMembers.value
+      final observedEmails = _memberships.observedMembers.value
           .map((m) => m.email)
           .toSet();
       // Verifica, no histórico do dia, quais usuários observados possuem pelo
@@ -376,7 +386,8 @@ class TrackingViewModel implements TrackingToggleViewModel {
     // Dia passado: busca a última posição conhecida no histórico de cada
     // pessoa que já publicou no grupo, inclusive quem não publica mais.
     final observedEmails = {
-      for (final member in await _groupMap.loadHistoryMembers()) member.email,
+      for (final member in await _memberships.loadHistoryMembers())
+        member.email,
     };
     _setUsersWithPoints(const {});
     final futures = <Future<void>>[];
@@ -464,7 +475,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
     }
   }
 
-  /// Takes the observed group's positions (read by [GroupMapState]).
+  /// Takes the observed group's positions (read by [MembershipRepository]).
   void _onGroupPositions(List<UserModel> users) {
     _setList(_groupUsers, users);
     _setList(
@@ -473,24 +484,28 @@ class TrackingViewModel implements TrackingToggleViewModel {
     );
   }
 
-  /// Starts listening to the other home controllers, reads the observed
-  /// group's positions, looks for the device and asks whether the tracking
-  /// service is running. Only the first call does anything; every listener
-  /// added here is removed in [dispose].
+  /// Reads the person's profile, starts listening to the organization's
+  /// repositories, reads the observed group's positions, looks for the
+  /// device and asks whether the tracking service is running. Only the
+  /// first call does anything; every listener added here is removed in
+  /// [dispose].
   Future<void> start() async {
     if (_started || _disposed) return;
     _started = true;
 
+    // Not awaited: the listeners below start at once, as before.
+    _loadProfile();
+
     // The observed group's positions drive the markers and the list.
-    _groupMap.groupPositions.addListener(_onGroupPositionsChanged);
+    _memberships.groupPositions.addListener(_onGroupPositionsChanged);
 
     // Avisa se o app passou a ser restrito em segundo plano durante uma
     // jornada ativa: o rastreamento vai parar quando o app sair da tela.
-    permissionsCtrl.isBackgroundRestricted.addListener(
+    _permissions.isBackgroundRestricted.addListener(
       _onBackgroundRestrictedChanged,
     );
 
-    _onGroupPositions(_groupMap.groupPositions.value);
+    _onGroupPositions(_memberships.groupPositions.value);
 
     // Escuta mudanças na lista de usuários para atualizar as animações
     _firebaseUsers.addListener(_onFirebaseUsersChanged);
@@ -509,25 +524,48 @@ class TrackingViewModel implements TrackingToggleViewModel {
     //}
 
     // Configura listener para highlightedObservedUsers
-    _groupMap.highlightedObservedUsers.addListener(_onHighlightedUsersChanged);
+    _memberships.highlightedObservedUsers.addListener(
+      _onHighlightedUsersChanged,
+    );
 
     // Observa mudanças no observedDay para recarregar trajetórias destacadas
-    _calendar.observedDay.addListener(_onObservedDayChanged);
+    _observedDay.observedDay.addListener(_onObservedDayChanged);
 
     // Observa mudanças nos membros observados para atualizar marcadores ao trocar de grupo
-    _groupMap.observedMembers.addListener(_onObservedMembersChanged);
+    _memberships.observedMembers.addListener(_onObservedMembersChanged);
 
     _initPosition();
     // The person's capabilities and the location permission arrive after this
-    // controller starts: look for the device again when they do.
-    _groupMap.capabilities.addListener(_onCapabilitiesChanged);
-    permissionsCtrl.hasWhenInUseLocationPermission.addListener(
+    // view model starts: look for the device again when they do.
+    _memberships.capabilities.addListener(_onCapabilitiesChanged);
+    _permissions.hasWhenInUseLocationPermission.addListener(
       _onWhenInUsePermissionChanged,
     );
 
     final running = await _service.isRunning();
     _set(_isTrackingEnabled, running);
   }
+
+  /// Reads the profile saved at sign-in: the e-mail and name the tracking
+  /// service publishes.
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await _profiles.getUserGoogleModel();
+      final email = profile?.email ?? '';
+      _user = email.isEmpty
+          ? null
+          : UserModel(email: email, name: profile?.name);
+    } catch (e) {
+      debugPrint('[TrackingViewModel] Could not read the profile: $e');
+    }
+    // The look at the device made by [start] skipped while the profile was
+    // unread: a person who can share sees their position now.
+    _initPosition();
+  }
+
+  /// Whether the person shares their location in some group (the same
+  /// test as `UserViewModel.isTrackable`).
+  bool get _isTrackable => _user != null && _memberships.canPublish;
 
   void _setPosition(LatLng value) {
     position = value;
@@ -538,14 +576,14 @@ class TrackingViewModel implements TrackingToggleViewModel {
 
   Future<void> _initPosition() async {
     // One look at a time; only for people who can share.
-    if (_disposed || _locating || !userCtrl.isTrackable()) return;
+    if (_disposed || _locating || !_isTrackable) return;
     _locating = true;
     try {
       _setPosition(
         await _location.currentPosition().timeout(const Duration(seconds: 5)),
       );
       // A person who only shares has no group on the map: show them.
-      if (!_groupMap.canWatch) {
+      if (!_memberships.canWatch) {
         await centerMapOnCurrentLocation();
       }
     } catch (e) {
@@ -676,65 +714,32 @@ class TrackingViewModel implements TrackingToggleViewModel {
   }
 
   Future<Result<UserNotice?>> _startService() async {
-    // No modo de bateria "Restrito" o Android remove o status de foreground
-    // do serviço assim que o app sai da tela; não adianta iniciar.
-    if (await permissionsCtrl.refreshBackgroundRestriction()) {
-      await permissionsCtrl.openBackgroundUsageSettings();
-      return const Ok(null);
-    }
-
-    // Verifica se GPS está ativado.
-    bool gpsEnabled = await _location.isServiceEnabled();
-    if (!gpsEnabled) {
-      permissionsCtrl.notifyGpsDisabled();
-      // Interrompe a execução para não iniciar o serviço sem GPS
-      return const Ok(null);
-    }
-
-    // The rules only accept positions from people who publish in a group;
-    // the service publishes in every one of them.
-    if (!_groupMap.canPublish) {
-      debugPrint('[TrackingViewModel] The user publishes in no group.');
+    // Without the profile the service would have no one to publish as:
+    // refuse before starting it.
+    if (_user == null) {
       return const Err(
-        'Você não está em campo em nenhum grupo. Peça a um administrador '
-        'para liberar o compartilhamento da sua localização.',
-        title: 'Compartilhamento não autorizado',
+        'Não foi possível alterar o compartilhamento agora. Tente de novo.',
+        title: 'Compartilhamento',
       );
     }
-
-    // Tenta obter a posição GPS atual para sincronizar imediatamente
-    UserNotice? notice;
-    try {
-      _setPosition(
-        await _location.currentPosition().timeout(const Duration(seconds: 5)),
-      );
-    } catch (e) {
-      debugPrint(
-        '[TrackingViewModel] Erro ao obter posição atual imediata: $e',
-      );
-      // The service still starts: the person hears that the satellites
-      // are still syncing.
-      notice = const UserNotice(
-        'O monitoramento foi iniciado, mas a sua posição inicial ainda está sendo obtida pelos satélites.',
-        title: 'Aguardando sinal de GPS',
-      );
+    final result = await _startSharing(onPosition: _setPosition);
+    final SharingStart started;
+    switch (result) {
+      case Err(:final message, :final title, :final error, :final stackTrace):
+        return Err(message, title: title, error: error, stackTrace: stackTrace);
+      case Ok(:final value) when !value.started:
+        return const Ok(null);
+      case Ok(:final value):
+        started = value;
     }
 
     await _readySubscription?.cancel();
     await _locationSubscription?.cancel();
-    await _service.start(
-      notificationTitle: "Sua localização está sendo compartilhada",
-      notificationContent:
-          "O compartilhamento está ligado. Para preservar sua privacidade, certifique-se de desativá-lo assim que terminar suas atividades.",
-    );
 
     // Este listener ouve o serviço em foreground avisar que está pronto para
     // receber informações do usuário.
     _readySubscription = _service.ready.listen((_) {
-      _service.sendUser(
-        email: userCtrl.user!.email,
-        name: userCtrl.getUserName(),
-      );
+      _service.sendUser(email: _user!.email, name: _user!.publishedName);
     });
 
     // Este listener ouve atualizações da posição por parte do serviço em
@@ -751,11 +756,11 @@ class TrackingViewModel implements TrackingToggleViewModel {
     _set(_isTrackingEnabled, true);
 
     // Registra imediatamente que o usuário atual possui ponto no dia de hoje
-    _addUserWithPoints(userCtrl.user!.email);
+    _addUserWithPoints(_user!.email);
 
     // The service turns `isPublishing` on in every group and publishes the
     // positions: this screen writes nothing while sharing.
-    return Ok(notice);
+    return Ok(started.notice);
   }
 
   Future<void> _stopService() async {
@@ -766,7 +771,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
     _service.stop();
     _set(_isTrackingEnabled, false);
     try {
-      await _positions.markNotPublishing(userCtrl.user!.email);
+      await _positions.markNotPublishing(_user!.email);
     } catch (e) {
       debugPrint('[TrackingViewModel] Erro ao desativar isPublishing: $e');
     }
@@ -779,17 +784,17 @@ class TrackingViewModel implements TrackingToggleViewModel {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    _groupMap.groupPositions.removeListener(_onGroupPositionsChanged);
-    _groupMap.highlightedObservedUsers.removeListener(
+    _memberships.groupPositions.removeListener(_onGroupPositionsChanged);
+    _memberships.highlightedObservedUsers.removeListener(
       _onHighlightedUsersChanged,
     );
-    _calendar.observedDay.removeListener(_onObservedDayChanged);
-    _groupMap.observedMembers.removeListener(_onObservedMembersChanged);
-    _groupMap.capabilities.removeListener(_onCapabilitiesChanged);
-    permissionsCtrl.isBackgroundRestricted.removeListener(
+    _observedDay.observedDay.removeListener(_onObservedDayChanged);
+    _memberships.observedMembers.removeListener(_onObservedMembersChanged);
+    _memberships.capabilities.removeListener(_onCapabilitiesChanged);
+    _permissions.isBackgroundRestricted.removeListener(
       _onBackgroundRestrictedChanged,
     );
-    permissionsCtrl.hasWhenInUseLocationPermission.removeListener(
+    _permissions.hasWhenInUseLocationPermission.removeListener(
       _onWhenInUsePermissionChanged,
     );
     _firebaseUsers.removeListener(_onFirebaseUsersChanged);

@@ -1,6 +1,6 @@
 // check_layers: state_contract
 
-/// The questions `PermissionsViewModel` asks in the middle of a permission
+/// The questions `PermissionsRepository` asks in the middle of a permission
 /// flow. The widget layer implements them with dialogs
 /// (`DialogPermissionPrompts`); tests replace them with mocks.
 abstract class PermissionPrompts {

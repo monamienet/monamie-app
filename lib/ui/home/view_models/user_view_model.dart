@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/data/model/user_google_model.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
 import 'package:monamie_app/ui/home/view_models/user_state.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 
@@ -14,11 +14,11 @@ export 'user_state.dart';
 /// Whoever creates it calls [start] once, which reads the profile, and
 /// [dispose] once.
 class UserViewModel extends ChangeNotifier {
-  /// [groupMap] says whether the person publishes in some group;
+  /// [memberships] says whether the person publishes in some group;
   /// [repository] reads the profile saved at sign-in (Hive).
-  UserViewModel({required this._groupMap, required this._repository});
+  UserViewModel({required this._memberships, required this._repository});
 
-  final GroupMapState _groupMap;
+  final MembershipRepository _memberships;
   final UserGoogleRepository _repository;
 
   UserState _state = const UserState();
@@ -67,12 +67,10 @@ class UserViewModel extends ChangeNotifier {
 
   /// Whether the person shares their location in some group, so the map
   /// shows the sharing switch.
-  bool isTrackable() => _state.user?.email != null && _groupMap.canPublish;
+  bool isTrackable() => _state.user?.email != null && _memberships.canPublish;
 
-  String getUserName() {
-    final name = user?.name?.trim();
-    return name == null || name.isEmpty ? 'Nome não informado' : name;
-  }
+  /// The name the tracking service publishes ([UserModel.publishedName]).
+  String getUserName() => user?.publishedName ?? UserModel.noName;
 
   /// Only the first call does anything.
   @override

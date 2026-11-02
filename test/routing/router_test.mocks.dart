@@ -38,10 +38,8 @@ import 'package:monamie_app/data/repositories/positions/positions_repository.dar
     as _i40;
 import 'package:monamie_app/data/repositories/theme/theme_repository.dart'
     as _i44;
-import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart'
-    as _i45;
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart'
-    as _i47;
+    as _i45;
 import 'package:monamie_app/data/services/auth/auth_google_service.dart'
     as _i16;
 import 'package:monamie_app/data/services/auth/google_bond_check.dart' as _i25;
@@ -70,7 +68,6 @@ import 'package:monamie_app/domain/models/organization/organization_config.dart'
     as _i4;
 import 'package:monamie_app/domain/models/organization/organization_theme.dart'
     as _i14;
-import 'package:monamie_app/domain/models/tracking_settings.dart' as _i46;
 import 'package:monamie_app/domain/models/user_model.dart' as _i41;
 import 'package:monamie_app/utils/notice_presenter.dart' as _i32;
 import 'package:monamie_app/utils/result.dart' as _i8;
@@ -1465,45 +1462,11 @@ class MockThemeRepository extends _i1.Mock implements _i44.ThemeRepository {
           as _i7.Future<Map<String, _i14.OrganizationTheme>>);
 }
 
-/// A class which mocks [TrackingSettingsRepository].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockTrackingSettingsRepository extends _i1.Mock
-    implements _i45.TrackingSettingsRepository {
-  @override
-  _i7.Stream<_i46.TrackingSettings> watch() =>
-      (super.noSuchMethod(
-            Invocation.method(#watch, []),
-            returnValue: _i7.Stream<_i46.TrackingSettings>.empty(),
-            returnValueForMissingStub:
-                _i7.Stream<_i46.TrackingSettings>.empty(),
-          )
-          as _i7.Stream<_i46.TrackingSettings>);
-
-  @override
-  _i7.Future<int> minPeriodMinutes() =>
-      (super.noSuchMethod(
-            Invocation.method(#minPeriodMinutes, []),
-            returnValue: _i7.Future<int>.value(0),
-            returnValueForMissingStub: _i7.Future<int>.value(0),
-          )
-          as _i7.Future<int>);
-
-  @override
-  _i7.Future<void> save(_i46.TrackingSettings? settings) =>
-      (super.noSuchMethod(
-            Invocation.method(#save, [settings]),
-            returnValue: _i7.Future<void>.value(),
-            returnValueForMissingStub: _i7.Future<void>.value(),
-          )
-          as _i7.Future<void>);
-}
-
 /// A class which mocks [UserGoogleRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockUserGoogleRepository extends _i1.Mock
-    implements _i47.UserGoogleRepository {
+    implements _i45.UserGoogleRepository {
   @override
   _i7.Future<_i5.UserGoogleModel> saveGoogleProfile(
     String? email,

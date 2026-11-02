@@ -20,7 +20,6 @@ import 'package:monamie_app/data/repositories/organization/organization_director
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
-import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
 import 'package:monamie_app/data/services/auth/google_bond_check.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/data/services/background_tracking_service.dart';
@@ -29,7 +28,6 @@ import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/data/services/permissions_service.dart';
 import 'package:monamie_app/domain/models/administrators.dart';
-import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/repositories/organization/organization_binder.dart';
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
@@ -76,7 +74,6 @@ import 'package:provider/single_child_widget.dart';
   MockSpec<PermissionsService>(),
   MockSpec<PositionsRepository>(),
   MockSpec<ThemeRepository>(),
-  MockSpec<TrackingSettingsRepository>(),
   MockSpec<UserGoogleRepository>(),
 ])
 import 'router_test.mocks.dart';
@@ -90,16 +87,13 @@ import 'router_test.mocks.dart';
 class _App {
   _App() {
     when(stopper.stop(email: anyNamed('email'))).thenAnswer((_) async => true);
-    // The organization's scope builds the real permissions view model: every
+    // The organization's scope builds the real permissions repository: every
     // permission answers "denied".
     when(permissions.isGranted(any)).thenAnswer((_) async => false);
     when(permissions.isPermanentlyDenied(any)).thenAnswer((_) async => false);
     when(
       permissions.request(any),
     ).thenAnswer((_) async => AppPermissionStatus.denied);
-    when(
-      trackingSettings.watch(),
-    ).thenAnswer((_) => Stream.value(TrackingSettings.defaults));
     // *Administradores* reads an organization with nobody in it.
     when(
       administrators.list(any),
@@ -138,7 +132,6 @@ class _App {
   final deletion = MockAccountDeletionRepository();
   final positions = MockPositionsRepository();
   final permissions = MockPermissionsService();
-  final trackingSettings = MockTrackingSettingsRepository();
   final administrators = MockAdministratorsRepository();
 
   /// The data layer the routes read, as `appDependencies` provides it in
@@ -154,7 +147,6 @@ class _App {
     Provider<AdministratorsRepository>.value(value: administrators),
     Provider<AppearanceRepository>.value(value: MockAppearanceRepository()),
     Provider<CreationRepository>.value(value: MockCreationRepository()),
-    Provider<TrackingSettingsRepository>.value(value: trackingSettings),
     Provider<MembershipService>.value(value: MockMembershipService()),
     Provider<PositionsRepository>.value(value: positions),
     Provider<BackgroundTrackingService>.value(

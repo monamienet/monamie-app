@@ -1,26 +1,31 @@
 import 'package:flutter/foundation.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/data/repositories/observed_day/observed_day_repository.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/domain/models/history_month.dart';
 
-/// The day the map shows (today or a past day) and the month of the history
-/// calendar. Each value is its own [ValueListenable], so the tracking
-/// controller follows the observed day alone. Whoever creates it calls
-/// [dispose] once.
+/// The history calendar: the month it shows and its trail days, over the
+/// day the map shows ([ObservedDayRepository], which the tracking view model
+/// follows too). Each value is its own [ValueListenable]. Whoever creates it
+/// calls [dispose] once.
 class CalendarViewModel {
-  /// [groupMap] gives the observed group and its history members;
-  /// [positions] reads the trail days.
-  CalendarViewModel({required this._groupMap, required this._positions});
+  /// [memberships] gives the observed group and its history members;
+  /// [observedDay] holds the day the map shows; [positions] reads the trail
+  /// days.
+  CalendarViewModel({
+    required this._memberships,
+    required this._observedDay,
+    required this._positions,
+  });
 
-  final GroupMapState _groupMap;
+  final MembershipRepository _memberships;
+  final ObservedDayRepository _observedDay;
   final PositionsRepository _positions;
-
-  final _observedDay = ValueNotifier<DateTime>(_today());
 
   late final _viewMonth = ValueNotifier<HistoryMonth>(
     HistoryMonth(
-      year: _observedDay.value.year,
-      month: _observedDay.value.month,
+      year: observedDay.value.year,
+      month: observedDay.value.month,
       today: DateTime.now(),
     ),
   );
@@ -29,13 +34,8 @@ class CalendarViewModel {
 
   bool _disposed = false;
 
-  static DateTime _today() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day);
-  }
-
-  /// The day the map shows, at midnight.
-  ValueListenable<DateTime> get observedDay => _observedDay;
+  /// The day the map shows, at midnight ([ObservedDayRepository]).
+  ValueListenable<DateTime> get observedDay => _observedDay.observedDay;
 
   /// The month shown by the history calendar.
   ValueListenable<HistoryMonth> get viewMonth => _viewMonth;
@@ -43,11 +43,12 @@ class CalendarViewModel {
   /// Whether the trail days of [viewMonth] are being read.
   ValueListenable<bool> get isLoadingMonth => _isLoadingMonth;
 
-  bool get isObservingToday => _observedDay.value == _today();
+  bool get isObservingToday => _observedDay.isObservingToday;
 
   String get observedDayFormatted {
-    final d = _observedDay.value;
-    final today = _today();
+    final d = observedDay.value;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
 
     if (d == today) return 'Hoje';
@@ -61,12 +62,14 @@ class CalendarViewModel {
     if (!_disposed) notifier.value = value;
   }
 
-  void goToToday() => _set(_observedDay, _today());
+  void goToToday() {
+    if (!_disposed) _observedDay.goToToday();
+  }
 
   /// Prepares *Histórico por data* (the screen then opens the sheet): shows
   /// the observed day's month and starts loading its trail days.
   void showObservedMonth() {
-    final day = _observedDay.value;
+    final day = observedDay.value;
     _set(
       _viewMonth,
       HistoryMonth(year: day.year, month: day.month, today: DateTime.now()),
@@ -82,7 +85,7 @@ class CalendarViewModel {
 
   /// Observes [day] (the map redraws that day's trails).
   void selectDay(DateTime day) {
-    _set(_observedDay, DateTime(day.year, day.month, day.day));
+    if (!_disposed) _observedDay.select(day);
   }
 
   /// Marks the days of the shown month when someone shared their location
@@ -90,12 +93,13 @@ class CalendarViewModel {
   /// (one summary read per person and day).
   Future<void> _loadTrailDays() async {
     final month = _viewMonth.value;
-    final groupId = _groupMap.selectedGroup.value?.id;
+    final groupId = _memberships.selectedGroup.value?.id;
     if (groupId == null || _disposed) return;
     _set(_isLoadingMonth, true);
     try {
       final emails = [
-        for (final member in await _groupMap.loadHistoryMembers()) member.email,
+        for (final member in await _memberships.loadHistoryMembers())
+          member.email,
       ];
       final days = await _positions.trailDays(groupId, emails, month);
       if (_viewMonth.value.first == month.first) {
@@ -112,7 +116,6 @@ class CalendarViewModel {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    _observedDay.dispose();
     _viewMonth.dispose();
     _isLoadingMonth.dispose();
   }

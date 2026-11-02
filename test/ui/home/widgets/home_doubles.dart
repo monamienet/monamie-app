@@ -5,7 +5,7 @@ import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
 import 'package:monamie_app/domain/models/capabilities.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/data/services/call_service.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
@@ -15,14 +15,14 @@ import 'package:monamie_app/domain/models/user_model.dart';
 @GenerateNiceMocks([
   MockSpec<CalendarViewModel>(),
   MockSpec<CallService>(),
-  MockSpec<GroupMapState>(),
+  MockSpec<MembershipRepository>(),
   MockSpec<TrackingViewModel>(),
   MockSpec<UserViewModel>(),
 ])
 import 'home_doubles.mocks.dart';
 
-/// The home controllers as mocks, handed to the widgets by the tests. The
-/// [GroupMapState], calendar and tracking values are plain [ValueNotifier]s the test
+/// The home view models and the memberships repository as mocks, handed to the widgets by the tests. The
+/// [MembershipRepository], calendar and tracking values are plain [ValueNotifier]s the test
 /// changes to drive the widgets; the capability getters follow
 /// [capabilities].
 class HomeDoubles {
@@ -56,7 +56,7 @@ class HomeDoubles {
     when(tracking.usersWithPointsOnObservedDay).thenReturn(usersWithPoints);
   }
 
-  final groups = MockGroupMapState();
+  final groups = MockMembershipRepository();
   final calendar = MockCalendarViewModel();
   final tracking = MockTrackingViewModel();
   final calls = MockCallService();

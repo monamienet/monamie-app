@@ -24,8 +24,6 @@ import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/data/repositories/session/session_repository_google.dart';
 import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/data/repositories/theme/theme_repository_firestore.dart';
-import 'package:monamie_app/data/repositories/tracking/firestore_tracking_settings_repository.dart';
-import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/auth/auth_google_service.dart';
 import 'package:monamie_app/data/services/auth/google_bond_check.dart';
@@ -63,7 +61,10 @@ import 'package:provider/single_child_widget.dart';
 ///
 /// None of them holds the bound organization: each reaches the
 /// organization's Firebase project when called, so they survive switching
-/// organization.
+/// organization. What does hold it (the memberships, the observed day, the
+/// permissions, the tracking settings and the `StartSharing` use case over
+/// them) is created by `OrganizationScope`, with the organization's view
+/// models.
 ///
 /// [organizationSession] and [brandingLoader] come from [createOrganizationSession]
 /// and [createBrandingLoader]: `main` uses them before the app runs, to
@@ -104,7 +105,8 @@ List<SingleChildWidget> appDependencies({
   Provider<PositionsFirestoreService>(
     create: (_) => const PositionsFirestoreService(),
   ),
-  // The map, the calendar and tracking read positions, trails and days.
+  // The memberships, the calendar and tracking read positions, trails and
+  // days.
   Provider<PositionsRepository>(
     create: (context) => PositionsRepositoryFirestore(
       positions: context.read(),
@@ -158,9 +160,6 @@ List<SingleChildWidget> appDependencies({
   ),
   Provider<CreationRepository>(
     create: (context) => CreationRepositoryRemote(functions: context.read()),
-  ),
-  Provider<TrackingSettingsRepository>(
-    create: (_) => const FirestoreTrackingSettingsRepository(),
   ),
   Provider<DeviceLocation>(create: (_) => const GeolocatorDeviceLocation()),
   Provider<PermissionsService>(create: (_) => const PermissionsService()),

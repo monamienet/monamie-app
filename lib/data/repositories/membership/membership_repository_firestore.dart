@@ -5,25 +5,26 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/domain/models/capabilities.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
-import 'package:monamie_app/ui/home/view_models/map_groups.dart';
+import 'package:monamie_app/data/repositories/membership/map_groups.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 
-/// [GroupMapState] over the bound organization's Firestore: listens to the
-/// person's own `organizationMemberships` and `groupMemberships` documents
-/// (so a change made by an administrator shows at once), to the names of
-/// the groups they may read, and to the positions of the group on the map.
+/// [MembershipRepository] over the bound organization's Firestore: listens
+/// to the person's own `organizationMemberships` and `groupMemberships`
+/// documents (so a change made by an administrator shows at once), to the
+/// names of the groups they may read, and to the positions of the group on
+/// the map.
 ///
 /// A missing organization membership means the person was removed: the app
 /// forgets the organization ([onAccessLost]).
 ///
 /// Whoever creates it calls [start] once, to begin listening, and [dispose]
 /// once, which cancels every Firestore subscription.
-class GroupMapViewModel implements GroupMapState {
-  GroupMapViewModel({
+class MembershipRepositoryFirestore implements MembershipRepository {
+  MembershipRepositoryFirestore({
     required this._onAccessLost,
     required this._memberships,
     required this._positions,
@@ -139,7 +140,7 @@ class GroupMapViewModel implements GroupMapState {
     final organizationId = _organizationId();
     final email = _email();
     if (organizationId == null || email == null) {
-      debugPrint('[GroupMap] No organization or no signed-in person.');
+      debugPrint('[Memberships] No organization or no signed-in person.');
       _set(_loadError, 'not_authenticated');
       _set(_isLoading, false);
       return;
@@ -165,7 +166,7 @@ class GroupMapViewModel implements GroupMapState {
   }
 
   void _onLoadError(Object e) {
-    debugPrint('[GroupMap] Could not read the memberships: $e');
+    debugPrint('[Memberships] Could not read the memberships: $e');
     _set(_loadError, '$e');
     _set(_isLoading, false);
   }
@@ -214,7 +215,7 @@ class GroupMapViewModel implements GroupMapState {
               _refreshGroups();
             },
             onError: (Object e) =>
-                debugPrint('[GroupMap] Could not list the groups: $e'),
+                debugPrint('[Memberships] Could not list the groups: $e'),
           );
       return;
     }
@@ -240,7 +241,7 @@ class GroupMapViewModel implements GroupMapState {
             },
             onError: (Object e) {
               // Lost access to the group in the meantime.
-              debugPrint('[GroupMap] Could not read group $id: $e');
+              debugPrint('[Memberships] Could not read group $id: $e');
               _names.remove(id);
               _refreshGroups();
             },
@@ -303,7 +304,7 @@ class GroupMapViewModel implements GroupMapState {
             if (!first.isCompleted) first.complete();
           },
           onError: (Object e) {
-            debugPrint('[GroupMap] Could not read group ${group.id}: $e');
+            debugPrint('[Memberships] Could not read group ${group.id}: $e');
             _setList(_groupPositions, const <UserModel>[]);
             _setList(_observedMembers, const <GroupMember>[]);
             if (!first.isCompleted) first.complete();
@@ -344,7 +345,7 @@ class GroupMapViewModel implements GroupMapState {
               })
               .catchError((Object e) {
                 // The menu then shows only the group's name.
-                debugPrint('[GroupMap] Could not count ${group.id}: $e');
+                debugPrint('[Memberships] Could not count ${group.id}: $e');
                 return 0;
               }),
       ]);
@@ -365,7 +366,7 @@ class GroupMapViewModel implements GroupMapState {
       }
       return members;
     } catch (e) {
-      debugPrint('[GroupMap] Could not read the history of ${group.id}: $e');
+      debugPrint('[Memberships] Could not read the history of ${group.id}: $e');
       final history = _historyMembers.value;
       return history.isEmpty ? _observedMembers.value : history;
     }

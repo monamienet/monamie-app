@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/data/services/call_service.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/home_layout.dart';
@@ -29,7 +29,7 @@ class HomeSheet extends StatefulWidget {
     required this.user,
   });
 
-  final GroupMapState groups;
+  final MembershipRepository groups;
   final TrackingViewModel tracking;
   final CalendarViewModel calendar;
   final CallService calls;
@@ -40,7 +40,7 @@ class HomeSheet extends StatefulWidget {
 }
 
 class _HomeSheetState extends State<HomeSheet> {
-  GroupMapState get _groups => widget.groups;
+  MembershipRepository get _groups => widget.groups;
 
   /// Whether the group's list is hidden.
   bool _collapsed = false;

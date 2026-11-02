@@ -1,9 +1,32 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/data/repositories/tracking/firestore_tracking_settings_repository.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 
 TrackingSettings settingsOf(int minutes, int meters) =>
     TrackingSettings(periodMinutes: minutes, radiusMeters: meters);
+
+const _kFrequent = TrackingSettings(periodMinutes: 5, radiusMeters: 50);
+
+/// A [FirestoreTrackingSettingsRepository] whose [watch] emits what the test
+/// adds to [source] instead of reading Firestore, so [start], [settings] and
+/// [dispose] run as they are.
+class _WatchedRepository extends FirestoreTrackingSettingsRepository {
+  _WatchedRepository(this.source);
+
+  final StreamController<TrackingSettings> source;
+  int watchCalls = 0;
+
+  @override
+  Stream<TrackingSettings> watch() {
+    watchCalls++;
+    return source.stream;
+  }
+}
+
+_WatchedRepository _repository() =>
+    _WatchedRepository(StreamController<TrackingSettings>());
 
 void main() {
   group('trackingSettingsFromFirestore - Unit Test Suite', () {
@@ -195,5 +218,163 @@ void main() {
       // 3. Assert
       expect(data.keys, unorderedEquals(['intervalMinutes', 'distanceMeters']));
     });
+  });
+
+  group('FirestoreTrackingSettingsRepository.settings - Unit Test Suite', () {
+    test(
+      'Happy Path: Deve guardar cada valor salvo que o repositório emite',
+      () async {
+        // 1. Arrange
+        final repository = _repository()..start();
+
+        // 2. Act
+        repository.source.add(_kFrequent);
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(repository.settings.value.periodMinutes, 5);
+        expect(repository.settings.value.radiusMeters, 50);
+        repository.dispose();
+      },
+    );
+
+    test(
+      'Edge Case: Deve começar com os valores padrão antes da primeira leitura',
+      () {
+        // 1. Arrange
+        final repository = _repository();
+
+        // 2. Act
+        repository.start();
+
+        // 3. Assert
+        expect(
+          repository.settings.value.periodMinutes,
+          TrackingSettings.defaults.periodMinutes,
+        );
+        repository.dispose();
+      },
+    );
+
+    test(
+      'Sad Path: Deve ignorar um erro do repositório e continuar recebendo valores',
+      () async {
+        // 1. Arrange
+        final repository = _repository()..start();
+
+        // 2. Act
+        repository.source.addError(StateError('permissão negada'));
+        repository.source.add(_kFrequent);
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(repository.settings.value.periodMinutes, 5);
+        repository.dispose();
+      },
+    );
+
+    test('Happy Path: Deve parar de ouvir o repositório ao fechar', () {
+      // 1. Arrange
+      final repository = _repository()..start();
+
+      // 2. Act
+      repository.dispose();
+
+      // 3. Assert
+      expect(repository.source.hasListener, isFalse);
+    });
+
+    test(
+      'Happy Path: Deve avisar uma vez quando chega um valor salvo diferente',
+      () async {
+        // 1. Arrange
+        final repository = _repository()..start();
+        var notified = 0;
+        repository.settings.addListener(() => notified++);
+
+        // 2. Act
+        repository.source.add(_kFrequent);
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(notified, 1);
+        repository.dispose();
+      },
+    );
+
+    test(
+      'Edge Case: Não deve avisar quando o repositório emite de novo o mesmo valor',
+      () async {
+        // 1. Arrange
+        final repository = _repository()..start();
+        repository.source.add(_kFrequent);
+        await pumpEventQueue();
+        var notified = 0;
+        repository.settings.addListener(() => notified++);
+
+        // 2. Act
+        repository.source.add(
+          const TrackingSettings(periodMinutes: 5, radiusMeters: 50),
+        );
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(notified, 0);
+        repository.dispose();
+      },
+    );
+
+    test(
+      'Edge Case: Deve ouvir o repositório uma vez só quando start() é chamado duas vezes',
+      () {
+        // 1. Arrange
+        final repository = _repository()..start();
+
+        // 2. Act
+        repository.start();
+
+        // 3. Assert
+        expect(repository.watchCalls, 1);
+        repository.dispose();
+      },
+    );
+
+    test('Edge Case: Deve aceitar um segundo dispose() sem lançar', () {
+      // 1. Arrange
+      final repository = _repository()..start();
+      repository.dispose();
+
+      // 2. Act
+      void act() => repository.dispose();
+
+      // 3. Assert
+      expect(act, returnsNormally);
+    });
+
+    test('Edge Case: Deve aceitar dispose() sem start() sem lançar', () {
+      // 1. Arrange
+      final repository = _repository();
+
+      // 2. Act
+      void act() => repository.dispose();
+
+      // 3. Assert
+      expect(act, returnsNormally);
+    });
+
+    test(
+      'Sad Path: Não deve ouvir o repositório com start() depois de dispose()',
+      () {
+        // 1. Arrange
+        final repository = _repository()..dispose();
+
+        // 2. Act
+        repository.start();
+
+        // 3. Assert
+        expect(repository.source.hasListener, isFalse);
+        expect(repository.watchCalls, 0);
+      },
+    );
   });
 }

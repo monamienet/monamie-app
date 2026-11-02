@@ -5,11 +5,11 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/data/model/user_google_model.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 
 @GenerateNiceMocks([
-  MockSpec<GroupMapState>(),
+  MockSpec<MembershipRepository>(),
   MockSpec<UserGoogleRepository>(),
 ])
 import 'user_view_model_test.mocks.dart';
@@ -21,14 +21,14 @@ UserViewModel _controller({
   Object? error,
   bool canPublish = true,
 }) {
-  final groupMap = MockGroupMapState();
-  when(groupMap.canPublish).thenReturn(canPublish);
+  final memberships = MockMembershipRepository();
+  when(memberships.canPublish).thenReturn(canPublish);
   final repository = MockUserGoogleRepository();
   when(repository.getUserGoogleModel()).thenAnswer((_) async {
     if (error != null) throw error;
     return stored;
   });
-  return UserViewModel(groupMap: groupMap, repository: repository);
+  return UserViewModel(memberships: memberships, repository: repository);
 }
 
 void main() {
@@ -176,6 +176,22 @@ void main() {
         expect(name, 'Nome não informado');
       },
     );
+
+    test(
+      'Sad Path: Deve devolver "Nome não informado" antes de ler o perfil',
+      () {
+        // 1. Arrange
+        final controller = _controller(
+          stored: UserGoogleModel(email: 'ana@example.com', name: 'Ana'),
+        );
+
+        // 2. Act
+        final name = controller.getUserName();
+
+        // 3. Assert
+        expect(name, 'Nome não informado');
+      },
+    );
   });
 
   group('UserViewModel - avisos, start e dispose', () {
@@ -220,11 +236,11 @@ void main() {
     test('Edge Case: Deve ler o perfil uma vez só quando start() é chamado '
         'duas vezes', () async {
       // 1. Arrange
-      final groupMap = MockGroupMapState();
+      final memberships = MockMembershipRepository();
       final repository = MockUserGoogleRepository();
       when(repository.getUserGoogleModel()).thenAnswer((_) async => null);
       final controller = UserViewModel(
-        groupMap: groupMap,
+        memberships: memberships,
         repository: repository,
       );
       await controller.start();
@@ -239,12 +255,12 @@ void main() {
     test('Sad Path: Deve terminar sem erro a leitura que acaba depois do '
         'dispose', () async {
       // 1. Arrange
-      final groupMap = MockGroupMapState();
+      final memberships = MockMembershipRepository();
       final repository = MockUserGoogleRepository();
       final stored = Completer<UserGoogleModel?>();
       when(repository.getUserGoogleModel()).thenAnswer((_) => stored.future);
       final controller = UserViewModel(
-        groupMap: groupMap,
+        memberships: memberships,
         repository: repository,
       );
       final pending = controller.start();

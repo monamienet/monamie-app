@@ -8,14 +8,12 @@ import 'dart:async' as _i4;
 
 import 'package:latlong2/latlong.dart' as _i5;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i15;
+import 'package:mockito/src/dummies.dart' as _i13;
 import 'package:monamie_app/data/model/user_google_model.dart' as _i2;
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart'
     as _i8;
-import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart'
-    as _i12;
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart'
-    as _i14;
+    as _i12;
 import 'package:monamie_app/data/services/background_tracking_service.dart'
     as _i3;
 import 'package:monamie_app/data/services/firestore/membership_service.dart'
@@ -23,7 +21,6 @@ import 'package:monamie_app/data/services/firestore/membership_service.dart'
 import 'package:monamie_app/data/services/permissions_service.dart' as _i7;
 import 'package:monamie_app/domain/models/history_month.dart' as _i10;
 import 'package:monamie_app/domain/models/location_point.dart' as _i11;
-import 'package:monamie_app/domain/models/tracking_settings.dart' as _i13;
 import 'package:monamie_app/domain/models/user_model.dart' as _i9;
 
 // ignore_for_file: type=lint
@@ -339,45 +336,11 @@ class MockPositionsRepository extends _i1.Mock
           as _i4.Future<void>);
 }
 
-/// A class which mocks [TrackingSettingsRepository].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockTrackingSettingsRepository extends _i1.Mock
-    implements _i12.TrackingSettingsRepository {
-  @override
-  _i4.Stream<_i13.TrackingSettings> watch() =>
-      (super.noSuchMethod(
-            Invocation.method(#watch, []),
-            returnValue: _i4.Stream<_i13.TrackingSettings>.empty(),
-            returnValueForMissingStub:
-                _i4.Stream<_i13.TrackingSettings>.empty(),
-          )
-          as _i4.Stream<_i13.TrackingSettings>);
-
-  @override
-  _i4.Future<int> minPeriodMinutes() =>
-      (super.noSuchMethod(
-            Invocation.method(#minPeriodMinutes, []),
-            returnValue: _i4.Future<int>.value(0),
-            returnValueForMissingStub: _i4.Future<int>.value(0),
-          )
-          as _i4.Future<int>);
-
-  @override
-  _i4.Future<void> save(_i13.TrackingSettings? settings) =>
-      (super.noSuchMethod(
-            Invocation.method(#save, [settings]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
-          )
-          as _i4.Future<void>);
-}
-
 /// A class which mocks [UserGoogleRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockUserGoogleRepository extends _i1.Mock
-    implements _i14.UserGoogleRepository {
+    implements _i12.UserGoogleRepository {
   @override
   _i4.Future<_i2.UserGoogleModel> saveGoogleProfile(
     String? email,
@@ -420,13 +383,13 @@ class MockUserGoogleRepository extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#saveUserGoogleModel, [user]),
             returnValue: _i4.Future<String>.value(
-              _i15.dummyValue<String>(
+              _i13.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
             ),
             returnValueForMissingStub: _i4.Future<String>.value(
-              _i15.dummyValue<String>(
+              _i13.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
@@ -448,13 +411,13 @@ class MockUserGoogleRepository extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#deleteUserGoogleModel, []),
             returnValue: _i4.Future<String>.value(
-              _i15.dummyValue<String>(
+              _i13.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
             ),
             returnValueForMissingStub: _i4.Future<String>.value(
-              _i15.dummyValue<String>(
+              _i13.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
@@ -467,13 +430,13 @@ class MockUserGoogleRepository extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#clearAllUserGoogle, []),
             returnValue: _i4.Future<String>.value(
-              _i15.dummyValue<String>(
+              _i13.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),
             ),
             returnValueForMissingStub: _i4.Future<String>.value(
-              _i15.dummyValue<String>(
+              _i13.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),

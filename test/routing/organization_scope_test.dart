@@ -14,13 +14,13 @@ import 'package:monamie_app/data/services/geolocator_device_location.dart';
 import 'package:monamie_app/data/services/method_channel_background_restriction_checker.dart';
 import 'package:monamie_app/data/services/method_channel_background_usage_settings_launcher.dart';
 import 'package:monamie_app/data/services/permissions_service.dart';
-import 'package:monamie_app/domain/models/tracking_settings.dart';
-import 'package:monamie_app/data/repositories/tracking/tracking_settings_controller.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/data/repositories/observed_day/observed_day_repository.dart';
+import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
+import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/repositories/session/session_state.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
-import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/routing/organization_scope.dart';
@@ -34,32 +34,33 @@ import 'package:provider/single_child_widget.dart';
   MockSpec<MembershipService>(),
   MockSpec<PermissionsService>(),
   MockSpec<PositionsRepository>(),
-  MockSpec<TrackingSettingsRepository>(),
   MockSpec<UserGoogleRepository>(),
 ])
 import 'organization_scope_test.mocks.dart';
 
 /// What the home route's page read, as it builds.
-GroupMapState? groupMap;
+MembershipRepository? groupMap;
+ObservedDayRepository? observedDay;
 CalendarViewModel? calendar;
 TrackingViewModel? tracking;
-PermissionsViewModel? permissions;
-TrackingSettingsController? settings;
+PermissionsRepository? permissions;
+TrackingSettingsRepository? settings;
 UserViewModel? user;
 
 /// What the admin route's page read, as it builds.
-GroupMapState? adminGroupMap;
+MembershipRepository? adminGroupMap;
 UserViewModel? adminUser;
-TrackingSettingsController? adminSettings;
+TrackingSettingsRepository? adminSettings;
 
 /// A router opening on `/start` (outside the organization), with the
 /// organization's shell ([OrganizationScope]) holding `/home`, whose page
-/// reads the group map, the calendar and the tracking settings, and
+/// reads the memberships, the observed day, the calendar and the tracking
+/// settings, and
 /// `/other`, to push over it.
 ///
 /// The data layer comes from [pumpRouter] ([dependencies]). With
 /// [withTracking], the page also reads the tracking
-/// controller (and so the permissions one).
+/// view model (and so the permissions repository).
 GoRouter buildRouter({bool withTracking = false}) {
   return GoRouter(
     initialLocation: '/start',
@@ -72,12 +73,13 @@ GoRouter buildRouter({bool withTracking = false}) {
           GoRoute(
             path: '/home',
             builder: (context, _) {
-              groupMap = context.read<GroupMapState>();
+              groupMap = context.read<MembershipRepository>();
+              observedDay = context.read<ObservedDayRepository>();
               calendar = context.read<CalendarViewModel>();
-              settings = context.read<TrackingSettingsController>();
+              settings = context.read<TrackingSettingsRepository>();
               if (withTracking) {
                 tracking = context.read<TrackingViewModel>();
-                permissions = context.read<PermissionsViewModel>();
+                permissions = context.read<PermissionsRepository>();
               }
               return const Text('home');
             },
@@ -92,7 +94,7 @@ GoRouter buildRouter({bool withTracking = false}) {
 /// A router that follows [session] as the app's does ([sessionRedirect]
 /// on every navigation and on every change of [session]), opening on
 /// *Login*: the organization's shell ([OrganizationScope]) holds the map,
-/// whose page reads every organization controller, and *Grupos*, whose
+/// whose page reads every organization object, and *Grupos*, whose
 /// page reads some of them again.
 GoRouter buildSessionRouter(ValueNotifier<SessionState> session) {
   return GoRouter(
@@ -108,21 +110,22 @@ GoRouter buildSessionRouter(ValueNotifier<SessionState> session) {
           GoRoute(
             path: Routes.monamie,
             builder: (context, _) {
-              groupMap = context.read<GroupMapState>();
+              groupMap = context.read<MembershipRepository>();
+              observedDay = context.read<ObservedDayRepository>();
               calendar = context.read<CalendarViewModel>();
-              settings = context.read<TrackingSettingsController>();
+              settings = context.read<TrackingSettingsRepository>();
               user = context.read<UserViewModel>();
               tracking = context.read<TrackingViewModel>();
-              permissions = context.read<PermissionsViewModel>();
+              permissions = context.read<PermissionsRepository>();
               return const Text('map');
             },
           ),
           GoRoute(
             path: Routes.groups,
             builder: (context, _) {
-              adminGroupMap = context.read<GroupMapState>();
+              adminGroupMap = context.read<MembershipRepository>();
               adminUser = context.read<UserViewModel>();
-              adminSettings = context.read<TrackingSettingsController>();
+              adminSettings = context.read<TrackingSettingsRepository>();
               return const Text('groups');
             },
           ),
@@ -157,19 +160,17 @@ Future<void> pumpRouter(WidgetTester tester, GoRouter router) async {
   await tester.pumpAndSettle();
 }
 
-/// The data layer [OrganizationScope] reads. The profile, the tracking
-/// settings, the memberships, the positions, the tracking service and the
-/// permissions are mocks (nobody signed in, the default settings, no group,
-/// the service stopped, every permission denied), which keeps the real
-/// tracking and permissions view models the scope builds away from the
-/// device; the GPS and the background checks are the app's own.
+/// The data layer [OrganizationScope] reads. The profile, the memberships,
+/// the positions, the tracking service and the permissions are mocks
+/// (nobody signed in, no group, the service stopped, every permission
+/// denied), which keeps the real tracking view model and permissions
+/// repository the scope builds away from the device; the GPS and the
+/// background checks are the app's own. The scope creates the tracking
+/// settings repository itself: with no organization bound in the test, its
+/// reads fail, are ignored, and it keeps the defaults.
 List<SingleChildWidget> dependencies() {
   final profile = MockUserGoogleRepository();
   when(profile.getUserGoogleModel()).thenAnswer((_) async => null);
-  final repository = MockTrackingSettingsRepository();
-  when(
-    repository.watch(),
-  ).thenAnswer((_) => Stream.value(TrackingSettings.defaults));
   final service = MockBackgroundTrackingService();
   when(service.isRunning()).thenAnswer((_) async => false);
   final permissions = MockPermissionsService();
@@ -180,7 +181,6 @@ List<SingleChildWidget> dependencies() {
   ).thenAnswer((_) async => AppPermissionStatus.denied);
   return [
     Provider<UserGoogleRepository>.value(value: profile),
-    Provider<TrackingSettingsRepository>.value(value: repository),
     Provider<MembershipService>.value(value: MockMembershipService()),
     Provider<PositionsRepository>.value(value: MockPositionsRepository()),
     Provider<BackgroundTrackingService>.value(value: service),
@@ -212,6 +212,7 @@ void _noop() {}
 void main() {
   setUp(() {
     groupMap = null;
+    observedDay = null;
     calendar = null;
     tracking = null;
     permissions = null;
@@ -223,8 +224,8 @@ void main() {
   });
 
   group('OrganizationScope (organization shell) - Widget Test Suite', () {
-    testWidgets('Happy Path: leaving the shell disposes the group map and the '
-        'calendar it created', (tester) async {
+    testWidgets('Happy Path: leaving the shell disposes the memberships, the '
+        'observed day and the calendar it created', (tester) async {
       // 1. Arrange
       final router = buildRouter();
       await pumpRouter(tester, router);
@@ -237,11 +238,12 @@ void main() {
 
       // 3. Assert
       expect(isDisposed(groupMap!.mapGroups), isTrue);
+      expect(isDisposed(observedDay!.observedDay), isTrue);
       expect(isDisposed(calendar!.observedDay), isTrue);
     });
 
     testWidgets('Edge Case: a route pushed over the home inside the shell '
-        'keeps its controllers alive', (tester) async {
+        'keeps its repositories and view models alive', (tester) async {
       // 1. Arrange
       final router = buildRouter();
       await pumpRouter(tester, router);
@@ -257,7 +259,7 @@ void main() {
       expect(isDisposed(calendar!.observedDay), isFalse);
     });
 
-    testWidgets('Sad Path: a group map whose shell closed is not handed out '
+    testWidgets('Sad Path: memberships whose shell closed are not handed out '
         'again', (tester) async {
       // 1. Arrange
       final router = buildRouter();
@@ -278,7 +280,7 @@ void main() {
     });
 
     testWidgets('Happy Path: leaving the shell disposes the tracking '
-        'controller it created', (tester) async {
+        'view model it created', (tester) async {
       // 1. Arrange
       final router = buildRouter(withTracking: true);
       await pumpRouter(tester, router);
@@ -294,7 +296,7 @@ void main() {
     });
 
     testWidgets('Happy Path: leaving the shell disposes the permissions '
-        'controller it created', (tester) async {
+        'repository it created', (tester) async {
       // 1. Arrange
       final router = buildRouter(withTracking: true);
       await pumpRouter(tester, router);
@@ -326,7 +328,7 @@ void main() {
     });
 
     testWidgets('Edge Case: a route pushed over the home inside the shell '
-        'keeps the tracking controller alive', (tester) async {
+        'keeps the tracking view model alive', (tester) async {
       // 1. Arrange
       final router = buildRouter(withTracking: true);
       await pumpRouter(tester, router);
@@ -340,16 +342,50 @@ void main() {
       // 3. Assert
       expect(isDisposed(tracking!.firebaseUsers), isFalse);
       expect(isDisposed(permissions!.isBackgroundRestricted), isFalse);
-      // The tracking controller's validity clock keeps running: leave the
+      // The tracking view model's validity clock keeps running: leave the
       // shell so it stops before the test ends.
       router.go('/start');
       await tester.pumpAndSettle();
     });
   });
 
+  group('OrganizationScope (shared state) - Widget Test Suite', () {
+    testWidgets('Happy Path: the calendar and the tracking view model follow '
+        'the one observed day of the scope', (tester) async {
+      // 1. Arrange
+      final router = buildRouter(withTracking: true);
+      await pumpRouter(tester, router);
+      router.go('/home');
+      await tester.pumpAndSettle();
+
+      // 2. Act
+      calendar!.selectDay(DateTime(2025, 3, 7));
+
+      // 3. Assert
+      expect(observedDay!.observedDay.value, DateTime(2025, 3, 7));
+      expect(tracking!.isObservingToday, isFalse);
+      router.go('/start');
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('Edge Case: the tracking settings start with the defaults '
+        'when nothing can be read', (tester) async {
+      // 1. Arrange
+      final router = buildRouter();
+      await pumpRouter(tester, router);
+
+      // 2. Act
+      router.go('/home');
+      await tester.pumpAndSettle();
+
+      // 3. Assert
+      expect(settings!.settings.value, TrackingSettings.defaults);
+    });
+  });
+
   group('OrganizationScope under the session redirect - Widget Test Suite', () {
     testWidgets('Happy Path: signing out (the session leaves bound) disposes '
-        'every organization controller', (tester) async {
+        'every organization object', (tester) async {
       // 1. Arrange
       final session = ValueNotifier<SessionState>(
         const SessionState.signedOut(),
@@ -364,6 +400,7 @@ void main() {
       // 3. Assert
       expect(find.text('login'), findsOneWidget);
       expect(isDisposed(groupMap!.mapGroups), isTrue);
+      expect(isDisposed(observedDay!.observedDay), isTrue);
       expect(isDisposed(calendar!.observedDay), isTrue);
       expect(isDisposed(user!), isTrue);
       expect(isDisposed(permissions!.isBackgroundRestricted), isTrue);
@@ -372,7 +409,7 @@ void main() {
     });
 
     testWidgets('Edge Case: an admin screen pushed over the map reads the '
-        "map's very controllers", (tester) async {
+        "map's very objects", (tester) async {
       // 1. Arrange
       final session = ValueNotifier<SessionState>(
         const SessionState.signedOut(),
@@ -389,14 +426,14 @@ void main() {
       expect(adminUser, same(user));
       expect(adminSettings, same(settings));
       expect(isDisposed(user!), isFalse);
-      // The tracking controller's validity clock keeps running: leave the
+      // The tracking view model's validity clock keeps running: leave the
       // shell so it stops before the test ends.
       session.value = const SessionState.signedOut();
       await tester.pumpAndSettle();
     });
 
     testWidgets('Sad Path: signing in again after a sign-out creates new '
-        'organization controllers', (tester) async {
+        'organization objects', (tester) async {
       // 1. Arrange
       final session = ValueNotifier<SessionState>(
         const SessionState.signedOut(),

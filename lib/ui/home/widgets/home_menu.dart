@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
@@ -28,14 +28,14 @@ class HomeMenu extends StatelessWidget {
     required this.tracking,
   });
 
-  final GroupMapState groups;
+  final MembershipRepository groups;
   final UserViewModel user;
 
   /// The session: sign-out, switching organization, ownership.
   final HomeSessionViewModel session;
   final TrackingViewModel tracking;
 
-  GroupMapState get _groups => groups;
+  MembershipRepository get _groups => groups;
   UserViewModel get _user => user;
   HomeSessionViewModel get _auth => session;
   TrackingViewModel get _tracking => tracking;

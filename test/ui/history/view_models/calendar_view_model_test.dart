@@ -5,13 +5,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/data/repositories/observed_day/observed_day_repository.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/domain/models/history_month.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 
-@GenerateNiceMocks([MockSpec<PositionsRepository>(), MockSpec<GroupMapState>()])
+@GenerateNiceMocks([
+  MockSpec<PositionsRepository>(),
+  MockSpec<MembershipRepository>(),
+])
 import 'calendar_view_model_test.mocks.dart';
 
 const _kGroup = MapGroup(id: 'g1', name: 'Equipe Norte');
@@ -24,7 +28,8 @@ DateTime _today() {
 }
 
 /// The collaborators of a [CalendarViewModel]: the group [_kGroup] on the
-/// map, whose history has [_kBia], and trail days answered by [trailDays].
+/// map, whose history has [_kBia], trail days answered by [positions], and
+/// a real [ObservedDayRepository] (in memory) holding the observed day.
 class _Harness {
   _Harness({MapGroup? group = _kGroup}) {
     when(groupMap.selectedGroup).thenReturn(ValueNotifier<MapGroup?>(group));
@@ -32,10 +37,15 @@ class _Harness {
     when(
       positions.trailDays(any, any, any),
     ).thenAnswer((_) async => const <String>{});
-    controller = CalendarViewModel(groupMap: groupMap, positions: positions);
+    controller = CalendarViewModel(
+      memberships: groupMap,
+      observedDay: observedDay,
+      positions: positions,
+    );
   }
 
-  final groupMap = MockGroupMapState();
+  final groupMap = MockMembershipRepository();
+  final observedDay = ObservedDayRepository();
   final positions = MockPositionsRepository();
   late final CalendarViewModel controller;
 }
@@ -242,6 +252,35 @@ void main() {
       expect(harness.controller.isObservingToday, isTrue);
     });
 
+    test(
+      'Happy Path: Deve guardar o dia escolhido no repositório compartilhado',
+      () {
+        // 1. Arrange
+        final harness = _Harness();
+
+        // 2. Act
+        harness.controller.selectDay(DateTime(2026, 10, 30, 18, 45));
+
+        // 3. Assert
+        expect(harness.observedDay.observedDay.value, DateTime(2026, 10, 30));
+      },
+    );
+
+    test(
+      'Edge Case: Deve seguir um dia escolhido diretamente no repositório',
+      () {
+        // 1. Arrange
+        final harness = _Harness();
+
+        // 2. Act
+        harness.observedDay.select(DateTime(2025, 3, 7));
+
+        // 3. Assert
+        expect(harness.controller.observedDay.value, DateTime(2025, 3, 7));
+        expect(harness.controller.isObservingToday, isFalse);
+      },
+    );
+
     test('Edge Case: Deve começar observando hoje', () {
       // 1. Arrange
       final harness = _Harness();
@@ -368,6 +407,53 @@ void main() {
       // 3. Assert
       expect(act, returnsNormally);
     });
+
+    test(
+      'Edge Case: Deve deixar o repositório do dia observado aberto ao ser descartado',
+      () {
+        // 1. Arrange
+        final harness = _Harness();
+
+        // 2. Act
+        harness.controller.dispose();
+        harness.observedDay.select(DateTime(2025, 3, 7));
+
+        // 3. Assert
+        expect(harness.observedDay.observedDay.value, DateTime(2025, 3, 7));
+      },
+    );
+
+    test(
+      'Sad Path: Não deve mudar o dia observado ao escolher um dia depois do descarte',
+      () {
+        // 1. Arrange
+        final harness = _Harness();
+        final before = harness.observedDay.observedDay.value;
+        harness.controller.dispose();
+
+        // 2. Act
+        harness.controller.selectDay(DateTime(2025, 3, 7));
+
+        // 3. Assert
+        expect(harness.observedDay.observedDay.value, before);
+      },
+    );
+
+    test(
+      'Sad Path: Não deve mudar o dia observado ao voltar para hoje depois do descarte',
+      () {
+        // 1. Arrange
+        final harness = _Harness();
+        harness.observedDay.select(DateTime(2025, 3, 7));
+        harness.controller.dispose();
+
+        // 2. Act
+        harness.controller.goToToday();
+
+        // 3. Assert
+        expect(harness.observedDay.observedDay.value, DateTime(2025, 3, 7));
+      },
+    );
 
     test('Edge Case: Deve aceitar um segundo descarte sem lançar', () {
       // 1. Arrange

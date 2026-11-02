@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
-import 'package:monamie_app/data/repositories/tracking/tracking_settings_controller.dart';
+import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
 import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/domain/use_cases/sign_out.dart';
@@ -29,7 +29,7 @@ import 'package:monamie_app/ui/auth/view_models/organization_choice_view_model.d
 import 'package:monamie_app/ui/auth/widgets/login_screen.dart';
 import 'package:monamie_app/ui/auth/widgets/no_organization_screen.dart';
 import 'package:monamie_app/ui/auth/widgets/organization_picker_screen.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/routing/organization_scope.dart';
@@ -143,7 +143,7 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
             ),
             builder: (session) => HomeScreen(
               userCtrl: context.read(),
-              permissionsCtrl: context.read(),
+              permissions: context.read(),
               trackingCtrl: context.read(),
               groupMap: context.read(),
               calendar: context.read(),
@@ -174,7 +174,7 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
         GoRoute(
           path: Routes.groups,
           builder: (context, state) {
-            final isAdmin = context.read<GroupMapState>().isAdmin;
+            final isAdmin = context.read<MembershipRepository>().isAdmin;
             return _owned(
               create: () => GroupsViewModel(
                 organizationId: Organization.current!.id,
@@ -255,7 +255,7 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
           path: Routes.trackingSettings,
           builder: (context, state) {
             final saved = context
-                .read<TrackingSettingsController>()
+                .read<TrackingSettingsRepository>()
                 .settings
                 .value;
             return _owned(

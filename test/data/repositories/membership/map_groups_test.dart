@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/capabilities.dart';
-import 'package:monamie_app/ui/home/view_models/map_groups.dart';
+import 'package:monamie_app/data/repositories/membership/map_groups.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 

@@ -5,7 +5,7 @@ import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/history/widgets/history_calendar_sheet.dart';
 import 'package:monamie_app/ui/home/widgets/home_chip.dart';
@@ -27,11 +27,11 @@ class HomeHeader extends StatelessWidget {
     required this.calendar,
   });
 
-  final GroupMapState groups;
+  final MembershipRepository groups;
   final UserViewModel user;
   final CalendarViewModel calendar;
 
-  GroupMapState get _groups => groups;
+  MembershipRepository get _groups => groups;
   UserViewModel get _user => user;
   CalendarViewModel get _calendar => calendar;
 

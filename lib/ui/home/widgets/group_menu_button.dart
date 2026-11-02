@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/ui/home/widgets/home_colors.dart';
 import 'package:monamie_app/ui/core/themes/color_palette.dart';
@@ -16,7 +16,7 @@ class GroupMenuButton extends StatefulWidget {
   const GroupMenuButton({super.key, required this.groups, required this.label});
 
   /// The person's groups and the one on the map.
-  final GroupMapState groups;
+  final MembershipRepository groups;
 
   /// The text of the chip: the observed group, or a prompt to pick one.
   final String label;
@@ -35,7 +35,7 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
     reverseDuration: const Duration(milliseconds: 140),
   );
 
-  GroupMapState get _groups => widget.groups;
+  MembershipRepository get _groups => widget.groups;
 
   bool get _open => _portal.isShowing && _animation.status.isForwardOrCompleted;
 

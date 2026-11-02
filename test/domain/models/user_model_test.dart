@@ -99,4 +99,41 @@ void main() {
       expect(moved, isNot(first));
     });
   });
+
+  group('UserModel.publishedName - Unit Test Suite', () {
+    test('Happy Path: Deve publicar o nome sem os espaços das pontas', () {
+      // 1. Arrange
+      const user = UserModel(email: 'ana@x.com', name: '  Ana Souza ');
+
+      // 2. Act
+      final name = user.publishedName;
+
+      // 3. Assert
+      expect(name, 'Ana Souza');
+    });
+
+    test('Edge Case: Deve publicar "Nome não informado" sem nome', () {
+      // 1. Arrange
+      const user = UserModel(email: 'ana@x.com');
+
+      // 2. Act
+      final name = user.publishedName;
+
+      // 3. Assert
+      expect(name, UserModel.noName);
+      expect(UserModel.noName, 'Nome não informado');
+    });
+
+    test('Sad Path: Deve publicar "Nome não informado" com um nome só de '
+        'espaços', () {
+      // 1. Arrange
+      const user = UserModel(email: 'ana@x.com', name: '   ');
+
+      // 2. Act
+      final name = user.publishedName;
+
+      // 3. Assert
+      expect(name, UserModel.noName);
+    });
+  });
 }

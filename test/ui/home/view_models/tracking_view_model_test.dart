@@ -7,15 +7,17 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:monamie_app/data/model/user_google_model.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository_firestore.dart';
+import 'package:monamie_app/data/repositories/observed_day/observed_day_repository.dart';
+import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
+import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/domain/models/capabilities.dart';
 import 'package:monamie_app/data/services/device_location.dart';
-import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
-import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
+import 'package:monamie_app/domain/use_cases/start_sharing.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
-import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
@@ -27,21 +29,23 @@ import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
 
 @GenerateNiceMocks([
-  MockSpec<CalendarViewModel>(),
   MockSpec<DeviceLocation>(),
   MockSpec<BackgroundTrackingService>(),
-  MockSpec<GroupMapState>(),
+  MockSpec<MembershipRepository>(),
   MockSpec<MembershipService>(),
   MockSpec<NoticePresenter>(),
-  MockSpec<PermissionsViewModel>(),
+  MockSpec<ObservedDayRepository>(),
+  MockSpec<PermissionsRepository>(),
   MockSpec<PositionsRepository>(),
-  MockSpec<UserViewModel>(),
+  MockSpec<StartSharing>(),
+  MockSpec<UserGoogleRepository>(),
 ])
 import 'tracking_view_model_test.mocks.dart';
 
 const _kEmail = 'ana@example.com';
 const _kGroup = MapGroup(id: 'g1', name: 'Equipe Norte');
 const _kBia = GroupMember(name: 'Bia', email: 'bia@example.com');
+const _kFix = LatLng(-22.9, -43.1);
 final _kToday = DateTime(2026, 11, 2);
 final _kPastDay = DateTime(2026, 10, 30);
 
@@ -72,55 +76,77 @@ Matcher _okWithNoticeTitled(String title) => isA<Ok<UserNotice?>>().having(
   title,
 );
 
-/// Starting the tracking service, whatever notification it shows.
-Future<bool> _start(MockBackgroundTrackingService service) => service.start(
-  notificationTitle: anyNamed('notificationTitle'),
-  notificationContent: anyNamed('notificationContent'),
+/// An [Ok] holding no notice.
+final _okWithoutNotice = isA<Ok<UserNotice?>>().having(
+  (ok) => ok.value,
+  'value',
+  isNull,
 );
 
-/// Puts [value] in one of the controller's values (exposed read-only).
+/// Turning sharing on through the use case, whatever `onPosition` is.
+Future<Result<SharingStart>> _startSharing(MockStartSharing startSharing) =>
+    startSharing(onPosition: anyNamed('onPosition'));
+
+/// Makes [startSharing] answer [result], handing [fix] to `onPosition`
+/// first when given (as the use case does before starting the service).
+void _answerStartSharing(
+  MockStartSharing startSharing,
+  Result<SharingStart> result, {
+  LatLng? fix,
+}) {
+  when(_startSharing(startSharing)).thenAnswer((invocation) async {
+    if (fix != null) {
+      (invocation.namedArguments[#onPosition] as void Function(LatLng))(fix);
+    }
+    return result;
+  });
+}
+
+/// Puts [value] in one of the view model's values (exposed read-only).
 void _seed(ValueListenable<bool> listenable, bool value) =>
     (listenable as ValueNotifier<bool>).value = value;
 
-/// The collaborators of a [TrackingViewModel], stubbed as a person who can
-/// publish, with the GPS on, the service stopped and a fix at hand.
-/// [state] replaces the mocked [GroupMapState] (e.g. by a real
-/// `GroupMapViewModel`).
+/// The collaborators of a [TrackingViewModel], stubbed as Ana (her profile
+/// saved at sign-in), who does not publish in any group ([canPublish]
+/// false, so the view model does not look for the device), with the
+/// service stopped, a fix at hand and a [StartSharing] that starts the
+/// service after handing that fix. [state] replaces the mocked
+/// [MembershipRepository] (e.g. by a real `MembershipRepositoryFirestore`).
 class _Harness {
-  _Harness({GroupMapState? state}) {
+  _Harness({MembershipRepository? state}) {
     when(permissions.isBackgroundRestricted).thenReturn(isBackgroundRestricted);
     when(
       permissions.hasWhenInUseLocationPermission,
     ).thenReturn(hasWhenInUsePermission);
-    when(
-      permissions.refreshBackgroundRestriction(),
-    ).thenAnswer((_) async => false);
 
-    when(calendar.observedDay).thenReturn(observedDay);
-    when(calendar.isObservingToday).thenReturn(true);
+    when(days.observedDay).thenReturn(observedDay);
+    when(days.isObservingToday).thenReturn(true);
 
     when(groupMap.capabilities).thenReturn(capabilities);
     when(groupMap.groupPositions).thenReturn(groupPositions);
     when(groupMap.observedMembers).thenReturn(observedMembers);
     when(groupMap.highlightedObservedUsers).thenReturn(highlighted);
     when(groupMap.selectedGroup).thenReturn(selectedGroup);
-    when(groupMap.canPublish).thenReturn(true);
+    when(groupMap.canPublish).thenReturn(false);
     when(groupMap.canWatch).thenReturn(true);
     when(groupMap.loadHistoryMembers()).thenAnswer((_) async => const []);
 
-    when(user.user).thenReturn(UserModel(email: _kEmail, name: 'Ana'));
-    when(user.getUserName()).thenReturn('Ana');
-    when(user.isTrackable()).thenReturn(false);
+    when(
+      profiles.getUserGoogleModel(),
+    ).thenAnswer((_) async => UserGoogleModel(email: _kEmail, name: 'Ana'));
+
+    _answerStartSharing(
+      startSharing,
+      const Ok(SharingStart.started()),
+      fix: _kFix,
+    );
 
     when(service.isRunning()).thenAnswer((_) async => false);
-    when(_start(service)).thenAnswer((_) async => true);
     when(service.ready).thenAnswer((_) => const Stream.empty());
     when(service.localPositions).thenAnswer((_) => const Stream.empty());
 
     when(location.isServiceEnabled()).thenAnswer((_) async => true);
-    when(
-      location.currentPosition(),
-    ).thenAnswer((_) async => _position(-22.9, -43.1));
+    when(location.currentPosition()).thenAnswer((_) async => _kFix);
 
     when(positions.markNotPublishing(any)).thenAnswer((_) async {});
     when(
@@ -135,10 +161,11 @@ class _Harness {
 
     controller = TrackingViewModel(
       notices: notices,
-      userCtrl: user,
-      permissionsCtrl: permissions,
-      calendar: calendar,
-      groupMap: state ?? groupMap,
+      memberships: state ?? groupMap,
+      observedDay: days,
+      permissions: permissions,
+      profiles: profiles,
+      startSharing: startSharing,
       service: service,
       location: location,
       positions: positions,
@@ -146,10 +173,11 @@ class _Harness {
   }
 
   final notices = MockNoticePresenter();
-  final user = MockUserViewModel();
-  final permissions = MockPermissionsViewModel();
-  final calendar = MockCalendarViewModel();
-  final groupMap = MockGroupMapState();
+  final profiles = MockUserGoogleRepository();
+  final permissions = MockPermissionsRepository();
+  final days = MockObservedDayRepository();
+  final groupMap = MockMembershipRepository();
+  final startSharing = MockStartSharing();
   final service = MockBackgroundTrackingService();
   final location = MockDeviceLocation();
   final positions = MockPositionsRepository();
@@ -164,15 +192,58 @@ class _Harness {
   final selectedGroup = ValueNotifier<MapGroup?>(_kGroup);
 
   late final TrackingViewModel controller;
+
+  /// Lets the person look for the device: they publish in some group.
+  void canPublish() => when(groupMap.canPublish).thenReturn(true);
+
+  /// Starts [controller] and waits for the profile to be read, then
+  /// forgets what the start asked of the service and the GPS, as the
+  /// sharing switch is only tapped once the map is open.
+  Future<void> started() async {
+    await controller.start();
+    await pumpEventQueue();
+    clearInteractions(service);
+    clearInteractions(location);
+  }
 }
 
 void main() {
+  provideDummy<Result<SharingStart>>(const Ok(SharingStart.notStarted()));
+
   group('TrackingViewModel.toggleService', () {
+    test(
+      'Sad Path: Deve devolver Err sem iniciar o compartilhamento quando não há perfil salvo',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        when(
+          harness.profiles.getUserGoogleModel(),
+        ).thenAnswer((_) async => null);
+        await harness.started();
+
+        // 2. Act
+        final result = await harness.controller.toggleService();
+
+        // 3. Assert
+        expect(result, _errTitled('Compartilhamento'));
+        verifyNever(_startSharing(harness.startSharing));
+        verifyNever(
+          harness.service.start(
+            notificationTitle: anyNamed('notificationTitle'),
+            notificationContent: anyNamed('notificationContent'),
+          ),
+        );
+        expect(harness.controller.isTrackingEnabled.value, isFalse);
+        harness.controller.dispose();
+      },
+    );
+
     test(
       'Edge Case: Deve devolver Ok(null) sem consultar o serviço de novo quando outro toggle está em andamento',
       () async {
         // 1. Arrange
         final harness = _Harness();
+        await harness.started();
         final running = Completer<bool>();
         when(harness.service.isRunning()).thenAnswer((_) => running.future);
         final first = harness.controller.toggleService();
@@ -181,13 +252,11 @@ void main() {
         final second = await harness.controller.toggleService();
 
         // 3. Assert
-        expect(
-          second,
-          isA<Ok<UserNotice?>>().having((ok) => ok.value, 'value', isNull),
-        );
+        expect(second, _okWithoutNotice);
         verify(harness.service.isRunning()).called(1);
         running.complete(true);
         await first;
+        harness.controller.dispose();
       },
     );
 
@@ -196,6 +265,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
+        await harness.started();
         final running = Completer<bool>();
         when(harness.service.isRunning()).thenAnswer((_) => running.future);
 
@@ -206,6 +276,7 @@ void main() {
         expect(harness.controller.isTrackingLoading.value, isTrue);
         running.complete(true);
         await pending;
+        harness.controller.dispose();
       },
     );
 
@@ -214,6 +285,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
+        await harness.started();
         when(harness.service.isRunning()).thenAnswer((_) async => true);
         _seed(harness.controller.isTrackingEnabled, true);
 
@@ -224,9 +296,10 @@ void main() {
         expect(result, isA<Ok<UserNotice?>>());
         verify(harness.service.stop());
         verify(harness.positions.markNotPublishing(_kEmail)).called(1);
-        verifyNever(_start(harness.service));
+        verifyNever(_startSharing(harness.startSharing));
         expect(harness.controller.isTrackingEnabled.value, isFalse);
         expect(harness.controller.isTrackingLoading.value, isFalse);
+        harness.controller.dispose();
       },
     );
 
@@ -235,6 +308,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
+        await harness.started();
         when(harness.service.isRunning()).thenAnswer((_) async => true);
         when(
           harness.positions.markNotPublishing(any),
@@ -247,34 +321,31 @@ void main() {
         // 3. Assert
         expect(result, isA<Ok<UserNotice?>>());
         expect(harness.controller.isTrackingEnabled.value, isFalse);
+        harness.controller.dispose();
       },
     );
 
     test(
-      'Happy Path: Deve iniciar o serviço, ligar isTrackingEnabled e guardar a posição quando há GPS',
+      'Happy Path: Deve ligar isTrackingEnabled e guardar a posição que o caso de uso entrega quando o serviço inicia',
       () async {
         // 1. Arrange
         final harness = _Harness();
+        await harness.started();
 
         // 2. Act
         final result = await harness.controller.toggleService();
 
         // 3. Assert
-        expect(
-          result,
-          isA<Ok<UserNotice?>>().having((ok) => ok.value, 'value', isNull),
-        );
-        verify(_start(harness.service)).called(1);
+        expect(result, _okWithoutNotice);
+        verify(_startSharing(harness.startSharing)).called(1);
         expect(harness.controller.isTrackingEnabled.value, isTrue);
-        expect(
-          harness.controller.ownPosition.value,
-          const LatLng(-22.9, -43.1),
-        );
+        expect(harness.controller.ownPosition.value, _kFix);
         expect(
           harness.controller.usersWithPointsOnObservedDay.value,
           contains(_kEmail),
         );
         expect(harness.controller.isTrackingLoading.value, isFalse);
+        harness.controller.dispose();
       },
     );
 
@@ -285,6 +356,7 @@ void main() {
         final harness = _Harness();
         final ready = StreamController<void>();
         when(harness.service.ready).thenAnswer((_) => ready.stream);
+        await harness.started();
         await harness.controller.toggleService();
 
         // 2. Act
@@ -293,105 +365,112 @@ void main() {
 
         // 3. Assert
         verify(harness.service.sendUser(email: _kEmail, name: 'Ana')).called(1);
+        harness.controller.dispose();
         await ready.close();
       },
     );
 
     test(
-      'Edge Case: Deve abrir as configurações de uso em segundo plano sem iniciar o serviço quando o app está restrito',
+      'Edge Case: Deve enviar "Nome não informado" ao serviço quando o perfil não tem nome',
       () async {
         // 1. Arrange
         final harness = _Harness();
         when(
-          harness.permissions.refreshBackgroundRestriction(),
-        ).thenAnswer((_) async => true);
+          harness.profiles.getUserGoogleModel(),
+        ).thenAnswer((_) async => UserGoogleModel(email: _kEmail, name: ' '));
+        final ready = StreamController<void>();
+        when(harness.service.ready).thenAnswer((_) => ready.stream);
+        await harness.started();
+        await harness.controller.toggleService();
+
+        // 2. Act
+        ready.add(null);
+        await pumpEventQueue();
+
+        // 3. Assert
+        verify(
+          harness.service.sendUser(email: _kEmail, name: 'Nome não informado'),
+        ).called(1);
+        harness.controller.dispose();
+        await ready.close();
+      },
+    );
+
+    test(
+      'Edge Case: Deve devolver Ok(null) sem ligar o compartilhamento quando o caso de uso não inicia o serviço',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final ready = StreamController<void>();
+        when(harness.service.ready).thenAnswer((_) => ready.stream);
+        _answerStartSharing(
+          harness.startSharing,
+          const Ok(SharingStart.notStarted()),
+        );
+        await harness.started();
 
         // 2. Act
         final result = await harness.controller.toggleService();
 
         // 3. Assert
-        expect(result, isA<Ok<UserNotice?>>());
-        verify(harness.permissions.openBackgroundUsageSettings()).called(1);
-        verifyNever(_start(harness.service));
+        expect(result, _okWithoutNotice);
         expect(harness.controller.isTrackingEnabled.value, isFalse);
+        expect(harness.controller.isTrackingLoading.value, isFalse);
+        expect(ready.hasListener, isFalse);
+        expect(harness.controller.usersWithPointsOnObservedDay.value, isEmpty);
+        harness.controller.dispose();
       },
     );
 
     test(
-      'Sad Path: Deve avisar que o GPS está desligado sem iniciar o serviço',
+      'Sad Path: Deve devolver o Err do caso de uso sem ligar o compartilhamento',
       () async {
         // 1. Arrange
         final harness = _Harness();
-        when(
-          harness.location.isServiceEnabled(),
-        ).thenAnswer((_) async => false);
-
-        // 2. Act
-        final result = await harness.controller.toggleService();
-
-        // 3. Assert
-        expect(result, isA<Ok<UserNotice?>>());
-        verify(harness.permissions.notifyGpsDisabled()).called(1);
-        verifyNever(_start(harness.service));
-        expect(harness.controller.isTrackingEnabled.value, isFalse);
-      },
-    );
-
-    test(
-      'Sad Path: Deve devolver Err sem iniciar o serviço quando a pessoa não publica em nenhum grupo',
-      () async {
-        // 1. Arrange
-        final harness = _Harness();
-        when(harness.groupMap.canPublish).thenReturn(false);
+        _answerStartSharing(
+          harness.startSharing,
+          const Err('Sem grupo.', title: 'Compartilhamento não autorizado'),
+        );
+        await harness.started();
 
         // 2. Act
         final result = await harness.controller.toggleService();
 
         // 3. Assert
         expect(result, _errTitled('Compartilhamento não autorizado'));
-        verifyNever(_start(harness.service));
+        expect((result as Err).message, 'Sem grupo.');
         expect(harness.controller.isTrackingEnabled.value, isFalse);
+        expect(harness.controller.isTrackingLoading.value, isFalse);
+        harness.controller.dispose();
       },
     );
 
     test(
-      'Edge Case: Deve iniciar o serviço e devolver o aviso de satélites quando o GPS não responde em 5 segundos',
-      () {
-        fakeAsync((async) {
-          // 1. Arrange
-          final harness = _Harness();
-          when(
-            harness.location.currentPosition(),
-          ).thenAnswer((_) => Completer<LatLng>().future);
-          Result<UserNotice?>? result;
-
-          // 2. Act
-          harness.controller.toggleService().then((value) => result = value);
-          async.elapse(const Duration(seconds: 6));
-
-          // 3. Assert
-          expect(result, _okWithNoticeTitled('Aguardando sinal de GPS'));
-          verify(_start(harness.service)).called(1);
-          expect(harness.controller.isTrackingEnabled.value, isTrue);
-        });
-      },
-    );
-
-    test(
-      'Sad Path: Deve iniciar o serviço e devolver o aviso de satélites quando ler a posição falha',
+      'Edge Case: Deve ligar o compartilhamento e devolver o aviso do caso de uso quando ainda não há posição',
       () async {
         // 1. Arrange
         final harness = _Harness();
-        when(harness.location.currentPosition()).thenAnswer(
-          (_) async => throw const LocationServiceDisabledException(),
+        _answerStartSharing(
+          harness.startSharing,
+          const Ok(
+            SharingStart.started(
+              notice: UserNotice(
+                'Satélites.',
+                title: 'Aguardando sinal de GPS',
+              ),
+            ),
+          ),
         );
+        await harness.started();
 
         // 2. Act
         final result = await harness.controller.toggleService();
 
         // 3. Assert
         expect(result, _okWithNoticeTitled('Aguardando sinal de GPS'));
-        verify(_start(harness.service)).called(1);
+        expect(harness.controller.isTrackingEnabled.value, isTrue);
+        expect(harness.controller.ownPosition.value, isNull);
+        harness.controller.dispose();
       },
     );
 
@@ -400,6 +479,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
+        await harness.started();
         when(
           harness.service.isRunning(),
         ).thenAnswer((_) async => throw StateError('canal fechado'));
@@ -410,6 +490,28 @@ void main() {
         // 3. Assert
         expect(result, _errTitled('Compartilhamento'));
         expect(harness.controller.isTrackingLoading.value, isFalse);
+        harness.controller.dispose();
+      },
+    );
+
+    test(
+      'Sad Path: Deve devolver Err e liberar isTrackingLoading quando o caso de uso lança exceção',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        when(
+          _startSharing(harness.startSharing),
+        ).thenAnswer((_) async => throw StateError('canal fechado'));
+        await harness.started();
+
+        // 2. Act
+        final result = await harness.controller.toggleService();
+
+        // 3. Assert
+        expect(result, _errTitled('Compartilhamento'));
+        expect(harness.controller.isTrackingEnabled.value, isFalse);
+        expect(harness.controller.isTrackingLoading.value, isFalse);
+        harness.controller.dispose();
       },
     );
   });
@@ -487,7 +589,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        when(harness.user.isTrackable()).thenReturn(true);
+        harness.canPublish();
 
         // 2. Act
         await harness.controller.start();
@@ -510,9 +612,71 @@ void main() {
 
         // 2. Act
         await harness.controller.start();
+        harness.capabilities.value = const Capabilities(isMember: true);
+        await pumpEventQueue();
 
         // 3. Assert
         verifyNever(harness.location.currentPosition());
+        harness.controller.dispose();
+      },
+    );
+
+    test(
+      'Sad Path: Não deve procurar a posição do aparelho sem um perfil salvo no login',
+      () async {
+        // 1. Arrange
+        final harness = _Harness()..canPublish();
+        when(
+          harness.profiles.getUserGoogleModel(),
+        ).thenAnswer((_) async => null);
+        await harness.controller.start();
+        await pumpEventQueue();
+
+        // 2. Act
+        harness.capabilities.value = const Capabilities(isMember: true);
+        await pumpEventQueue();
+
+        // 3. Assert
+        verifyNever(harness.location.currentPosition());
+        harness.controller.dispose();
+      },
+    );
+
+    test(
+      'Sad Path: Deve começar sem erro quando ler o perfil salvo falha',
+      () async {
+        // 1. Arrange
+        final harness = _Harness()..canPublish();
+        when(
+          harness.profiles.getUserGoogleModel(),
+        ).thenAnswer((_) async => throw StateError('Hive fechado'));
+
+        // 2. Act
+        await harness.controller.start();
+        await pumpEventQueue();
+        harness.capabilities.value = const Capabilities(isMember: true);
+        await pumpEventQueue();
+
+        // 3. Assert
+        verifyNever(harness.location.currentPosition());
+        expect(harness.controller.isTrackingEnabled.value, isFalse);
+        harness.controller.dispose();
+      },
+    );
+
+    test(
+      'Edge Case: Deve ler o perfil salvo no login uma vez ao começar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+
+        // 2. Act
+        await harness.controller.start();
+        await harness.controller.start();
+        await pumpEventQueue();
+
+        // 3. Assert
+        verify(harness.profiles.getUserGoogleModel()).called(1);
         harness.controller.dispose();
       },
     );
@@ -579,7 +743,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         await harness.controller.start();
-        when(harness.user.isTrackable()).thenReturn(true);
+        harness.canPublish();
 
         // 2. Act
         harness.capabilities.value = const Capabilities(isMember: true);
@@ -601,7 +765,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         await harness.controller.start();
-        when(harness.user.isTrackable()).thenReturn(true);
+        harness.canPublish();
 
         // 2. Act
         harness.hasWhenInUsePermission.value = true;
@@ -620,7 +784,7 @@ void main() {
         final harness = _Harness();
         harness.hasWhenInUsePermission.value = true;
         await harness.controller.start();
-        when(harness.user.isTrackable()).thenReturn(true);
+        harness.canPublish();
 
         // 2. Act
         harness.hasWhenInUsePermission.value = false;
@@ -638,7 +802,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         await harness.controller.start();
-        when(harness.user.isTrackable()).thenReturn(true);
+        harness.canPublish();
         when(harness.location.currentPosition()).thenAnswer(
           (_) async => throw const LocationServiceDisabledException(),
         );
@@ -666,7 +830,7 @@ void main() {
             day: _kPastDay,
           ),
         ).thenAnswer((_) => Stream.value([_point(-22.8, -43.0)]));
-        when(harness.calendar.isObservingToday).thenReturn(false);
+        when(harness.days.isObservingToday).thenReturn(false);
         await harness.controller.start();
 
         // 2. Act
@@ -724,7 +888,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        when(harness.calendar.isObservingToday).thenReturn(false);
+        when(harness.days.isObservingToday).thenReturn(false);
         when(
           harness.groupMap.loadHistoryMembers(),
         ).thenAnswer((_) async => const [_kBia]);
@@ -759,7 +923,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        when(harness.calendar.isObservingToday).thenReturn(false);
+        when(harness.days.isObservingToday).thenReturn(false);
         when(
           harness.groupMap.loadHistoryMembers(),
         ).thenAnswer((_) async => const [_kBia]);
@@ -941,16 +1105,18 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
+        harness.canPublish();
         await harness.controller.start();
+        await pumpEventQueue();
         harness.controller.dispose();
-        clearInteractions(harness.user);
+        clearInteractions(harness.location);
 
         // 2. Act
         harness.capabilities.value = const Capabilities(isMember: true);
         await pumpEventQueue();
 
         // 3. Assert
-        verifyNever(harness.user.isTrackable());
+        verifyNever(harness.location.currentPosition());
       },
     );
 
@@ -1007,141 +1173,145 @@ void main() {
     );
   });
 
-  group('TrackingViewModel - reações com o GroupMapViewModel real', () {
-    late StreamController<Map<String, Object?>?> organization;
-    late StreamController<Map<String, Object?>> roles;
-    late StreamController<String?> groupName;
-    late StreamController<List<UserModel>> live;
-    late GroupMapViewModel groupMap;
+  group(
+    'TrackingViewModel - reações com o MembershipRepositoryFirestore real',
+    () {
+      late StreamController<Map<String, Object?>?> organization;
+      late StreamController<Map<String, Object?>> roles;
+      late StreamController<String?> groupName;
+      late StreamController<List<UserModel>> live;
+      late MembershipRepositoryFirestore groupMap;
 
-    /// Ana subscribes to and publishes in [_kGroup], where Bia publishes.
-    /// The tracking controller follows a real [GroupMapViewModel] over
-    /// mocked Firestore sources.
-    Future<_Harness> following() async {
-      organization = StreamController<Map<String, Object?>?>();
-      roles = StreamController<Map<String, Object?>>();
-      groupName = StreamController<String?>();
-      live = StreamController<List<UserModel>>();
-      final memberships = MockMembershipService();
-      when(
-        memberships.organizationMembership(any, any),
-      ).thenAnswer((_) => organization.stream);
-      when(memberships.groupRoles(any, any)).thenAnswer((_) => roles.stream);
-      when(
-        memberships.groupName(any, _kGroup.id),
-      ).thenAnswer((_) => groupName.stream);
-      final sources = MockPositionsRepository();
-      when(
-        sources.streamGroupPositions(_kGroup.id),
-      ).thenAnswer((_) => live.stream);
-      groupMap = GroupMapViewModel(
-        onAccessLost: () async {},
-        memberships: memberships,
-        positions: sources,
-        organizationId: () => 'rotasul',
-        email: () => _kEmail,
-      );
-      organization.add({'email': _kEmail, 'role': 'member'});
-      roles.add({
-        _kGroup.id: ['publisher', 'subscriber'],
-      });
-      groupName.add(_kGroup.name);
-      live.add([UserModel(email: _kBia.email, name: _kBia.name)]);
-      groupMap.start();
-      await pumpEventQueue();
-      final harness = _Harness(state: groupMap);
-      await harness.controller.start();
-      await pumpEventQueue();
-      clearInteractions(harness.positions);
-      clearInteractions(harness.user);
-      return harness;
-    }
-
-    tearDown(() => groupMap.dispose());
-
-    test(
-      'Happy Path: Deve reagir uma vez a um retrato com uma pessoa nova',
-      () async {
-        // 1. Arrange
-        final harness = await following();
-        var groupUsersChanged = 0;
-        harness.controller.groupUsers.addListener(() => groupUsersChanged++);
-
-        // 2. Act
-        live.add([
-          UserModel(email: _kBia.email, name: _kBia.name),
-          UserModel(email: 'caio@example.com', name: 'Caio'),
-        ]);
-        await pumpEventQueue();
-
-        // 3. Assert
-        expect(groupUsersChanged, 1);
-        verify(
-          harness.positions.hasPointsOnDate(
-            _kGroup.id,
-            'caio@example.com',
-            any,
-          ),
-        ).called(1);
-        harness.controller.dispose();
-      },
-    );
-
-    test(
-      'Edge Case: Não deve reagir a um retrato novo com as mesmas posições',
-      () async {
-        // 1. Arrange
-        final harness = await following();
-        var groupUsersChanged = 0;
-        harness.controller.groupUsers.addListener(() => groupUsersChanged++);
-
-        // 2. Act
-        live.add([UserModel(email: _kBia.email, name: _kBia.name)]);
-        await pumpEventQueue();
-
-        // 3. Assert
-        expect(groupUsersChanged, 0);
-        verifyNever(harness.positions.hasPointsOnDate(any, any, any));
-        harness.controller.dispose();
-      },
-    );
-
-    test(
-      'Edge Case: Não deve procurar o aparelho de novo com os mesmos papéis',
-      () async {
-        // 1. Arrange
-        final harness = await following();
-
-        // 2. Act
+      /// Ana subscribes to and publishes in [_kGroup], where Bia publishes.
+      /// The tracking view model follows a real
+      /// [MembershipRepositoryFirestore] over
+      /// mocked Firestore sources.
+      Future<_Harness> following() async {
+        organization = StreamController<Map<String, Object?>?>();
+        roles = StreamController<Map<String, Object?>>();
+        groupName = StreamController<String?>();
+        live = StreamController<List<UserModel>>();
+        final memberships = MockMembershipService();
+        when(
+          memberships.organizationMembership(any, any),
+        ).thenAnswer((_) => organization.stream);
+        when(memberships.groupRoles(any, any)).thenAnswer((_) => roles.stream);
+        when(
+          memberships.groupName(any, _kGroup.id),
+        ).thenAnswer((_) => groupName.stream);
+        final sources = MockPositionsRepository();
+        when(
+          sources.streamGroupPositions(_kGroup.id),
+        ).thenAnswer((_) => live.stream);
+        groupMap = MembershipRepositoryFirestore(
+          onAccessLost: () async {},
+          memberships: memberships,
+          positions: sources,
+          organizationId: () => 'rotasul',
+          email: () => _kEmail,
+        );
+        organization.add({'email': _kEmail, 'role': 'member'});
         roles.add({
           _kGroup.id: ['publisher', 'subscriber'],
         });
+        groupName.add(_kGroup.name);
+        live.add([UserModel(email: _kBia.email, name: _kBia.name)]);
+        groupMap.start();
         await pumpEventQueue();
-
-        // 3. Assert
-        verifyNever(harness.user.isTrackable());
-        harness.controller.dispose();
-      },
-    );
-
-    test(
-      'Happy Path: Deve procurar o aparelho de novo quando os papéis mudam',
-      () async {
-        // 1. Arrange
-        final harness = await following();
-
-        // 2. Act
-        roles.add({
-          _kGroup.id: ['maintainer', 'publisher', 'subscriber'],
-        });
+        final harness = _Harness(state: groupMap);
+        await harness.controller.start();
         await pumpEventQueue();
+        clearInteractions(harness.positions);
+        clearInteractions(harness.location);
+        return harness;
+      }
 
-        // 3. Assert
-        verify(harness.user.isTrackable()).called(1);
-        harness.controller.dispose();
-      },
-    );
-  });
+      tearDown(() => groupMap.dispose());
+
+      test(
+        'Happy Path: Deve reagir uma vez a um retrato com uma pessoa nova',
+        () async {
+          // 1. Arrange
+          final harness = await following();
+          var groupUsersChanged = 0;
+          harness.controller.groupUsers.addListener(() => groupUsersChanged++);
+
+          // 2. Act
+          live.add([
+            UserModel(email: _kBia.email, name: _kBia.name),
+            UserModel(email: 'caio@example.com', name: 'Caio'),
+          ]);
+          await pumpEventQueue();
+
+          // 3. Assert
+          expect(groupUsersChanged, 1);
+          verify(
+            harness.positions.hasPointsOnDate(
+              _kGroup.id,
+              'caio@example.com',
+              any,
+            ),
+          ).called(1);
+          harness.controller.dispose();
+        },
+      );
+
+      test(
+        'Edge Case: Não deve reagir a um retrato novo com as mesmas posições',
+        () async {
+          // 1. Arrange
+          final harness = await following();
+          var groupUsersChanged = 0;
+          harness.controller.groupUsers.addListener(() => groupUsersChanged++);
+
+          // 2. Act
+          live.add([UserModel(email: _kBia.email, name: _kBia.name)]);
+          await pumpEventQueue();
+
+          // 3. Assert
+          expect(groupUsersChanged, 0);
+          verifyNever(harness.positions.hasPointsOnDate(any, any, any));
+          harness.controller.dispose();
+        },
+      );
+
+      test(
+        'Edge Case: Não deve procurar o aparelho de novo com os mesmos papéis',
+        () async {
+          // 1. Arrange
+          final harness = await following();
+
+          // 2. Act
+          roles.add({
+            _kGroup.id: ['publisher', 'subscriber'],
+          });
+          await pumpEventQueue();
+
+          // 3. Assert
+          verifyNever(harness.location.currentPosition());
+          harness.controller.dispose();
+        },
+      );
+
+      test(
+        'Happy Path: Deve procurar o aparelho de novo quando os papéis mudam',
+        () async {
+          // 1. Arrange
+          final harness = await following();
+
+          // 2. Act
+          roles.add({
+            _kGroup.id: ['maintainer', 'publisher', 'subscriber'],
+          });
+          await pumpEventQueue();
+
+          // 3. Assert
+          verify(harness.location.currentPosition()).called(1);
+          harness.controller.dispose();
+        },
+      );
+    },
+  );
 
   group('TrackingViewModel.dispose - vazamentos (#195)', () {
     test(
@@ -1168,7 +1338,7 @@ void main() {
         final harness = _Harness();
         await harness.controller.start();
         harness.controller.dispose();
-        when(harness.user.isTrackable()).thenReturn(true);
+        harness.canPublish();
 
         // 2. Act
         harness.hasWhenInUsePermission.value = true;
@@ -1250,7 +1420,9 @@ void main() {
         final located = StreamController<LatLng>();
         when(harness.service.ready).thenAnswer((_) => ready.stream);
         when(harness.service.localPositions).thenAnswer((_) => located.stream);
+        await harness.started();
         await harness.controller.toggleService();
+        expect(ready.hasListener, isTrue);
 
         // 2. Act
         harness.controller.dispose();
@@ -1293,9 +1465,12 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         final fix = Completer<LatLng>();
-        when(harness.user.isTrackable()).thenReturn(true);
+        harness.canPublish();
         when(harness.location.currentPosition()).thenAnswer((_) => fix.future);
         await harness.controller.start();
+        await pumpEventQueue();
+        harness.capabilities.value = const Capabilities(isMember: true);
+        verify(harness.location.currentPosition()).called(1);
         harness.controller.dispose();
 
         // 2. Act
@@ -1335,7 +1510,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         final last = Completer<LocationPoint?>();
-        when(harness.calendar.isObservingToday).thenReturn(false);
+        when(harness.days.isObservingToday).thenReturn(false);
         when(
           harness.groupMap.loadHistoryMembers(),
         ).thenAnswer((_) async => const [_kBia]);
@@ -1423,7 +1598,7 @@ void main() {
           ),
         );
         await pumpEventQueue();
-        verifyNever(_start(harness.service));
+        verifyNever(_startSharing(harness.startSharing));
         expect(ready.hasListener, isFalse);
         expect(located.hasListener, isFalse);
         expect(
@@ -1507,7 +1682,7 @@ void main() {
 
         // 3. Assert
         verifyNever(harness.service.isRunning());
-        verifyNever(harness.user.isTrackable());
+        verifyNever(harness.profiles.getUserGoogleModel());
       },
     );
   });
@@ -1606,18 +1781,23 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        when(harness.user.isTrackable()).thenReturn(true);
+        harness.canPublish();
         await harness.controller.start();
+        await pumpEventQueue();
+        harness.capabilities.value = const Capabilities(isMember: true);
         await pumpEventQueue();
         var notified = 0;
         harness.controller.ownPosition.addListener(() => notified++);
 
         // 2. Act
-        harness.capabilities.value = const Capabilities(isMember: true);
+        harness.capabilities.value = const Capabilities(
+          isMember: true,
+          isAdmin: true,
+        );
         await pumpEventQueue();
 
         // 3. Assert
-        verify(harness.location.currentPosition()).called(2);
+        verify(harness.location.currentPosition()).called(3);
         expect(notified, 0);
         harness.controller.dispose();
       },
@@ -1679,6 +1859,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
+        await harness.started();
         await harness.controller.toggleService();
 
         // 2. Act
@@ -1687,6 +1868,7 @@ void main() {
 
         // 3. Assert
         expect(act, throwsUnsupportedError);
+        harness.controller.dispose();
       },
     );
 

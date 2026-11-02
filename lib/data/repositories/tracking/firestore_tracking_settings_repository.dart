@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
 
 import 'package:monamie_app/domain/models/tracking_settings.dart';
@@ -7,9 +10,42 @@ import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
 
 /// [TrackingSettingsRepository] over `organizations/{id}/config/tracking` and
 /// `config/plan` in the bound organization's project.
+///
+/// In the UI isolate it is organization-scoped: whoever creates it calls
+/// [start] once, which keeps [settings] current, and [dispose] once, which
+/// stops listening. The tracking service's isolate only calls [watch].
 class FirestoreTrackingSettingsRepository
     implements TrackingSettingsRepository {
-  const FirestoreTrackingSettingsRepository();
+  FirestoreTrackingSettingsRepository();
+
+  StreamSubscription<TrackingSettings>? _subscription;
+  bool _started = false;
+  bool _disposed = false;
+
+  final _settings = ValueNotifier<TrackingSettings>(TrackingSettings.defaults);
+
+  @override
+  ValueListenable<TrackingSettings> get settings => _settings;
+
+  /// Starts following the saved settings into [settings]. Only the first
+  /// call does anything.
+  void start() {
+    if (_started || _disposed) return;
+    _started = true;
+    _subscription = watch().listen((value) {
+      if (!_disposed) _settings.value = value;
+    }, onError: (_) {});
+  }
+
+  /// Stops listening and releases [settings]. Only the first call does
+  /// anything.
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _subscription?.cancel();
+    _subscription = null;
+    _settings.dispose();
+  }
 
   CollectionReference<Map<String, dynamic>> get _config =>
       CurrentOrganizationFirebase.instance.organizationData.collection(

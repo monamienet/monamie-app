@@ -10,13 +10,14 @@ import 'package:flutter/foundation.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i11;
 import 'package:monamie_app/data/model/user_google_model.dart' as _i3;
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart'
+    as _i4;
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart'
     as _i10;
 import 'package:monamie_app/domain/models/capabilities.dart' as _i5;
 import 'package:monamie_app/domain/models/group_member.dart' as _i8;
 import 'package:monamie_app/domain/models/map_group.dart' as _i6;
 import 'package:monamie_app/domain/models/user_model.dart' as _i7;
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart' as _i4;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -46,10 +47,11 @@ class _FakeUserGoogleModel_1 extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
-/// A class which mocks [GroupMapState].
+/// A class which mocks [MembershipRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockGroupMapState extends _i1.Mock implements _i4.GroupMapState {
+class MockMembershipRepository extends _i1.Mock
+    implements _i4.MembershipRepository {
   @override
   _i2.ValueListenable<_i5.Capabilities> get capabilities =>
       (super.noSuchMethod(

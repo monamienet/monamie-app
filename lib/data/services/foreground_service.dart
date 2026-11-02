@@ -231,7 +231,7 @@ Future<void> updateLocation(
   // restart this function with the new period and radius.
   if (_settingsSubscription == null) {
     final first = Completer<void>();
-    _settingsSubscription = const FirestoreTrackingSettingsRepository()
+    _settingsSubscription = FirestoreTrackingSettingsRepository()
         .watch()
         .listen(
           (settings) {

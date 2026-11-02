@@ -778,7 +778,7 @@ void main() {
 
   group('userModelFromFirestore - igualdade por conteúdo', () {
     // The map compares each Firestore snapshot with the last one by content
-    // (`GroupMapViewModel`): two reads of the same document must be equal.
+    // (`MembershipRepositoryFirestore`): two reads of the same document must be equal.
     Map<String, Object?> document() => {
       'email': 'bia@example.com',
       'name': 'Bia',

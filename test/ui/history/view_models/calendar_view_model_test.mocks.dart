@@ -8,6 +8,8 @@ import 'dart:async' as _i4;
 
 import 'package:flutter/foundation.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart'
+    as _i8;
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart'
     as _i3;
 import 'package:monamie_app/domain/models/capabilities.dart' as _i9;
@@ -16,7 +18,6 @@ import 'package:monamie_app/domain/models/history_month.dart' as _i6;
 import 'package:monamie_app/domain/models/location_point.dart' as _i7;
 import 'package:monamie_app/domain/models/map_group.dart' as _i10;
 import 'package:monamie_app/domain/models/user_model.dart' as _i5;
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart' as _i8;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -150,10 +151,11 @@ class MockPositionsRepository extends _i1.Mock
           as _i4.Future<void>);
 }
 
-/// A class which mocks [GroupMapState].
+/// A class which mocks [MembershipRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockGroupMapState extends _i1.Mock implements _i8.GroupMapState {
+class MockMembershipRepository extends _i1.Mock
+    implements _i8.MembershipRepository {
   @override
   _i2.ValueListenable<_i9.Capabilities> get capabilities =>
       (super.noSuchMethod(

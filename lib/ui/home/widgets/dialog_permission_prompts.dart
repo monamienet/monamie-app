@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:monamie_app/ui/home/view_models/permission_prompts.dart';
+import 'package:monamie_app/utils/permission_prompts.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/color_palette.dart';
 
 /// [PermissionPrompts] as dialogs on the root navigator
-/// ([rootNavigatorKey]): the questions come from a controller in the middle
-/// of a flow, with no `BuildContext` of its own.
+/// ([rootNavigatorKey]): the questions come from `PermissionsRepository` in
+/// the middle of a flow, with no `BuildContext` of its own.
 class DialogPermissionPrompts implements PermissionPrompts {
   const DialogPermissionPrompts();
 

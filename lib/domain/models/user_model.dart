@@ -19,4 +19,14 @@ abstract class UserModel with _$UserModel {
   }) = _UserModel;
 
   const UserModel._();
+
+  /// What [publishedName] says for a person without a name.
+  static const noName = 'Nome não informado';
+
+  /// The name the tracking service publishes: [name] trimmed, or [noName]
+  /// when there is none.
+  String get publishedName {
+    final trimmed = name?.trim();
+    return trimmed == null || trimmed.isEmpty ? noName : trimmed;
+  }
 }

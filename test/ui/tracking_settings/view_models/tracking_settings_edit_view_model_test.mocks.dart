@@ -4,11 +4,12 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i3;
+import 'dart:async' as _i5;
 
+import 'package:flutter/foundation.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart'
-    as _i2;
+    as _i3;
 import 'package:monamie_app/domain/models/tracking_settings.dart' as _i4;
 
 // ignore_for_file: type=lint
@@ -27,35 +28,57 @@ import 'package:monamie_app/domain/models/tracking_settings.dart' as _i4;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
+class _FakeValueListenable_0<T> extends _i1.SmartFake
+    implements _i2.ValueListenable<T> {
+  _FakeValueListenable_0(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [TrackingSettingsRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockTrackingSettingsRepository extends _i1.Mock
-    implements _i2.TrackingSettingsRepository {
+    implements _i3.TrackingSettingsRepository {
   @override
-  _i3.Stream<_i4.TrackingSettings> watch() =>
+  _i2.ValueListenable<_i4.TrackingSettings> get settings =>
+      (super.noSuchMethod(
+            Invocation.getter(#settings),
+            returnValue: _FakeValueListenable_0<_i4.TrackingSettings>(
+              this,
+              Invocation.getter(#settings),
+            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_0<_i4.TrackingSettings>(
+                  this,
+                  Invocation.getter(#settings),
+                ),
+          )
+          as _i2.ValueListenable<_i4.TrackingSettings>);
+
+  @override
+  _i5.Stream<_i4.TrackingSettings> watch() =>
       (super.noSuchMethod(
             Invocation.method(#watch, []),
-            returnValue: _i3.Stream<_i4.TrackingSettings>.empty(),
-            returnValueForMissingStub: _i3.Stream<_i4.TrackingSettings>.empty(),
+            returnValue: _i5.Stream<_i4.TrackingSettings>.empty(),
+            returnValueForMissingStub: _i5.Stream<_i4.TrackingSettings>.empty(),
           )
-          as _i3.Stream<_i4.TrackingSettings>);
+          as _i5.Stream<_i4.TrackingSettings>);
 
   @override
-  _i3.Future<int> minPeriodMinutes() =>
+  _i5.Future<int> minPeriodMinutes() =>
       (super.noSuchMethod(
             Invocation.method(#minPeriodMinutes, []),
-            returnValue: _i3.Future<int>.value(0),
-            returnValueForMissingStub: _i3.Future<int>.value(0),
+            returnValue: _i5.Future<int>.value(0),
+            returnValueForMissingStub: _i5.Future<int>.value(0),
           )
-          as _i3.Future<int>);
+          as _i5.Future<int>);
 
   @override
-  _i3.Future<void> save(_i4.TrackingSettings? settings) =>
+  _i5.Future<void> save(_i4.TrackingSettings? settings) =>
       (super.noSuchMethod(
             Invocation.method(#save, [settings]),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
           )
-          as _i3.Future<void>);
+          as _i5.Future<void>);
 }

@@ -6,16 +6,17 @@ import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 
-/// What the home screen reads about the person's groups and the group on
-/// the map. Provided under this type (`OrganizationScope`), so screens and
-/// the other controllers depend on it and not on the Firestore-backed
-/// `GroupMapViewModel`.
+/// The person's memberships in the bound organization and the group on the
+/// map: the organization's shared state that the home screen, its view
+/// models and the `StartSharing` use case read. Provided under this type
+/// (`OrganizationScope`), so they depend on it and not on the
+/// Firestore-backed `MembershipRepositoryFirestore`.
 ///
 /// Each value is its own [ValueListenable], so a reader follows only what
 /// it uses (a screen merges several with `Listenable.merge`). A value only
 /// notifies when it changes: lists and maps are replaced whole, never
 /// changed in place, and compared by content (their items are `freezed`).
-abstract interface class GroupMapState {
+abstract interface class MembershipRepository {
   /// What the person may do in the bound organization, from their
   /// membership documents; updates by itself when an administrator changes
   /// them.

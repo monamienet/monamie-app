@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/data/services/call_service.dart';
-import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
+import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/person_row_tile.dart';
@@ -12,7 +12,7 @@ import 'package:monamie_app/ui/home/widgets/group_rows.dart';
 /// controllers: the people publishing there today, or on a past day everyone
 /// who ever published there (once read for the history).
 List<GroupRow> observedGroupRows({
-  required GroupMapState groups,
+  required MembershipRepository groups,
   required TrackingViewModel tracking,
   required CalendarViewModel calendar,
 }) {
@@ -41,7 +41,7 @@ class PeopleList extends StatelessWidget {
     required this.user,
   });
 
-  final GroupMapState groups;
+  final MembershipRepository groups;
   final TrackingViewModel tracking;
   final CalendarViewModel calendar;
   final CallService calls;
