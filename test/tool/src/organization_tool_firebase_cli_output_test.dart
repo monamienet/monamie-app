@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
-import '../../tool/src/firebase_cli.dart';
-import '../../tool/src/organizations.dart';
-import '../../tool/src/process_firebase_cli.dart';
+import '../../../tool/src/firebase_cli.dart';
+import '../../../tool/src/organizations.dart';
+import '../../../tool/src/process_firebase_cli.dart';
 
 /// A fake API key: no error message may ever contain it.
 const secretMarker = 'AIzaFAKE-secret-key-0123456789';

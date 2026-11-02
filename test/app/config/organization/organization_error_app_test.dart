@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_error_app.dart';
 
-import '../support/test_organization.dart';
+import '../../../support/test_organization.dart';
 
 const loadError =
     'Could not fetch http://localhost:5000/organization/id.txt (HTTP 404). Run '

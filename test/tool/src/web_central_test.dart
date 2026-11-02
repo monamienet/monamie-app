@@ -7,7 +7,7 @@ import 'package:path/path.dart' as p;
 import '../../../tool/src/firebase_cli.dart';
 import '../../../tool/src/organizations.dart';
 import '../../../tool/src/web_central.dart';
-import '../support/fake_firebase_cli.dart';
+import '../../support/fake_firebase_cli.dart';
 
 const centralWebApp = FirebaseWebApp(
   appId: '1:222:web:central',

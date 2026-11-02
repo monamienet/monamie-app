@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../../../tool/src/firebase_cli.dart';
-import '../../../tool/src/organizations.dart';
+import '../../tool/src/firebase_cli.dart';
+import '../../tool/src/organizations.dart';
 
 /// A fake API key placed in every config built by [googleServicesJson]: no
 /// message or output of the organization tool may ever contain it.

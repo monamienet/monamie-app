@@ -12,7 +12,7 @@ import 'package:monamie_app/app/data/organization/organization_binding.dart';
 import 'package:monamie_app/app/data/organization/organization_binding_store.dart';
 import 'package:monamie_app/app/data/organization/organization_session.dart';
 
-import '../../support/test_organization.dart';
+import '../../../support/test_organization.dart';
 
 const options = FirebaseOptions(
   apiKey: 'api-key',

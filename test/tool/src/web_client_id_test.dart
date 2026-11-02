@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../../tool/src/android_firebase_config.dart';
 import '../../../tool/src/organizations.dart';
-import '../support/fake_firebase_cli.dart';
+import '../../support/fake_firebase_cli.dart';
 
 /// Returns the message of the [OrganizationToolException] thrown by [action], or
 /// fails the test when it does not throw one.

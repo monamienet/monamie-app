@@ -4,7 +4,7 @@ import '../../../tool/src/firebase_cli.dart';
 import '../../../tool/src/firestore_documents.dart';
 import '../../../tool/src/organization_check.dart';
 import '../../../tool/src/organizations.dart';
-import '../support/fake_firebase_cli.dart';
+import '../../support/fake_firebase_cli.dart';
 
 const androidApp = FirebaseAndroidApp(
   appId: '1:111:android:app',

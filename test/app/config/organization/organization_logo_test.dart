@@ -7,7 +7,7 @@ import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/config/organization/organization_logo.dart';
 
-import '../../support/test_organization.dart';
+import '../../../support/test_organization.dart';
 
 /// Finds the [SvgPicture] that shows the bundled asset [assetName].
 Finder svgAsset(String assetName) => find.byWidgetPredicate(

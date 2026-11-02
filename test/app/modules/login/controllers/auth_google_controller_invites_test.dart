@@ -29,7 +29,7 @@ import 'package:monamie_app/app/modules/login/controllers/auth_google_controller
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 
-import '../../support/test_organization.dart';
+import '../../../../support/test_organization.dart';
 
 const String _kHomeRoute = '/home-test';
 const String _kIdToken = 'google-id-token';

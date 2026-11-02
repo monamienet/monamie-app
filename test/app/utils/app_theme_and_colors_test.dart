@@ -7,7 +7,7 @@ import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:monamie_app/app/utils/app_theme.dart';
 
-import '../support/test_organization.dart';
+import '../../support/test_organization.dart';
 
 /// A catalog theme with the AquariusTur tones, for the organization-switch tests.
 const aquariusTurTheme = OrganizationTheme(
