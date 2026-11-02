@@ -3,8 +3,6 @@ import 'package:monamie_app/app/modules/login/controllers/login_state.dart';
 import 'package:monamie_app/app/modules/login/controllers/sign_in_actions.dart';
 import 'package:monamie_app/app/modules/login/services/google_bond_check.dart';
 import 'package:monamie_app/app/modules/login/services/stored_google_bond_check.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/utils/result.dart';
 
 export 'login_state.dart';
@@ -54,10 +52,8 @@ class LoginController extends ChangeNotifier {
     if (_restoreStarted) return;
     _restoreStarted = true;
     try {
-      if (await hasActiveGoogleBond()) {
-        _signIn.sessionRestored();
-        Get.offNamed(Routes.MONAMIE);
-      }
+      // The router follows the session to the map.
+      if (await hasActiveGoogleBond()) _signIn.sessionRestored();
     } finally {
       _emit(_state.copyWith(isRestoringSession: false));
     }

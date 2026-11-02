@@ -1,22 +1,14 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/login/controllers/login_controller.dart';
 import 'package:monamie_app/app/modules/login/controllers/sign_in_actions.dart';
 import 'package:monamie_app/app/modules/login/services/google_bond_check.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
 
 @GenerateNiceMocks([MockSpec<GoogleBondCheck>(), MockSpec<SignInActions>()])
 import 'login_controller_test.mocks.dart';
-
-/// Rota fictícia de login usada como rota inicial nos testes de navegação.
-const String _kLoginRoute = '/login-test';
-const String _kLoginPlaceholder = 'login-placeholder';
-const String _kMonamiePlaceholder = 'monamie-placeholder';
 
 /// A [MockGoogleBondCheck] whose `hasActiveBond` answers [hasBond], throws
 /// [error] or waits for [pending].
@@ -34,35 +26,20 @@ MockGoogleBondCheck _bondCheck({
   return check;
 }
 
-/// A [LoginController] over [bondCheck] and a [MockSignInActions].
-LoginController _controller(MockGoogleBondCheck bondCheck) =>
-    LoginController(signIn: MockSignInActions(), bondCheck: bondCheck);
+/// The sign-in the controller under test reports to; the router opens the
+/// map exactly when it hears `sessionRestored` (the session becomes bound),
+/// so "goes to the map" is that call and "stays on *Login*" its absence.
+late MockSignInActions _signIn;
 
-Widget _buildTestApp() {
-  return GetMaterialApp(
-    initialRoute: _kLoginRoute,
-    getPages: [
-      GetPage(
-        name: _kLoginRoute,
-        page: () => const Scaffold(body: Text(_kLoginPlaceholder)),
-      ),
-      GetPage(
-        name: Routes.MONAMIE,
-        page: () => const Scaffold(body: Text(_kMonamiePlaceholder)),
-      ),
-    ],
-  );
-}
+/// A [LoginController] over [bondCheck] and [_signIn].
+LoginController _controller(MockGoogleBondCheck bondCheck) =>
+    LoginController(signIn: _signIn, bondCheck: bondCheck);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
-    Get.testMode = true;
-  });
-
-  tearDown(() {
-    Get.reset();
+    _signIn = MockSignInActions();
   });
 
   group('LoginController - Restauração de Sessão no Cold Start', () {
@@ -81,10 +58,9 @@ void main() {
     );
 
     testWidgets(
-      'Happy Path: Deve navegar para Routes.MONAMIE quando houver sessão Google ativa',
+      'Happy Path: Deve levar ao mapa (sessão restaurada) quando houver sessão Google ativa',
       (WidgetTester tester) async {
         // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
         final controller = _controller(_bondCheck(hasBond: true));
 
         // 2. Act
@@ -92,8 +68,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // 3. Assert
-        expect(Get.currentRoute, Routes.MONAMIE);
-        expect(find.text(_kMonamiePlaceholder), findsOneWidget);
+        verify(_signIn.sessionRestored()).called(1);
       },
     );
 
@@ -101,7 +76,6 @@ void main() {
       'Happy Path: Deve finalizar isRestoringSession como false após restaurar a sessão',
       (WidgetTester tester) async {
         // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
         final controller = _controller(_bondCheck(hasBond: true));
 
         // 2. Act
@@ -117,7 +91,6 @@ void main() {
       'Happy Path: Deve consultar hasActiveGoogleBond exatamente uma vez no onReady',
       (WidgetTester tester) async {
         // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
         final bondCheck = _bondCheck(hasBond: true);
         final controller = _controller(bondCheck);
 
@@ -134,7 +107,6 @@ void main() {
       'Edge Case: Deve manter isRestoringSession true e permanecer no login enquanto a verificação estiver pendente',
       (WidgetTester tester) async {
         // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
         final pending = Completer<bool>();
         final controller = _controller(_bondCheck(pending: pending));
 
@@ -144,7 +116,7 @@ void main() {
 
         // 3. Assert
         expect(controller.state.isRestoringSession, isTrue);
-        expect(Get.currentRoute, _kLoginRoute);
+        verifyNever(_signIn.sessionRestored());
       },
     );
 
@@ -152,7 +124,6 @@ void main() {
       'Sad Path: Deve permanecer na rota de login quando não houver sessão ativa',
       (WidgetTester tester) async {
         // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
         final controller = _controller(_bondCheck(hasBond: false));
 
         // 2. Act
@@ -160,9 +131,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // 3. Assert
-        expect(Get.currentRoute, _kLoginRoute);
-        expect(find.text(_kLoginPlaceholder), findsOneWidget);
-        expect(find.text(_kMonamiePlaceholder), findsNothing);
+        verifyNever(_signIn.sessionRestored());
       },
     );
 
@@ -170,7 +139,6 @@ void main() {
       'Sad Path: Deve finalizar isRestoringSession como false quando não houver sessão ativa',
       (WidgetTester tester) async {
         // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
         final controller = _controller(_bondCheck(hasBond: false));
 
         // 2. Act
@@ -186,14 +154,13 @@ void main() {
       'Sad Path: Deve permanecer no login e finalizar isRestoringSession como false quando hasActiveGoogleBond lançar exceção',
       (WidgetTester tester) async {
         // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
         final failure = StateError('falha simulada ao verificar sessão');
         final controller = _controller(_bondCheck(error: failure));
         final uncaughtErrors = <Object>[];
 
         // 2. Act
-        // O onReady usa apenas try/finally (sem catch) e é disparado pelo GetX
-        // via post-frame callback sem await. A exceção escapa como erro
+        // O restoreSession usa apenas try/finally (sem catch) e é disparado
+        // pela tela via post-frame callback sem await. A exceção escapa como erro
         // assíncrono não tratado; a zona guardada a captura para inspeção.
         await runZonedGuarded(() async {
           controller.restoreSession();
@@ -203,7 +170,7 @@ void main() {
         // 3. Assert
         expect(uncaughtErrors, [same(failure)]);
         expect(controller.state.isRestoringSession, isFalse);
-        expect(Get.currentRoute, _kLoginRoute);
+        verifyNever(_signIn.sessionRestored());
       },
     );
   });
@@ -213,7 +180,6 @@ void main() {
       'Happy Path: a remembered session tells the sign-in it was restored',
       (WidgetTester tester) async {
         // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
         final signIn = MockSignInActions();
         final controller = LoginController(
           signIn: signIn,
@@ -233,7 +199,6 @@ void main() {
       'Edge Case: a second call checks nothing and notifies nothing',
       (WidgetTester tester) async {
         // 1. Arrange
-        await tester.pumpWidget(_buildTestApp());
         final bondCheck = _bondCheck(hasBond: true);
         final signIn = MockSignInActions();
         final controller = LoginController(

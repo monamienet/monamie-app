@@ -7,8 +7,8 @@ import 'package:monamie_app/app/modules/monamie/models/map_group.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 
 /// What the home screen reads about the person's groups and the group on
-/// the map. Registered under this type, so screens and the other
-/// controllers depend on it and not on the Firestore-backed
+/// the map. Provided under this type (`OrganizationScope`), so screens and
+/// the other controllers depend on it and not on the Firestore-backed
 /// `GroupMapController`.
 ///
 /// Each value is its own [ValueListenable], so a reader follows only what

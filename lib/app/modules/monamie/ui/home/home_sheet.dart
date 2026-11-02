@@ -1,12 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
+import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/call_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
+import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/people_list.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/share_card.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/sheet_colors.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
+import 'package:monamie_app/app/routes/app_routes.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// The panel under the map: the sharing switch for people who share, the
@@ -16,14 +20,27 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 /// Dragging the grabber down hides the group's list so the map gets the
 /// room; dragging it up (or tapping it) shows the list again.
 class HomeSheet extends StatefulWidget {
-  const HomeSheet({super.key});
+  const HomeSheet({
+    super.key,
+    required this.groups,
+    required this.tracking,
+    required this.calendar,
+    required this.calls,
+    required this.user,
+  });
+
+  final GroupMapState groups;
+  final TrackingController tracking;
+  final CalendarController calendar;
+  final CallController calls;
+  final UserController user;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
 }
 
 class _HomeSheetState extends State<HomeSheet> {
-  GroupMapState get _groups => Get.find<GroupMapState>();
+  GroupMapState get _groups => widget.groups;
 
   /// Whether the group's list is hidden.
   bool _collapsed = false;
@@ -79,7 +96,7 @@ class _HomeSheetState extends State<HomeSheet> {
                     ),
                   if (layout.showShareCard) ...[
                     const SizedBox(height: 4),
-                    const ShareCard(),
+                    ShareCard(controller: widget.tracking),
                   ],
                   if (layout.showGroup)
                     AnimatedSize(
@@ -170,7 +187,13 @@ class _HomeSheetState extends State<HomeSheet> {
       if (group != null && count == 0)
         _emptyGroup()
       else if (group != null)
-        const PeopleList(),
+        PeopleList(
+          groups: _groups,
+          tracking: widget.tracking,
+          calendar: widget.calendar,
+          calls: widget.calls,
+          user: widget.user,
+        ),
     ];
   }
 
@@ -201,7 +224,7 @@ class _HomeSheetState extends State<HomeSheet> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              onPressed: () => Get.toNamed<void>(Routes.GROUPS),
+              onPressed: () => context.push<void>(Routes.groups),
               child: const Text(
                 'Convidar pessoas',
                 style: TextStyle(fontWeight: FontWeight.w800),

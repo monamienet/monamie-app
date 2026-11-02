@@ -4,7 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
+import 'package:monamie_app/app/modules/monamie/controller/call_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
@@ -15,21 +16,34 @@ import 'package:monamie_app/app/modules/monamie/ui/home/home_menu.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_sheet.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/logout_progress_overlay.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
-import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 
+/// The map of the bound organization, with its header, sheet and menu. The
+/// organization's route hands it the controllers of the organization's
+/// scope and the app's sign-in flow.
 class MonamiePage extends StatelessWidget {
-  const MonamiePage({super.key});
+  const MonamiePage({
+    super.key,
+    required this.userCtrl,
+    required this.permissionsCtrl,
+    required this.trackingCtrl,
+    required this.groupMap,
+    required this.calendar,
+    required this.calls,
+    required this.authCtrl,
+  });
 
-  UserController get userCtrl => Get.find<UserController>();
-  PermissionsController get permissionsCtrl =>
-      Get.find<PermissionsController>();
-  TrackingController get trackingCtrl => Get.find<TrackingController>();
-  GroupMapState get groupMap => Get.find<GroupMapState>();
-  CalendarController get calendar => Get.find<CalendarController>();
-  AuthGoogleController get authCtrl => Get.find<AuthGoogleController>();
+  final UserController userCtrl;
+  final PermissionsController permissionsCtrl;
+  final TrackingController trackingCtrl;
+  final GroupMapState groupMap;
+  final CalendarController calendar;
+  final CallController calls;
+
+  /// The sign-in flow: the menu's sign-out and switch, and their overlay.
+  final SessionFlow authCtrl;
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +51,22 @@ class MonamiePage extends StatelessWidget {
       // The header is dark, so the status bar icons are light.
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        drawer: const HomeMenu(),
+        drawer: HomeMenu(
+          groups: groupMap,
+          user: userCtrl,
+          session: authCtrl,
+          tracking: trackingCtrl,
+        ),
         body: Stack(
           fit: StackFit.expand,
           children: [
             Column(
               children: [
-                const HomeHeader(),
+                HomeHeader(
+                  groups: groupMap,
+                  user: userCtrl,
+                  calendar: calendar,
+                ),
                 Expanded(child: _body(context)),
               ],
             ),
@@ -110,7 +133,13 @@ class MonamiePage extends StatelessWidget {
         return Column(
           children: [
             Expanded(child: mapa(context)),
-            const HomeSheet(),
+            HomeSheet(
+              groups: groupMap,
+              tracking: trackingCtrl,
+              calendar: calendar,
+              calls: calls,
+              user: userCtrl,
+            ),
           ],
         );
       },

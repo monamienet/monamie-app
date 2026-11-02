@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/monamie/models/group_member.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
@@ -13,20 +12,26 @@ import 'home_doubles.dart';
 const _bia = GroupMember(name: 'Bia', email: 'bia@example.com');
 const _caio = GroupMember(name: 'Caio', email: 'caio@example.com');
 
-/// The list over [doubles], already registered.
+/// The list over [doubles].
 Future<void> pumpList(WidgetTester tester, HomeDoubles doubles) async {
-  doubles.register();
   await tester.pumpWidget(
-    const MaterialApp(
-      home: Scaffold(body: SingleChildScrollView(child: PeopleList())),
+    MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: PeopleList(
+            groups: doubles.groups,
+            tracking: doubles.tracking,
+            calendar: doubles.calendar,
+            calls: doubles.calls,
+            user: doubles.user,
+          ),
+        ),
+      ),
     ),
   );
 }
 
 void main() {
-  setUp(() => Get.testMode = true);
-  tearDown(Get.reset);
-
   group('PeopleList - Widget Test Suite', () {
     testWidgets('Happy Path: new people on the map show up in the list', (
       tester,

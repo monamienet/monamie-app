@@ -14,7 +14,7 @@ abstract interface class SignInActions {
   Future<Result<bool>> logout();
 
   /// A session remembered from a previous run was restored: the person goes
-  /// straight to the map (sets the session to bound before the screen
-  /// navigates).
+  /// straight to the map (sets the session to bound, which the router
+  /// follows).
   void sessionRestored();
 }

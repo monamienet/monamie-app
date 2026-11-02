@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:provider/provider.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/data/theme/theme_catalog.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
@@ -69,7 +69,7 @@ Future<void> pumpView(
     debounce: Duration.zero,
   );
   await tester.pumpWidget(
-    GetMaterialApp(
+    MaterialApp(
       home: CreateOrganizationView(
         controller: controller,
         ownerEmail: 'ana@example.com',
@@ -108,7 +108,6 @@ Future<void> acceptTerms(WidgetTester tester) async {
 
 void main() {
   setUp(() {
-    Get.testMode = true;
     backend = MockCreationBackend();
     when(backend.idProblem(any)).thenAnswer((_) async => null);
     stubCreate(() async {});
@@ -119,8 +118,6 @@ void main() {
       },
     );
   });
-
-  tearDown(Get.reset);
 
   group('CreateOrganizationView - Unit Test Suite', () {
     testWidgets(
@@ -344,17 +341,23 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final controller = CreateOrganizationController(
-        backend: backend,
-        themes: catalog,
-        debounce: const Duration(seconds: 1),
-      );
+      // Mounted as its route mounts it: the route's provider owns the
+      // controller and disposes it when the route leaves.
       await tester.pumpWidget(
         MaterialApp(
-          home: CreateOrganizationView(
-            controller: controller,
-            ownerEmail: 'ana@example.com',
-            onReady: () async => const Ok(null),
+          home: ChangeNotifierProvider(
+            create: (_) => CreateOrganizationController(
+              backend: backend,
+              themes: catalog,
+              debounce: const Duration(seconds: 1),
+            ),
+            child: Builder(
+              builder: (context) => CreateOrganizationView(
+                controller: context.read<CreateOrganizationController>(),
+                ownerEmail: 'ana@example.com',
+                onReady: () async => const Ok(null),
+              ),
+            ),
           ),
         ),
       );

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
@@ -28,7 +28,8 @@ import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
+import 'package:monamie_app/app/routes/app_routes.dart';
+import 'package:monamie_app/app/routes/session_redirect.dart';
 import 'package:monamie_app/app/utils/notice_presenter.dart';
 import 'package:monamie_app/app/utils/result.dart';
 import 'package:monamie_app/app/utils/user_notice.dart';
@@ -39,7 +40,6 @@ import '../../../../support/test_organization.dart';
   MockSpec<AuthGoogleService>(),
   MockSpec<BackgroundTrackingStopper>(),
   MockSpec<InvitesBackend>(),
-  MockSpec<NavigatorObserver>(),
   MockSpec<NoticePresenter>(),
   MockSpec<OrganizationBinder>(),
   MockSpec<OrganizationBindingStore>(),
@@ -52,7 +52,29 @@ import '../../../../support/test_organization.dart';
 ])
 import 'auth_google_controller_test.mocks.dart';
 
+/// Where a test starts: whatever screen the person is on before the
+/// controller moves the session.
 const String _kHomeRoute = '/home-test';
+
+/// The screen of each session the controller moved to since
+/// [_followRoutes], in order: what the router would open.
+final List<String> _visited = [];
+
+/// The screen the router shows now: the last session's, or [_kHomeRoute]
+/// while the session has not moved (what `_currentRoute` read when the
+/// controller navigated itself).
+String get _currentRoute => _visited.isEmpty ? _kHomeRoute : _visited.last;
+
+/// Records in [_visited] (and as `push:<route>` in [log]) the screen of
+/// each session [controller] moves to, starting empty.
+void _followRoutes(AuthGoogleController controller, [List<String>? log]) {
+  _visited.clear();
+  controller.session.addListener(() {
+    final route = sessionLocation(controller.session.value);
+    _visited.add(route);
+    log?.add('push:$route');
+  });
+}
 
 /// Calls [onChange] with [select]'s value each time it changes (as the GetX
 /// `ever` worker these tests used did); returns the function that stops it.
@@ -298,6 +320,7 @@ class _HarnessSignIn {
       membershipCheck: membershipCheck,
       refreshTheme: () => log.add('refreshTheme'),
     );
+    _followRoutes(controller);
   }
 
   final List<String> log = <String>[];
@@ -309,22 +332,11 @@ class _HarnessSignIn {
   late final AuthGoogleController controller;
 }
 
+/// A plain app around the flow: the controller no longer navigates, the
+/// screen it leads to is read from its session ([_currentRoute]).
 Future<void> _pumpAppSignIn(WidgetTester tester) async {
-  GetPage<dynamic> page(String name) => GetPage(
-    name: name,
-    page: () => Scaffold(body: Text(name)),
-  );
   await tester.pumpWidget(
-    GetMaterialApp(
-      initialRoute: _kHomeRoute,
-      getPages: [
-        page(_kHomeRoute),
-        page(Routes.LOGIN),
-        page(Routes.NO_ORGANIZATION),
-        page(Routes.ORGANIZATION_PICKER),
-        page(Routes.MONAMIE),
-      ],
-    ),
+    const MaterialApp(home: Scaffold(body: Text(_kHomeRoute))),
   );
   await tester.pumpAndSettle();
 }
@@ -464,6 +476,7 @@ class _HarnessInvites {
       membershipCheck: _membershipCheck(true),
       refreshTheme: () => log.add('refreshTheme'),
     );
+    _followRoutes(controller);
   }
 
   final List<String> log = <String>[];
@@ -476,25 +489,8 @@ class _HarnessInvites {
   late final AuthGoogleController controller;
 }
 
-Future<void> _pumpAppInvites(WidgetTester tester) async {
-  GetPage<dynamic> page(String name) => GetPage(
-    name: name,
-    page: () => Scaffold(body: Text(name)),
-  );
-  await tester.pumpWidget(
-    GetMaterialApp(
-      initialRoute: _kHomeRoute,
-      getPages: [
-        page(_kHomeRoute),
-        page(Routes.NO_ORGANIZATION),
-        page(Routes.ORGANIZATION_PICKER),
-        page(Routes.MONAMIE),
-        page(Routes.WELCOME),
-      ],
-    ),
-  );
-  await tester.pumpAndSettle();
-}
+/// See [_pumpAppSignIn].
+Future<void> _pumpAppInvites(WidgetTester tester) => _pumpAppSignIn(tester);
 
 /// Starts accepting [_kInvite] and advances the fake clock until it is over.
 Future<void> _accept(WidgetTester tester, AuthGoogleController controller) =>
@@ -557,7 +553,7 @@ const String _kLogSignOut = 'logoutGoogle';
 
 const String _kLogDeleteUser = 'deleteUserGoogleModel';
 
-const String _kLogNavigateLogin = 'push:${Routes.LOGIN}';
+const String _kLogNavigateLogin = 'push:${Routes.login}';
 
 /// Mock do AuthGoogleService: o logout do Google registra [_kLogSignOut]
 /// no log e falha com [logoutError].
@@ -602,16 +598,6 @@ MockUserGoogleRepository _userRepositoryLogout(
   return repository;
 }
 
-/// Mock de NavigatorObserver que registra no log as rotas empilhadas.
-MockNavigatorObserver _navigatorObserver(List<String> log) {
-  final observer = MockNavigatorObserver();
-  when(observer.didPush(any, any)).thenAnswer((invocation) {
-    final route = invocation.positionalArguments.first as Route<dynamic>;
-    log.add('push:${route.settings.name}');
-  });
-  return observer;
-}
-
 /// E-mails passados a `stop` desde a última verificação.
 List<Object?> _stoppedEmails(MockBackgroundTrackingStopper stopper) =>
     verify(stopper.stop(email: captureAnyNamed('email'))).captured;
@@ -639,8 +625,8 @@ class _HarnessLogout {
       getUserError: getUserError,
       deleteError: deleteError,
     );
-    // O controller é construído sem `Get.put`, de modo que o `onInit` real
-    // (que acessa o Google Sign-In) nunca é executado.
+    // O controller nunca recebe `start`, de modo que o Google Sign-In nunca
+    // é inicializado.
     controller = AuthGoogleController(
       notices: notices,
       organizationSession: OrganizationSession(
@@ -652,6 +638,7 @@ class _HarnessLogout {
       userRepository: userRepository,
       trackingStopper: stopper,
     );
+    _followRoutes(controller, log);
   }
 
   final List<String> log = <String>[];
@@ -676,27 +663,33 @@ class _LogoutRun {
 UserGoogleModel _storedUser() =>
     UserGoogleModel(id: 'uid-123', name: 'Ana Souza', email: _kStoredEmail);
 
-/// Monta o app com a rota inicial fictícia e um stub de `Routes.LOGIN`, e
-/// limpa do log os pushes feitos durante a montagem.
+/// Monta o app com a pessoa no mapa (sessão restaurada) e um roteador que
+/// segue a sessão do controller como o do app (`sessionRedirect`), com
+/// stubs do mapa e de `Routes.login`; limpa do log e de [_visited] o que a
+/// montagem registrou.
 Future<void> _pumpAppLogout(WidgetTester tester, _HarnessLogout harness) async {
-  await tester.pumpWidget(
-    GetMaterialApp(
-      initialRoute: _kHomeRoute,
-      navigatorObservers: [_navigatorObserver(harness.log)],
-      getPages: [
-        GetPage(
-          name: _kHomeRoute,
-          page: () => const Scaffold(body: Text(_kHomePlaceholder)),
-        ),
-        GetPage(
-          name: Routes.LOGIN,
-          page: () => const Scaffold(body: Text(_kLoginPlaceholder)),
-        ),
-      ],
-    ),
+  final controller = harness.controller..sessionRestored();
+  final router = GoRouter(
+    initialLocation: Routes.monamie,
+    refreshListenable: controller.session,
+    redirect: (_, state) =>
+        sessionRedirect(controller.session.value, state.uri.path),
+    routes: [
+      GoRoute(
+        path: Routes.monamie,
+        builder: (_, _) => const Scaffold(body: Text(_kHomePlaceholder)),
+      ),
+      GoRoute(
+        path: Routes.login,
+        builder: (_, _) => const Scaffold(body: Text(_kLoginPlaceholder)),
+      ),
+    ],
   );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(MaterialApp.router(routerConfig: router));
   await tester.pumpAndSettle();
   harness.log.clear();
+  _visited.clear();
 }
 
 /// Executa `logout()` até o fim e captura o [Result] devolvido ou uma
@@ -719,12 +712,7 @@ Future<_LogoutRun> _runLogout(
 
 void main() {
   group('sign in', () {
-    setUp(() {
-      Get.testMode = true;
-    });
-
     tearDown(() {
-      Get.reset();
       Organization.bind(testOrganization);
       CurrentOrganizationFirebase.debugReset();
     });
@@ -833,7 +821,7 @@ void main() {
       'AuthGoogleController.loginGoogle (sem organização) - Suíte de Testes Unitários',
       () {
         testWidgets(
-          'Happy Path: Deve navegar para Routes.NO_ORGANIZATION quando o usuário não tiver organização',
+          'Happy Path: Deve navegar para Routes.noOrganization quando o usuário não tiver organização',
           (WidgetTester tester) async {
             // 1. Arrange
             final harness = _HarnessSignIn();
@@ -847,7 +835,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(Get.currentRoute, Routes.NO_ORGANIZATION);
+            expect(_currentRoute, Routes.noOrganization);
           },
         );
 
@@ -934,7 +922,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+            expect(_currentRoute, Routes.organizationPicker);
             expect(
               harness.controller.state.organizationChoices.map(
                 (b) => b.organization.id,
@@ -962,7 +950,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+            expect(_currentRoute, Routes.organizationPicker);
             expect(
               harness.controller.state.organizationChoices.map(
                 (b) => b.organization.id,
@@ -1014,7 +1002,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+            expect(_currentRoute, Routes.organizationPicker);
             expect(
               harness.controller.state.organizationChoices.map(
                 (b) => b.organization.id,
@@ -1043,7 +1031,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(Get.currentRoute, _kHomeRoute);
+            expect(_currentRoute, _kHomeRoute);
             expect(harness.controller.state.organizationChoices, isEmpty);
             verifyNever(harness.directory.organizationsOfSignedInUser());
           },
@@ -1087,7 +1075,7 @@ void main() {
         );
 
         testWidgets(
-          'Happy Path: Deve navegar para Routes.NO_ORGANIZATION quando a pessoa não tiver mais matrícula',
+          'Happy Path: Deve navegar para Routes.noOrganization quando a pessoa não tiver mais matrícula',
           (WidgetTester tester) async {
             // 1. Arrange
             final harness = _HarnessSignIn(
@@ -1111,7 +1099,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(Get.currentRoute, Routes.NO_ORGANIZATION);
+            expect(_currentRoute, Routes.noOrganization);
           },
         );
 
@@ -1261,7 +1249,7 @@ void main() {
 
             // 3. Assert
             expect(harness.controller.state.noAccessReason, isNull);
-            expect(Get.currentRoute, isNot(Routes.NO_ORGANIZATION));
+            expect(_currentRoute, isNot(Routes.noOrganization));
           },
         );
 
@@ -1485,7 +1473,7 @@ void main() {
         );
 
         testWidgets(
-          'Happy Path: Deve navegar para Routes.NO_ORGANIZATION em vez de Routes.LOGIN',
+          'Happy Path: Deve navegar para Routes.noOrganization em vez de Routes.login',
           (WidgetTester tester) async {
             // 1. Arrange
             final harness = _HarnessSignIn();
@@ -1499,7 +1487,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(Get.currentRoute, Routes.NO_ORGANIZATION);
+            expect(_currentRoute, Routes.noOrganization);
           },
         );
 
@@ -1565,7 +1553,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(Get.currentRoute, _kHomeRoute);
+            expect(_currentRoute, _kHomeRoute);
           },
         );
       },
@@ -1587,7 +1575,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(_currentRoute, Routes.organizationPicker);
           expect(
             harness.controller.state.organizationChoices.map(
               (b) => b.organization.id,
@@ -1701,7 +1689,7 @@ void main() {
           // 3. Assert
           expect(harness.log, isNot(contains('refreshGoogleIdToken')));
           expect(harness.log, contains('signOutOfOrganization'));
-          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(_currentRoute, Routes.organizationPicker);
         },
       );
 
@@ -1765,7 +1753,7 @@ void main() {
       );
 
       testWidgets(
-        'Edge Case: Deve navegar para Routes.NO_ORGANIZATION quando a pessoa não tiver organização',
+        'Edge Case: Deve navegar para Routes.noOrganization quando a pessoa não tiver organização',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessSignIn();
@@ -1779,7 +1767,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(Get.currentRoute, Routes.NO_ORGANIZATION);
+          expect(_currentRoute, Routes.noOrganization);
           expect(harness.controller.state.organizationChoices, isEmpty);
           verifyNever(harness.authService.logoutGoogle());
         },
@@ -1870,7 +1858,7 @@ void main() {
               onAccountChosen: anyNamed('onAccountChosen'),
             ),
           );
-          expect(Get.currentRoute, _kHomeRoute);
+          expect(_currentRoute, _kHomeRoute);
         },
       );
 
@@ -1940,7 +1928,7 @@ void main() {
             ),
             isEmpty,
           );
-          expect(Get.currentRoute, _kHomeRoute);
+          expect(_currentRoute, _kHomeRoute);
         },
       );
 
@@ -2218,12 +2206,7 @@ void main() {
   });
 
   group('invites', () {
-    setUp(() {
-      Get.testMode = true;
-    });
-
     tearDown(() {
-      Get.reset();
       Organization.bind(testOrganization);
       CurrentOrganizationFirebase.debugReset();
     });
@@ -2290,7 +2273,7 @@ void main() {
           // 3. Assert
           verify(harness.directory.organizationsOfSignedInUser()).called(1);
           expect(harness.log, isNot(contains('bind')));
-          expect(Get.currentRoute, Routes.NO_ORGANIZATION);
+          expect(_currentRoute, Routes.noOrganization);
         },
       );
 
@@ -2358,7 +2341,7 @@ void main() {
 
           // 3. Assert
           expect(harness.controller.state.pendingInvites, [_kInvite]);
-          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(_currentRoute, Routes.organizationPicker);
         },
       );
 
@@ -2388,7 +2371,7 @@ void main() {
             _kInvite,
             _kOtherInvite,
           ]);
-          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(_currentRoute, Routes.organizationPicker);
           expect(harness.log, isNot(contains('bind')));
         },
       );
@@ -2463,7 +2446,7 @@ void main() {
           await _accept(tester, harness.controller);
 
           // 3. Assert
-          expect(Get.currentRoute, Routes.WELCOME);
+          expect(_currentRoute, Routes.welcome);
         });
 
         testWidgets(
@@ -2483,7 +2466,7 @@ void main() {
             // 3. Assert
             verify(harness.directory.organizationsOfSignedInUser()).called(1);
             expect(harness.boundIds, isEmpty);
-            expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+            expect(_currentRoute, Routes.organizationPicker);
           },
         );
 
@@ -2503,7 +2486,7 @@ void main() {
 
             // 3. Assert
             expect(harness.boundIds, isEmpty);
-            expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+            expect(_currentRoute, Routes.organizationPicker);
           },
         );
       },
@@ -2552,7 +2535,7 @@ void main() {
         );
 
         // 3. Assert
-        expect(Get.currentRoute, Routes.MONAMIE);
+        expect(_currentRoute, Routes.monamie);
       });
 
       testWidgets(
@@ -2576,7 +2559,7 @@ void main() {
           // 3. Assert
           verify(harness.directory.organizationsOfSignedInUser()).called(1);
           expect(harness.boundIds, isEmpty);
-          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(_currentRoute, Routes.organizationPicker);
         },
       );
 
@@ -2596,7 +2579,7 @@ void main() {
 
           // 3. Assert
           expect(harness.boundIds, isEmpty);
-          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(_currentRoute, Routes.organizationPicker);
         },
       );
     });
@@ -2604,7 +2587,6 @@ void main() {
 
   group('ownership', () {
     setUp(() {
-      Get.testMode = true;
       directory = MockOrganizationDirectory();
       _directoryAnswers();
     });
@@ -2723,14 +2705,6 @@ void main() {
   });
 
   group('logout', () {
-    setUp(() {
-      Get.testMode = true;
-    });
-
-    tearDown(() {
-      Get.reset();
-    });
-
     group('AuthGoogleController.logout - Suíte de Testes Unitários', () {
       // ---------------------------------------------------------------------
       // Happy Path
@@ -2771,7 +2745,7 @@ void main() {
       );
 
       testWidgets(
-        'Happy Path: Deve navegar para Routes.LOGIN ao concluir o logout',
+        'Happy Path: Deve navegar para Routes.login ao concluir o logout',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessLogout(storedUser: _storedUser());
@@ -2781,7 +2755,7 @@ void main() {
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(Get.currentRoute, Routes.LOGIN);
+          expect(_currentRoute, Routes.login);
           expect(find.text(_kLoginPlaceholder), findsOneWidget);
           expect(find.text(_kHomePlaceholder), findsNothing);
         },
@@ -3070,7 +3044,7 @@ void main() {
             _kLogDeleteUser,
             _kLogNavigateLogin,
           ]);
-          expect(Get.currentRoute, Routes.LOGIN);
+          expect(_currentRoute, Routes.login);
         },
       );
 
@@ -3180,7 +3154,7 @@ void main() {
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(Get.currentRoute, _kHomeRoute);
+          expect(_currentRoute, _kHomeRoute);
           expect(find.text(_kHomePlaceholder), findsOneWidget);
         },
       );
@@ -3210,12 +3184,7 @@ void main() {
   // router's redirect will read it alone, so these tests never look at the
   // current route.
   group('session state', () {
-    setUp(() {
-      Get.testMode = true;
-    });
-
     tearDown(() {
-      Get.reset();
       Organization.bind(testOrganization);
       CurrentOrganizationFirebase.debugReset();
     });
@@ -3787,12 +3756,7 @@ void main() {
   });
 
   group('session state after invites', () {
-    setUp(() {
-      Get.testMode = true;
-    });
-
     tearDown(() {
-      Get.reset();
       Organization.bind(testOrganization);
       CurrentOrganizationFirebase.debugReset();
     });
@@ -3930,14 +3894,6 @@ void main() {
   });
 
   group('lifecycle', () {
-    setUp(() {
-      Get.testMode = true;
-    });
-
-    tearDown(() {
-      Get.reset();
-    });
-
     group('AuthGoogleController.start - Unit Test Suite', () {
       test(
         'Happy Path: start initializes Google and then marks it ready',
@@ -4107,6 +4063,86 @@ void main() {
           // 3. Assert
           expect(notifications, 0);
           expect(harness.controller.state, const AuthGoogleState());
+        },
+      );
+    });
+  });
+
+  group('session notifications', () {
+    group('AuthGoogleController.session - Unit Test Suite', () {
+      test('Happy Path: a new session notifies the session listeners once', () {
+        // 1. Arrange
+        final harness = _HarnessSignIn();
+        var notifications = 0;
+        harness.controller.session.addListener(() => notifications++);
+
+        // 2. Act
+        harness.controller.sessionRestored();
+
+        // 3. Assert
+        expect(notifications, 1);
+        expect(harness.controller.session.value, const SessionState.bound());
+      });
+
+      test('Edge Case: the same session again does not notify', () {
+        // 1. Arrange
+        final harness = _HarnessSignIn();
+        harness.controller.sessionRestored();
+        var notifications = 0;
+        harness.controller.session.addListener(() => notifications++);
+
+        // 2. Act
+        harness.controller.sessionRestored();
+
+        // 3. Assert
+        expect(notifications, 0);
+      });
+
+      test('Edge Case: a state change that keeps the session notifies the '
+          'controller but not the session', () async {
+        // 1. Arrange
+        final harness = _HarnessSignIn(
+          organizations: const [
+            OrganizationCandidate(
+              id: 'rotasul',
+              options: _kOptions,
+              owner: true,
+            ),
+          ],
+        );
+        var stateNotifications = 0;
+        var sessionNotifications = 0;
+        harness.controller.addListener(() => stateNotifications++);
+        harness.controller.session.addListener(() => sessionNotifications++);
+
+        // 2. Act
+        await harness.controller.loadOwnership('rotasul');
+
+        // 3. Assert
+        expect(stateNotifications, greaterThan(0));
+        expect(sessionNotifications, 0);
+        expect(
+          harness.controller.session.value,
+          const SessionState.signedOut(),
+        );
+      });
+
+      test(
+        'Sad Path: a failed sign-out keeps the session and does not notify it',
+        () async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(logoutError: StateError('offline'));
+          harness.controller.sessionRestored();
+          var notifications = 0;
+          harness.controller.session.addListener(() => notifications++);
+
+          // 2. Act
+          final result = await harness.controller.logout();
+
+          // 3. Assert
+          expect(result, isA<Err<bool>>());
+          expect(notifications, 0);
+          expect(harness.controller.session.value, const SessionState.bound());
         },
       );
     });

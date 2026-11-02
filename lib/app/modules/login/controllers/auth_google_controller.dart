@@ -15,29 +15,24 @@ import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/flutter_background_service_tracking_stopper.dart';
-import 'package:monamie_app/app/data/theme/firestore_theme_catalog.dart';
 import 'package:monamie_app/app/modules/account/account_deletion.dart';
 import 'package:monamie_app/app/modules/account/account_deletion_backend.dart';
 import 'package:monamie_app/app/modules/account/firebase_account_deletion_backend.dart';
-import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
-import 'package:monamie_app/app/modules/creation/create_organization_view.dart';
-import 'package:monamie_app/app/modules/creation/firebase_creation_backend.dart';
 import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
 import 'package:monamie_app/app/modules/login/controllers/sign_in_actions.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_state.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
 import 'package:monamie_app/app/modules/login/controllers/session_state.dart';
 import 'package:monamie_app/app/modules/login/id_token_expiry.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
-import 'package:get/get.dart';
-import 'package:monamie_app/app/utils/app_theme.dart';
 import 'package:monamie_app/app/utils/notice_presenter.dart';
 import 'package:monamie_app/app/utils/result.dart';
 import 'package:monamie_app/app/utils/user_notice.dart';
 
 export 'auth_google_state.dart';
+export 'session_flow.dart';
 export 'session_state.dart';
 
 /// Signs the user in and binds their organization.
@@ -49,17 +44,21 @@ export 'session_state.dart';
 /// in to the organization project and checks there that the person still
 /// has a membership.
 ///
-/// [AuthGoogleState.session] says where the flow stands; it is set right
-/// before each navigation, so the router can follow it alone. The binding
-/// that creates the controller calls [start] once; [dispose] stops listening
-/// to the web sign-in.
-class AuthGoogleController extends ChangeNotifier implements SignInActions {
+/// [AuthGoogleState.session] (also [session]) says where the flow stands;
+/// the controller never navigates: the router redirects to the session's
+/// screen whenever it changes. The app scope that creates the controller
+/// calls [start] once; [dispose] stops listening to the web sign-in.
+class AuthGoogleController extends ChangeNotifier
+    implements SignInActions, SessionFlow {
   /// [notices] shows the messages no screen is waiting for: those of the web
   /// sign-in (a stream), of a sign-out started by a controller (removal from
   /// the organization, account deletion) and the tracking warning, which
   /// shows after the screen that started the sign-out is gone.
+  /// [refreshTheme] rebuilds the app's theme from the bound organization (or
+  /// MonAmie's when none).
   AuthGoogleController({
     required this._notices,
+    required this._refreshTheme,
     AuthGoogleService? authGoogleService,
     UserGoogleRepository? userRepository,
     BackgroundTrackingStopper? trackingStopper,
@@ -70,7 +69,6 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
     InvitesBackend? invitesBackend,
     AccountDeletionBackend? deletionBackend,
     OrganizationMembershipCheck? membershipCheck,
-    void Function()? refreshTheme,
   }) : _membershipCheck =
            membershipCheck ?? const FirestoreOrganizationMembershipCheck(),
        _invitesBackend = invitesBackend ?? const FirebaseInvitesBackend(),
@@ -83,9 +81,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
        _injectedTrackingStopper = trackingStopper,
        _injectedOrganizationDirectory = organizationDirectory,
        _brandingLoader = brandingLoader ?? OrganizationBrandingLoader(),
-       _injectedOrganizationSession = organizationSession,
-       _refreshTheme =
-           refreshTheme ?? (() => Get.changeTheme(AppTheme.lightTheme));
+       _injectedOrganizationSession = organizationSession;
 
   final NoticePresenter _notices;
   final AuthGoogleService? _injectedAuthGoogle;
@@ -120,35 +116,29 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
   AuthGoogleState _state = const AuthGoogleState();
 
   /// What the entry screens show; replaced whole, never changed in place.
+  @override
   AuthGoogleState get state => _state;
 
-  /// Replaces the state, notifying only when it differs.
+  final ValueNotifier<SessionState> _session = ValueNotifier(
+    const SessionState.signedOut(),
+  );
+
+  @override
+  ValueListenable<SessionState> get session => _session;
+
+  /// Replaces the state, notifying only when it differs; [session] follows
+  /// its `session` (and notifies only when that changes).
   void _emit(AuthGoogleState next) {
     final changed = next != _state;
     _state = next;
-    if (changed && !_disposed) notifyListeners();
+    if (_disposed) return;
+    if (changed) notifyListeners();
+    _session.value = next.session;
   }
 
-  /// Sets where the flow stands, then goes to that screen. [push] opens it
-  /// over the current one instead of replacing the stack.
-  void _goTo(SessionState session, {bool push = false}) {
-    _emit(_state.copyWith(session: session));
-    final route = _routeOf(session);
-    if (push) {
-      Get.toNamed(route);
-    } else {
-      Get.offAllNamed(route);
-    }
-  }
-
-  static String _routeOf(SessionState session) => switch (session) {
-    SessionSignedOut() => Routes.LOGIN,
-    SessionNoOrganization() => Routes.NO_ORGANIZATION,
-    SessionPicking() => Routes.ORGANIZATION_PICKER,
-    SessionDeletionPending() => Routes.DELETION_PENDING,
-    SessionWelcome() => Routes.WELCOME,
-    SessionBound() => Routes.MONAMIE,
-  };
+  /// Sets where the flow stands; the router takes the person there.
+  void _moveTo(SessionState session) =>
+      _emit(_state.copyWith(session: session));
 
   /// Google ID token of this sign-in, kept to enter an organization after the
   /// picker or after "verificar de novo" on *Sem organização*.
@@ -173,6 +163,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
 
   /// The invite just accepted was welcomed (*Boas-vindas* closed): the
   /// person goes on to the map.
+  @override
   void finishWelcome() {
     _emit(_state.copyWith(welcome: null, session: const SessionState.bound()));
   }
@@ -233,7 +224,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
       final deletion = await _pendingDeletion();
       if (deletion != null) {
         _emit(_state.copyWith(accountDeletion: deletion));
-        _goTo(const SessionState.deletionPending());
+        _moveTo(const SessionState.deletionPending());
         return;
       }
     }
@@ -242,7 +233,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
         .organizationsOfSignedInUser();
     if (candidates.isEmpty) {
       await _loadInvites();
-      _goTo(const SessionState.noOrganization());
+      _moveTo(const SessionState.noOrganization());
       return;
     }
     final bindings = await Future.wait(candidates.map(_brandingLoader.load));
@@ -254,7 +245,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
       return;
     }
     await _loadInvites();
-    _goTo(SessionState.picking(bindings), push: true);
+    _moveTo(SessionState.picking(bindings));
   }
 
   bool _readingOwnership = false;
@@ -263,6 +254,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
   /// [AuthGoogleState.ownership]. A failure leaves it unknown, so owner-only entries stay
   /// hidden (the server refuses anyone else anyway) and the next call
   /// retries.
+  @override
   Future<void> loadOwnership(String organizationId) async {
     if (_readingOwnership || _state.ownership.containsKey(organizationId)) {
       return;
@@ -332,6 +324,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
 
   /// "Cancelar exclusão": signs in again if needed (the deletion signed the
   /// account out), then cancels it.
+  @override
   Future<void> cancelAccountDeletion() async {
     if (_state.cancellingDeletion || _state.isLoading) return;
     _emit(_state.copyWith(cancellingDeletion: true, deletionError: ''));
@@ -398,6 +391,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
 
   /// "Aceitar e entrar": joins the invite's group, then enters its
   /// organization and shows *Boas-vindas*.
+  @override
   Future<void> acceptInvite(Invite invite) async {
     if (_state.acceptingInvite != null || _state.isLoading) return;
     _emit(_state.copyWith(acceptingInvite: invite.id, inviteError: ''));
@@ -424,6 +418,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
   /// "Já me convidaram · verificar de novo": asks again which organizations the
   /// user belongs to, reusing this sign-in when there is one. [Err] says why
   /// it could not; [Ok] also while another operation runs.
+  @override
   Future<Result<void>> recheckOrganizations() async {
     if (_state.isLoading) return const Ok(null);
     _emit(_state.copyWith(isLoading: true, noAccessReason: null));
@@ -440,24 +435,6 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
     }
   }
 
-  /// "Criar minha organização": the creation flow; a Community organization
-  /// is entered as soon as it is ready. The flow opens over the current
-  /// screen, so [AuthGoogleState.session] stays as it is.
-  void startCreatingOrganization() {
-    // A fresh one each time the flow opens; its screen loads the themes.
-    final controller = CreateOrganizationController(
-      backend: const FirebaseCreationBackend(),
-      themes: const FirestoreThemeCatalog(),
-    );
-    Get.to(
-      () => CreateOrganizationView(
-        controller: controller,
-        ownerEmail: _state.signedInEmail ?? '',
-        onReady: () => enterCreatedOrganization(controller.state.id),
-      ),
-    );
-  }
-
   /// "Trocar de organização": leaves the bound organization and opens the
   /// organization picker, still signed in with the same Google account.
   ///
@@ -466,6 +443,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
   /// (the service outlives the screen), the organization is forgotten and the
   /// picker, or *Sem organização* when nothing is left, replaces the stack.
   /// [Err] says why nothing changed; [Ok] also while another operation runs.
+  @override
   Future<Result<void>> switchOrganization() async {
     if (_state.isLoggingOut || _state.isLoading) return const Ok(null);
     // The token kept since sign-in is used while it is good; only then does
@@ -498,10 +476,10 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
 
       await _loadInvites();
       if (bindings.isEmpty) {
-        _goTo(const SessionState.noOrganization());
+        _moveTo(const SessionState.noOrganization());
         return const Ok(null);
       }
-      _goTo(SessionState.picking(bindings));
+      _moveTo(SessionState.picking(bindings));
       return const Ok(null);
     } catch (e, stackTrace) {
       debugPrint('Erro ao trocar de organização: $e');
@@ -539,6 +517,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
 
   /// Enters the organization the user picked in the organization picker.
   /// [Err] says why it could not; [Ok] also when there is nothing to do.
+  @override
   Future<Result<void>> chooseOrganization(OrganizationBinding binding) async {
     final idToken = _pendingIdToken;
     if (idToken == null || _state.isLoading) return const Ok(null);
@@ -587,7 +566,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
                 '${binding.organization.name}.',
           ),
         );
-        _goTo(const SessionState.noOrganization());
+        _moveTo(const SessionState.noOrganization());
         return;
       }
       _refreshTheme();
@@ -606,10 +585,10 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
       // Right after accepting an invite to this organization: welcome first.
       final invite = _state.welcome;
       if (invite != null && invite.organizationId == binding.organization.id) {
-        _goTo(const SessionState.welcome());
+        _moveTo(const SessionState.welcome());
       } else {
         _emit(_state.copyWith(welcome: null));
-        _goTo(const SessionState.bound());
+        _moveTo(const SessionState.bound());
       }
     } catch (_) {
       // Never stay bound to an organization the user could not enter.
@@ -707,7 +686,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
       _refreshTheme();
       _pendingIdToken = null;
       _emit(_state.copyWith(signedInEmail: null, ownership: const {}));
-      _goTo(destination);
+      _moveTo(destination);
       return const Ok(true);
     } catch (e, stackTrace) {
       debugPrint("Erro ao sair: $e");
@@ -737,6 +716,7 @@ class AuthGoogleController extends ChangeNotifier implements SignInActions {
   @override
   void dispose() {
     _disposed = true;
+    _session.dispose();
     if (_started) {
       _webSignInSub?.cancel();
       _authGoogle.dispose();

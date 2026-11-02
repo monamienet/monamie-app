@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
 
 import 'account_deletion.dart';
 
@@ -12,7 +12,7 @@ import 'account_deletion.dart';
 class DeletionPendingView extends StatelessWidget {
   const DeletionPendingView({super.key, required this.controller});
 
-  final AuthGoogleController controller;
+  final SessionFlow controller;
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(

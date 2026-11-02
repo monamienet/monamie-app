@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
@@ -21,11 +20,20 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 /// The group chip is what answers "which group am I with?" for everyone: a
 /// person who watches picks it, a person who only shares sees theirs.
 class HomeHeader extends StatelessWidget {
-  const HomeHeader({super.key});
+  const HomeHeader({
+    super.key,
+    required this.groups,
+    required this.user,
+    required this.calendar,
+  });
 
-  GroupMapState get _groups => Get.find<GroupMapState>();
-  UserController get _user => Get.find<UserController>();
-  CalendarController get _calendar => Get.find<CalendarController>();
+  final GroupMapState groups;
+  final UserController user;
+  final CalendarController calendar;
+
+  GroupMapState get _groups => groups;
+  UserController get _user => user;
+  CalendarController get _calendar => calendar;
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +121,7 @@ class HomeHeader extends StatelessWidget {
         for (final group in _groups.publishGroups.value) group.name,
       ],
     );
-    if (canWatch) return GroupMenuButton(label: label);
+    if (canWatch) return GroupMenuButton(groups: _groups, label: label);
     return HomeChip(label: label, semanticsLabel: 'Grupo: $label');
   }
 

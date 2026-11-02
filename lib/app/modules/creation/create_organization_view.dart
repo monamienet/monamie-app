@@ -57,9 +57,6 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
 
   @override
   void dispose() {
-    // Until the controller is disposed with its route, the screen stops the
-    // pending id check itself.
-    c.cancelIdCheck();
     _name.dispose();
     _id.dispose();
     super.dispose();

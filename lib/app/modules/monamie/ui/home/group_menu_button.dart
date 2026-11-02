@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/models/map_group.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
@@ -14,7 +13,10 @@ const _openCurve = Cubic(0.2, 0.8, 0.2, 1);
 /// the person can watch with its people in the field, the observed one
 /// tinted and checked. Tapping outside, or the chip again, closes it.
 class GroupMenuButton extends StatefulWidget {
-  const GroupMenuButton({super.key, required this.label});
+  const GroupMenuButton({super.key, required this.groups, required this.label});
+
+  /// The person's groups and the one on the map.
+  final GroupMapState groups;
 
   /// The text of the chip: the observed group, or a prompt to pick one.
   final String label;
@@ -33,7 +35,7 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
     reverseDuration: const Duration(milliseconds: 140),
   );
 
-  GroupMapState get _groups => Get.find<GroupMapState>();
+  GroupMapState get _groups => widget.groups;
 
   bool get _open => _portal.isShowing && _animation.status.isForwardOrCompleted;
 

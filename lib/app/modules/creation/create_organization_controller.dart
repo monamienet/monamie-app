@@ -66,8 +66,9 @@ String? idFormatProblem(String id) {
 }
 
 /// State of *Criar organização*: name and identifier, theme, plan, review,
-/// then the creation itself. The screen calls [load] when it opens and
-/// [cancelIdCheck] when it leaves.
+/// then the creation itself. The screen calls [load] when it opens; its
+/// route disposes the controller when it closes, which stops the pending id
+/// check.
 class CreateOrganizationController extends ChangeNotifier {
   CreateOrganizationController({
     required this._backend,
@@ -112,10 +113,6 @@ class CreateOrganizationController extends ChangeNotifier {
 
   /// Picks theme [id].
   void pickTheme(String id) => _emit(_state.copyWith(themeId: id));
-
-  /// Cancels the pending id check. The screen calls it when it leaves,
-  /// because nothing calls [dispose] while GetX creates this controller.
-  void cancelIdCheck() => _timer?.cancel();
 
   @override
   void dispose() {

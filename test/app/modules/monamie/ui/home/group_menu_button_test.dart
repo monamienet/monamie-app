@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/modules/monamie/models/map_group.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/group_menu_button.dart';
 
@@ -9,12 +8,13 @@ import 'home_doubles.dart';
 const _guias = MapGroup(id: 'g1', name: 'Guias');
 const _recepcao = MapGroup(id: 'g2', name: 'Recepção');
 
-/// The chip over [doubles], already registered, with its card open.
+/// The chip over [doubles], with its card open.
 Future<void> pumpOpenMenu(WidgetTester tester, HomeDoubles doubles) async {
-  doubles.register();
   await tester.pumpWidget(
-    const MaterialApp(
-      home: Scaffold(body: GroupMenuButton(label: 'Guias')),
+    MaterialApp(
+      home: Scaffold(
+        body: GroupMenuButton(groups: doubles.groups, label: 'Guias'),
+      ),
     ),
   );
   await tester.tap(find.byType(GroupMenuButton));
@@ -22,9 +22,6 @@ Future<void> pumpOpenMenu(WidgetTester tester, HomeDoubles doubles) async {
 }
 
 void main() {
-  setUp(() => Get.testMode = true);
-  tearDown(Get.reset);
-
   group('GroupMenuButton - Widget Test Suite', () {
     testWidgets('Happy Path: counts that arrive while the card is open show '
         'under each group', (tester) async {

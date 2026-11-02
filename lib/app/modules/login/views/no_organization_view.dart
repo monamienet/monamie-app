@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
 
 import 'widgets/invite_card.dart';
 import 'widgets/monamie_account_header.dart';
@@ -11,9 +11,16 @@ import 'widgets/monamie_account_header.dart';
 /// (or just lost access to one). The person can create their own or check
 /// again after someone adds or invites them.
 class NoOrganizationView extends StatelessWidget {
-  const NoOrganizationView({super.key, required this.controller});
+  const NoOrganizationView({
+    super.key,
+    required this.controller,
+    required this.onCreateOrganization,
+  });
 
-  final AuthGoogleController controller;
+  final SessionFlow controller;
+
+  /// "Criar minha organização": opens the creation flow over this screen.
+  final VoidCallback onCreateOrganization;
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -92,9 +99,7 @@ class NoOrganizationView extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      onPressed: busy
-                          ? null
-                          : controller.startCreatingOrganization,
+                      onPressed: busy ? null : onCreateOrganization,
                       child: const Text('Criar minha organização'),
                     ),
                   ),

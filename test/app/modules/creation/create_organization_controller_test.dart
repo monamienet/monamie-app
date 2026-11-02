@@ -615,58 +615,6 @@ void main() {
     });
   });
 
-  group('CreateOrganizationController.cancelIdCheck - Unit Test Suite', () {
-    test('Happy Path: a pending id check never reaches the backend', () {
-      fakeAsync((async) {
-        // 1. Arrange
-        final controller = CreateOrganizationController(
-          backend: backend,
-          themes: mockCatalog(),
-        )..setId('rotasul');
-
-        // 2. Act
-        controller.cancelIdCheck();
-        async.elapse(const Duration(seconds: 1));
-
-        // 3. Assert
-        verifyNever(backend.idProblem(any));
-      });
-    });
-
-    test('Edge Case: an id typed after cancelling is checked again', () {
-      fakeAsync((async) {
-        // 1. Arrange
-        final controller = CreateOrganizationController(
-          backend: backend,
-          themes: mockCatalog(),
-        )..setId('rotasul');
-        controller.cancelIdCheck();
-
-        // 2. Act
-        controller.setId('rotanorte');
-        async.elapse(const Duration(seconds: 1));
-
-        // 3. Assert
-        expect(verify(backend.idProblem(captureAny)).captured, ['rotanorte']);
-        expect(controller.state.idCheck, IdCheck.available);
-      });
-    });
-
-    test('Sad Path: without a pending check it does nothing', () {
-      // 1. Arrange
-      final controller = startedController();
-      var notifications = 0;
-      controller.addListener(() => notifications++);
-
-      // 2. Act
-      controller.cancelIdCheck();
-
-      // 3. Assert
-      expect(notifications, 0);
-      expect(controller.state.idCheck, IdCheck.idle);
-    });
-  });
-
   group('CreateOrganizationController.dispose - Unit Test Suite', () {
     test('Happy Path: disposing stops the pending id check', () {
       fakeAsync((async) {

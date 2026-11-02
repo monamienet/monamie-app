@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/monamie_mark.dart';
 import 'package:monamie_app/app/config/organization/monamie_wordmark.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
 import 'package:monamie_app/app/modules/login/controllers/login_controller.dart';
 import 'package:monamie_app/app/utils/app_messenger.dart';
 
@@ -18,7 +18,7 @@ class LoginView extends StatefulWidget {
   final LoginController controller;
 
   /// The sign-in in progress (Google readiness, the entry's busy state).
-  final AuthGoogleController auth;
+  final SessionFlow auth;
 
   @override
   State<LoginView> createState() => _LoginViewState();

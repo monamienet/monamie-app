@@ -1,18 +1,18 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/initials.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
+import 'package:monamie_app/app/routes/app_routes.dart';
 import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 import 'package:monamie_app/app/utils/result.dart';
@@ -20,17 +20,33 @@ import 'package:monamie_app/app/utils/result.dart';
 /// The side menu: who the person is and where, the organization's
 /// administration (for its administrators only) and sign-out.
 class HomeMenu extends StatelessWidget {
-  const HomeMenu({super.key});
+  const HomeMenu({
+    super.key,
+    required this.groups,
+    required this.user,
+    required this.session,
+    required this.tracking,
+  });
 
-  GroupMapState get _groups => Get.find<GroupMapState>();
-  UserController get _user => Get.find<UserController>();
-  AuthGoogleController get _auth => Get.find<AuthGoogleController>();
-  TrackingController get _tracking => Get.find<TrackingController>();
+  final GroupMapState groups;
+  final UserController user;
 
-  /// Closes the menu, then goes to [route].
+  /// The sign-in flow: sign-out, switching organization, ownership.
+  final SessionFlow session;
+  final TrackingController tracking;
+
+  GroupMapState get _groups => groups;
+  UserController get _user => user;
+  SessionFlow get _auth => session;
+  TrackingController get _tracking => tracking;
+
+  /// Closes the menu, then opens [route] over the map. A push, not a go:
+  /// the screen stays inside the organization's scope, and going back
+  /// returns to the map.
   void _open(BuildContext context, String route) {
+    final router = GoRouter.of(context);
     Navigator.pop(context);
-    Get.toNamed<void>(route);
+    router.push<void>(route);
   }
 
   /// Closes the menu, then runs [action] and shows its message when it fails.
@@ -180,7 +196,7 @@ class HomeMenu extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              onTap: () => _open(context, Routes.MY_ACCOUNT),
+              onTap: () => _open(context, Routes.myAccount),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
@@ -272,7 +288,7 @@ class HomeMenu extends StatelessWidget {
           _MenuItem(
             icon: Icons.groups_outlined,
             label: 'Meus grupos',
-            onTap: () => _open(context, Routes.GROUPS),
+            onTap: () => _open(context, Routes.groups),
           ),
         ],
       ),
@@ -294,7 +310,7 @@ class HomeMenu extends StatelessWidget {
           _MenuItem(
             icon: Icons.groups_outlined,
             label: 'Grupos',
-            onTap: () => _open(context, Routes.GROUPS),
+            onTap: () => _open(context, Routes.groups),
           ),
           ListenableBuilder(
             listenable: _auth,
@@ -303,19 +319,19 @@ class HomeMenu extends StatelessWidget {
                 ? _MenuItem(
                     icon: Icons.admin_panel_settings_outlined,
                     label: 'Administradores',
-                    onTap: () => _open(context, Routes.ADMINISTRATORS),
+                    onTap: () => _open(context, Routes.administrators),
                   )
                 : const SizedBox.shrink(),
           ),
           _MenuItem(
             icon: Icons.palette_outlined,
             label: 'Aparência da organização',
-            onTap: () => _open(context, Routes.APPEARANCE),
+            onTap: () => _open(context, Routes.appearance),
           ),
           _MenuItem(
             icon: Icons.tune,
             label: 'Ajustes de acompanhamento',
-            onTap: () => _open(context, Routes.TRACKING_SETTINGS),
+            onTap: () => _open(context, Routes.trackingSettings),
           ),
         ],
       ),

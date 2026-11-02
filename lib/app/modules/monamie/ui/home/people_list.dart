@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/call_controller.dart';
@@ -12,10 +11,12 @@ import 'package:monamie_app/app/modules/monamie/ui/home/group_rows.dart';
 /// The rows of [groupRows] for the observed group, read from the
 /// controllers: the people publishing there today, or on a past day everyone
 /// who ever published there (once read for the history).
-List<GroupRow> observedGroupRows() {
-  final groups = Get.find<GroupMapState>();
-  final tracking = Get.find<TrackingController>();
-  final today = Get.find<CalendarController>().isObservingToday;
+List<GroupRow> observedGroupRows({
+  required GroupMapState groups,
+  required TrackingController tracking,
+  required CalendarController calendar,
+}) {
+  final today = calendar.isObservingToday;
   return groupRows(
     members: today || groups.historyMembers.value.isEmpty
         ? groups.observedMembers.value
@@ -31,26 +32,40 @@ List<GroupRow> observedGroupRows() {
 /// The people of the observed group, each with a switch to draw their trail
 /// and a button to call them on Google Meet.
 class PeopleList extends StatelessWidget {
-  const PeopleList({super.key});
+  const PeopleList({
+    super.key,
+    required this.groups,
+    required this.tracking,
+    required this.calendar,
+    required this.calls,
+    required this.user,
+  });
+
+  final GroupMapState groups;
+  final TrackingController tracking;
+  final CalendarController calendar;
+  final CallController calls;
+  final UserController user;
 
   @override
   Widget build(BuildContext context) {
-    final groups = Get.find<GroupMapState>();
-    final calls = Get.find<CallController>();
-    final tracking = Get.find<TrackingController>();
-    final me = Get.find<UserController>().googleUser?.email;
+    final me = user.googleUser?.email;
     return ListenableBuilder(
       listenable: Listenable.merge([
         groups.observedMembers,
         groups.historyMembers,
         groups.highlightedObservedUsers,
         groups.selectedMemberEmail,
-        Get.find<CalendarController>().observedDay,
+        calendar.observedDay,
         tracking.groupUsers,
         tracking.usersWithPointsOnObservedDay,
       ]),
       builder: (context, _) {
-        final rows = observedGroupRows();
+        final rows = observedGroupRows(
+          groups: groups,
+          tracking: tracking,
+          calendar: calendar,
+        );
         return Column(
           children: [
             for (final row in rows)

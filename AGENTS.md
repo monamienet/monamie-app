@@ -52,6 +52,11 @@ Who belongs where lives in Firestore documents of the organization's project, **
 - **Dependencies through the constructor**, results as `Result`: controllers never look up services, show messages or navigate; screens show the messages.
 - **Screens listen with `ListenableBuilder`** and receive their controller as a parameter; they call the controller's `load()` when they open and keep their `TextEditingController`s themselves (controllers import no Flutter UI library, checked by `dart run tool/check_layers.dart`).
 
+### Navigation & Injection
+- **`go_router` with `MaterialApp.router`** (`lib/app/routes/app_router.dart`, paths in `app_routes.dart`). The sign-in flow never navigates: `AuthGoogleController` sets its `SessionState`, the router listens to it (`refreshListenable`) and the pure `sessionRedirect(session, location)` (`session_redirect.dart`) picks the screen.
+- **Two `provider` scopes**, read only in route assembly (route builders hand controllers to screens as parameters): the app scope (`MonAmieApp`, above the router) owns `AuthGoogleController` and the theme; the organization's `ShellRoute` (`OrganizationScope`) creates, starts and disposes the bound organization's controllers. Controllers used by one screen are created by its route and disposed when it closes.
+- **Inside the organization's shell open screens with `push`; leave it only through the session** (a redirect, i.e. a `go`, which disposes the shell). Dialogs and sheets open on the root navigator, outside the scopes: they receive controllers as parameters, never through `context.read`.
+
 ### Asynchronous Actions & Visual Feedback
 - **Immediate Visual Feedback**: Any interactive trigger initiating an asynchronous operation (background services, location hardware, authentication, remote queries) must immediately render a visible pending/loading state (e.g., progress spinner, transitional colors).
 - **Debouncing & Reentrancy Guards**: Disable interactive triggers (`onPressed: null`) and protect controllers with reentrancy guard clauses (`if (isLoading.value) return;`) while operations are in flight to prevent concurrent executions and race conditions.

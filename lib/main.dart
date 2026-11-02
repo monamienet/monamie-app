@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:monamie_app/app/config/organization/monamie_brand.dart';
-import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_error_app.dart';
 import 'package:monamie_app/app/data/firebase/central_firebase.dart';
 import 'package:monamie_app/app/data/models/user_google_model.dart';
 import 'package:monamie_app/app/data/organization/organization_branding_loader.dart';
 import 'package:monamie_app/app/data/organization/organization_session.dart';
 
-import 'app/routes/app_pages.dart';
-import 'app/utils/app_messenger.dart';
-import 'app/utils/app_theme.dart';
+import 'app/monamie_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,19 +36,5 @@ Future<void> main() async {
         .ignore();
   }
 
-  runApp(
-    GetMaterialApp(
-      debugShowCheckedModeBanner: false,
-      // Messages and dialogs asked for by controllers, which have no
-      // BuildContext of their own, go through these keys.
-      navigatorKey: rootNavigatorKey,
-      scaffoldMessengerKey: rootScaffoldMessengerKey,
-      title: Organization.current?.name ?? MonAmieBrand.name,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light,
-      initialRoute: AppPages.INITIAL,
-      getPages: AppPages.routes,
-    ),
-  );
+  runApp(const MonAmieApp());
 }

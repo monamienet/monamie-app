@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_palette.dart';
 
 import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
-import 'package:monamie_app/app/modules/invites/invite_controller.dart';
-import 'package:monamie_app/app/modules/invites/invite_view.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
+import 'package:monamie_app/app/routes/app_routes.dart';
 
 import 'group.dart';
 import 'groups_controller.dart';
@@ -199,7 +198,7 @@ class _GroupsViewState extends State<GroupsView> {
                 busyLabel: '',
                 icon: Icons.add,
                 onPressed: () =>
-                    Get.to(() => CreateGroupView(controller: controller)),
+                    context.push<void>(Routes.newGroup, extra: controller),
               ),
             ),
           ),
@@ -209,8 +208,7 @@ class _GroupsViewState extends State<GroupsView> {
 
   Widget _groupRow(Group group) => InkWell(
     borderRadius: BorderRadius.circular(16),
-    onTap: () =>
-        Get.to(() => GroupView(controller: controller, groupId: group.id)),
+    onTap: () => context.push<void>(Routes.group(group.id), extra: controller),
     child: ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 64),
       child: Padding(
@@ -381,7 +379,7 @@ class _CreateGroupViewState extends State<CreateGroupView> {
         busy: false,
         busyLabel: '',
         onPressed: () =>
-            Get.off(() => GroupView(controller: c, groupId: group.id)),
+            context.pushReplacement(Routes.group(group.id), extra: c),
       ),
       TextButton(
         onPressed: () => Navigator.pop(context),
@@ -1058,7 +1056,7 @@ class _GroupViewState extends State<GroupView> {
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
       ),
       onPressed: () async {
-        await openInvite(c, groupId: widget.groupId);
+        await openInvite(context, c, groupId: widget.groupId);
         await _loadInvites();
       },
       child: const Row(
@@ -1480,22 +1478,19 @@ class _GroupViewState extends State<GroupView> {
   }
 }
 
+/// What *Convidar pessoas* opens with: the groups screen's controller and
+/// the group to preselect.
+typedef InviteRequest = ({GroupsController groups, String? groupId});
+
 /// Opens *Convidar pessoas* for the organization's groups (preselecting
 /// [groupId]); completes after the groups are reloaded.
-Future<void> openInvite(GroupsController controller, {String? groupId}) async {
-  await Get.to(
-    () => InviteView(
-      controller: InviteController(
-        organizationId: controller.organizationId,
-        organizationName:
-            Organization.current?.name ?? controller.organizationId,
-        groups: controller.state.groups,
-        groupId: groupId,
-        backend: const FirebaseInvitesBackend(),
-        canCreateFirstGroup: controller.isAdmin,
-      ),
-    ),
-  );
+Future<void> openInvite(
+  BuildContext context,
+  GroupsController controller, {
+  String? groupId,
+}) async {
+  final InviteRequest request = (groups: controller, groupId: groupId);
+  await context.push<void>(Routes.invite, extra: request);
   await controller.load();
 }
 

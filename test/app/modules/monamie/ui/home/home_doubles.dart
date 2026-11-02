@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
@@ -22,7 +21,7 @@ import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 ])
 import 'home_doubles.mocks.dart';
 
-/// The home controllers as mocks, registered in GetX by [register]. The
+/// The home controllers as mocks, handed to the widgets by the tests. The
 /// [GroupMapState], calendar and tracking values are plain [ValueNotifier]s the test
 /// changes to drive the widgets; the capability getters follow
 /// [capabilities].
@@ -75,15 +74,6 @@ class HomeDoubles {
   final observedDay = ValueNotifier<DateTime>(DateTime(2026, 11, 2));
   final groupUsers = ValueNotifier<List<UserModel>>(const []);
   final usersWithPoints = ValueNotifier<Set<String>>(const {});
-
-  /// Registers the mocks where the widgets look for them.
-  void register() {
-    Get.put<GroupMapState>(groups);
-    Get.put<CalendarController>(calendar);
-    Get.put<TrackingController>(tracking);
-    Get.put<CallController>(calls);
-    Get.put<UserController>(user);
-  }
 }
 
 /// Capabilities of a subscriber of [groupId].

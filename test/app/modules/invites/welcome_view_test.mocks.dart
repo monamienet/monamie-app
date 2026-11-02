@@ -4,9 +4,22 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
+import 'dart:async' as _i6;
+import 'dart:ui' as _i11;
+
+import 'package:flutter/foundation.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:monamie_app/app/utils/notice_presenter.dart' as _i2;
-import 'package:monamie_app/app/utils/user_notice.dart' as _i3;
+import 'package:mockito/src/dummies.dart' as _i8;
+import 'package:monamie_app/app/data/organization/organization_binding.dart'
+    as _i9;
+import 'package:monamie_app/app/modules/invites/invite.dart' as _i10;
+import 'package:monamie_app/app/modules/login/controllers/auth_google_state.dart'
+    as _i2;
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart'
+    as _i4;
+import 'package:monamie_app/app/modules/login/controllers/session_state.dart'
+    as _i5;
+import 'package:monamie_app/app/utils/result.dart' as _i7;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -24,13 +37,172 @@ import 'package:monamie_app/app/utils/user_notice.dart' as _i3;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-/// A class which mocks [NoticePresenter].
+class _FakeAuthGoogleState_0 extends _i1.SmartFake
+    implements _i2.AuthGoogleState {
+  _FakeAuthGoogleState_0(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeValueListenable_1<T> extends _i1.SmartFake
+    implements _i3.ValueListenable<T> {
+  _FakeValueListenable_1(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+/// A class which mocks [SessionFlow].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockNoticePresenter extends _i1.Mock implements _i2.NoticePresenter {
+class MockSessionFlow extends _i1.Mock implements _i4.SessionFlow {
   @override
-  void show(_i3.UserNotice? notice) => super.noSuchMethod(
-    Invocation.method(#show, [notice]),
+  _i2.AuthGoogleState get state =>
+      (super.noSuchMethod(
+            Invocation.getter(#state),
+            returnValue: _FakeAuthGoogleState_0(
+              this,
+              Invocation.getter(#state),
+            ),
+            returnValueForMissingStub: _FakeAuthGoogleState_0(
+              this,
+              Invocation.getter(#state),
+            ),
+          )
+          as _i2.AuthGoogleState);
+
+  @override
+  _i3.ValueListenable<_i5.SessionState> get session =>
+      (super.noSuchMethod(
+            Invocation.getter(#session),
+            returnValue: _FakeValueListenable_1<_i5.SessionState>(
+              this,
+              Invocation.getter(#session),
+            ),
+            returnValueForMissingStub: _FakeValueListenable_1<_i5.SessionState>(
+              this,
+              Invocation.getter(#session),
+            ),
+          )
+          as _i3.ValueListenable<_i5.SessionState>);
+
+  @override
+  _i6.Future<_i7.Result<bool>> logout() =>
+      (super.noSuchMethod(
+            Invocation.method(#logout, []),
+            returnValue: _i6.Future<_i7.Result<bool>>.value(
+              _i8.dummyValue<_i7.Result<bool>>(
+                this,
+                Invocation.method(#logout, []),
+              ),
+            ),
+            returnValueForMissingStub: _i6.Future<_i7.Result<bool>>.value(
+              _i8.dummyValue<_i7.Result<bool>>(
+                this,
+                Invocation.method(#logout, []),
+              ),
+            ),
+          )
+          as _i6.Future<_i7.Result<bool>>);
+
+  @override
+  _i6.Future<_i7.Result<void>> chooseOrganization(
+    _i9.OrganizationBinding? binding,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#chooseOrganization, [binding]),
+            returnValue: _i6.Future<_i7.Result<void>>.value(
+              _i8.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#chooseOrganization, [binding]),
+              ),
+            ),
+            returnValueForMissingStub: _i6.Future<_i7.Result<void>>.value(
+              _i8.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#chooseOrganization, [binding]),
+              ),
+            ),
+          )
+          as _i6.Future<_i7.Result<void>>);
+
+  @override
+  _i6.Future<_i7.Result<void>> recheckOrganizations() =>
+      (super.noSuchMethod(
+            Invocation.method(#recheckOrganizations, []),
+            returnValue: _i6.Future<_i7.Result<void>>.value(
+              _i8.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#recheckOrganizations, []),
+              ),
+            ),
+            returnValueForMissingStub: _i6.Future<_i7.Result<void>>.value(
+              _i8.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#recheckOrganizations, []),
+              ),
+            ),
+          )
+          as _i6.Future<_i7.Result<void>>);
+
+  @override
+  _i6.Future<_i7.Result<void>> switchOrganization() =>
+      (super.noSuchMethod(
+            Invocation.method(#switchOrganization, []),
+            returnValue: _i6.Future<_i7.Result<void>>.value(
+              _i8.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#switchOrganization, []),
+              ),
+            ),
+            returnValueForMissingStub: _i6.Future<_i7.Result<void>>.value(
+              _i8.dummyValue<_i7.Result<void>>(
+                this,
+                Invocation.method(#switchOrganization, []),
+              ),
+            ),
+          )
+          as _i6.Future<_i7.Result<void>>);
+
+  @override
+  _i6.Future<void> cancelAccountDeletion() =>
+      (super.noSuchMethod(
+            Invocation.method(#cancelAccountDeletion, []),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<void> acceptInvite(_i10.Invite? invite) =>
+      (super.noSuchMethod(
+            Invocation.method(#acceptInvite, [invite]),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  void finishWelcome() => super.noSuchMethod(
+    Invocation.method(#finishWelcome, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i6.Future<void> loadOwnership(String? organizationId) =>
+      (super.noSuchMethod(
+            Invocation.method(#loadOwnership, [organizationId]),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  void addListener(_i11.VoidCallback? listener) => super.noSuchMethod(
+    Invocation.method(#addListener, [listener]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void removeListener(_i11.VoidCallback? listener) => super.noSuchMethod(
+    Invocation.method(#removeListener, [listener]),
     returnValueForMissingStub: null,
   );
 }

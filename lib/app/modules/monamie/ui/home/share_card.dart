@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/sheet_colors.dart';
@@ -15,13 +13,12 @@ import 'package:monamie_app/app/utils/result.dart';
 /// locked with a spinner while the service starts or stops, so a second tap
 /// can neither queue nor race.
 class ShareCard extends StatelessWidget {
-  /// [controller] lets a widget test inject a fake.
-  const ShareCard({super.key, this.controller});
+  const ShareCard({super.key, required this.controller});
 
-  final TrackingToggleController? controller;
+  /// Starts and stops the sharing (the tracking controller).
+  final TrackingToggleController controller;
 
-  TrackingToggleController get _tracking =>
-      controller ?? Get.find<TrackingController>();
+  TrackingToggleController get _tracking => controller;
 
   @override
   Widget build(BuildContext context) {

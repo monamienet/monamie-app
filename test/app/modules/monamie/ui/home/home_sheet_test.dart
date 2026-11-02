@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/modules/monamie/models/group_member.dart';
 import 'package:monamie_app/app/modules/monamie/models/map_group.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_sheet.dart';
@@ -10,22 +9,27 @@ import 'home_doubles.dart';
 const _guias = MapGroup(id: 'g1', name: 'Guias');
 const _bia = GroupMember(name: 'Bia', email: 'bia@example.com');
 
-/// The sheet over [doubles], already registered.
+/// The sheet over [doubles].
 Future<void> pumpSheet(WidgetTester tester, HomeDoubles doubles) async {
-  doubles.register();
   await tester.pumpWidget(
-    const MaterialApp(
+    MaterialApp(
       home: Scaffold(
-        body: Align(alignment: Alignment.bottomCenter, child: HomeSheet()),
+        body: Align(
+          alignment: Alignment.bottomCenter,
+          child: HomeSheet(
+            groups: doubles.groups,
+            tracking: doubles.tracking,
+            calendar: doubles.calendar,
+            calls: doubles.calls,
+            user: doubles.user,
+          ),
+        ),
       ),
     ),
   );
 }
 
 void main() {
-  setUp(() => Get.testMode = true);
-  tearDown(Get.reset);
-
   group('HomeSheet - Widget Test Suite', () {
     testWidgets('Happy Path: being allowed to watch shows the observed group', (
       tester,

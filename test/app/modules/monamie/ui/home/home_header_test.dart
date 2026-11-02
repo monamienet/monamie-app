@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/modules/monamie/models/map_group.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/group_menu_button.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_header.dart';
@@ -10,18 +9,22 @@ import 'home_doubles.dart';
 const _guias = MapGroup(id: 'g1', name: 'Guias');
 const _recepcao = MapGroup(id: 'g2', name: 'Recepção');
 
-/// The header over [doubles], already registered.
+/// The header over [doubles].
 Future<void> pumpHeader(WidgetTester tester, HomeDoubles doubles) async {
-  doubles.register();
   await tester.pumpWidget(
-    const MaterialApp(home: Scaffold(body: HomeHeader())),
+    MaterialApp(
+      home: Scaffold(
+        body: HomeHeader(
+          groups: doubles.groups,
+          user: doubles.user,
+          calendar: doubles.calendar,
+        ),
+      ),
+    ),
   );
 }
 
 void main() {
-  setUp(() => Get.testMode = true);
-  tearDown(Get.reset);
-
   group('HomeHeader - Widget Test Suite', () {
     testWidgets('Happy Path: another observed group renames the group chip', (
       tester,
