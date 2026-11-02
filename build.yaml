@@ -1,0 +1,10 @@
+# build_runner configuration (mockito mocks and freezed classes).
+targets:
+  $default:
+    sources:
+      # Only `exclude` is set, so build_runner keeps its default sources
+      # (lib/, test/, tool/, pubspec.yaml...). test/rules/ is the Node project
+      # of the security-rules tests: walking its node_modules would only cost
+      # time and memory.
+      exclude:
+        - test/rules/**

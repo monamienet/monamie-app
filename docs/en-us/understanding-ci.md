@@ -54,7 +54,7 @@ PR opened ──► PR approved ──► "Merge" on GitHub
    │ 2. installs Java 17                                               │
    │ 3. installs Flutter      4. adjusts Gradle memory                 │
    │ 5. restores the keystore and key.properties                       │
-   │ 6. fetches dependencies  7. runs the unit tests                   │
+   │ 6. fetches dependencies  7. runs the tests                        │
    │ 8. installs the Firebase CLI                                      │
    │ 9. authenticates with Google: read-only config account            │
    │ 10. flutter build appbundle (fetches google-services.json,        │
@@ -115,11 +115,15 @@ The deploy only runs **after** the merge, when the code is already on `main`. To
 PR can still be fixed, the [pr-checks.yml](../../.github/workflows/pr-checks.yml) workflow runs on every PR
 opened against `main` (the `pull_request` event), with no path filter:
 
-1. `dart format --set-exit-if-changed`: fails if any file in `lib/`, `test/` or `tool/` is not formatted.
+1. `dart run build_runner build`: regenerates the generated files (mockito mocks, `*.mocks.dart`, and
+   freezed classes, `*.freezed.dart`) and fails if the result differs from what is committed, including
+   when a new file appears. Generated files are committed because the deploy runs no `build_runner`.
+   Fix it by running `dart run build_runner build` and committing what changed.
+2. `dart format --set-exit-if-changed`: fails if any file in `lib/`, `test/` or `tool/` is not formatted.
    Fix it by running `dart format lib test tool` and committing.
-2. `flutter analyze`: the Dart analyzer. It also fails on *info*-level findings, because `--fatal-infos`
+3. `flutter analyze`: the Dart analyzer. It also fails on *info*-level findings, because `--fatal-infos`
    is on by default.
-3. `flutter test test/unit -j 2`: the unit tests, as in the deploy.
+4. `flutter test -j 2`: every Dart test under `test/`, as in the deploy.
 
 It uses no secrets and no write permission (`permissions: contents: read`), so it is safe to run on any
 PR. `concurrency` with `cancel-in-progress: true` cancels the previous run when a new commit reaches the
@@ -167,7 +171,7 @@ The words on the left are **fixed**, defined by GitHub Actions. The values on th
 | `id` (inside a step) | A nickname for the step. Later steps read its outputs with `${{ steps.<id>.outputs.<name> }}`. | `auth`: the upload reads `steps.auth.outputs.credentials_file_path` |
 | `uses` | The step **calls a ready-made action**, as `owner/repository@version`. | e.g. `actions/setup-java@v6` |
 | `with` | The **parameters** passed to the action in `uses` (section 3.3). | e.g. `java-version: '17'` |
-| `run` | The step **runs shell commands**, as in a terminal. | e.g. `flutter test test/unit` |
+| `run` | The step **runs shell commands**, as in a terminal. | e.g. `flutter test -j 2` |
 | `env` | **Environment variables** available to that step's `run` commands. | the passwords read from secrets |
 
 A step uses **either** `uses` (+ `with`) **or** `run` (+ `env`, if needed). Both pairs play the same
@@ -225,7 +229,7 @@ middle one is dropped and only the newest runs after the first. Nothing is lost,
 | 4 | `Raise Gradle memory` | [android/gradle.properties](../../android/gradle.properties) caps the Gradle heap at 2 GB (`-Xmx2g`) for 8 GB dev laptops. The runner has more RAM, so CI raises it to 4 GB; `~/.gradle/gradle.properties` takes precedence over the project file, so the change applies to CI only. |
 | 5 | `Restore release signing` | Restores the keystore and `android/key.properties`, which are not in git (section 4). First it checks that no secret is empty. |
 | 6 | `flutter pub get` | Fetches the dependencies in `pubspec.yaml`. |
-| 7 | `flutter test test/unit` | Runs the unit tests. If any fails, the deploy stops here. Integration tests are skipped because they need the Firebase emulators. |
+| 7 | `flutter test -j 2` | Runs the Dart tests (every `*_test.dart` file under `test/`). If any fails, the deploy stops here. The security-rules tests in `test/rules/` are left out: they are a Node project with no Dart test files, so `flutter test` does not find them; they need the Firebase emulators and are run by hand. |
 | 8 | `Install Firebase CLI` | Installs a pinned `firebase-tools` version. The build uses the CLI to fetch the central project's Firebase config. |
 | 9 | `google-github-actions/auth` (`auth-config`) | Trades GitHub's OIDC token for temporary credentials of a service account that **only reads** Firebase app configs (section 6). |
 | 10 | `flutter build appbundle` | Builds the release `.aab` of the single app `org.monamienet.app`, signed with the keystore from step 5, with the versionName from step 1c and with a new versionCode (section 5). Before compiling, Gradle fetches the central project's `google-services.json` with the credentials from step 9. Organizations are bound at runtime, so no organization is chosen here. |

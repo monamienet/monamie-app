@@ -14,5 +14,5 @@ Team tracking, coordination and communication. One app (`org.monamienet.app`) se
 firebase login                       # reads the central project's config
 flutter run                          # Android: fetches google-services.json on first build
 dart run tool/organization.dart web  # web: stages web/central/firebase.json first
-nice -n 15 flutter test test/unit -j 2
+nice -n 15 flutter test -j 2
 ```

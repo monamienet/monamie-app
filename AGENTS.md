@@ -62,13 +62,14 @@ Who belongs where lives in Firestore documents of the organization's project, **
 
 ## Testing
 
-Follow `.agents/rules/AI_UNIT_TESTING_GUIDELINES.md`: test only code that makes decisions, never configuration files read with regex, and keep `flutter test test/unit -j 2` under two minutes on an 8 GB laptop. Remove a feature's tests in the same commit that removes the feature.
+- Tests follow the versioned skills in `.agents/skills/`: `dart-add-unit-test`, `dart-generate-test-mocks`, `flutter-add-widget-test` and `flutter-add-integration-test` (and `dart-collect-coverage` for coverage). Test doubles are mockito mocks.
+- The tests of a task are written by an agent with a different context window than the agent that did the main task.
 
 Security rules are tested for real against the emulators in `test/rules/` (Node, `@firebase/rules-unit-testing`): `cd test/rules && npm ci && nice -n 10 npm test`. Each test file uses its own `demo-*` project id so they share one emulator run.
 
 ## Resource Limits on Dev Machines
 
-Dev laptops have 8 GB of RAM shared with the IDE and a browser. Run heavy commands at low priority and low parallelism: `nice -n 15 flutter test test/unit -j 2`, and Gradle with at most two workers (`org.gradle.workers.max=2` in `~/.gradle/gradle.properties`; `flutter build` gives no flag for it). The project caps the Gradle heap at 2 GB. Avoid running more than one build or test process at a time.
+Dev laptops have 8 GB of RAM shared with the IDE and a browser. Run heavy commands at low priority and low parallelism: `nice -n 15 flutter test -j 2`, `nice -n 15 dart run build_runner build` (never its `watch` mode), and Gradle with at most two workers (`org.gradle.workers.max=2` in `~/.gradle/gradle.properties`; `flutter build` gives no flag for it). The project caps the Gradle heap at 2 GB. Avoid running more than one build or test process at a time.
 
 
 ## Running the Web App Locally

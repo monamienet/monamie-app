@@ -1,7 +1,7 @@
-# Checks every pull request to main before it is merged: the analyzer
-# (infos included, flutter analyze's default) and the unit tests. The deploy
-# workflow runs the tests again after the merge; this one catches problems
-# while the PR can still be fixed.
+# Checks every pull request to main before it is merged: generated files up
+# to date, formatting, the analyzer (infos included, flutter analyze's
+# default) and the tests. The deploy workflow runs the tests again after the
+# merge; this one catches problems while the PR can still be fixed.
 #
 # Line-by-line walkthrough: docs/pt-br/entendendo-o-ci.md
 name: PR checks
@@ -34,12 +34,23 @@ jobs:
 
       - run: flutter pub get
 
+      # Generated files (mockito mocks, freezed classes) are committed because
+      # the deploy runs no build_runner. Regenerate them and fail if anything
+      # differs from what is committed, including new untracked files.
+      - name: Generated files up to date
+        run: |
+          dart run build_runner build
+          git diff --exit-code
+          test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
+
       - name: Formatting
         run: dart format --output=none --set-exit-if-changed lib test tool
 
       - name: Analyzer
         run: flutter analyze
 
-      # Integration tests are skipped: they need the Firebase emulators.
-      - name: Unit tests
-        run: flutter test test/unit -j 2
+      # Runs every *_test.dart under test/. The security-rules tests in
+      # test/rules/ are a Node project with no Dart test files, so they are
+      # not collected; they need the Firebase emulators.
+      - name: Tests
+        run: flutter test -j 2
