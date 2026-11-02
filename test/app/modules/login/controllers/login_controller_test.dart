@@ -8,9 +8,14 @@ import 'package:firebase_core_platform_interface/test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/login/controllers/login_controller.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
+import 'package:monamie_app/app/utils/notice_presenter.dart';
+
+@GenerateNiceMocks([MockSpec<NoticePresenter>()])
+import 'login_controller_test.mocks.dart';
 
 /// Rota fictícia de login usada como rota inicial nos testes de navegação.
 const String _kLoginRoute = '/login-test';
@@ -21,6 +26,8 @@ const String _kMonamiePlaceholder = 'monamie-placeholder';
 /// stream de login web nem inicializar o GoogleSignIn. Como os serviços do
 /// controller real são `late final`, eles nunca chegam a ser instanciados.
 class _FakeAuthGoogleController extends AuthGoogleController {
+  _FakeAuthGoogleController() : super(notices: MockNoticePresenter());
+
   @override
   // ignore: must_call_super
   void onInit() {

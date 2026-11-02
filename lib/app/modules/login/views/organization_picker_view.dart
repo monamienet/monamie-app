@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/data/organization/organization_binding.dart';
@@ -31,7 +32,9 @@ class OrganizationPickerView extends GetView<AuthGoogleController> {
               children: [
                 MonAmieAccountHeader(
                   email: controller.signedInEmail.value,
-                  onSwitch: busy ? null : controller.logout,
+                  onSwitch: busy
+                      ? null
+                      : () => runReportingErrors(context, controller.logout),
                 ),
                 const SizedBox(height: 28),
                 const Text(
@@ -67,7 +70,12 @@ class OrganizationPickerView extends GetView<AuthGoogleController> {
                       ],
                       for (final (index, binding) in choices.indexed) ...[
                         if (index > 0) const SizedBox(height: 10),
-                        _choice(binding, busy: busy, entering: entering),
+                        _choice(
+                          context,
+                          binding,
+                          busy: busy,
+                          entering: entering,
+                        ),
                       ],
                     ],
                   ),
@@ -96,6 +104,7 @@ class OrganizationPickerView extends GetView<AuthGoogleController> {
   );
 
   Widget _choice(
+    BuildContext context,
     OrganizationBinding binding, {
     required bool busy,
     required String? entering,
@@ -108,7 +117,12 @@ class OrganizationPickerView extends GetView<AuthGoogleController> {
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: locked ? null : () => controller.chooseOrganization(binding),
+        onTap: locked
+            ? null
+            : () => runReportingErrors(
+                context,
+                () => controller.chooseOrganization(binding),
+              ),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(

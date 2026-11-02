@@ -1,16 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
+import 'package:monamie_app/app/modules/monamie/controller/permission_prompts.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
+import 'package:monamie_app/app/utils/notice_presenter.dart';
+import 'package:monamie_app/app/utils/user_notice.dart';
 
 @GenerateNiceMocks([
   MockSpec<BackgroundRestrictionChecker>(),
   MockSpec<BackgroundUsageSettingsLauncher>(),
+  MockSpec<PermissionPrompts>(),
+  MockSpec<NoticePresenter>(),
 ])
 import 'permissions_controller_test.mocks.dart';
 
@@ -43,70 +49,67 @@ MockBackgroundUsageSettingsLauncher mockLauncher({bool result = true}) {
   return launcher;
 }
 
-/// Canal de métodos usado pelo permission_handler (`openAppSettings`). O
-/// controller não deve acioná-lo diretamente: abrir as configurações é
-/// responsabilidade do launcher injetado.
+/// Um [MockPermissionPrompts] em que a pessoa responde [agree] às duas
+/// perguntas de confirmação.
+MockPermissionPrompts mockPrompts({bool agree = false}) {
+  final prompts = MockPermissionPrompts();
+  when(prompts.confirmBackgroundUsageSettings()).thenAnswer((_) async => agree);
+  when(prompts.confirmBackgroundLocation()).thenAnswer((_) async => agree);
+  return prompts;
+}
+
+PermissionsController _build({
+  required BackgroundRestrictionChecker backgroundRestrictionChecker,
+  BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
+  PermissionPrompts? prompts,
+  NoticePresenter? notices,
+}) => PermissionsController(
+  prompts: prompts ?? mockPrompts(),
+  notices: notices ?? MockNoticePresenter(),
+  backgroundRestrictionChecker: backgroundRestrictionChecker,
+  backgroundUsageSettingsLauncher:
+      backgroundUsageSettingsLauncher ?? mockLauncher(),
+);
+
+/// Canal de métodos usado pelo permission_handler. O controller não deve
+/// acionar `openAppSettings` para a restrição de bateria: abrir as
+/// configurações é responsabilidade do launcher injetado.
 const MethodChannel _permissionChannel = MethodChannel(
   'flutter.baseflow.com/permissions/methods',
 );
 
-const String _dialogMessageSnippet =
-    'O seu aparelho está restringindo o aplicativo em segundo plano.';
+/// Valores de `PermissionStatus` e de `Permission` no protocolo do
+/// permission_handler.
+const int _denied = 0;
+const int _granted = 1;
+const int _permanentlyDenied = 4;
+const int _locationAlways = 4;
+const int _locationWhenInUse = 5;
 
-Widget _buildTestApp() {
-  return const GetMaterialApp(home: Scaffold(body: SizedBox.shrink()));
-}
+const String _noticeTitle = 'Uso em segundo plano ainda restrito';
 
-/// Valor de `PermissionStatus.granted` no protocolo do permission_handler.
-const int _permissionGranted = 1;
+/// O aviso de que a restrição de bateria continua.
+final Matcher _stillRestrictedNotice = isA<UserNotice>().having(
+  (notice) => notice.title,
+  'title',
+  _noticeTitle,
+);
 
-const String _snackbarTitle = 'Uso em segundo plano ainda restrito';
+/// Leva o usuário às configurações pelo fluxo do controller (a pergunta
+/// precisa ser confirmada e o checker indicar restrição).
+Future<void> _goToSettings(PermissionsController controller) =>
+    controller.openBackgroundUsageSettings();
 
-/// Leva o usuário às configurações pelo fluxo do controller: o diálogo
-/// explicativo aparece (o checker precisa indicar restrição) e o usuário toca
-/// em "PROSSEGUIR".
-Future<void> _goToSettingsThroughDialog(
-  WidgetTester tester,
-  PermissionsController controller,
-) async {
-  final future = controller.openBackgroundUsageSettings();
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('PROSSEGUIR'));
-  await tester.pumpAndSettle();
-  await future;
-}
-
-/// Conclui o trabalho assíncrono disparado pelo retorno ao app (reconsulta das
-/// permissões e da restrição) e renderiza a entrada do snackbar, se houver,
-/// sem alcançar os 8 s após os quais ele se fecha sozinho. `pumpAndSettle`
-/// não serve aqui: o ícone pulsante mantém frames agendados até o snackbar
-/// sumir, e um aviso indevido passaria despercebido.
-Future<void> _settleReturnToApp(WidgetTester tester) async {
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
-  await tester.pump(const Duration(seconds: 1));
-}
-
-/// `testWidgets` que, ao final (mesmo quando o teste falha), deixa os
-/// snackbars do GetX concluírem o ciclo de vida (8 s na tela + 1 s de saída).
-///
-/// O flutter_test verifica timers pendentes antes de executar os `tearDown`,
-/// e a fila de snackbars do GetX é estática: sem esta limpeza, o timer do
-/// snackbar quebraria o teste e a fila ficaria travada para os seguintes.
-void _testWidgetsWithSnackbarCleanup(
-  String description,
-  WidgetTesterCallback body,
-) {
-  testWidgets(description, (WidgetTester tester) async {
-    try {
-      await body(tester);
-    } finally {
-      await tester.pumpAndSettle();
-    }
-  });
+/// Simula o retorno ao app e conclui o trabalho assíncrono que ele dispara
+/// (`didChangeAppLifecycleState` não devolve o `Future`).
+Future<void> _returnToApp(PermissionsController controller) async {
+  controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+  await pumpEventQueue();
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('background restriction', () {
     group('PermissionsController - Restrição de Segundo Plano', () {
       test('Happy Path: Deve iniciar isBackgroundRestricted como false', () {
@@ -114,9 +117,7 @@ void main() {
         final checker = mockChecker(result: true);
 
         // 2. Act
-        final controller = PermissionsController(
-          backgroundRestrictionChecker: checker,
-        );
+        final controller = _build(backgroundRestrictionChecker: checker);
 
         // 3. Assert
         expect(controller.isBackgroundRestricted.value, isFalse);
@@ -127,9 +128,7 @@ void main() {
         () async {
           // 1. Arrange
           final checker = mockChecker(result: true);
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
-          );
+          final controller = _build(backgroundRestrictionChecker: checker);
 
           // 2. Act
           final resultado = await controller.refreshBackgroundRestriction();
@@ -146,9 +145,7 @@ void main() {
         () async {
           // 1. Arrange
           final checker = mockChecker(result: false);
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
-          );
+          final controller = _build(backgroundRestrictionChecker: checker);
 
           // 2. Act
           final resultado = await controller.refreshBackgroundRestriction();
@@ -164,9 +161,7 @@ void main() {
         () async {
           // 1. Arrange
           final checker = mockChecker(result: false);
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
-          );
+          final controller = _build(backgroundRestrictionChecker: checker);
           controller.isBackgroundRestricted.value = true;
 
           // 2. Act
@@ -183,9 +178,7 @@ void main() {
         () async {
           // 1. Arrange
           final checker = mockChecker(error: StateError('falha nativa'));
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
-          );
+          final controller = _build(backgroundRestrictionChecker: checker);
           controller.isBackgroundRestricted.value = true;
 
           // 2. Act
@@ -204,9 +197,7 @@ void main() {
         required bool notification,
         required bool restricted,
       }) {
-        final controller = PermissionsController(
-          backgroundRestrictionChecker: mockChecker(),
-        );
+        final controller = _build(backgroundRestrictionChecker: mockChecker());
         controller.hasAlwaysLocationPermission.value = always;
         controller.hasNotificationPermission.value = notification;
         controller.isBackgroundRestricted.value = restricted;
@@ -235,7 +226,7 @@ void main() {
         'Edge Case: Deve retornar false no estado inicial do controller (nada concedido)',
         () {
           // 1. Arrange
-          final controller = PermissionsController(
+          final controller = _build(
             backgroundRestrictionChecker: mockChecker(),
           );
 
@@ -324,7 +315,7 @@ void main() {
         'Sad Path: Deve retornar false quando o refresh detecta restrição após permissões concedidas',
         () async {
           // 1. Arrange
-          final controller = PermissionsController(
+          final controller = _build(
             backgroundRestrictionChecker: mockChecker(result: true),
           );
           controller.hasAlwaysLocationPermission.value = true;
@@ -358,28 +349,26 @@ void main() {
       tearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(_permissionChannel, null);
-        Get.reset();
       });
 
-      testWidgets(
-        'Happy Path: Deve retornar sem exibir diálogo nem abrir configurações quando o app não está restrito',
-        (WidgetTester tester) async {
+      test(
+        'Happy Path: Deve retornar sem perguntar nem abrir configurações quando o app não está restrito',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
           final checker = mockChecker(result: false);
           final launcher = mockLauncher();
-          final controller = PermissionsController(
+          final prompts = mockPrompts(agree: true);
+          final controller = _build(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: launcher,
+            prompts: prompts,
           );
 
           // 2. Act
           await controller.openBackgroundUsageSettings();
-          await tester.pumpAndSettle();
 
           // 3. Assert
-          expect(find.byType(AlertDialog), findsNothing);
-          expect(Get.isDialogOpen, isFalse);
+          verifyNever(prompts.confirmBackgroundUsageSettings());
           expect(controller.isBackgroundRestricted.value, isFalse);
           verify(checker.isRestricted()).called(1);
           verifyNever(launcher.open());
@@ -387,195 +376,155 @@ void main() {
         },
       );
 
-      testWidgets(
-        'Edge Case: Deve limpar a restrição registrada e não exibir diálogo quando o usuário já a removeu',
-        (WidgetTester tester) async {
+      test(
+        'Edge Case: Deve limpar a restrição registrada sem perguntar quando o usuário já a removeu',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
           final checker = mockChecker(result: false);
           final launcher = mockLauncher();
-          final controller = PermissionsController(
+          final prompts = mockPrompts(agree: true);
+          final controller = _build(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: launcher,
+            prompts: prompts,
           );
           controller.isBackgroundRestricted.value = true;
 
           // 2. Act
           await controller.openBackgroundUsageSettings();
-          await tester.pumpAndSettle();
 
           // 3. Assert
-          expect(find.byType(AlertDialog), findsNothing);
+          verifyNever(prompts.confirmBackgroundUsageSettings());
           expect(controller.isBackgroundRestricted.value, isFalse);
-          verify(checker.isRestricted()).called(1);
           verifyNever(launcher.open());
           expect(permissionCalls, isEmpty);
         },
       );
 
-      testWidgets(
-        'Sad Path: Deve exibir o diálogo explicativo com "AGORA NÃO" e "PROSSEGUIR" quando o app está restrito',
-        (WidgetTester tester) async {
+      test(
+        'Sad Path: Deve perguntar uma vez antes de abrir as configurações quando o app está restrito',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
           final checker = mockChecker(result: true);
-          final launcher = mockLauncher();
-          final controller = PermissionsController(
+          final prompts = mockPrompts(agree: false);
+          final controller = _build(
             backgroundRestrictionChecker: checker,
-            backgroundUsageSettingsLauncher: launcher,
+            prompts: prompts,
           );
 
           // 2. Act
-          controller.openBackgroundUsageSettings();
-          await tester.pumpAndSettle();
+          await controller.openBackgroundUsageSettings();
 
           // 3. Assert
-          expect(find.byType(AlertDialog), findsOneWidget);
-          expect(find.textContaining(_dialogMessageSnippet), findsOneWidget);
-          expect(find.text('AGORA NÃO'), findsOneWidget);
-          expect(find.text('PROSSEGUIR'), findsOneWidget);
+          verify(prompts.confirmBackgroundUsageSettings()).called(1);
+          verifyNever(prompts.confirmBackgroundLocation());
           expect(controller.isBackgroundRestricted.value, isTrue);
-          verify(checker.isRestricted()).called(1);
-          verifyNever(launcher.open());
-          expect(permissionCalls, isEmpty);
         },
       );
 
-      testWidgets(
-        'Sad Path: Deve fechar o diálogo sem abrir as configurações quando o usuário toca em "AGORA NÃO"',
-        (WidgetTester tester) async {
+      test(
+        'Sad Path: Deve parar sem abrir as configurações quando o usuário recusa ("AGORA NÃO")',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
           final launcher = mockLauncher();
-          final controller = PermissionsController(
+          final controller = _build(
             backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
+            prompts: mockPrompts(agree: false),
           );
-          final future = controller.openBackgroundUsageSettings();
-          await tester.pumpAndSettle();
 
           // 2. Act
-          await tester.tap(find.text('AGORA NÃO'));
-          await tester.pumpAndSettle();
+          await controller.openBackgroundUsageSettings();
 
           // 3. Assert
-          await expectLater(future, completes);
-          expect(find.byType(AlertDialog), findsNothing);
           verifyNever(launcher.open());
           expect(permissionCalls, isEmpty);
           expect(controller.isBackgroundRestricted.value, isTrue);
         },
       );
 
-      testWidgets(
-        'Happy Path: Deve fechar o diálogo e acionar o launcher injetado uma única vez, sem chamar openAppSettings diretamente, quando o usuário toca em "PROSSEGUIR"',
-        (WidgetTester tester) async {
+      test(
+        'Happy Path: Deve acionar o launcher injetado uma única vez, sem chamar openAppSettings, quando o usuário confirma ("PROSSEGUIR")',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
           final launcher = mockLauncher(result: true);
-          final controller = PermissionsController(
+          final controller = _build(
             backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
+            prompts: mockPrompts(agree: true),
           );
-          final future = controller.openBackgroundUsageSettings();
-          await tester.pumpAndSettle();
 
           // 2. Act
-          await tester.tap(find.text('PROSSEGUIR'));
-          await tester.pumpAndSettle();
+          await controller.openBackgroundUsageSettings();
 
           // 3. Assert
-          await expectLater(future, completes);
-          expect(find.byType(AlertDialog), findsNothing);
           verify(launcher.open()).called(1);
           expect(permissionCalls, isEmpty);
         },
       );
 
-      testWidgets(
+      test(
         'Sad Path: Deve concluir sem erro e sem recorrer ao openAppSettings quando o launcher não consegue abrir nenhuma tela',
-        (WidgetTester tester) async {
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
           final launcher = mockLauncher(result: false);
-          final controller = PermissionsController(
+          final controller = _build(
             backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
+            prompts: mockPrompts(agree: true),
           );
-          final future = controller.openBackgroundUsageSettings();
-          await tester.pumpAndSettle();
 
           // 2. Act
-          await tester.tap(find.text('PROSSEGUIR'));
-          await tester.pumpAndSettle();
+          final future = controller.openBackgroundUsageSettings();
 
           // 3. Assert
           await expectLater(future, completes);
-          expect(find.byType(AlertDialog), findsNothing);
           verify(launcher.open()).called(1);
           expect(permissionCalls, isEmpty);
         },
       );
 
-      testWidgets(
-        'Edge Case: Deve manter o diálogo aberto quando o usuário toca fora dele (barreira não dispensável)',
-        (WidgetTester tester) async {
+      test(
+        'Edge Case: Deve perguntar uma única vez e acionar o launcher uma única vez quando a ação é disparada duas vezes seguidas',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
           final launcher = mockLauncher();
-          final controller = PermissionsController(
+          final answer = Completer<bool>();
+          final prompts = MockPermissionPrompts();
+          when(
+            prompts.confirmBackgroundUsageSettings(),
+          ).thenAnswer((_) => answer.future);
+          final controller = _build(
             backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
+            prompts: prompts,
           );
-          controller.openBackgroundUsageSettings();
-          await tester.pumpAndSettle();
+          // Primeiro toque: a pergunta fica aberta.
+          final first = controller.openBackgroundUsageSettings();
+          await pumpEventQueue();
 
           // 2. Act
-          await tester.tapAt(const Offset(5, 5));
-          await tester.pumpAndSettle();
+          await controller.openBackgroundUsageSettings();
 
           // 3. Assert
-          expect(find.byType(AlertDialog), findsOneWidget);
-          verifyNever(launcher.open());
-          expect(permissionCalls, isEmpty);
-        },
-      );
-
-      testWidgets(
-        'Edge Case: Deve exibir um único diálogo e acionar o launcher uma única vez quando a ação é disparada duas vezes seguidas',
-        (WidgetTester tester) async {
-          // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
-          final launcher = mockLauncher();
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: mockChecker(result: true),
-            backgroundUsageSettingsLauncher: launcher,
-          );
-          // Toques rápidos repetidos no botão antes de o diálogo aparecer.
-          controller.openBackgroundUsageSettings();
-          controller.openBackgroundUsageSettings();
-          await tester.pumpAndSettle();
-
-          // 2. Act
-          await tester.tap(find.text('PROSSEGUIR').last);
-          await tester.pumpAndSettle();
-
-          // 3. Assert
-          expect(find.byType(AlertDialog), findsNothing);
+          answer.complete(true);
+          await first;
+          verify(prompts.confirmBackgroundUsageSettings()).called(1);
           verify(launcher.open()).called(1);
         },
       );
 
-      testWidgets(
-        'Sad Path: Deve propagar a exceção do checker sem exibir diálogo nem abrir configurações',
-        (WidgetTester tester) async {
+      test(
+        'Sad Path: Deve propagar a exceção do checker sem perguntar nem abrir configurações',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
           final checker = mockChecker(error: StateError('falha nativa'));
           final launcher = mockLauncher();
-          final controller = PermissionsController(
+          final prompts = mockPrompts(agree: true);
+          final controller = _build(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: launcher,
+            prompts: prompts,
           );
 
           // 2. Act
@@ -583,10 +532,33 @@ void main() {
 
           // 3. Assert
           await expectLater(future, throwsA(isA<StateError>()));
-          await tester.pumpAndSettle();
-          expect(find.byType(AlertDialog), findsNothing);
+          verifyNever(prompts.confirmBackgroundUsageSettings());
           verifyNever(launcher.open());
           expect(permissionCalls, isEmpty);
+        },
+      );
+
+      test(
+        'Edge Case: Deve aceitar uma nova tentativa depois de uma falha do checker',
+        () async {
+          // 1. Arrange
+          final checker = mockChecker(error: StateError('falha nativa'));
+          final prompts = mockPrompts(agree: false);
+          final controller = _build(
+            backgroundRestrictionChecker: checker,
+            prompts: prompts,
+          );
+          await expectLater(
+            controller.openBackgroundUsageSettings(),
+            throwsA(isA<StateError>()),
+          );
+          setRestricted(checker, true);
+
+          // 2. Act
+          await controller.openBackgroundUsageSettings();
+
+          // 3. Assert
+          verify(prompts.confirmBackgroundUsageSettings()).called(1);
         },
       );
     });
@@ -597,9 +569,7 @@ void main() {
       setUp(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(_permissionChannel, (call) async {
-              if (call.method == 'checkPermissionStatus') {
-                return _permissionGranted;
-              }
+              if (call.method == 'checkPermissionStatus') return _granted;
               if (call.method == 'openAppSettings') return true;
               return null;
             });
@@ -608,212 +578,335 @@ void main() {
       tearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(_permissionChannel, null);
-        Get.reset();
       });
 
-      _testWidgetsWithSnackbarCleanup(
-        'Happy Path: Deve exibir o snackbar "Uso em segundo plano ainda restrito" quando o usuário volta das configurações e a restrição continua',
-        (WidgetTester tester) async {
+      test(
+        'Happy Path: Deve avisar "Uso em segundo plano ainda restrito" quando o usuário volta das configurações e a restrição continua',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
-          final checker = mockChecker(result: true);
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
+          final notices = MockNoticePresenter();
+          final controller = _build(
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: mockLauncher(result: true),
+            prompts: mockPrompts(agree: true),
+            notices: notices,
           );
-          await _goToSettingsThroughDialog(tester, controller);
+          await _goToSettings(controller);
 
           // 2. Act
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await _settleReturnToApp(tester);
+          await _returnToApp(controller);
 
           // 3. Assert
-          expect(find.text(_snackbarTitle), findsOneWidget);
-          expect(Get.isSnackbarOpen, isTrue);
+          verify(notices.show(argThat(_stillRestrictedNotice))).called(1);
           expect(controller.isBackgroundRestricted.value, isTrue);
         },
       );
 
-      _testWidgetsWithSnackbarCleanup(
-        'Happy Path: Deve limpar a restrição sem exibir aviso quando o usuário a remove nas configurações',
-        (WidgetTester tester) async {
+      test(
+        'Happy Path: Deve limpar a restrição sem avisar quando o usuário a remove nas configurações',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
+          final notices = MockNoticePresenter();
           final checker = mockChecker(result: true);
-          final controller = PermissionsController(
+          final controller = _build(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: mockLauncher(result: true),
+            prompts: mockPrompts(agree: true),
+            notices: notices,
           );
-          await _goToSettingsThroughDialog(tester, controller);
+          await _goToSettings(controller);
           setRestricted(checker, false); // O usuário removeu a restrição.
 
           // 2. Act
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await _settleReturnToApp(tester);
+          await _returnToApp(controller);
 
           // 3. Assert
-          expect(find.text(_snackbarTitle), findsNothing);
-          expect(Get.isSnackbarOpen, isFalse);
+          verifyNever(notices.show(any));
           expect(controller.isBackgroundRestricted.value, isFalse);
         },
       );
 
-      _testWidgetsWithSnackbarCleanup(
-        'Edge Case: Deve exibir o aviso apenas uma vez por ida às configurações, ignorando um segundo retorno ao app',
-        (WidgetTester tester) async {
+      test(
+        'Edge Case: Deve avisar apenas uma vez por ida às configurações, ignorando um segundo retorno ao app',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
-          final checker = mockChecker(result: true);
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
+          final notices = MockNoticePresenter();
+          final controller = _build(
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: mockLauncher(result: true),
+            prompts: mockPrompts(agree: true),
+            notices: notices,
           );
-          await _goToSettingsThroughDialog(tester, controller);
-          // Primeiro retorno: o aviso é exibido e some sozinho após 8 s.
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await tester.pumpAndSettle();
+          await _goToSettings(controller);
+          await _returnToApp(controller); // Primeiro retorno: avisa.
+          clearInteractions(notices);
 
           // 2. Act
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await _settleReturnToApp(tester);
+          await _returnToApp(controller);
 
           // 3. Assert
-          expect(find.text(_snackbarTitle), findsNothing);
-          expect(Get.isSnackbarOpen, isFalse);
+          verifyNever(notices.show(any));
         },
       );
 
-      _testWidgetsWithSnackbarCleanup(
-        'Edge Case: Deve exibir o aviso novamente quando o usuário volta às configurações por um novo "PROSSEGUIR"',
-        (WidgetTester tester) async {
+      test(
+        'Edge Case: Deve avisar novamente quando o usuário volta às configurações por uma nova confirmação',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
-          final checker = mockChecker(result: true);
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
+          final notices = MockNoticePresenter();
+          final controller = _build(
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: mockLauncher(result: true),
+            prompts: mockPrompts(agree: true),
+            notices: notices,
           );
-          await _goToSettingsThroughDialog(tester, controller);
-          // Primeira ida: o aviso é exibido e some sozinho após 8 s.
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await tester.pumpAndSettle();
-          await _goToSettingsThroughDialog(tester, controller);
+          await _goToSettings(controller);
+          await _returnToApp(controller); // Primeira ida: avisa.
+          clearInteractions(notices);
+          await _goToSettings(controller);
 
           // 2. Act
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await _settleReturnToApp(tester);
+          await _returnToApp(controller);
 
           // 3. Assert
-          expect(find.text(_snackbarTitle), findsOneWidget);
-          expect(Get.isSnackbarOpen, isTrue);
+          verify(notices.show(argThat(_stillRestrictedNotice))).called(1);
         },
       );
 
-      _testWidgetsWithSnackbarCleanup(
+      test(
         'Edge Case: Deve ignorar um retorno posterior em que a restrição reaparece depois de um retorno já sem restrição',
-        (WidgetTester tester) async {
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
+          final notices = MockNoticePresenter();
           final checker = mockChecker(result: true);
-          final controller = PermissionsController(
+          final controller = _build(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: mockLauncher(result: true),
+            prompts: mockPrompts(agree: true),
+            notices: notices,
           );
-          await _goToSettingsThroughDialog(tester, controller);
-          setRestricted(
-            checker,
-            false,
-          ); // Retorno da ida às configurações sem restrição.
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await tester.pumpAndSettle();
-          setRestricted(
-            checker,
-            true,
-          ); // A restrição reaparece depois, fora da ida.
+          await _goToSettings(controller);
+          // Retorno da ida às configurações sem restrição.
+          setRestricted(checker, false);
+          await _returnToApp(controller);
+          // A restrição reaparece depois, fora da ida.
+          setRestricted(checker, true);
 
           // 2. Act
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await _settleReturnToApp(tester);
+          await _returnToApp(controller);
 
           // 3. Assert
-          expect(find.text(_snackbarTitle), findsNothing);
-          expect(Get.isSnackbarOpen, isFalse);
+          verifyNever(notices.show(any));
           expect(controller.isBackgroundRestricted.value, isTrue);
         },
       );
 
-      _testWidgetsWithSnackbarCleanup(
+      test(
         'Edge Case: Deve ignorar o retorno ao app sem ida às configurações pelo controller, mesmo com a restrição ativa',
-        (WidgetTester tester) async {
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
-          final checker = mockChecker(result: true);
+          final notices = MockNoticePresenter();
           final launcher = mockLauncher(result: true);
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
+          final controller = _build(
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
+            notices: notices,
           );
 
           // 2. Act
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await _settleReturnToApp(tester);
+          await _returnToApp(controller);
 
           // 3. Assert
-          expect(find.text(_snackbarTitle), findsNothing);
-          expect(Get.isSnackbarOpen, isFalse);
+          verifyNever(notices.show(any));
           expect(controller.isBackgroundRestricted.value, isTrue);
           verifyNever(launcher.open());
         },
       );
 
-      _testWidgetsWithSnackbarCleanup(
-        'Edge Case: Deve ignorar o retorno ao app quando o usuário escolheu "AGORA NÃO" no diálogo',
-        (WidgetTester tester) async {
+      test(
+        'Edge Case: Deve ignorar o retorno ao app quando o usuário recusou a pergunta ("AGORA NÃO")',
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
-          final checker = mockChecker(result: true);
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
+          final notices = MockNoticePresenter();
+          final controller = _build(
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: mockLauncher(result: true),
+            prompts: mockPrompts(agree: false),
+            notices: notices,
           );
-          final future = controller.openBackgroundUsageSettings();
-          await tester.pumpAndSettle();
-          await tester.tap(find.text('AGORA NÃO'));
-          await tester.pumpAndSettle();
-          await future;
+          await _goToSettings(controller);
 
           // 2. Act
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await _settleReturnToApp(tester);
+          await _returnToApp(controller);
 
           // 3. Assert
-          expect(find.text(_snackbarTitle), findsNothing);
-          expect(Get.isSnackbarOpen, isFalse);
+          verifyNever(notices.show(any));
         },
       );
 
-      _testWidgetsWithSnackbarCleanup(
+      test(
         'Sad Path: Deve ignorar o retorno ao app quando o launcher não conseguiu abrir nenhuma tela de configurações',
-        (WidgetTester tester) async {
+        () async {
           // 1. Arrange
-          await tester.pumpWidget(_buildTestApp());
-          final checker = mockChecker(result: true);
-          final controller = PermissionsController(
-            backgroundRestrictionChecker: checker,
+          final notices = MockNoticePresenter();
+          final controller = _build(
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: mockLauncher(result: false),
+            prompts: mockPrompts(agree: true),
+            notices: notices,
           );
-          await _goToSettingsThroughDialog(tester, controller);
+          await _goToSettings(controller);
 
           // 2. Act
-          controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
-          await _settleReturnToApp(tester);
+          await _returnToApp(controller);
 
           // 3. Assert
-          expect(find.text(_snackbarTitle), findsNothing);
-          expect(Get.isSnackbarOpen, isFalse);
+          verifyNever(notices.show(any));
           expect(controller.isBackgroundRestricted.value, isTrue);
         },
       );
     });
+  });
+
+  group('PermissionsController - requestAlwaysPermission', () {
+    late List<List<int>> requested;
+    late List<String> methods;
+
+    /// Responde aos pedidos de permissão: "durante o uso" com [whenInUse],
+    /// "sempre" com [always]; as consultas de status respondem [always].
+    void answerPermissions({required int whenInUse, int always = _granted}) {
+      requested = <List<int>>[];
+      methods = <String>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_permissionChannel, (call) async {
+            methods.add(call.method);
+            switch (call.method) {
+              case 'requestPermissions':
+                final permissions = List<int>.from(call.arguments as List);
+                requested.add(permissions);
+                return {
+                  for (final p in permissions)
+                    p: p == _locationWhenInUse ? whenInUse : always,
+                };
+              case 'checkPermissionStatus':
+                return always;
+              case 'openAppSettings':
+                return true;
+            }
+            return null;
+          });
+    }
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_permissionChannel, null);
+    });
+
+    test(
+      'Happy Path: Deve pedir a localização "sempre" quando o usuário confirma o aviso',
+      () async {
+        // 1. Arrange
+        answerPermissions(whenInUse: _granted);
+        final prompts = mockPrompts(agree: true);
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          prompts: prompts,
+        );
+
+        // 2. Act
+        await controller.requestAlwaysPermission();
+
+        // 3. Assert
+        verify(prompts.confirmBackgroundLocation()).called(1);
+        expect(requested, [
+          [_locationWhenInUse],
+          [_locationAlways],
+        ]);
+        expect(controller.hasAlwaysLocationPermission.value, isTrue);
+      },
+    );
+
+    test(
+      'Sad Path: Deve parar sem pedir a localização "sempre" quando o usuário recusa o aviso',
+      () async {
+        // 1. Arrange
+        answerPermissions(whenInUse: _granted, always: _denied);
+        final prompts = mockPrompts(agree: false);
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          prompts: prompts,
+        );
+
+        // 2. Act
+        await controller.requestAlwaysPermission();
+
+        // 3. Assert
+        verify(prompts.confirmBackgroundLocation()).called(1);
+        expect(requested, [
+          [_locationWhenInUse],
+        ]);
+        expect(controller.hasAlwaysLocationPermission.value, isFalse);
+      },
+    );
+
+    test(
+      'Edge Case: Deve abrir as configurações do app quando a localização "sempre" foi negada de vez',
+      () async {
+        // 1. Arrange
+        answerPermissions(whenInUse: _granted, always: _permanentlyDenied);
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          prompts: mockPrompts(agree: true),
+        );
+
+        // 2. Act
+        await controller.requestAlwaysPermission();
+
+        // 3. Assert
+        expect(methods, contains('openAppSettings'));
+      },
+    );
+
+    test(
+      'Sad Path: Deve não exibir o aviso quando a localização "durante o uso" é negada',
+      () async {
+        // 1. Arrange
+        answerPermissions(whenInUse: _denied, always: _denied);
+        final prompts = mockPrompts(agree: true);
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          prompts: prompts,
+        );
+
+        // 2. Act
+        await controller.requestAlwaysPermission();
+
+        // 3. Assert
+        verifyNever(prompts.confirmBackgroundLocation());
+        expect(requested, [
+          [_locationWhenInUse],
+        ]);
+      },
+    );
+  });
+
+  group('PermissionsController - notifyGpsDisabled', () {
+    test(
+      'Happy Path: Deve delegar o aviso de GPS desligado às perguntas',
+      () async {
+        // 1. Arrange
+        final prompts = mockPrompts();
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          prompts: prompts,
+        );
+
+        // 2. Act
+        await controller.notifyGpsDisabled();
+
+        // 3. Assert
+        verify(prompts.notifyGpsDisabled()).called(1);
+      },
+    );
   });
 }

@@ -29,6 +29,9 @@ import 'package:monamie_app/app/modules/login/services/auth_google_service.dart'
 import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/utils/app_theme.dart';
+import 'package:monamie_app/app/utils/notice_presenter.dart';
+import 'package:monamie_app/app/utils/result.dart';
+import 'package:monamie_app/app/utils/user_notice.dart';
 
 /// Signs the user in and binds their organization.
 ///
@@ -39,7 +42,12 @@ import 'package:monamie_app/app/utils/app_theme.dart';
 /// in to the organization project and checks there that the person still
 /// has a membership.
 class AuthGoogleController extends GetxController {
+  /// [notices] shows the messages no screen is waiting for: those of the web
+  /// sign-in (a stream), of a sign-out started by a controller (removal from
+  /// the organization, account deletion) and the tracking warning, which
+  /// shows after the screen that started the sign-out is gone.
   AuthGoogleController({
+    required this._notices,
     AuthGoogleService? authGoogleService,
     UserGoogleRepository? userRepository,
     BackgroundTrackingStopper? trackingStopper,
@@ -67,6 +75,7 @@ class AuthGoogleController extends GetxController {
        _refreshTheme =
            refreshTheme ?? (() => Get.changeTheme(AppTheme.lightTheme));
 
+  final NoticePresenter _notices;
   final AuthGoogleService? _injectedAuthGoogle;
   final UserGoogleRepository? _injectedUserRepository;
   final BackgroundTrackingStopper? _injectedTrackingStopper;
@@ -171,8 +180,11 @@ class AuthGoogleController extends GetxController {
 
   Future<void> _onWebGoogleSignIn(String? idToken) async {
     if (idToken == null) {
-      _showLoginError(
-        "Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.",
+      _notices.show(
+        const UserNotice(
+          "Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.",
+          title: _loginErrorTitle,
+        ),
       );
       return;
     }
@@ -181,7 +193,12 @@ class AuthGoogleController extends GetxController {
     try {
       await _continueWithOrganizations(idToken, alwaysPick: true);
     } catch (e) {
-      _showLoginError("Ocorreu um erro ao carregar seus dados: $e");
+      _notices.show(
+        UserNotice(
+          "Ocorreu um erro ao carregar seus dados: $e",
+          title: _loginErrorTitle,
+        ),
+      );
     } finally {
       isLoading.value = false;
     }
@@ -297,7 +314,7 @@ class AuthGoogleController extends GetxController {
         : deletion;
     deletionRestored.value = false;
     deletionError.value = '';
-    await _signOut(destination: Routes.DELETION_PENDING);
+    _showFailure(await _signOut(destination: Routes.DELETION_PENDING));
   }
 
   /// "Cancelar exclusão": signs in again if needed (the deletion signed the
@@ -347,13 +364,15 @@ class AuthGoogleController extends GetxController {
   }
 
   /// "A `<nome>` está pronta · Entrar": enters the organization just created.
-  Future<void> enterCreatedOrganization(String organizationId) async {
-    if (isLoading.value) return;
+  /// [Err] says why it could not; [Ok] also while another entry runs.
+  Future<Result<void>> enterCreatedOrganization(String organizationId) async {
+    if (isLoading.value) return const Ok(null);
     isLoading.value = true;
     try {
       await _enterNew(organizationId);
-    } catch (e) {
-      _showLoginError("Não foi possível entrar agora: $e");
+      return const Ok(null);
+    } catch (e, stackTrace) {
+      return _loginError("Não foi possível entrar agora: $e", e, stackTrace);
     } finally {
       isLoading.value = false;
     }
@@ -381,9 +400,10 @@ class AuthGoogleController extends GetxController {
   }
 
   /// "Já me convidaram · verificar de novo": asks again which organizations the
-  /// user belongs to, reusing this sign-in when there is one.
-  Future<void> recheckOrganizations() async {
-    if (isLoading.value) return;
+  /// user belongs to, reusing this sign-in when there is one. [Err] says why
+  /// it could not; [Ok] also while another operation runs.
+  Future<Result<void>> recheckOrganizations() async {
+    if (isLoading.value) return const Ok(null);
     isLoading.value = true;
     noAccessReason.value = null;
     try {
@@ -391,8 +411,9 @@ class AuthGoogleController extends GetxController {
       if (idToken != null) {
         await _continueWithOrganizations(idToken, alwaysPick: true);
       }
-    } catch (e) {
-      _showLoginError("Não foi possível verificar agora: $e");
+      return const Ok(null);
+    } catch (e, stackTrace) {
+      return _loginError("Não foi possível verificar agora: $e", e, stackTrace);
     } finally {
       isLoading.value = false;
     }
@@ -426,8 +447,9 @@ class AuthGoogleController extends GetxController {
   /// leaves them where they are instead of unbound. Then the tracking stops
   /// (the service outlives the screen), the organization is forgotten and the
   /// picker, or *Sem organização* when nothing is left, replaces the stack.
-  Future<void> switchOrganization() async {
-    if (isLoggingOut.value || isLoading.value) return;
+  /// [Err] says why nothing changed; [Ok] also while another operation runs.
+  Future<Result<void>> switchOrganization() async {
+    if (isLoggingOut.value || isLoading.value) return const Ok(null);
     // The token kept since sign-in is used while it is good; only then does
     // Google need to be asked again (which may show its account chooser).
     final kept = _pendingIdToken;
@@ -436,14 +458,10 @@ class AuthGoogleController extends GetxController {
         : await _authGoogle.refreshGoogleIdToken();
     if (idToken == null) {
       // Nothing was changed: the person stays where they are.
-      Get.snackbar(
-        'Trocar de organização',
+      return const Err(
         'Não foi possível renovar o acesso com o Google. Tente de novo.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange.shade100,
-        duration: const Duration(seconds: 5),
+        title: _switchTitle,
       );
-      return;
     }
 
     isLoggingOut.value = true;
@@ -464,18 +482,18 @@ class AuthGoogleController extends GetxController {
       await _loadInvites();
       if (bindings.isEmpty) {
         Get.offAllNamed(Routes.NO_ORGANIZATION);
-        return;
+        return const Ok(null);
       }
       organizationChoices.assignAll(bindings);
       Get.offAllNamed(Routes.ORGANIZATION_PICKER);
-    } catch (e) {
+      return const Ok(null);
+    } catch (e, stackTrace) {
       debugPrint('Erro ao trocar de organização: $e');
-      Get.snackbar(
-        'Trocar de organização',
+      return Err(
         'Não foi possível trocar agora. Verifique a conexão e tente de novo.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange.shade100,
-        duration: const Duration(seconds: 5),
+        title: _switchTitle,
+        error: e,
+        stackTrace: stackTrace,
       );
     } finally {
       isLoggingOut.value = false;
@@ -486,30 +504,36 @@ class AuthGoogleController extends GetxController {
   /// Stops the background tracking and warns when it could not be confirmed.
   /// It must run while the organization is still signed in: after that the rules
   /// refuse the write of `isPublishing = false`.
+  ///
+  /// The warning goes through [_notices]: the operation goes on, and the
+  /// screen that started it is usually replaced by then.
   Future<void> _stopTracking() async {
     final stopped = await _trackingStopper.stop(email: await _currentEmail());
     if (!stopped) {
-      Get.snackbar(
-        "Rastreamento",
-        "Não foi possível confirmar o encerramento do rastreamento. "
-            "Ele será encerrado automaticamente em instantes.",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange.shade100,
-        duration: const Duration(seconds: 5),
+      _notices.show(
+        const UserNotice(
+          "Não foi possível confirmar o encerramento do rastreamento. "
+          "Ele será encerrado automaticamente em instantes.",
+          title: "Rastreamento",
+        ),
       );
     }
   }
 
   /// Enters the organization the user picked in the organization picker.
-  Future<void> chooseOrganization(OrganizationBinding binding) async {
+  /// [Err] says why it could not; [Ok] also when there is nothing to do.
+  Future<Result<void>> chooseOrganization(OrganizationBinding binding) async {
     final idToken = _pendingIdToken;
-    if (idToken == null || isLoading.value) return;
+    if (idToken == null || isLoading.value) return const Ok(null);
     isLoading.value = true;
     try {
       await _enterOrganization(binding, idToken);
-    } catch (e) {
-      _showLoginError(
+      return const Ok(null);
+    } catch (e, stackTrace) {
+      return _loginError(
         "Não foi possível entrar em ${binding.organization.name}: $e",
+        e,
+        stackTrace,
       );
     } finally {
       isLoading.value = false;
@@ -573,18 +597,21 @@ class AuthGoogleController extends GetxController {
     }
   }
 
-  void _showLoginError(String message) {
-    Get.snackbar(
-      "Erro de Login",
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.shade100,
-      duration: const Duration(seconds: 5),
-    );
-  }
+  static const _loginErrorTitle = "Erro de Login";
+  static const _switchTitle = 'Trocar de organização';
 
-  void loginGoogle() async {
-    if (isLoading.value || isChoosingAccount.value) return;
+  Err<void> _loginError(String message, Object error, StackTrace stackTrace) =>
+      Err(
+        message,
+        title: _loginErrorTitle,
+        error: error,
+        stackTrace: stackTrace,
+      );
+
+  /// "Entrar com o Google". [Err] says why the sign-in failed; [Ok] also
+  /// while another sign-in runs.
+  Future<Result<void>> loginGoogle() async {
+    if (isLoading.value || isChoosingAccount.value) return const Ok(null);
     isChoosingAccount.value = true;
     try {
       // The spinner waits for an account: while Google's chooser is open there
@@ -597,15 +624,18 @@ class AuthGoogleController extends GetxController {
       if (idToken != null) {
         await _continueWithOrganizations(idToken, alwaysPick: true);
       }
-    } catch (e) {
-      _showLoginError("Ocorreu um erro inesperado: $e");
+      return const Ok(null);
+    } catch (e, stackTrace) {
+      return _loginError("Ocorreu um erro inesperado: $e", e, stackTrace);
     } finally {
       isLoading.value = false;
       isChoosingAccount.value = false;
     }
   }
 
-  Future<void> logout() => _signOut();
+  /// "Sair". [Ok] holds whether the sign-out finished (`false` while another
+  /// one runs); [Err] says why it failed.
+  Future<Result<bool>> logout() => _signOut();
 
   /// Forgets the organization after the user's membership was removed:
   /// the same steps as [logout], then *Sem organização* saying why.
@@ -614,15 +644,21 @@ class AuthGoogleController extends GetxController {
     noAccessReason.value = name == null
         ? 'Você não faz mais parte desta organização.'
         : 'Você não faz mais parte da $name.';
-    await _signOut(destination: Routes.NO_ORGANIZATION);
+    _showFailure(await _signOut(destination: Routes.NO_ORGANIZATION));
   }
 
-  /// Returns whether the sign-out finished.
-  Future<bool> _signOut({
-    String? reason,
-    String destination = Routes.LOGIN,
-  }) async {
-    if (isLoggingOut.value) return false;
+  /// Shows [result]'s message through [_notices] when it failed: for the
+  /// sign-outs no screen waits for.
+  void _showFailure(Result<Object?> result) {
+    if (result case Err(:final message, :final title)) {
+      _notices.show(UserNotice(message, title: title));
+    }
+  }
+
+  /// [Ok] holds whether the sign-out finished (`false` while another one
+  /// runs); [Err] says why it failed.
+  Future<Result<bool>> _signOut({String destination = Routes.LOGIN}) async {
+    if (isLoggingOut.value) return const Ok(false);
 
     isLoggingOut.value = true;
     try {
@@ -640,26 +676,15 @@ class AuthGoogleController extends GetxController {
       signedInEmail.value = null;
       ownership.clear();
       Get.offAllNamed(destination);
-      if (reason != null) {
-        Get.snackbar(
-          "Acesso encerrado",
-          reason,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange.shade100,
-          duration: const Duration(seconds: 6),
-        );
-      }
-      return true;
-    } catch (e) {
+      return const Ok(true);
+    } catch (e, stackTrace) {
       debugPrint("Erro ao sair: $e");
-      Get.snackbar(
-        "Erro ao sair",
+      return Err(
         "Não foi possível encerrar a sessão. Tente novamente.\nErro: $e",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade100,
-        duration: const Duration(seconds: 5),
+        title: "Erro ao sair",
+        error: e,
+        stackTrace: stackTrace,
       );
-      return false;
     } finally {
       isLoggingOut.value = false;
     }

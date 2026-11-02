@@ -20,10 +20,18 @@ import 'package:get/get.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/data/services/foreground_service.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
+import 'package:monamie_app/app/utils/notice_presenter.dart';
+import 'package:monamie_app/app/utils/result.dart';
+import 'package:monamie_app/app/utils/user_notice.dart';
 
 class TrackingController extends GetxController
     with WidgetsBindingObserver
     implements TrackingToggleController {
+  /// [notices] shows the warnings raised by background changes, which no
+  /// screen is waiting for.
+  TrackingController({required this._notices});
+
+  final NoticePresenter _notices;
   final FlutterBackgroundService _service = FlutterBackgroundService();
   Position position = Position(
     latitude: -22.9041, // latitude em Niterói
@@ -349,15 +357,12 @@ class TrackingController extends GetxController
     // jornada ativa: o rastreamento vai parar quando o app sair da tela.
     ever(permissionsCtrl.isBackgroundRestricted, (bool restricted) {
       if (restricted && isTrackingEnabled.value) {
-        Get.snackbar(
-          'Rastreamento em risco',
-          'O aparelho está restringindo o MonAmie em segundo plano. '
-              'O rastreamento vai parar quando você sair do aplicativo.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.amber.shade100,
-          colorText: Colors.black87,
-          icon: const Icon(Icons.battery_alert, color: Colors.orange),
-          duration: const Duration(seconds: 8),
+        _notices.show(
+          const UserNotice(
+            'O aparelho está restringindo o MonAmie em segundo plano. '
+            'O rastreamento vai parar quando você sair do aplicativo.',
+            title: 'Rastreamento em risco',
+          ),
         );
       }
     });
@@ -532,9 +537,12 @@ class TrackingController extends GetxController
         : Colors.lightBlue;
   }
 
+  /// Starts or stops sharing. Completes with [Ok] (holding a [UserNotice]
+  /// when sharing started without a GPS fix yet), or [Err] when sharing could
+  /// not start; [Ok] with `null` while another toggle is running.
   @override
-  Future<void> toggleService() async {
-    if (isTrackingLoading.value) return;
+  Future<Result<UserNotice?>> toggleService() async {
+    if (isTrackingLoading.value) return const Ok(null);
 
     isTrackingLoading.value = true;
     try {
@@ -542,12 +550,18 @@ class TrackingController extends GetxController
 
       if (isRunning) {
         await _stopService();
-      } else {
-        await _startService();
+        return const Ok(null);
       }
+      return await _startService();
     } catch (e, stackTrace) {
       debugPrint(
         '[TrackingController] Erro ao alternar serviço de rastreamento: $e\n$stackTrace',
+      );
+      return Err(
+        'Não foi possível alterar o compartilhamento agora. Tente de novo.',
+        title: 'Compartilhamento',
+        error: e,
+        stackTrace: stackTrace,
       );
     } finally {
       isTrackingLoading.value = false;
@@ -576,37 +590,35 @@ class TrackingController extends GetxController
     );
   }
 
-  Future<void> _startService() async {
+  Future<Result<UserNotice?>> _startService() async {
     // No modo de bateria "Restrito" o Android remove o status de foreground
     // do serviço assim que o app sai da tela; não adianta iniciar.
     if (await permissionsCtrl.refreshBackgroundRestriction()) {
       await permissionsCtrl.openBackgroundUsageSettings();
-      return;
+      return const Ok(null);
     }
 
     // Verifica se GPS está ativado.
     bool gpsEnabled = await Geolocator.isLocationServiceEnabled();
     if (!gpsEnabled) {
       permissionsCtrl.notifyGpsDisabled();
-      return; // Interrompe a execução para não iniciar o serviço sem GPS
+      // Interrompe a execução para não iniciar o serviço sem GPS
+      return const Ok(null);
     }
 
     // The rules only accept positions from people who publish in a group;
     // the service publishes in every one of them.
     if (!_groupMap.canPublish) {
       debugPrint('[TrackingController] The user publishes in no group.');
-      Get.snackbar(
-        'Compartilhamento não autorizado',
+      return const Err(
         'Você não está em campo em nenhum grupo. Peça a um administrador '
-            'para liberar o compartilhamento da sua localização.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade100,
-        duration: const Duration(seconds: 5),
+        'para liberar o compartilhamento da sua localização.',
+        title: 'Compartilhamento não autorizado',
       );
-      return;
     }
 
     // Tenta obter a posição GPS atual para sincronizar imediatamente
+    UserNotice? notice;
     try {
       _setPosition(
         await Geolocator.getCurrentPosition().timeout(
@@ -617,14 +629,11 @@ class TrackingController extends GetxController
       debugPrint(
         '[TrackingController] Erro ao obter posição atual imediata: $e',
       );
-      Get.snackbar(
-        'Aguardando sinal de GPS',
+      // The service still starts: the person hears that the satellites
+      // are still syncing.
+      notice = const UserNotice(
         'O monitoramento foi iniciado, mas a sua posição inicial ainda está sendo obtida pelos satélites.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.amber.shade100,
-        colorText: Colors.black87,
-        icon: const Icon(Icons.satellite_alt, color: Colors.orange),
-        duration: const Duration(seconds: 5),
+        title: 'Aguardando sinal de GPS',
       );
     }
 
@@ -660,6 +669,7 @@ class TrackingController extends GetxController
 
     // The service turns `isPublishing` on in every group and publishes the
     // positions: this screen writes nothing while sharing.
+    return Ok(notice);
   }
 
   Future<void> _stopService() async {

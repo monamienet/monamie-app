@@ -11,6 +11,10 @@ import 'package:monamie_app/app/data/services/background_restriction_checker.dar
     as _i2;
 import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart'
     as _i4;
+import 'package:monamie_app/app/modules/monamie/controller/permission_prompts.dart'
+    as _i5;
+import 'package:monamie_app/app/utils/notice_presenter.dart' as _i6;
+import 'package:monamie_app/app/utils/user_notice.dart' as _i7;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -56,4 +60,47 @@ class MockBackgroundUsageSettingsLauncher extends _i1.Mock
             returnValueForMissingStub: _i3.Future<bool>.value(false),
           )
           as _i3.Future<bool>);
+}
+
+/// A class which mocks [PermissionPrompts].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockPermissionPrompts extends _i1.Mock implements _i5.PermissionPrompts {
+  @override
+  _i3.Future<bool> confirmBackgroundLocation() =>
+      (super.noSuchMethod(
+            Invocation.method(#confirmBackgroundLocation, []),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
+
+  @override
+  _i3.Future<bool> confirmBackgroundUsageSettings() =>
+      (super.noSuchMethod(
+            Invocation.method(#confirmBackgroundUsageSettings, []),
+            returnValue: _i3.Future<bool>.value(false),
+            returnValueForMissingStub: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
+
+  @override
+  _i3.Future<void> notifyGpsDisabled() =>
+      (super.noSuchMethod(
+            Invocation.method(#notifyGpsDisabled, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+}
+
+/// A class which mocks [NoticePresenter].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockNoticePresenter extends _i1.Mock implements _i6.NoticePresenter {
+  @override
+  void show(_i7.UserNotice? notice) => super.noSuchMethod(
+    Invocation.method(#show, [notice]),
+    returnValueForMissingStub: null,
+  );
 }

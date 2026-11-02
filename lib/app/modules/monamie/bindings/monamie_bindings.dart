@@ -7,16 +7,28 @@ import 'package:monamie_app/app/modules/monamie/controller/permissions_controlle
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/modules/monamie/ui/dialog_permission_prompts.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart';
 
 class MonamieBindings implements Bindings {
   @override
   void dependencies() {
     Get.lazyPut<UserController>(() => UserController());
-    Get.lazyPut<TrackingController>(() => TrackingController());
-    Get.lazyPut<PermissionsController>(() => PermissionsController());
+    Get.lazyPut<TrackingController>(
+      () => TrackingController(notices: const ScaffoldNoticePresenter()),
+    );
+    Get.lazyPut<PermissionsController>(
+      () => PermissionsController(
+        prompts: const DialogPermissionPrompts(),
+        notices: const ScaffoldNoticePresenter(),
+      ),
+    );
     if (!Get.isRegistered<AuthGoogleController>()) {
-      Get.put(AuthGoogleController(), permanent: true);
+      Get.put(
+        AuthGoogleController(notices: const ScaffoldNoticePresenter()),
+        permanent: true,
+      );
     }
     // Registered under its contract: screens and controllers find
     // [GroupMapState], never the Firestore-backed class.

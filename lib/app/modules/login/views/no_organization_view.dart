@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 
@@ -32,7 +33,7 @@ class NoOrganizationView extends GetView<AuthGoogleController> {
                   email: controller.signedInEmail.value,
                   onSwitch: busy || controller.isLoggingOut.value
                       ? null
-                      : controller.logout,
+                      : () => runReportingErrors(context, controller.logout),
                 ),
                 const SizedBox(height: 32),
                 if (reason != null) ...[
@@ -104,7 +105,12 @@ class NoOrganizationView extends GetView<AuthGoogleController> {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    onPressed: busy ? null : controller.recheckOrganizations,
+                    onPressed: busy
+                        ? null
+                        : () => runReportingErrors(
+                            context,
+                            controller.recheckOrganizations,
+                          ),
                     child: busy
                         ? const Row(
                             mainAxisSize: MainAxisSize.min,

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 
 import 'appearance_controller.dart';
 
@@ -45,7 +46,7 @@ class AppearanceView extends StatelessWidget {
                 _note(),
                 const SizedBox(height: 22),
                 if (controller.errorMessage.value.isNotEmpty) _error(),
-                _saveButton(theme),
+                _saveButton(context, theme),
               ],
             ),
             if (controller.sheet.value != LogoSheet.closed)
@@ -269,7 +270,7 @@ class AppearanceView extends StatelessWidget {
     ),
   );
 
-  Widget _saveButton(OrganizationTheme theme) {
+  Widget _saveButton(BuildContext context, OrganizationTheme theme) {
     final saving = controller.isSaving.value;
     return SizedBox(
       height: 56,
@@ -282,7 +283,9 @@ class AppearanceView extends StatelessWidget {
           ),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
-        onPressed: saving || !controller.hasChanges ? null : _save,
+        onPressed: saving || !controller.hasChanges
+            ? null
+            : () => _save(context),
         child: saving
             ? Row(
                 mainAxisSize: MainAxisSize.min,
@@ -304,13 +307,17 @@ class AppearanceView extends StatelessWidget {
     );
   }
 
-  Future<void> _save() async {
+  Future<void> _save(BuildContext context) async {
+    // Looked up first: the screen closes before the message shows.
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     if (await controller.save()) {
-      Get.back();
-      Get.snackbar(
-        'Aparência salva',
-        'A equipe vê a nova aparência na próxima vez que abrir o app.',
-        snackPosition: SnackPosition.BOTTOM,
+      navigator.pop();
+      messenger.showSnackBar(
+        noticeSnackBar(
+          'A equipe vê a nova aparência na próxima vez que abrir o app.',
+          title: 'Aparência salva',
+        ),
       );
     }
   }

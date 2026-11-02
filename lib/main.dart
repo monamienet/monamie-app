@@ -10,6 +10,7 @@ import 'package:monamie_app/app/data/organization/organization_branding_loader.d
 import 'package:monamie_app/app/data/organization/organization_session.dart';
 
 import 'app/routes/app_pages.dart';
+import 'app/utils/app_messenger.dart';
 import 'app/utils/app_theme.dart';
 
 Future<void> main() async {
@@ -43,6 +44,10 @@ Future<void> main() async {
   runApp(
     GetMaterialApp(
       debugShowCheckedModeBanner: false,
+      // Messages and dialogs asked for by controllers, which have no
+      // BuildContext of their own, go through these keys.
+      navigatorKey: rootNavigatorKey,
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       title: Organization.current?.name ?? MonAmieBrand.name,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

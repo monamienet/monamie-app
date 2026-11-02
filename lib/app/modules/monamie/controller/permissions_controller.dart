@@ -3,12 +3,19 @@ import 'package:monamie_app/app/data/services/background_restriction_checker.dar
 import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/app/data/services/method_channel_background_restriction_checker.dart';
 import 'package:monamie_app/app/data/services/method_channel_background_usage_settings_launcher.dart';
-import 'package:monamie_app/app/utils/color_pallete.dart';
+import 'package:monamie_app/app/modules/monamie/controller/permission_prompts.dart';
+import 'package:monamie_app/app/utils/notice_presenter.dart';
+import 'package:monamie_app/app/utils/user_notice.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class PermissionsController extends GetxController with WidgetsBindingObserver {
+  /// [prompts] asks the questions in the middle of the permission flows;
+  /// [notices] shows the warning given on returning from the battery
+  /// settings, when no screen is waiting for it.
   PermissionsController({
+    required this._prompts,
+    required this._notices,
     BackgroundRestrictionChecker? backgroundRestrictionChecker,
     BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
   }) : _backgroundRestrictionChecker =
@@ -18,6 +25,8 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
            backgroundUsageSettingsLauncher ??
            MethodChannelBackgroundUsageSettingsLauncher();
 
+  final PermissionPrompts _prompts;
+  final NoticePresenter _notices;
   final BackgroundRestrictionChecker _backgroundRestrictionChecker;
   final BackgroundUsageSettingsLauncher _backgroundUsageSettingsLauncher;
 
@@ -56,16 +65,13 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
     _awaitingBackgroundUsageReturn = false;
     if (!isBackgroundRestricted.value) return;
 
-    Get.snackbar(
-      'Uso em segundo plano ainda restrito',
-      "A alteração não foi aplicada. Toque em 'Permitir uso em segundo "
-          "plano' e, se o interruptor já estiver ativado, desative-o e "
-          "ative-o novamente.",
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.amber.shade100,
-      colorText: Colors.black87,
-      icon: const Icon(Icons.battery_alert, color: Colors.orange),
-      duration: const Duration(seconds: 8),
+    _notices.show(
+      const UserNotice(
+        "A alteração não foi aplicada. Toque em 'Permitir uso em segundo "
+        "plano' e, se o interruptor já estiver ativado, desative-o e "
+        "ative-o novamente.",
+        title: 'Uso em segundo plano ainda restrito',
+      ),
     );
   }
 
@@ -102,7 +108,7 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
         .request();
 
     if (locationWhenInUseStatus.isGranted) {
-      bool userAgreed = await _showBackgroundDisclosure();
+      bool userAgreed = await _prompts.confirmBackgroundLocation();
 
       if (userAgreed) {
         PermissionStatus locationAlwaysStatus = await Permission.locationAlways
@@ -165,124 +171,15 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
     // restrição já foi removida.
     if (!await refreshBackgroundRestriction()) return;
 
-    final bool userAgreed = await _showBackgroundUsageDialog(
-      "O seu aparelho está restringindo o aplicativo em segundo plano. "
-      "Assim, o rastreamento é desabilitado quando você sai do aplicativo ou "
-      "desliga a tela.\n\n"
-      "Como ajustar:\n"
-      "1. Toque em 'Prosseguir'.\n"
-      "2. Ative 'Permitir o uso em segundo plano' (ou escolha 'Sem restrições').\n"
-      "3. Volte para o aplicativo.\n\n"
-      "Se abrir a tela de informações do app, toque antes em 'Uso da "
-      "bateria pelo app' (ou 'Bateria'). "
-      "Se o interruptor já aparecer ativado, desative-o e ative-o novamente.",
-    );
+    final bool userAgreed = await _prompts.confirmBackgroundUsageSettings();
     if (userAgreed) {
       _awaitingBackgroundUsageReturn = await _backgroundUsageSettingsLauncher
           .open();
     }
   }
 
-  Future<bool> _showBackgroundUsageDialog(String message) async {
-    return await Get.dialog<bool>(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5.0),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.battery_alert, color: AppColors.darkBlue()),
-                const SizedBox(width: 10),
-                const Text("Atenção"),
-              ],
-            ),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.darkBlue(),
-                ),
-                child: const Text("AGORA NÃO"),
-              ),
-              TextButton(
-                onPressed: () => Get.back(result: true),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.darkBlue(),
-                ),
-                child: const Text("PROSSEGUIR"),
-              ),
-            ],
-          ),
-          barrierDismissible: false,
-        ) ??
-        false;
-  }
-
-  /// Aviso requerido pela Google Play.
-  Future<bool> _showBackgroundDisclosure() async {
-    return await Get.dialog<bool>(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5.0),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.security, color: AppColors.darkBlue()),
-                const SizedBox(width: 10),
-                const Text("Atenção"),
-              ],
-            ),
-            content: const Text(
-              "O app deseja coletar dados de localização mesmo quando o aplicativo estiver fechado ou não estiver em uso.\n\n"
-              "Esses dados permitem que um grupo de pessoas, determinado e gerenciado pela sua empresa, visualize sua posição em tempo real.\n\n"
-              "Como ativar:\n"
-              "1. Toque em 'Prosseguir'.\n"
-              "2. Em Permissões > Localização.\n"
-              "3. Selecione 'Permitir o tempo todo'.",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.darkBlue(),
-                ),
-                child: Text("AGORA NÃO"),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Get.back(result: true);
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.darkBlue(),
-                ),
-                child: const Text("PROSSEGUIR"),
-              ),
-            ],
-          ),
-          barrierDismissible: false, // Impede fechar clicando fora
-        ) ??
-        false;
-  }
-
-  Future<void> notifyGpsDisabled() async {
-    await Get.dialog(
-      AlertDialog(
-        title: Text("O GPS está desativado"),
-        content: Text("Por favor, ative o GPS para continuar."),
-        actions: [
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: AppColors.darkBlue()),
-            child: Text("ENTENDI"),
-            onPressed: () {
-              Get.back(); // Fecha o diálogo
-            },
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-  }
+  /// Says the GPS is off (see [PermissionPrompts.notifyGpsDisabled]).
+  Future<void> notifyGpsDisabled() => _prompts.notifyGpsDisabled();
 
   @override
   void onClose() {

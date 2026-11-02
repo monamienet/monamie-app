@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 
@@ -98,7 +99,10 @@ class DeletionPendingView extends GetView<AuthGoogleController> {
                     onPressed: busy
                         ? null
                         : restored
-                        ? controller.recheckOrganizations
+                        ? () => runReportingErrors(
+                            context,
+                            controller.recheckOrganizations,
+                          )
                         : controller.cancelAccountDeletion,
                     child: busy
                         ? const SizedBox(
@@ -127,7 +131,7 @@ class DeletionPendingView extends GetView<AuthGoogleController> {
                     ),
                     onPressed: busy || controller.isLoggingOut.value
                         ? null
-                        : controller.logout,
+                        : () => runReportingErrors(context, controller.logout),
                     child: const Text('Sair'),
                   ),
                 ),

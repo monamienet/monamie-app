@@ -8,8 +8,11 @@ import 'dart:async' as _i4;
 
 import 'package:get/get.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
+import 'package:mockito/src/dummies.dart' as _i7;
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart'
     as _i3;
+import 'package:monamie_app/app/utils/result.dart' as _i5;
+import 'package:monamie_app/app/utils/user_notice.dart' as _i6;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -68,11 +71,22 @@ class MockTrackingToggleController extends _i1.Mock
           as _i2.RxBool);
 
   @override
-  _i4.Future<void> toggleService() =>
+  _i4.Future<_i5.Result<_i6.UserNotice?>> toggleService() =>
       (super.noSuchMethod(
             Invocation.method(#toggleService, []),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i4.Future<_i5.Result<_i6.UserNotice?>>.value(
+              _i7.dummyValue<_i5.Result<_i6.UserNotice?>>(
+                this,
+                Invocation.method(#toggleService, []),
+              ),
+            ),
+            returnValueForMissingStub:
+                _i4.Future<_i5.Result<_i6.UserNotice?>>.value(
+                  _i7.dummyValue<_i5.Result<_i6.UserNotice?>>(
+                    this,
+                    Invocation.method(#toggleService, []),
+                  ),
+                ),
           )
-          as _i4.Future<void>);
+          as _i4.Future<_i5.Result<_i6.UserNotice?>>);
 }

@@ -28,21 +28,32 @@ const _months = [
 
 /// *Histórico por data*: a month calendar over the map. Days with trails
 /// have a dot, future days cannot be picked, today is outlined.
+///
+/// It receives its [controller] instead of looking it up: sheets will open on
+/// the root navigator, outside the organization's scope.
 class HistoryCalendarSheet extends StatelessWidget {
-  const HistoryCalendarSheet({super.key});
+  const HistoryCalendarSheet({super.key, required this.controller});
 
-  static Future<void> show() => Get.bottomSheet(
-    const HistoryCalendarSheet(),
+  final CalendarController controller;
+
+  /// Opens the sheet over [context]'s screen.
+  static Future<void> show(
+    BuildContext context,
+    CalendarController controller,
+  ) => showModalBottomSheet<void>(
+    context: context,
+    builder: (_) => HistoryCalendarSheet(controller: controller),
     isScrollControlled: true,
     backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
+    // Across the whole width, as before (Material 3 caps a sheet at 640 px).
+    constraints: const BoxConstraints(),
   );
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<CalendarController>();
     final palette = OrganizationPalette.fromConfig(Organization.current);
     return SafeArea(
       child: Padding(
@@ -149,7 +160,7 @@ class HistoryCalendarSheet extends StatelessWidget {
                           ? null
                           : () {
                               controller.selectDay(day.date);
-                              Get.back();
+                              Navigator.pop(context);
                             },
                     ),
                 ],

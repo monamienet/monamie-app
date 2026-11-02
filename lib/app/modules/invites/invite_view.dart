@@ -333,7 +333,10 @@ class _InviteViewState extends State<InviteView> {
           onPressed: c.again,
           child: const Text('Convidar mais pessoas'),
         ),
-        TextButton(onPressed: Get.back, child: const Text('Voltar')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Voltar'),
+        ),
       ],
     );
   }

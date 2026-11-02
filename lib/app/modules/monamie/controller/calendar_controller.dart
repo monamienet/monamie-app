@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
-import 'package:monamie_app/app/modules/monamie/history/history_calendar_sheet.dart';
 import 'package:monamie_app/app/modules/monamie/history/history_month.dart';
 
 class CalendarController extends GetxController {
@@ -44,8 +43,9 @@ class CalendarController extends GetxController {
 
   final RxBool isLoadingMonth = false.obs;
 
-  /// Opens *Histórico por data* on the observed day's month.
-  Future<void> pickDay(BuildContext context) async {
+  /// Prepares *Histórico por data* (the screen then opens the sheet): shows
+  /// the observed day's month and starts loading its trail days.
+  void showObservedMonth() {
     final day = _observedDay.value;
     viewMonth.value = HistoryMonth(
       year: day.year,
@@ -53,7 +53,6 @@ class CalendarController extends GetxController {
       today: DateTime.now(),
     );
     _loadTrailDays();
-    await HistoryCalendarSheet.show();
   }
 
   /// Moves the calendar [months] back or forward.

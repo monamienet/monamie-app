@@ -8,6 +8,7 @@ import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
+import 'package:monamie_app/app/modules/monamie/history/history_calendar_sheet.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_chip.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/initials.dart';
@@ -114,7 +115,10 @@ class HomeHeader extends StatelessWidget {
           label: day,
           icon: Icons.calendar_month_outlined,
           semanticsLabel: 'Histórico por data, $day',
-          onTap: () => _calendar.pickDay(context),
+          onTap: () {
+            _calendar.showObservedMonth();
+            HistoryCalendarSheet.show(context, _calendar);
+          },
         ),
       ),
       if (!isToday)

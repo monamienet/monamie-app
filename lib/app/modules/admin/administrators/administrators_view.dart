@@ -239,6 +239,7 @@ class AdministratorsView extends StatelessWidget {
 
   Future<void> _promote(BuildContext context, String email) async {
     final ok = await adminActionSheet(
+      context,
       title: 'Tornar $email administrador?',
       confirmLabel: 'Tornar administrador',
       busyLabel: 'Salvando…',
@@ -257,6 +258,7 @@ class AdministratorsView extends StatelessWidget {
 
   Future<void> _demote(BuildContext context, String email) async {
     final ok = await adminActionSheet(
+      context,
       title: 'Tornar $email membro?',
       confirmLabel: 'Tornar membro',
       busyLabel: 'Salvando…',

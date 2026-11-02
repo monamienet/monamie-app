@@ -12,26 +12,26 @@ import 'package:firebase_auth/firebase_auth.dart' as _i6;
 import 'package:firebase_storage/firebase_storage.dart' as _i9;
 import 'package:flutter/src/widgets/navigator.dart' as _i15;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i23;
+import 'package:mockito/src/dummies.dart' as _i25;
 import 'package:monamie_app/app/config/organization/organization_config.dart'
     as _i5;
 import 'package:monamie_app/app/data/firebase/organization_firebase.dart'
-    as _i19;
-import 'package:monamie_app/app/data/groups/organization_membership_check.dart'
     as _i21;
+import 'package:monamie_app/app/data/groups/organization_membership_check.dart'
+    as _i23;
 import 'package:monamie_app/app/data/models/user_google_model.dart' as _i10;
 import 'package:monamie_app/app/data/organization/organization_binding.dart'
     as _i4;
 import 'package:monamie_app/app/data/organization/organization_binding_store.dart'
-    as _i16;
-import 'package:monamie_app/app/data/organization/organization_branding_loader.dart'
-    as _i17;
-import 'package:monamie_app/app/data/organization/organization_directory.dart'
     as _i18;
-import 'package:monamie_app/app/data/organization/organization_local_data.dart'
+import 'package:monamie_app/app/data/organization/organization_branding_loader.dart'
+    as _i19;
+import 'package:monamie_app/app/data/organization/organization_directory.dart'
     as _i20;
-import 'package:monamie_app/app/data/repository/user_google_repository.dart'
+import 'package:monamie_app/app/data/organization/organization_local_data.dart'
     as _i22;
+import 'package:monamie_app/app/data/repository/user_google_repository.dart'
+    as _i24;
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart'
     as _i13;
 import 'package:monamie_app/app/modules/admin/groups/group.dart' as _i14;
@@ -39,6 +39,8 @@ import 'package:monamie_app/app/modules/invites/invite.dart' as _i3;
 import 'package:monamie_app/app/modules/invites/invites_backend.dart' as _i2;
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart'
     as _i11;
+import 'package:monamie_app/app/utils/notice_presenter.dart' as _i16;
+import 'package:monamie_app/app/utils/user_notice.dart' as _i17;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -403,11 +405,22 @@ class MockNavigatorObserver extends _i1.Mock implements _i15.NavigatorObserver {
   );
 }
 
+/// A class which mocks [NoticePresenter].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockNoticePresenter extends _i1.Mock implements _i16.NoticePresenter {
+  @override
+  void show(_i17.UserNotice? notice) => super.noSuchMethod(
+    Invocation.method(#show, [notice]),
+    returnValueForMissingStub: null,
+  );
+}
+
 /// A class which mocks [OrganizationBindingStore].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationBindingStore extends _i1.Mock
-    implements _i16.OrganizationBindingStore {
+    implements _i18.OrganizationBindingStore {
   @override
   _i12.Future<_i4.OrganizationBinding?> read() =>
       (super.noSuchMethod(
@@ -441,10 +454,10 @@ class MockOrganizationBindingStore extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationBrandingLoader extends _i1.Mock
-    implements _i17.OrganizationBrandingLoader {
+    implements _i19.OrganizationBrandingLoader {
   @override
   _i12.Future<_i4.OrganizationBinding> load(
-    _i18.OrganizationCandidate? candidate,
+    _i20.OrganizationCandidate? candidate,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#load, [candidate]),
@@ -491,27 +504,27 @@ class MockOrganizationBrandingLoader extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationDirectory extends _i1.Mock
-    implements _i18.OrganizationDirectory {
+    implements _i20.OrganizationDirectory {
   @override
-  _i12.Future<List<_i18.OrganizationCandidate>> organizationsOfSignedInUser() =>
+  _i12.Future<List<_i20.OrganizationCandidate>> organizationsOfSignedInUser() =>
       (super.noSuchMethod(
             Invocation.method(#organizationsOfSignedInUser, []),
-            returnValue: _i12.Future<List<_i18.OrganizationCandidate>>.value(
-              <_i18.OrganizationCandidate>[],
+            returnValue: _i12.Future<List<_i20.OrganizationCandidate>>.value(
+              <_i20.OrganizationCandidate>[],
             ),
             returnValueForMissingStub:
-                _i12.Future<List<_i18.OrganizationCandidate>>.value(
-                  <_i18.OrganizationCandidate>[],
+                _i12.Future<List<_i20.OrganizationCandidate>>.value(
+                  <_i20.OrganizationCandidate>[],
                 ),
           )
-          as _i12.Future<List<_i18.OrganizationCandidate>>);
+          as _i12.Future<List<_i20.OrganizationCandidate>>);
 }
 
 /// A class which mocks [OrganizationFirebase].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationFirebase extends _i1.Mock
-    implements _i19.OrganizationFirebase {
+    implements _i21.OrganizationFirebase {
   @override
   _i6.FirebaseAuth get auth =>
       (super.noSuchMethod(
@@ -590,7 +603,7 @@ class MockOrganizationFirebase extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationLocalData extends _i1.Mock
-    implements _i20.OrganizationLocalData {
+    implements _i22.OrganizationLocalData {
   @override
   _i12.Future<void> clear() =>
       (super.noSuchMethod(
@@ -605,7 +618,7 @@ class MockOrganizationLocalData extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockOrganizationMembershipCheck extends _i1.Mock
-    implements _i21.OrganizationMembershipCheck {
+    implements _i23.OrganizationMembershipCheck {
   @override
   _i12.Future<bool?> isMemberOf(String? organizationId) =>
       (super.noSuchMethod(
@@ -620,7 +633,7 @@ class MockOrganizationMembershipCheck extends _i1.Mock
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockUserGoogleRepository extends _i1.Mock
-    implements _i22.UserGoogleRepository {
+    implements _i24.UserGoogleRepository {
   @override
   _i12.Future<_i10.UserGoogleModel> saveGoogleProfile(
     String? email,
@@ -663,13 +676,13 @@ class MockUserGoogleRepository extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#saveUserGoogleModel, [user]),
             returnValue: _i12.Future<String>.value(
-              _i23.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
             ),
             returnValueForMissingStub: _i12.Future<String>.value(
-              _i23.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
@@ -692,13 +705,13 @@ class MockUserGoogleRepository extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#deleteUserGoogleModel, []),
             returnValue: _i12.Future<String>.value(
-              _i23.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
             ),
             returnValueForMissingStub: _i12.Future<String>.value(
-              _i23.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
@@ -711,13 +724,13 @@ class MockUserGoogleRepository extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#clearAllUserGoogle, []),
             returnValue: _i12.Future<String>.value(
-              _i23.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),
             ),
             returnValueForMissingStub: _i12.Future<String>.value(
-              _i23.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),

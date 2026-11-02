@@ -5,6 +5,7 @@ import 'package:monamie_app/app/config/organization/monamie_wordmark.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/login/controllers/login_controller.dart';
 import 'package:get/get.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 
 import 'widgets/google_button.dart';
 
@@ -45,14 +46,14 @@ class LoginView extends GetView<LoginController> {
                 ],
               ),
             ),
-            _action(),
+            _action(context),
           ],
         ),
       ),
     ),
   );
 
-  Widget _action() {
+  Widget _action(BuildContext context) {
     final auth = Get.find<AuthGoogleController>();
     return Obx(() {
       if (controller.isRestoringSession.value || !auth.googleReady.value) {
@@ -90,7 +91,9 @@ class LoginView extends GetView<LoginController> {
           ),
         );
       }
-      return buildGoogleButton(controller.loginGoogle);
+      return buildGoogleButton(
+        () => runReportingErrors(context, controller.loginGoogle),
+      );
     });
   }
 }

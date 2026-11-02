@@ -13,7 +13,9 @@ import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/initials.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
+import 'package:monamie_app/app/utils/result.dart';
 
 /// The side menu: who the person is and where, the organization's
 /// administration (for its administrators only) and sign-out.
@@ -26,9 +28,20 @@ class HomeMenu extends StatelessWidget {
   TrackingController get _tracking => Get.find<TrackingController>();
 
   /// Closes the menu, then goes to [route].
-  void _open(String route) {
-    Get.back<void>();
+  void _open(BuildContext context, String route) {
+    Navigator.pop(context);
     Get.toNamed<void>(route);
+  }
+
+  /// Closes the menu, then runs [action] and shows its message when it fails.
+  /// The messenger outlives the menu (and the home screen, on sign-out).
+  Future<void> _closeAndRun(
+    BuildContext context,
+    Future<Result<Object?>> Function() action,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    showErrorOf(messenger, await action());
   }
 
   @override
@@ -47,21 +60,18 @@ class HomeMenu extends StatelessWidget {
             children: [
               _identity(),
               const SizedBox(height: 8),
-              _account(),
+              _account(context),
               const SizedBox(height: 8),
               _MenuItem(
                 icon: Icons.swap_horiz,
                 label: 'Trocar de organização',
-                onTap: () {
-                  Get.back<void>();
-                  _auth.switchOrganization();
-                },
+                onTap: () => _closeAndRun(context, _auth.switchOrganization),
               ),
               Obx(() {
-                if (_groups.isAdmin) return _admin();
+                if (_groups.isAdmin) return _admin(context);
                 // A group's maintainer manages only their groups.
                 if (_groups.capabilities.value.canManageGroups) {
-                  return _maintainer();
+                  return _maintainer(context);
                 }
                 return const SizedBox.shrink();
               }),
@@ -79,10 +89,7 @@ class HomeMenu extends StatelessWidget {
                       _auth.isLoggingOut.value ||
                           _tracking.isTrackingLoading.value
                       ? null
-                      : () {
-                          Get.back<void>();
-                          _auth.logout();
-                        },
+                      : () => _closeAndRun(context, _auth.logout),
                 ),
               ),
             ],
@@ -142,7 +149,7 @@ class HomeMenu extends StatelessWidget {
     );
   }
 
-  Widget _account() {
+  Widget _account(BuildContext context) {
     return Obx(() {
       final user = _user.googleUser;
       final name = user?.name ?? '';
@@ -157,7 +164,7 @@ class HomeMenu extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: () => _open(Routes.MY_ACCOUNT),
+            onTap: () => _open(context, Routes.MY_ACCOUNT),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -237,7 +244,7 @@ class HomeMenu extends StatelessWidget {
   );
 
   /// The maintainer's section: their groups only.
-  Widget _maintainer() {
+  Widget _maintainer(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Column(
@@ -248,14 +255,14 @@ class HomeMenu extends StatelessWidget {
           _MenuItem(
             icon: Icons.groups_outlined,
             label: 'Meus grupos',
-            onTap: () => _open(Routes.GROUPS),
+            onTap: () => _open(context, Routes.GROUPS),
           ),
         ],
       ),
     );
   }
 
-  Widget _admin() {
+  Widget _admin(BuildContext context) {
     final organizationId = Organization.current?.id;
     // The owner-only entry needs to know who owns the organization: read
     // once per organization, while the menu is open.
@@ -270,26 +277,26 @@ class HomeMenu extends StatelessWidget {
           _MenuItem(
             icon: Icons.groups_outlined,
             label: 'Grupos',
-            onTap: () => _open(Routes.GROUPS),
+            onTap: () => _open(context, Routes.GROUPS),
           ),
           Obx(
             () => _auth.ownership[organizationId] == true
                 ? _MenuItem(
                     icon: Icons.admin_panel_settings_outlined,
                     label: 'Administradores',
-                    onTap: () => _open(Routes.ADMINISTRATORS),
+                    onTap: () => _open(context, Routes.ADMINISTRATORS),
                   )
                 : const SizedBox.shrink(),
           ),
           _MenuItem(
             icon: Icons.palette_outlined,
             label: 'Aparência da organização',
-            onTap: () => _open(Routes.APPEARANCE),
+            onTap: () => _open(context, Routes.APPEARANCE),
           ),
           _MenuItem(
             icon: Icons.tune,
             label: 'Ajustes de acompanhamento',
-            onTap: () => _open(Routes.TRACKING_SETTINGS),
+            onTap: () => _open(context, Routes.TRACKING_SETTINGS),
           ),
         ],
       ),

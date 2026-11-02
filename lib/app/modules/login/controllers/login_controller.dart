@@ -4,6 +4,7 @@ import 'package:monamie_app/app/modules/login/controllers/auth_google_controller
 import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
+import 'package:monamie_app/app/utils/result.dart';
 
 class LoginController extends GetxController {
   late final AuthGoogleController _loginGoogleController;
@@ -51,15 +52,13 @@ class LoginController extends GetxController {
     }
   }
 
-  void loginGoogle() {
-    _loginGoogleController.loginGoogle();
-  }
+  /// See [AuthGoogleController.loginGoogle].
+  Future<Result<void>> loginGoogle() => _loginGoogleController.loginGoogle();
 
   //void loginAnonimous() {
   //  Get.offAllNamed(Routes.HOME);
   //}
 
-  void logoutGoogle() {
-    _loginGoogleController.logout();
-  }
+  /// See [AuthGoogleController.logout].
+  Future<Result<bool>> logoutGoogle() => _loginGoogleController.logout();
 }

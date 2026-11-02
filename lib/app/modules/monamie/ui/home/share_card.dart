@@ -5,7 +5,9 @@ import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_contr
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/sheet_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/share_card_state.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
+import 'package:monamie_app/app/utils/result.dart';
 
 /// The card that turns location sharing on and off.
 ///
@@ -43,7 +45,7 @@ class ShareCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           child: InkWell(
             borderRadius: BorderRadius.circular(18),
-            onTap: state.busy ? null : _tracking.toggleService,
+            onTap: state.busy ? null : () => _toggle(context),
             child: ConstrainedBox(
               constraints: const BoxConstraints(minHeight: 64),
               child: Padding(
@@ -93,6 +95,21 @@ class ShareCard extends StatelessWidget {
         ),
       );
     });
+  }
+
+  /// Toggles sharing and shows what the controller says: why it did not
+  /// start, or a remark on a start (e.g. no GPS fix yet).
+  Future<void> _toggle(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await _tracking.toggleService();
+    switch (result) {
+      case Ok(value: final notice?):
+        showNotice(messenger, notice);
+      case Ok():
+        break;
+      case Err():
+        showErrorOf(messenger, result);
+    }
   }
 
   Widget _icon(ShareCardState state) {

@@ -26,6 +26,9 @@ import 'package:monamie_app/app/modules/invites/invites_backend.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
+import 'package:monamie_app/app/utils/notice_presenter.dart';
+import 'package:monamie_app/app/utils/result.dart';
+import 'package:monamie_app/app/utils/user_notice.dart';
 import '../../../../support/test_organization.dart';
 
 @GenerateNiceMocks([
@@ -33,6 +36,7 @@ import '../../../../support/test_organization.dart';
   MockSpec<BackgroundTrackingStopper>(),
   MockSpec<InvitesBackend>(),
   MockSpec<NavigatorObserver>(),
+  MockSpec<NoticePresenter>(),
   MockSpec<OrganizationBindingStore>(),
   MockSpec<OrganizationBrandingLoader>(),
   MockSpec<OrganizationDirectory>(),
@@ -253,6 +257,7 @@ class _HarnessSignIn {
     session = _FakeOrganizationSessionSignIn(log);
     membershipCheck = _membershipCheck(member);
     controller = AuthGoogleController(
+      notices: notices,
       authGoogleService: authService,
       userRepository: _userRepository(),
       trackingStopper: _trackingStopper(log),
@@ -266,6 +271,7 @@ class _HarnessSignIn {
   }
 
   final List<String> log = <String>[];
+  final notices = MockNoticePresenter();
   late final MockOrganizationMembershipCheck membershipCheck;
   late final MockAuthGoogleService authService;
   late final MockOrganizationDirectory directory;
@@ -293,21 +299,15 @@ Future<void> _pumpAppSignIn(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-String _snackbarTitle(GetSnackBar snackBar) {
-  final titleWidget = snackBar.titleText;
-  if (titleWidget is Text) return titleWidget.data ?? '';
-  return snackBar.title ?? '';
-}
-
 /// Runs [act] (which may start un-awaited work such as `loginGoogle()`),
-/// waits until the controller is idle, records the snackbars shown and lets
-/// them close (GetX timers cannot be left pending).
-Future<List<String>> _run(
+/// waits until the controller is idle and returns what [act] completed with
+/// (the [Result] of the controller's method, when it returns one).
+Future<Object?> _run(
   WidgetTester tester,
   AuthGoogleController controller,
-  FutureOr<void> Function() act,
+  FutureOr<Object?> Function() act,
 ) async {
-  await act();
+  final outcome = await act();
   for (
     var i = 0;
     i < 50 && (controller.isLoading.value || controller.isLoggingOut.value);
@@ -315,18 +315,17 @@ Future<List<String>> _run(
   ) {
     await tester.pump();
   }
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
-  final titles = tester
-      .widgetList<GetSnackBar>(find.byType(GetSnackBar))
-      .map(_snackbarTitle)
-      .toList();
-  for (var i = 0; i < 30 && Get.isSnackbarOpen; i++) {
-    await tester.pump(const Duration(seconds: 1));
-  }
   await tester.pumpAndSettle();
-  return titles;
+  return outcome;
 }
+
+/// An [Err] titled [title].
+Matcher _errTitled(String title) =>
+    isA<Err<Object?>>().having((err) => err.title, 'title', title);
+
+/// A [UserNotice] titled [title].
+Matcher _noticeTitled(String title) =>
+    isA<UserNotice>().having((notice) => notice.title, 'title', title);
 
 /// A JWT-shaped token whose `exp` is [fromNow] from the real clock (the
 /// controller reads `DateTime.now()`); the signature is not checked.
@@ -449,6 +448,7 @@ class _HarnessInvites {
     directory = _sequencedDirectory(answers);
     session = _FakeOrganizationSessionInvites(log);
     controller = AuthGoogleController(
+      notices: MockNoticePresenter(),
       authGoogleService: _authServiceSignIn(log, refreshedToken: null),
       userRepository: _userRepository(),
       trackingStopper: _trackingStopper(log),
@@ -495,8 +495,8 @@ Future<void> _pumpAppInvites(WidgetTester tester) async {
 Future<void> _accept(WidgetTester tester, AuthGoogleController controller) =>
     _drive(tester, controller, () => controller.acceptInvite(_kInvite));
 
-/// Starts [act] and advances the fake clock one second at a time (the
-/// snackbars wait on timers) until the controller is no longer busy.
+/// Starts [act] and advances the fake clock one second at a time until the
+/// controller is no longer busy.
 Future<void> _drive(
   WidgetTester tester,
   AuthGoogleController controller,
@@ -513,11 +513,6 @@ Future<void> _drive(
     await tester.pump(const Duration(seconds: 1));
   }
   await done;
-  // Let any snackbar (the central functions are unavailable in tests) close:
-  // GetX timers cannot be left pending.
-  for (var i = 0; i < 30 && Get.isSnackbarOpen; i++) {
-    await tester.pump(const Duration(seconds: 1));
-  }
   await tester.pumpAndSettle();
 }
 
@@ -537,8 +532,11 @@ void _directoryAnswers() {
 late MockOrganizationDirectory directory;
 
 /// Built without `Get.put`, so the real `onInit` (Google Sign-In) never runs.
-AuthGoogleController newController() =>
-    AuthGoogleController(organizationDirectory: directory, refreshTheme: () {});
+AuthGoogleController newController() => AuthGoogleController(
+  notices: MockNoticePresenter(),
+  organizationDirectory: directory,
+  refreshTheme: () {},
+);
 
 const String _kHomePlaceholder = 'home-placeholder';
 
@@ -639,6 +637,7 @@ class _HarnessLogout {
     // O controller é construído sem `Get.put`, de modo que o `onInit` real
     // (que acessa o Google Sign-In) nunca é executado.
     controller = AuthGoogleController(
+      notices: notices,
       organizationSession: OrganizationSession(
         store: MockOrganizationBindingStore(),
       ),
@@ -651,6 +650,7 @@ class _HarnessLogout {
   }
 
   final List<String> log = <String>[];
+  final notices = MockNoticePresenter();
   late final MockBackgroundTrackingStopper stopper;
   late final MockAuthGoogleService authService;
   late final MockUserGoogleRepository userRepository;
@@ -659,13 +659,13 @@ class _HarnessLogout {
 
 /// Resultado observável de uma execução completa de `logout()`.
 class _LogoutRun {
-  _LogoutRun({required this.error, required this.snackbarTitles});
+  _LogoutRun({required this.error, required this.result});
 
   /// Exceção que escapou de `logout()`, se houver.
   final Object? error;
 
-  /// Títulos dos snackbars exibidos durante o logout.
-  final List<String> snackbarTitles;
+  /// O [Result] devolvido por `logout()` (nulo quando ele lançou).
+  final Result<bool>? result;
 }
 
 UserGoogleModel _storedUser() =>
@@ -694,35 +694,22 @@ Future<void> _pumpAppLogout(WidgetTester tester, _HarnessLogout harness) async {
   harness.log.clear();
 }
 
-/// Executa `logout()` até o fim: captura uma eventual exceção, registra os
-/// snackbars exibidos e deixa todos eles fecharem (os timers de 5 s do
-/// GetX não podem ficar pendentes ao final do teste).
+/// Executa `logout()` até o fim e captura o [Result] devolvido ou uma
+/// eventual exceção.
 Future<_LogoutRun> _runLogout(
   WidgetTester tester,
   AuthGoogleController controller,
 ) async {
   Object? error;
+  Result<bool>? result;
   try {
-    await controller.logout();
+    result = await controller.logout();
   } catch (e) {
     error = e;
   }
-
-  // Exibe o snackbar (se houver) e conclui a animação de entrada.
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
-  final titles = tester
-      .widgetList<GetSnackBar>(find.byType(GetSnackBar))
-      .map(_snackbarTitle)
-      .toList();
-
-  // Aguarda o fechamento de todos os snackbars enfileirados.
-  for (var i = 0; i < 30 && Get.isSnackbarOpen; i++) {
-    await tester.pump(const Duration(seconds: 1));
-  }
   await tester.pumpAndSettle();
 
-  return _LogoutRun(error: error, snackbarTitles: titles);
+  return _LogoutRun(error: error, result: result);
 }
 
 void main() {
@@ -758,7 +745,7 @@ void main() {
 
             // 2. Act
             chooser.complete();
-            await _run(tester, controller, () {});
+            await _run(tester, controller, () => null);
             worker.dispose();
 
             // 3. Assert
@@ -793,7 +780,7 @@ void main() {
 
             // Cleanup: finishes the pending sign-in so no timers stay open.
             chooser.complete();
-            await _run(tester, harness.controller, () {});
+            await _run(tester, harness.controller, () => null);
           },
         );
 
@@ -815,7 +802,7 @@ void main() {
 
             // 2. Act
             chooser.completeError(Exception('cancelled'));
-            await _run(tester, controller, () {});
+            await _run(tester, controller, () => null);
             worker.dispose();
 
             // 3. Assert
@@ -893,7 +880,7 @@ void main() {
         );
 
         testWidgets(
-          'Sad Path: Deve exibir erro de login e voltar isLoading a false quando a busca de organizações lançar',
+          'Sad Path: Deve devolver erro de login e voltar isLoading a false quando a busca de organizações lançar',
           (WidgetTester tester) async {
             // 1. Arrange
             final harness = _HarnessSignIn(
@@ -902,14 +889,14 @@ void main() {
             await _pumpAppSignIn(tester);
 
             // 2. Act
-            final titles = await _run(
+            final result = await _run(
               tester,
               harness.controller,
               harness.controller.loginGoogle,
             );
 
             // 3. Assert
-            expect(titles, [_kLoginErrorTitle]);
+            expect(result, _errTitled(_kLoginErrorTitle));
             expect(harness.controller.isLoading.value, isFalse);
           },
         );
@@ -1178,7 +1165,7 @@ void main() {
         );
 
         testWidgets(
-          'Edge Case: Não deve exibir snackbar de erro de login quando a pessoa não tiver mais matrícula',
+          'Edge Case: Não deve devolver erro de login quando a pessoa não tiver mais matrícula',
           (WidgetTester tester) async {
             // 1. Arrange
             final harness = _HarnessSignIn(
@@ -1193,7 +1180,7 @@ void main() {
             );
 
             // 2. Act
-            final titles = await _run(
+            final result = await _run(
               tester,
               harness.controller,
               () => harness.controller.chooseOrganization(
@@ -1202,7 +1189,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(titles, isNot(contains(_kLoginErrorTitle)));
+            expect(result, isA<Ok<void>>());
           },
         );
 
@@ -1829,7 +1816,7 @@ void main() {
       );
 
       testWidgets(
-        'Sad Path: Deve exibir snackbar quando não houver token válido nem renovação',
+        'Sad Path: Deve devolver Err "Trocar de organização" quando não houver token válido nem renovação',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessSignIn(
@@ -1839,14 +1826,14 @@ void main() {
           await _pumpAppSignIn(tester);
 
           // 2. Act
-          final titles = await _run(
+          final result = await _run(
             tester,
             harness.controller,
             harness.controller.switchOrganization,
           );
 
           // 3. Assert
-          expect(titles, ['Trocar de organização']);
+          expect(result, _errTitled('Trocar de organização'));
         },
       );
 
@@ -1899,21 +1886,21 @@ void main() {
       );
 
       testWidgets(
-        'Sad Path: Deve exibir snackbar de erro quando a busca de organizações lançar',
+        'Sad Path: Deve devolver Err "Trocar de organização" quando a busca de organizações lançar',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessSignIn(directoryError: Exception('sem rede'));
           await _pumpAppSignIn(tester);
 
           // 2. Act
-          final titles = await _run(
+          final result = await _run(
             tester,
             harness.controller,
             harness.controller.switchOrganization,
           );
 
           // 3. Assert
-          expect(titles, ['Trocar de organização']);
+          expect(result, _errTitled('Trocar de organização'));
         },
       );
 
@@ -2708,7 +2695,7 @@ void main() {
       );
 
       testWidgets(
-        'Happy Path: Deve concluir sem exceção e sem snackbar quando o rastreamento parar normalmente',
+        'Happy Path: Deve concluir com Ok(true) e sem aviso quando o rastreamento parar normalmente',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessLogout(storedUser: _storedUser());
@@ -2719,7 +2706,11 @@ void main() {
 
           // 3. Assert
           expect(run.error, isNull);
-          expect(run.snackbarTitles, isEmpty);
+          expect(
+            run.result,
+            isA<Ok<bool>>().having((ok) => ok.value, 'value', isTrue),
+          );
+          verifyNever(harness.notices.show(any));
         },
       );
 
@@ -2779,6 +2770,7 @@ void main() {
 
         // 2. Act
         final controller = AuthGoogleController(
+          notices: MockNoticePresenter(),
           organizationSession: OrganizationSession(
             store: MockOrganizationBindingStore(),
           ),
@@ -2974,7 +2966,7 @@ void main() {
       );
 
       testWidgets(
-        'Sad Path: Deve exibir um snackbar de aviso quando stop não confirmar a parada',
+        'Sad Path: Deve mostrar o aviso "Rastreamento" quando stop não confirmar a parada',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessLogout(
@@ -2984,10 +2976,12 @@ void main() {
           await _pumpAppLogout(tester, harness);
 
           // 2. Act
-          final run = await _runLogout(tester, harness.controller);
+          await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(run.snackbarTitles, ['Rastreamento']);
+          verify(
+            harness.notices.show(argThat(_noticeTitled('Rastreamento'))),
+          ).called(1);
         },
       );
 
@@ -3046,7 +3040,7 @@ void main() {
       );
 
       testWidgets(
-        'Sad Path: Deve exibir um snackbar de erro quando logoutGoogle lançar',
+        'Sad Path: Deve devolver Err "Erro ao sair" quando logoutGoogle lançar',
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessLogout(
@@ -3059,7 +3053,7 @@ void main() {
           final run = await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(run.snackbarTitles, ['Erro ao sair']);
+          expect(run.result, _errTitled('Erro ao sair'));
         },
       );
 

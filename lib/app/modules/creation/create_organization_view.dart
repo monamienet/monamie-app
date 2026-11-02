@@ -5,6 +5,8 @@ import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
+import 'package:monamie_app/app/utils/result.dart';
 
 import 'create_organization_controller.dart';
 import 'id_input_formatter.dart';
@@ -30,7 +32,7 @@ class CreateOrganizationView extends StatefulWidget {
   final String ownerEmail;
 
   /// Enters the new organization (Community, once it is `active`).
-  final Future<void> Function() onReady;
+  final Future<Result<void>> Function() onReady;
 
   @override
   State<CreateOrganizationView> createState() => _CreateOrganizationViewState();
@@ -55,7 +57,11 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     super.dispose();
   }
 
-  void _back() => _step == 0 ? Get.back() : setState(() => _step--);
+  void _back() => _step == 0 ? Navigator.pop(context) : setState(() => _step--);
+
+  /// "Entrar na `<nome>`": enters the organization and shows why it could
+  /// not.
+  Future<void> _enter() => runReportingErrors(context, widget.onReady);
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -1364,7 +1370,10 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
             style: const TextStyle(fontSize: 16, height: 1.5, color: _muted),
           ),
           const Spacer(),
-          _button(action, status == 'active' ? widget.onReady : Get.back),
+          _button(
+            action,
+            status == 'active' ? _enter : () => Navigator.pop(context),
+          ),
         ],
       ),
     );

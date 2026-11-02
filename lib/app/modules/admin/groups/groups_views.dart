@@ -364,7 +364,10 @@ class _CreateGroupViewState extends State<CreateGroupView> {
         onPressed: () =>
             Get.off(() => GroupView(controller: c, groupId: group.id)),
       ),
-      TextButton(onPressed: Get.back, child: const Text('Voltar')),
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Voltar'),
+      ),
     ],
   );
 }
@@ -379,7 +382,8 @@ String get _organization => Organization.current?.name ?? 'organização';
 /// confirm button that runs [onConfirm] (an error message, or `null` on
 /// success). While it runs the sheet cannot close and the button shows
 /// [busyLabel]; a failure stays in the sheet. Returns whether it succeeded.
-Future<bool> _actionSheet({
+Future<bool> _actionSheet(
+  BuildContext context, {
   required String title,
   required String confirmLabel,
   required String busyLabel,
@@ -391,8 +395,9 @@ Future<bool> _actionSheet({
 }) async {
   var busy = false;
   var error = '';
-  final done = await Get.bottomSheet<bool>(
-    StatefulBuilder(
+  final done = await showModalBottomSheet<bool>(
+    context: context,
+    builder: (_) => StatefulBuilder(
       builder: (context, setSheet) {
         final tone = danger ? _error : _palette.primary;
         final onTone = danger ? Colors.white : _palette.onPrimary;
@@ -556,6 +561,10 @@ Future<bool> _actionSheet({
     // Dragging would close the sheet past PopScope while an operation runs.
     enableDrag: false,
     barrierColor: const Color(0x8C091416),
+    // The sheet draws its own white, rounded background, across the whole
+    // width as before (Material 3 caps a sheet at 640 px otherwise).
+    backgroundColor: Colors.transparent,
+    constraints: const BoxConstraints(),
   );
   return done == true;
 }
@@ -1120,7 +1129,7 @@ class _GroupViewState extends State<GroupView> {
               label: 'Ver grupos',
               busy: false,
               busyLabel: '',
-              onPressed: Get.back,
+              onPressed: () => Navigator.pop(context),
             ),
           ],
         ),
@@ -1134,6 +1143,7 @@ class _GroupViewState extends State<GroupView> {
     String? problem() =>
         typed().isEmpty ? null : c.nameProblem(typed(), renaming: group.id);
     final ok = await _actionSheet(
+      context,
       title: 'Renomear grupo',
       confirmLabel: 'Salvar nome',
       busyLabel: 'Salvando…',
@@ -1210,6 +1220,7 @@ class _GroupViewState extends State<GroupView> {
     final choices = c.assignableRoles;
     String? problem() => rolesChoiceProblem(roles, byAdmin: c.isAdmin);
     final ok = await _actionSheet(
+      context,
       title: 'O que ${person.email} faz',
       confirmLabel: 'Salvar',
       busyLabel: 'Salvando…',
@@ -1338,6 +1349,7 @@ class _GroupViewState extends State<GroupView> {
 
   Future<void> _remove(Group group, GroupPerson person) async {
     final ok = await _actionSheet(
+      context,
       title: 'Remover ${person.email} de ${group.name}?',
       confirmLabel: 'Remover',
       busyLabel: 'Removendo…',
@@ -1374,6 +1386,7 @@ class _GroupViewState extends State<GroupView> {
 
   Future<void> _resend(Invite invite) async {
     final ok = await _actionSheet(
+      context,
       title: 'Reenviar o convite?',
       confirmLabel: 'Reenviar convite',
       busyLabel: 'Reenviando…',
@@ -1390,6 +1403,7 @@ class _GroupViewState extends State<GroupView> {
 
   Future<void> _cancelInvite(Invite invite) async {
     final ok = await _actionSheet(
+      context,
       title: 'Cancelar o convite?',
       confirmLabel: 'Cancelar convite',
       busyLabel: 'Cancelando…',
@@ -1421,6 +1435,7 @@ class _GroupViewState extends State<GroupView> {
     }
     final loses = impact.loses.length;
     await _actionSheet(
+      context,
       title: 'Excluir ${group.name}?',
       confirmLabel: 'Excluir grupo',
       busyLabel: 'Excluindo…',
@@ -1468,7 +1483,8 @@ AppBar adminAppBar(String title) => _bar(title);
 /// The administration screens' confirmation sheet (see the group screens):
 /// completes with whether [onConfirm] succeeded; [onConfirm] returns an
 /// error message to show in the sheet, or `null`.
-Future<bool> adminActionSheet({
+Future<bool> adminActionSheet(
+  BuildContext context, {
   required String title,
   required String confirmLabel,
   required String busyLabel,
@@ -1476,6 +1492,7 @@ Future<bool> adminActionSheet({
   bool danger = false,
   List<String> lines = const [],
 }) => _actionSheet(
+  context,
   title: title,
   confirmLabel: confirmLabel,
   busyLabel: busyLabel,

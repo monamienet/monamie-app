@@ -10,6 +10,7 @@ import 'package:monamie_app/app/data/theme/theme_catalog.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_view.dart';
 import 'package:monamie_app/app/modules/creation/creation_backend.dart';
+import 'package:monamie_app/app/utils/result.dart';
 
 @GenerateNiceMocks([MockSpec<CreationBackend>(), MockSpec<ThemeCatalog>()])
 import 'create_organization_view_test.mocks.dart';
@@ -48,13 +49,17 @@ late MockCreationBackend backend;
 late MockThemeCatalog catalog;
 
 final _createButton = find.widgetWithText(FilledButton, 'Criar organização');
+final _enterButton = find.widgetWithText(FilledButton, 'Entrar na Rota Sul');
 final _planFooter = find.widgetWithText(
   FilledButton,
   'Continuar com Community',
 );
 
 /// Shows the view on a screen tall enough for every step without scrolling.
-Future<void> pumpView(WidgetTester tester) async {
+Future<void> pumpView(
+  WidgetTester tester, {
+  Future<Result<void>> Function()? onReady,
+}) async {
   tester.view.physicalSize = const Size(1080, 4000);
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
@@ -68,7 +73,7 @@ Future<void> pumpView(WidgetTester tester) async {
       home: CreateOrganizationView(
         controller: controller..onStart(),
         ownerEmail: 'ana@example.com',
-        onReady: () async {},
+        onReady: onReady ?? () async => const Ok(null),
       ),
     ),
   );
@@ -77,8 +82,11 @@ Future<void> pumpView(WidgetTester tester) async {
 
 /// Name "Rota Sul" (id "rotasul", available), theme Oceano, plan Community:
 /// leaves the view on the Review.
-Future<void> goToReview(WidgetTester tester) async {
-  await pumpView(tester);
+Future<void> goToReview(
+  WidgetTester tester, {
+  Future<Result<void>> Function()? onReady,
+}) async {
+  await pumpView(tester, onReady: onReady);
   await tester.enterText(find.byType(TextField).first, 'Rota Sul');
   // Lets the zero debounce fire and the availability answer arrive.
   await tester.pump();
@@ -254,5 +262,51 @@ void main() {
         );
       },
     );
+
+    testWidgets('Sad Path: Entrar shows the message of an Err from onReady', (
+      tester,
+    ) async {
+      // 1. Arrange
+      await goToReview(
+        tester,
+        onReady: () async => const Err('Não foi possível entrar agora.'),
+      );
+      await acceptTerms(tester);
+      await tester.tap(_createButton);
+      await tester.pump();
+
+      // 2. Act
+      await tester.tap(_enterButton);
+      await tester.pump();
+
+      // 3. Assert
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(find.text('Não foi possível entrar agora.'), findsOneWidget);
+    });
+
+    testWidgets('Happy Path: Entrar calls onReady and shows nothing on Ok', (
+      tester,
+    ) async {
+      // 1. Arrange
+      var entered = 0;
+      await goToReview(
+        tester,
+        onReady: () async {
+          entered++;
+          return const Ok(null);
+        },
+      );
+      await acceptTerms(tester);
+      await tester.tap(_createButton);
+      await tester.pump();
+
+      // 2. Act
+      await tester.tap(_enterButton);
+      await tester.pump();
+
+      // 3. Assert
+      expect(entered, 1);
+      expect(find.byType(SnackBar), findsNothing);
+    });
   });
 }
