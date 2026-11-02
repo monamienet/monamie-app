@@ -63,6 +63,8 @@ dependencies:
   shared_preferences_android: ^2.5.1
   firebase_storage: ^13.6.1
   file_picker: ^13.3.0
+  # google_button_web.dart renders the web sign-in button from it.
+  google_sign_in_platform_interface: ^3.1.0
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +78,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   args: ^2.7.0
   path: ^1.9.1
+  firebase_core_platform_interface: ^8.1.1
+  shared_preferences_platform_interface: ^2.4.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

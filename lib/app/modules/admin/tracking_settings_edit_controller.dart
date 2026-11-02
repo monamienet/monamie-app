@@ -7,10 +7,9 @@ import 'package:monamie_app/app/data/tracking/tracking_settings_repository.dart'
 /// values and saves them for everyone in the field.
 class TrackingSettingsEditController extends GetxController {
   TrackingSettingsEditController({
-    required TrackingSettingsRepository repository,
+    required this._repository,
     required TrackingSettings saved,
-  }) : _repository = repository,
-       savedSettings = saved.obs,
+  }) : savedSettings = saved.obs,
        draft = saved.obs,
        preset = saved.preset.obs;
 

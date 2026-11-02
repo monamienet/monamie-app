@@ -8,13 +8,11 @@ import 'account_deletion_backend.dart';
 /// deletes their organization with it and confirms by typing its id.
 class MyAccountController extends GetxController {
   MyAccountController({
-    required AccountDeletionBackend backend,
+    required this._backend,
     required this.organizationId,
-    required Future<bool> Function() checkOwner,
-    required Future<void> Function(AccountDeletion) onDeleted,
-  }) : _backend = backend,
-       _checkOwner = checkOwner,
-       _onDeleted = onDeleted;
+    required this._checkOwner,
+    required this._onDeleted,
+  });
 
   final AccountDeletionBackend _backend;
   final Future<bool> Function() _checkOwner;

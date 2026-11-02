@@ -33,7 +33,7 @@ class TrackingSettingsView extends StatelessWidget {
       body: Obx(() {
         final draft = controller.draft.value;
         final saving = controller.isSaving.value;
-        final minutes = (int n) => n == 1 ? '1 min' : '$n min';
+        String minutes(int n) => n == 1 ? '1 min' : '$n min';
         return Column(
           children: [
             Expanded(

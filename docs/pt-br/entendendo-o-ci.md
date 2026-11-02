@@ -106,9 +106,25 @@ Nesse caso:
 1. adicione o caminho à lista `paths` do workflow (há um comentário lembrando disso no arquivo);
 2. para publicar na hora, use o botão **Run workflow**, que ignora o filtro.
 
-Mudanças só em `test/` também não publicam, porque não alteram o app. Uma consequência: hoje os testes
-só rodam dentro do deploy, então um PR que mexe **apenas** em testes não é verificado por nenhum CI.
-Rode `flutter test` localmente nesses casos.
+Mudanças só em `test/` também não publicam, porque não alteram o app. Elas são verificadas antes, no
+PR (próxima seção).
+
+### Verificação dos PRs (`pr-checks.yml`)
+
+O deploy só roda **depois** do merge, quando o código já está na `main`. Para achar problemas enquanto
+o PR ainda pode ser corrigido, o workflow [pr-checks.yml](../../.github/workflows/pr-checks.yml) roda em
+todo PR aberto para a `main` (evento `pull_request`), sem filtro de caminhos:
+
+1. `dart format --set-exit-if-changed`: falha se algum arquivo de `lib/`, `test/` ou `tool/` não estiver
+   formatado. Corrija rodando `dart format lib test tool` e faça um commit.
+2. `flutter analyze`: o analisador do Dart. Ele falha também com avisos de nível *info*, porque o
+   `--fatal-infos` vem ligado por padrão.
+3. `flutter test test/unit -j 2`: os testes unitários, como no deploy.
+
+Ele não usa nenhum secret nem permissão de escrita (`permissions: contents: read`), então é seguro rodar
+em qualquer PR. O `concurrency` com `cancel-in-progress: true` cancela a execução anterior quando chega
+um commit novo no mesmo PR: só o último commit importa. É o oposto do deploy, que nunca cancela um envio
+ao Play pela metade (seção 3.4).
 
 ## 3. Como ler o arquivo do workflow
 

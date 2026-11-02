@@ -17,9 +17,9 @@ import 'groups_backend.dart';
 class GroupsController extends GetxController {
   GroupsController({
     required this.organizationId,
-    required GroupsBackend backend,
+    required this._backend,
     this.isAdmin = false,
-  }) : _backend = backend;
+  });
 
   final String organizationId;
 

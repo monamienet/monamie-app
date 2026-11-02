@@ -106,9 +106,25 @@ In that case:
 1. add the path to the workflow's `paths` list (a comment in the file is a reminder);
 2. to publish right away, use the **Run workflow** button, which ignores the filter.
 
-Changes only to `test/` do not deploy either, since they do not change the app. One consequence: tests
-currently run only inside the deploy, so a PR that touches **only** tests is not checked by any CI. Run
-`flutter test` locally in those cases.
+Changes only to `test/` do not deploy either, since they do not change the app. They are checked earlier,
+on the PR (next section).
+
+### Pull request checks (`pr-checks.yml`)
+
+The deploy only runs **after** the merge, when the code is already on `main`. To catch problems while the
+PR can still be fixed, the [pr-checks.yml](../../.github/workflows/pr-checks.yml) workflow runs on every PR
+opened against `main` (the `pull_request` event), with no path filter:
+
+1. `dart format --set-exit-if-changed`: fails if any file in `lib/`, `test/` or `tool/` is not formatted.
+   Fix it by running `dart format lib test tool` and committing.
+2. `flutter analyze`: the Dart analyzer. It also fails on *info*-level findings, because `--fatal-infos`
+   is on by default.
+3. `flutter test test/unit -j 2`: the unit tests, as in the deploy.
+
+It uses no secrets and no write permission (`permissions: contents: read`), so it is safe to run on any
+PR. `concurrency` with `cancel-in-progress: true` cancels the previous run when a new commit reaches the
+same PR: only the latest commit matters. It is the opposite of the deploy, which never cancels a Play
+upload halfway (section 3.4).
 
 ## 3. How to read the workflow file
 

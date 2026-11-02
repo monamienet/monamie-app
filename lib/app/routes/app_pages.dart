@@ -1,3 +1,5 @@
+// Route names keep the get_cli style until go_router replaces them (#196).
+// ignore_for_file: constant_identifier_names
 import 'package:monamie_app/app/modules/monamie/bindings/monamie_bindings.dart';
 import 'package:monamie_app/app/modules/monamie/ui/monamie_page.dart';
 import 'package:get/get.dart';

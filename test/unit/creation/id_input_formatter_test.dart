@@ -22,7 +22,7 @@ void main() {
       ('symbol is removed', 'ro-ta_!', 'rota'),
     ];
     for (final (name, input, expected) in cases) {
-      test('$name', () {
+      test(name, () {
         // 1. Arrange
         final calls = <bool>[];
         final formatter = IdInputFormatter(calls.add);

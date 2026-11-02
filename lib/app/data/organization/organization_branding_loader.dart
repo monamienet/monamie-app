@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -24,9 +23,8 @@ const _brandingTimeout = Duration(seconds: 10);
 /// Reads an organization's public branding document and pairs it with the
 /// organization's Firebase options.
 class OrganizationBrandingLoader {
-  OrganizationBrandingLoader({ThemeCatalog? themes, http.Client? client})
-    : _themes = themes,
-      _http = client ?? http.Client();
+  OrganizationBrandingLoader({this._themes, http.Client? client})
+    : _http = client ?? http.Client();
 
   final ThemeCatalog? _themes;
   final http.Client _http;

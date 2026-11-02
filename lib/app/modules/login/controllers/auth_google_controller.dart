@@ -346,7 +346,7 @@ class AuthGoogleController extends GetxController {
     );
   }
 
-  /// "A <nome> está pronta · Entrar": enters the organization just created.
+  /// "A `<nome>` está pronta · Entrar": enters the organization just created.
   Future<void> enterCreatedOrganization(String organizationId) async {
     if (isLoading.value) return;
     isLoading.value = true;

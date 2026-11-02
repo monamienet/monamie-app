@@ -70,11 +70,10 @@ enum IdCheck { idle, checking, available, unavailable }
 /// then the creation itself.
 class CreateOrganizationController extends GetxController {
   CreateOrganizationController({
-    required CreationBackend backend,
-    required ThemeCatalog themes,
+    required this._backend,
+    required this._themes,
     this.debounce = const Duration(milliseconds: 500),
-  }) : _backend = backend,
-       _themes = themes;
+  });
 
   final CreationBackend _backend;
   final ThemeCatalog _themes;

@@ -1,0 +1,45 @@
+# Checks every pull request to main before it is merged: the analyzer
+# (infos included, flutter analyze's default) and the unit tests. The deploy
+# workflow runs the tests again after the merge; this one catches problems
+# while the PR can still be fixed.
+#
+# Line-by-line walkthrough: docs/pt-br/entendendo-o-ci.md
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+
+# A new push to the same PR cancels the run in progress: only the latest
+# commit matters.
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Same version as deploy-play-internal.yml.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Formatting
+        run: dart format --output=none --set-exit-if-changed lib test tool
+
+      - name: Analyzer
+        run: flutter analyze
+
+      # Integration tests are skipped: they need the Firebase emulators.
+      - name: Unit tests
+        run: flutter test test/unit -j 2

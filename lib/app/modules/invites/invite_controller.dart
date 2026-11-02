@@ -12,11 +12,10 @@ class InviteController extends GetxController {
     required this.organizationId,
     required this.organizationName,
     required List<Group> groups,
-    required InvitesBackend backend,
+    required this._backend,
     String? groupId,
     this.canCreateFirstGroup = true,
-  }) : _backend = backend,
-       groups = groups.obs,
+  }) : groups = groups.obs,
        groupId = RxnString(
          groupId ?? (groups.isEmpty ? null : groups.first.id),
        );

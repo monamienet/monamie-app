@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
@@ -17,12 +15,10 @@ enum LogoSheet { closed, processing, preview, error }
 class AppearanceController extends GetxController {
   AppearanceController({
     required this.organization,
-    required AppearanceBackend backend,
+    required this._backend,
     Future<Uint8List> Function(Uint8List bytes)? convertLogo,
-    Future<void> Function(OrganizationConfig saved)? onSaved,
-  }) : _backend = backend,
-       _convertLogo = convertLogo ?? toSquareLogoPng,
-       _onSaved = onSaved;
+    this._onSaved,
+  }) : _convertLogo = convertLogo ?? toSquareLogoPng;
 
   /// The organization as it is now (bound).
   final OrganizationConfig organization;
