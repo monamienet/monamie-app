@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/data/repositories/membership/firestore_membership_source.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
+import 'package:monamie_app/data/repositories/organization/shared_preferences_organization_binding_store.dart';
 import 'package:monamie_app/domain/models/capabilities.dart';
 import 'package:monamie_app/data/repositories/tracking/firestore_tracking_settings_repository.dart';
 import 'package:monamie_app/data/services/group_publisher.dart';
@@ -72,7 +73,11 @@ void onStart(ServiceInstance service) async {
   // organization's app was created natively by MonAmieApplication.
   await Firebase.initializeApp();
   // The UI stored the bound organization; without one there is nowhere to write.
-  if (await OrganizationSession().restore() == null) {
+  // This isolate is its own composition root: it shares no object with the UI.
+  final session = OrganizationSession(
+    store: SharedPreferencesOrganizationBindingStore(),
+  );
+  if (await session.restore() == null) {
     debugPrint(
       '[ForegroundService] No organization bound — stopping the service.',
     );

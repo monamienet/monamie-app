@@ -4,7 +4,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import 'firestore_tracking_settings_repository.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'tracking_settings_repository.dart';
 
@@ -14,8 +13,7 @@ import 'tracking_settings_repository.dart';
 /// Whoever creates it calls [start] once, to begin listening, and [dispose]
 /// once, which stops listening.
 class TrackingSettingsController {
-  TrackingSettingsController({TrackingSettingsRepository? repository})
-    : _repository = repository ?? const FirestoreTrackingSettingsRepository();
+  TrackingSettingsController({required this._repository});
 
   final TrackingSettingsRepository _repository;
   StreamSubscription<TrackingSettings>? _subscription;

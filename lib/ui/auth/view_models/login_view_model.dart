@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:monamie_app/ui/auth/view_models/login_state.dart';
 import 'package:monamie_app/ui/auth/view_models/sign_in_actions.dart';
 import 'package:monamie_app/data/services/auth/google_bond_check.dart';
-import 'package:monamie_app/data/services/auth/stored_google_bond_check.dart';
 import 'package:monamie_app/utils/result.dart';
 
 export 'login_state.dart';
@@ -11,17 +10,11 @@ export 'login_state.dart';
 /// ([restoreSession]) and starts the sign-in through [SignInActions].
 class LoginViewModel extends ChangeNotifier {
   /// [signIn] runs the sign-in and sign-out (the `AuthGoogleViewModel`);
-  /// [bondCheck] tells whether a sign-in survives from a previous run,
-  /// [StoredGoogleBondCheck] by default.
-  LoginViewModel({required this._signIn, GoogleBondCheck? bondCheck})
-    : _injectedBondCheck = bondCheck;
+  /// [bondCheck] tells whether a sign-in survives from a previous run.
+  LoginViewModel({required this._signIn, required this._bondCheck});
 
   final SignInActions _signIn;
-  final GoogleBondCheck? _injectedBondCheck;
-
-  // Created on first use: the default reads Firebase and Hive.
-  late final GoogleBondCheck _bondCheck =
-      _injectedBondCheck ?? StoredGoogleBondCheck();
+  final GoogleBondCheck _bondCheck;
 
   LoginState _state = const LoginState();
   bool _disposed = false;

@@ -6,7 +6,6 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:monamie_app/data/services/device_location.dart';
-import 'package:monamie_app/data/services/geolocator_device_location.dart';
 import 'package:monamie_app/ui/home/view_models/permissions_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
@@ -35,23 +34,19 @@ import 'package:monamie_app/utils/user_notice.dart';
 class TrackingViewModel implements TrackingToggleViewModel {
   /// [notices] shows the warnings raised by background changes, which no
   /// screen is waiting for. [userCtrl], [permissionsCtrl], [calendar] and
-  /// [groupMap] are the other home controllers this one reacts to. The
-  /// plugins come in too, with the real ones by default: [service] (the
-  /// tracking service, [FlutterBackgroundService]), [location] (the GPS,
-  /// [GeolocatorDeviceLocation]) and [positions] (the groups' positions and
-  /// trails, [FirebaseProvider]).
+  /// [groupMap] are the other home view models this one reacts to. The
+  /// plugins come in too: [service] (the tracking service), [location] (the
+  /// GPS) and [positions] (the groups' positions and trails).
   TrackingViewModel({
     required this._notices,
     required this.userCtrl,
     required this.permissionsCtrl,
     required this._calendar,
     required this._groupMap,
-    FlutterBackgroundService? service,
-    DeviceLocation? location,
-    FirebaseProvider? positions,
-  }) : _service = service ?? FlutterBackgroundService(),
-       _location = location ?? const GeolocatorDeviceLocation(),
-       _positions = positions ?? FirebaseProvider();
+    required this._service,
+    required this._location,
+    required this._positions,
+  });
 
   final NoticePresenter _notices;
   final CalendarViewModel _calendar;

@@ -5,9 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:monamie_app/data/services/app_lifecycle_events.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
-import 'package:monamie_app/data/services/method_channel_background_restriction_checker.dart';
-import 'package:monamie_app/data/services/method_channel_background_usage_settings_launcher.dart';
-import 'package:monamie_app/data/services/widgets_binding_app_lifecycle_events.dart';
 import 'package:monamie_app/ui/home/view_models/permission_prompts.dart';
 import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
 import 'package:monamie_app/utils/user_notice.dart';
@@ -23,21 +20,14 @@ class PermissionsViewModel {
   /// [prompts] asks the questions in the middle of the permission flows;
   /// [notices] shows the warning given on returning from the battery
   /// settings, when no screen is waiting for it; [lifecycle] tells when the
-  /// app comes back to the foreground ([WidgetsBindingAppLifecycleEvents] by
-  /// default).
+  /// app comes back to the foreground.
   PermissionsViewModel({
     required this._prompts,
     required this._notices,
-    BackgroundRestrictionChecker? backgroundRestrictionChecker,
-    BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
-    AppLifecycleEvents? lifecycle,
-  }) : _lifecycle = lifecycle ?? WidgetsBindingAppLifecycleEvents(),
-       _backgroundRestrictionChecker =
-           backgroundRestrictionChecker ??
-           MethodChannelBackgroundRestrictionChecker(),
-       _backgroundUsageSettingsLauncher =
-           backgroundUsageSettingsLauncher ??
-           MethodChannelBackgroundUsageSettingsLauncher();
+    required this._backgroundRestrictionChecker,
+    required this._backgroundUsageSettingsLauncher,
+    required this._lifecycle,
+  });
 
   final PermissionPrompts _prompts;
   final AppLifecycleEvents _lifecycle;

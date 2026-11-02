@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
+import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
+import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
+import 'package:monamie_app/data/repositories/organization/organization_binder.dart';
+import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
+import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
+import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
+import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
+import 'package:monamie_app/data/services/auth/auth_google_service.dart';
+import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/ui/auth/view_models/auth_google_view_model.dart';
 import 'package:monamie_app/ui/auth/view_models/login_view_model.dart';
 import 'package:monamie_app/ui/auth/widgets/login_screen.dart';
@@ -10,7 +20,20 @@ import 'package:monamie_app/ui/core/ui/notice_presenter.dart';
 // mockito cannot generate a mock of `AuthGoogleViewModel` (its builder
 // fails with "Bad state: No element"), so the screen gets a real one that
 // never starts: nothing it does here reaches its services.
-@GenerateNiceMocks([MockSpec<LoginViewModel>(), MockSpec<NoticePresenter>()])
+@GenerateNiceMocks([
+  MockSpec<AccountDeletionBackend>(),
+  MockSpec<AuthGoogleService>(),
+  MockSpec<BackgroundTrackingStopper>(),
+  MockSpec<InvitesBackend>(),
+  MockSpec<LoginViewModel>(),
+  MockSpec<NoticePresenter>(),
+  MockSpec<OrganizationBinder>(),
+  MockSpec<OrganizationBrandingLoader>(),
+  MockSpec<OrganizationDirectory>(),
+  MockSpec<OrganizationLocalData>(),
+  MockSpec<OrganizationMembershipCheck>(),
+  MockSpec<UserGoogleRepository>(),
+])
 import 'login_screen_test.mocks.dart';
 
 /// A [MockLoginViewModel] still restoring, whose restore finishes at once.
@@ -22,8 +45,20 @@ MockLoginViewModel _loginViewModel() {
 }
 
 /// An [AuthGoogleViewModel] never started (Google not ready yet).
-AuthGoogleViewModel _auth() =>
-    AuthGoogleViewModel(notices: MockNoticePresenter(), refreshTheme: () {});
+AuthGoogleViewModel _auth() => AuthGoogleViewModel(
+  notices: MockNoticePresenter(),
+  refreshTheme: () {},
+  authGoogle: MockAuthGoogleService(),
+  userRepository: MockUserGoogleRepository(),
+  trackingStopper: MockBackgroundTrackingStopper(),
+  organizationDirectory: MockOrganizationDirectory(),
+  brandingLoader: MockOrganizationBrandingLoader(),
+  organizationSession: MockOrganizationBinder(),
+  organizationLocalData: MockOrganizationLocalData(),
+  invitesBackend: MockInvitesBackend(),
+  deletionBackend: MockAccountDeletionBackend(),
+  membershipCheck: MockOrganizationMembershipCheck(),
+);
 
 void main() {
   group('LoginScreen - Unit Test Suite', () {

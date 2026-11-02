@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/auth/view_models/auth_google_view_model.dart';
@@ -10,7 +11,8 @@ import 'package:provider/provider.dart';
 
 /// The app scope: what lives as long as the app, above the router.
 ///
-/// It creates and starts the [AuthGoogleViewModel] once (web sign-in
+/// It reads the data layer from the providers of `appDependencies` (in
+/// `main`, above it), creates and starts the [AuthGoogleViewModel] once (web sign-in
 /// listener, Google Sign-In initialization), provides it to the routes,
 /// builds the router that follows its session, and holds the theme, which
 /// the controller rebuilds when an organization is bound or forgotten.
@@ -29,6 +31,16 @@ class _MonAmieAppState extends State<MonAmieApp> {
     // Messages no screen waits for go through the root messenger.
     notices: const ScaffoldNoticePresenter(),
     refreshTheme: () => _theme.value = AppTheme.lightTheme,
+    authGoogle: context.read(),
+    userRepository: context.read(),
+    trackingStopper: context.read(),
+    organizationDirectory: context.read(),
+    brandingLoader: context.read(),
+    organizationSession: context.read<OrganizationSession>(),
+    organizationLocalData: context.read(),
+    invitesBackend: context.read(),
+    deletionBackend: context.read(),
+    membershipCheck: context.read(),
   )..start();
 
   late final GoRouter _router = buildAppRouter(auth: _auth);

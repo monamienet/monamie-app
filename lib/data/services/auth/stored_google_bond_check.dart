@@ -7,13 +7,9 @@ import 'google_bond_check.dart';
 /// [GoogleBondCheck] over the bound organization's Firebase Auth
 /// ([CurrentOrganizationFirebase]) and the Google profile kept in Hive.
 class StoredGoogleBondCheck implements GoogleBondCheck {
-  StoredGoogleBondCheck({UserGoogleRepository? userRepository})
-    : _injectedUserRepository = userRepository;
+  StoredGoogleBondCheck({required this._userRepository});
 
-  final UserGoogleRepository? _injectedUserRepository;
-
-  late final UserGoogleRepository _userRepository =
-      _injectedUserRepository ?? UserGoogleRepository();
+  final UserGoogleRepository _userRepository;
 
   @override
   Future<bool> hasActiveBond() async {

@@ -3,13 +3,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
-import 'package:monamie_app/data/repositories/membership/firestore_membership_source.dart';
 import 'package:monamie_app/data/repositories/membership/membership_source.dart';
 import 'package:monamie_app/domain/models/capabilities.dart';
 import 'package:monamie_app/ui/home/view_models/group_map_state.dart';
 import 'package:monamie_app/ui/home/view_models/map_groups.dart';
 import 'package:monamie_app/data/repositories/positions/group_positions_source.dart';
-import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
@@ -27,13 +25,11 @@ import 'package:monamie_app/domain/models/user_model.dart';
 class GroupMapViewModel implements GroupMapState {
   GroupMapViewModel({
     required this._onAccessLost,
-    MembershipSource? memberships,
-    GroupPositionsSource? positions,
+    required this._memberships,
+    required this._positions,
     String? Function()? organizationId,
     String? Function()? email,
-  }) : _memberships = memberships ?? const FirestoreMembershipSource(),
-       _positions = positions ?? FirebaseProvider(),
-       _organizationId = organizationId ?? (() => Organization.current?.id),
+  }) : _organizationId = organizationId ?? (() => Organization.current?.id),
        _email =
            email ??
            (() => CurrentOrganizationFirebase.isSet

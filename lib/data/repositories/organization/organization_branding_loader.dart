@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
-import 'package:monamie_app/data/repositories/theme/firestore_theme_catalog.dart';
 import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
 
 import 'package:monamie_app/domain/models/organization/organization_binding.dart';
@@ -23,10 +22,10 @@ const _brandingTimeout = Duration(seconds: 10);
 /// Reads an organization's public branding document and pairs it with the
 /// organization's Firebase options.
 class OrganizationBrandingLoader {
-  OrganizationBrandingLoader({this._themes, http.Client? client})
+  OrganizationBrandingLoader({required this._themes, http.Client? client})
     : _http = client ?? http.Client();
 
-  final ThemeCatalog? _themes;
+  final ThemeCatalog _themes;
   final http.Client _http;
 
   /// The binding of [candidate]. A branding that cannot be read never blocks
@@ -80,7 +79,7 @@ class OrganizationBrandingLoader {
   ) async {
     if (themeId == null) return defaultOrganizationTheme;
     try {
-      final catalog = await (_themes ?? const FirestoreThemeCatalog()).themes();
+      final catalog = await _themes.themes();
       return resolveOrganizationTheme(themeId, catalog);
     } catch (error) {
       debugPrint('Could not read the theme catalog: $error');

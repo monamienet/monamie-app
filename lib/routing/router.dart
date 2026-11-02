@@ -2,28 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
-import 'package:monamie_app/data/repositories/theme/firestore_theme_catalog.dart';
-import 'package:monamie_app/data/repositories/tracking/firestore_tracking_settings_repository.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_controller.dart';
 import 'package:monamie_app/ui/account/widgets/deletion_pending_screen.dart';
-import 'package:monamie_app/data/repositories/account/firebase_account_deletion_backend.dart';
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
 import 'package:monamie_app/ui/account/widgets/my_account_screen.dart';
 import 'package:monamie_app/ui/administrators/view_models/administrators_view_model.dart';
 import 'package:monamie_app/ui/administrators/widgets/administrators_screen.dart';
-import 'package:monamie_app/data/repositories/administrators/firebase_administrators_backend.dart';
 import 'package:monamie_app/ui/appearance/view_models/appearance_view_model.dart';
 import 'package:monamie_app/ui/appearance/widgets/appearance_screen.dart';
-import 'package:monamie_app/data/repositories/appearance/firebase_appearance_backend.dart';
-import 'package:monamie_app/data/repositories/groups/firebase_groups_backend.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
 import 'package:monamie_app/ui/groups/widgets/groups_screen.dart';
 import 'package:monamie_app/ui/tracking_settings/view_models/tracking_settings_edit_view_model.dart';
 import 'package:monamie_app/ui/tracking_settings/widgets/tracking_settings_screen.dart';
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
 import 'package:monamie_app/ui/creation/widgets/create_organization_screen.dart';
-import 'package:monamie_app/data/repositories/creation/firebase_creation_backend.dart';
-import 'package:monamie_app/data/repositories/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/ui/invites/view_models/invite_view_model.dart';
 import 'package:monamie_app/ui/invites/widgets/invite_screen.dart';
 import 'package:monamie_app/ui/invites/widgets/welcome_screen.dart';
@@ -76,7 +68,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
       builder: (context, state) {
         final auth = context.read<AuthGoogleViewModel>();
         return _owned(
-          create: () => LoginViewModel(signIn: auth),
+          create: () => LoginViewModel(signIn: auth, bondCheck: context.read()),
           builder: (login) => LoginScreen(controller: login, auth: auth),
         );
       },
@@ -138,7 +130,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
             final organization = Organization.current!;
             return _owned(
               create: () => MyAccountViewModel(
-                backend: const FirebaseAccountDeletionBackend(),
+                backend: context.read(),
                 organizationId: organization.id,
                 checkOwner: () => auth.ownsOrganization(organization.id),
                 onDeleted: auth.accountDeleted,
@@ -158,7 +150,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
             return _owned(
               create: () => GroupsViewModel(
                 organizationId: Organization.current!.id,
-                backend: const FirebaseGroupsBackend(),
+                backend: context.read(),
                 isAdmin: isAdmin,
               ),
               builder: (controller) => GroupsScreen(controller: controller),
@@ -190,7 +182,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
                         Organization.current?.name ?? groups.organizationId,
                     groups: groups.state.groups,
                     groupId: request.groupId,
-                    backend: const FirebaseInvitesBackend(),
+                    backend: context.read(),
                     canCreateFirstGroup: groups.isAdmin,
                   ),
                   builder: (controller) => InviteScreen(controller: controller),
@@ -204,6 +196,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
               builder: (context, state) => GroupScreen(
                 controller: state.extra! as GroupsViewModel,
                 groupId: state.pathParameters['groupId']!,
+                invitesBackend: context.read(),
               ),
             ),
           ],
@@ -213,7 +206,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
           builder: (context, state) => _owned(
             create: () => AdministratorsViewModel(
               organizationId: Organization.current!.id,
-              backend: const FirebaseAdministratorsBackend(),
+              backend: context.read(),
             ),
             builder: (controller) =>
                 AdministratorsScreen(controller: controller),
@@ -224,8 +217,8 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
           builder: (context, state) => _owned(
             create: () => AppearanceViewModel(
               organization: Organization.current!,
-              backend: FirebaseAppearanceBackend(),
-              onSaved: OrganizationSession().storeBranding,
+              backend: context.read(),
+              onSaved: context.read<OrganizationSession>().storeBranding,
             ),
             builder: (controller) => AppearanceScreen(controller: controller),
           ),
@@ -239,7 +232,7 @@ GoRouter buildAppRouter({required AuthGoogleViewModel auth}) => GoRouter(
                 .value;
             return _owned(
               create: () => TrackingSettingsEditViewModel(
-                repository: const FirestoreTrackingSettingsRepository(),
+                repository: context.read(),
                 saved: saved,
               ),
               builder: (controller) =>
@@ -266,8 +259,8 @@ GoRoute _createOrganizationRoute() => GoRoute(
     return _owned(
       // A fresh one each time the flow opens; its screen loads the themes.
       create: () => CreateOrganizationViewModel(
-        backend: const FirebaseCreationBackend(),
-        themes: const FirestoreThemeCatalog(),
+        backend: context.read(),
+        themes: context.read(),
       ),
       builder: (controller) => CreateOrganizationScreen(
         controller: controller,

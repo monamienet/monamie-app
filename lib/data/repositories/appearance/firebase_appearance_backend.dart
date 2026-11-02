@@ -6,7 +6,6 @@ import 'package:monamie_app/domain/models/organization/organization_theme.dart'
     as theme;
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
-import 'package:monamie_app/data/repositories/theme/firestore_theme_catalog.dart';
 import 'package:monamie_app/data/repositories/theme/theme_catalog.dart';
 
 import 'appearance_backend.dart';
@@ -14,8 +13,7 @@ import 'appearance_backend.dart';
 /// [AppearanceBackend] over the organization's Storage and its `setBranding`
 /// function, with themes from the central catalog.
 class FirebaseAppearanceBackend implements AppearanceBackend {
-  FirebaseAppearanceBackend({ThemeCatalog? themes})
-    : _themes = themes ?? const FirestoreThemeCatalog();
+  FirebaseAppearanceBackend({required this._themes});
 
   final ThemeCatalog _themes;
 

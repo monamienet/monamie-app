@@ -5,7 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:monamie_app/data/repositories/membership/membership_source.dart';
+import 'package:monamie_app/data/repositories/positions/firebase_provider.dart';
+import 'package:monamie_app/data/repositories/positions/group_positions_source.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
+import 'package:monamie_app/data/services/background_restriction_checker.dart';
+import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
+import 'package:monamie_app/data/services/device_location.dart';
+import 'package:monamie_app/data/services/geolocator_device_location.dart';
+import 'package:monamie_app/data/services/method_channel_background_restriction_checker.dart';
+import 'package:monamie_app/data/services/method_channel_background_usage_settings_launcher.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_controller.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
@@ -19,8 +28,11 @@ import 'package:monamie_app/routing/organization_scope.dart';
 import 'package:monamie_app/routing/routes.dart';
 import 'package:monamie_app/routing/session_redirect.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 
 @GenerateNiceMocks([
+  MockSpec<FirebaseProvider>(),
+  MockSpec<MembershipSource>(),
   MockSpec<TrackingSettingsRepository>(),
   MockSpec<UserGoogleRepository>(),
 ])
@@ -44,28 +56,18 @@ TrackingSettingsController? adminSettings;
 /// reads the group map, the calendar and the tracking settings, and
 /// `/other`, to push over it.
 ///
-/// The profile and the tracking settings are mocks (nobody signed in, the
-/// default settings). With [withTracking], the page also reads the tracking
+/// The data layer comes from [pumpRouter] ([dependencies]). With
+/// [withTracking], the page also reads the tracking
 /// controller (and so the permissions one): see [tracked].
 GoRouter buildRouter({bool withTracking = false}) {
-  final profile = MockUserGoogleRepository();
-  when(profile.getUserGoogleModel()).thenAnswer((_) async => null);
-  final repository = MockTrackingSettingsRepository();
-  when(
-    repository.watch(),
-  ).thenAnswer((_) => Stream.value(TrackingSettings.defaults));
   if (withTracking) tracked();
   return GoRouter(
     initialLocation: '/start',
     routes: [
       GoRoute(path: '/start', builder: (_, _) => const Text('start')),
       ShellRoute(
-        builder: (_, _, child) => OrganizationScope(
-          onAccessLost: () async {},
-          userRepository: profile,
-          trackingSettingsRepository: repository,
-          child: child,
-        ),
+        builder: (_, _, child) =>
+            OrganizationScope(onAccessLost: () async {}, child: child),
         routes: [
           GoRoute(
             path: '/home',
@@ -93,12 +95,6 @@ GoRouter buildRouter({bool withTracking = false}) {
 /// whose page reads every organization controller, and *Grupos*, whose
 /// page reads some of them again.
 GoRouter buildSessionRouter(ValueNotifier<SessionState> session) {
-  final profile = MockUserGoogleRepository();
-  when(profile.getUserGoogleModel()).thenAnswer((_) async => null);
-  final repository = MockTrackingSettingsRepository();
-  when(
-    repository.watch(),
-  ).thenAnswer((_) => Stream.value(TrackingSettings.defaults));
   tracked();
   return GoRouter(
     initialLocation: Routes.login,
@@ -107,12 +103,8 @@ GoRouter buildSessionRouter(ValueNotifier<SessionState> session) {
     routes: [
       GoRoute(path: Routes.login, builder: (_, _) => const Text('login')),
       ShellRoute(
-        builder: (_, _, child) => OrganizationScope(
-          onAccessLost: () async {},
-          userRepository: profile,
-          trackingSettingsRepository: repository,
-          child: child,
-        ),
+        builder: (_, _, child) =>
+            OrganizationScope(onAccessLost: () async {}, child: child),
         routes: [
           GoRoute(
             path: Routes.monamie,
@@ -153,11 +145,49 @@ Future<void> pumpBound(
   await tester.pumpAndSettle();
 }
 
-/// Opens the app over [router].
+/// Opens the app over [router], with [dependencies] above it, as
+/// `appDependencies` is in the app.
 Future<void> pumpRouter(WidgetTester tester, GoRouter router) async {
   addTearDown(router.dispose);
-  await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: dependencies(),
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
   await tester.pumpAndSettle();
+}
+
+/// The data layer [OrganizationScope] reads. The profile, the tracking
+/// settings, the memberships and the positions are mocks (nobody signed
+/// in, the default settings, no group); the tracking service, the GPS and
+/// the background checks are the app's own, and [tracked] answers the
+/// tracking service's and the permissions' channels.
+List<SingleChildWidget> dependencies() {
+  final profile = MockUserGoogleRepository();
+  when(profile.getUserGoogleModel()).thenAnswer((_) async => null);
+  final repository = MockTrackingSettingsRepository();
+  when(
+    repository.watch(),
+  ).thenAnswer((_) => Stream.value(TrackingSettings.defaults));
+  final positions = MockFirebaseProvider();
+  return [
+    Provider<UserGoogleRepository>.value(value: profile),
+    Provider<TrackingSettingsRepository>.value(value: repository),
+    Provider<MembershipSource>.value(value: MockMembershipSource()),
+    Provider<FirebaseProvider>.value(value: positions),
+    Provider<GroupPositionsSource>.value(value: positions),
+    Provider<FlutterBackgroundService>(
+      create: (_) => FlutterBackgroundService(),
+    ),
+    Provider<DeviceLocation>.value(value: const GeolocatorDeviceLocation()),
+    Provider<BackgroundRestrictionChecker>(
+      create: (_) => MethodChannelBackgroundRestrictionChecker(),
+    ),
+    Provider<BackgroundUsageSettingsLauncher>(
+      create: (_) => MethodChannelBackgroundUsageSettingsLauncher(),
+    ),
+  ];
 }
 
 /// Keeps the real tracking and permissions controllers the scope builds

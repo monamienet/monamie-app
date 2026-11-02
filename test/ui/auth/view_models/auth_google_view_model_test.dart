@@ -309,14 +309,15 @@ class _HarnessSignIn {
     membershipCheck = _membershipCheck(member);
     controller = AuthGoogleViewModel(
       notices: notices,
-      authGoogleService: authService,
+      authGoogle: authService,
       userRepository: _userRepository(),
       trackingStopper: _trackingStopper(log, pending: pendingStop),
       organizationDirectory: directory,
       brandingLoader: _brandingLoader((_) => _kRotaSulName),
       organizationSession: session,
       organizationLocalData: MockOrganizationLocalData(),
-      deletionBackend: deletionBackend,
+      invitesBackend: MockInvitesBackend(),
+      deletionBackend: deletionBackend ?? MockAccountDeletionBackend(),
       membershipCheck: membershipCheck,
       refreshTheme: () => log.add('refreshTheme'),
     );
@@ -463,7 +464,7 @@ class _HarnessInvites {
     session = _organizationBinder(log, boundIds);
     controller = AuthGoogleViewModel(
       notices: MockNoticePresenter(),
-      authGoogleService: _authServiceSignIn(log, refreshedToken: null),
+      authGoogle: _authServiceSignIn(log, refreshedToken: null),
       userRepository: _userRepository(),
       trackingStopper: _trackingStopper(log),
       organizationDirectory: directory,
@@ -473,6 +474,7 @@ class _HarnessInvites {
       organizationSession: session,
       organizationLocalData: MockOrganizationLocalData(),
       invitesBackend: backend,
+      deletionBackend: MockAccountDeletionBackend(),
       membershipCheck: _membershipCheck(true),
       refreshTheme: () => log.add('refreshTheme'),
     );
@@ -535,7 +537,16 @@ late MockOrganizationDirectory directory;
 /// Built without calling `start`, so Google Sign-In is never initialized.
 AuthGoogleViewModel newController() => AuthGoogleViewModel(
   notices: MockNoticePresenter(),
+  authGoogle: MockAuthGoogleService(),
+  userRepository: MockUserGoogleRepository(),
+  trackingStopper: MockBackgroundTrackingStopper(),
   organizationDirectory: directory,
+  brandingLoader: MockOrganizationBrandingLoader(),
+  organizationSession: MockOrganizationBinder(),
+  organizationLocalData: MockOrganizationLocalData(),
+  invitesBackend: MockInvitesBackend(),
+  deletionBackend: MockAccountDeletionBackend(),
+  membershipCheck: MockOrganizationMembershipCheck(),
   refreshTheme: () {},
 );
 
@@ -634,9 +645,14 @@ class _HarnessLogout {
       ),
       organizationLocalData: MockOrganizationLocalData(),
       refreshTheme: () {},
-      authGoogleService: authService,
+      authGoogle: authService,
       userRepository: userRepository,
       trackingStopper: stopper,
+      organizationDirectory: MockOrganizationDirectory(),
+      brandingLoader: MockOrganizationBrandingLoader(),
+      invitesBackend: MockInvitesBackend(),
+      deletionBackend: MockAccountDeletionBackend(),
+      membershipCheck: MockOrganizationMembershipCheck(),
     );
     _followRoutes(controller, log);
   }
@@ -2859,9 +2875,14 @@ void main() {
           ),
           organizationLocalData: MockOrganizationLocalData(),
           refreshTheme: () {},
-          authGoogleService: _authServiceLogout(log),
+          authGoogle: _authServiceLogout(log),
           userRepository: _userRepositoryLogout(log),
           trackingStopper: _trackingStopper(log, entry: _kLogStop),
+          organizationDirectory: MockOrganizationDirectory(),
+          brandingLoader: MockOrganizationBrandingLoader(),
+          invitesBackend: MockInvitesBackend(),
+          deletionBackend: MockAccountDeletionBackend(),
+          membershipCheck: MockOrganizationMembershipCheck(),
         );
 
         // 3. Assert

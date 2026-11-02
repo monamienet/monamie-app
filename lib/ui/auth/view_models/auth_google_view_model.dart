@@ -1,24 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:monamie_app/data/repositories/membership/firestore_organization_membership_check.dart';
 import 'package:monamie_app/data/repositories/membership/organization_membership_check.dart';
-import 'package:monamie_app/data/repositories/organization/central_organization_directory.dart';
 import 'package:monamie_app/domain/models/organization/organization_binding.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
-import 'package:monamie_app/data/repositories/organization/hive_organization_local_data.dart';
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
 import 'package:monamie_app/data/repositories/organization/organization_binder.dart';
-import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
-import 'package:monamie_app/data/services/flutter_background_service_tracking_stopper.dart';
 import 'package:monamie_app/domain/models/account_deletion.dart';
 import 'package:monamie_app/data/repositories/account/account_deletion_backend.dart';
-import 'package:monamie_app/data/repositories/account/firebase_account_deletion_backend.dart';
-import 'package:monamie_app/data/repositories/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/domain/models/invite.dart';
 import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
 import 'package:monamie_app/ui/auth/view_models/sign_in_actions.dart';
@@ -59,37 +52,25 @@ class AuthGoogleViewModel extends ChangeNotifier
   AuthGoogleViewModel({
     required this._notices,
     required this._refreshTheme,
-    AuthGoogleService? authGoogleService,
-    UserGoogleRepository? userRepository,
-    BackgroundTrackingStopper? trackingStopper,
-    OrganizationDirectory? organizationDirectory,
-    OrganizationBrandingLoader? brandingLoader,
-    OrganizationBinder? organizationSession,
-    OrganizationLocalData? organizationLocalData,
-    InvitesBackend? invitesBackend,
-    AccountDeletionBackend? deletionBackend,
-    OrganizationMembershipCheck? membershipCheck,
-  }) : _membershipCheck =
-           membershipCheck ?? const FirestoreOrganizationMembershipCheck(),
-       _invitesBackend = invitesBackend ?? const FirebaseInvitesBackend(),
-       _deletionBackend =
-           deletionBackend ?? const FirebaseAccountDeletionBackend(),
-       _organizationLocalData =
-           organizationLocalData ?? const HiveOrganizationLocalData(),
-       _injectedAuthGoogle = authGoogleService,
-       _injectedUserRepository = userRepository,
-       _injectedTrackingStopper = trackingStopper,
-       _injectedOrganizationDirectory = organizationDirectory,
-       _brandingLoader = brandingLoader ?? OrganizationBrandingLoader(),
-       _injectedOrganizationSession = organizationSession;
+    required this._authGoogle,
+    required this._userRepository,
+    required this._trackingStopper,
+    required this._organizationDirectory,
+    required this._brandingLoader,
+    required this._organizationSession,
+    required this._organizationLocalData,
+    required this._invitesBackend,
+    required this._deletionBackend,
+    required this._membershipCheck,
+  });
 
   final NoticePresenter _notices;
-  final AuthGoogleService? _injectedAuthGoogle;
-  final UserGoogleRepository? _injectedUserRepository;
-  final BackgroundTrackingStopper? _injectedTrackingStopper;
-  final OrganizationDirectory? _injectedOrganizationDirectory;
+  final AuthGoogleService _authGoogle;
+  final UserGoogleRepository _userRepository;
+  final BackgroundTrackingStopper _trackingStopper;
+  final OrganizationDirectory _organizationDirectory;
   final OrganizationBrandingLoader _brandingLoader;
-  final OrganizationBinder? _injectedOrganizationSession;
+  final OrganizationBinder _organizationSession;
   final OrganizationLocalData _organizationLocalData;
   final InvitesBackend _invitesBackend;
   final AccountDeletionBackend _deletionBackend;
@@ -97,18 +78,6 @@ class AuthGoogleViewModel extends ChangeNotifier
 
   /// Rebuilds the theme from the bound organization (or MonAmie when none).
   final void Function() _refreshTheme;
-
-  late final OrganizationDirectory _organizationDirectory =
-      _injectedOrganizationDirectory ?? CentralOrganizationDirectory();
-  late final OrganizationBinder _organizationSession =
-      _injectedOrganizationSession ?? OrganizationSession();
-
-  late final AuthGoogleService _authGoogle =
-      _injectedAuthGoogle ?? AuthGoogleService();
-  late final UserGoogleRepository _userRepository =
-      _injectedUserRepository ?? UserGoogleRepository();
-  late final BackgroundTrackingStopper _trackingStopper =
-      _injectedTrackingStopper ?? FlutterBackgroundServiceTrackingStopper();
   StreamSubscription<String?>? _webSignInSub;
   bool _started = false;
   bool _disposed = false;

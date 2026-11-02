@@ -70,7 +70,7 @@ PermissionsViewModel _build({
 }) => PermissionsViewModel(
   prompts: prompts ?? mockPrompts(),
   notices: notices ?? MockNoticePresenter(),
-  lifecycle: lifecycle,
+  lifecycle: lifecycle ?? MockAppLifecycleEvents(),
   backgroundRestrictionChecker: backgroundRestrictionChecker,
   backgroundUsageSettingsLauncher:
       backgroundUsageSettingsLauncher ?? mockLauncher(),

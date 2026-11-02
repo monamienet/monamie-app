@@ -3,8 +3,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:monamie_app/ui/core/ui/organization_error_app.dart';
 import 'package:monamie_app/data/services/firebase/central_firebase.dart';
 import 'package:monamie_app/data/model/user_google_model.dart';
-import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
-import 'package:monamie_app/data/repositories/organization/organization_session.dart';
+import 'package:monamie_app/config/dependencies.dart';
+import 'package:provider/provider.dart';
 
 import 'ui/core/monamie_app.dart';
 
@@ -25,16 +25,22 @@ Future<void> main() async {
 
   // The organization remembered from the last sign-in, if any: the app opens in
   // its brand without asking the central project again.
-  final session = OrganizationSession();
+  final session = createOrganizationSession();
+  final brandingLoader = createBrandingLoader();
   final binding = await session.restore();
   if (binding != null) {
     // Picks up branding changes for the next launch, without changing the
     // look of this one.
-    OrganizationBrandingLoader()
-        .readBranding(binding)
-        .then(session.storeBranding)
-        .ignore();
+    brandingLoader.readBranding(binding).then(session.storeBranding).ignore();
   }
 
-  runApp(const MonAmieApp());
+  runApp(
+    MultiProvider(
+      providers: appDependencies(
+        organizationSession: session,
+        brandingLoader: brandingLoader,
+      ),
+      child: const MonAmieApp(),
+    ),
+  );
 }

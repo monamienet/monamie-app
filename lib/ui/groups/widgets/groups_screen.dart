@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 
-import 'package:monamie_app/data/repositories/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/domain/models/invite.dart';
 import 'package:monamie_app/data/repositories/invites/invites_backend.dart';
 import 'package:monamie_app/routing/routes.dart';
@@ -625,7 +624,7 @@ class GroupScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.groupId,
-    this.invitesBackend = const FirebaseInvitesBackend(),
+    required this.invitesBackend,
   });
 
   final GroupsViewModel controller;

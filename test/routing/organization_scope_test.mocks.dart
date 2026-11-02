@@ -4,16 +4,25 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i4;
+import 'dart:async' as _i5;
 
+import 'package:cloud_firestore/cloud_firestore.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i7;
-import 'package:monamie_app/data/model/user_google_model.dart' as _i2;
+import 'package:mockito/src/dummies.dart' as _i14;
+import 'package:monamie_app/data/model/user_google_model.dart' as _i3;
+import 'package:monamie_app/data/repositories/membership/membership_source.dart'
+    as _i10;
+import 'package:monamie_app/data/repositories/positions/firebase_provider.dart'
+    as _i4;
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart'
-    as _i3;
+    as _i11;
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart'
-    as _i6;
-import 'package:monamie_app/domain/models/tracking_settings.dart' as _i5;
+    as _i13;
+import 'package:monamie_app/data/services/group_publisher.dart' as _i7;
+import 'package:monamie_app/domain/models/location_point.dart' as _i9;
+import 'package:monamie_app/domain/models/tracking_settings.dart' as _i12;
+import 'package:monamie_app/domain/models/user_model.dart' as _i6;
+import 'package:monamie_app/ui/history/view_models/history_month.dart' as _i8;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -31,52 +40,274 @@ import 'package:monamie_app/domain/models/tracking_settings.dart' as _i5;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeUserGoogleModel_0 extends _i1.SmartFake
-    implements _i2.UserGoogleModel {
-  _FakeUserGoogleModel_0(Object parent, Invocation parentInvocation)
+class _FakeCollectionReference_0<T extends Object?> extends _i1.SmartFake
+    implements _i2.CollectionReference<T> {
+  _FakeCollectionReference_0(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
+}
+
+class _FakeUserGoogleModel_1 extends _i1.SmartFake
+    implements _i3.UserGoogleModel {
+  _FakeUserGoogleModel_1(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+/// A class which mocks [FirebaseProvider].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockFirebaseProvider extends _i1.Mock implements _i4.FirebaseProvider {
+  @override
+  _i2.CollectionReference<Map<String, dynamic>> positionsOf(String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#positionsOf, [groupId]),
+            returnValue: _FakeCollectionReference_0<Map<String, dynamic>>(
+              this,
+              Invocation.method(#positionsOf, [groupId]),
+            ),
+            returnValueForMissingStub:
+                _FakeCollectionReference_0<Map<String, dynamic>>(
+                  this,
+                  Invocation.method(#positionsOf, [groupId]),
+                ),
+          )
+          as _i2.CollectionReference<Map<String, dynamic>>);
+
+  @override
+  _i5.Stream<List<_i6.UserModel>> streamGroupPositions(String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#streamGroupPositions, [groupId]),
+            returnValue: _i5.Stream<List<_i6.UserModel>>.empty(),
+            returnValueForMissingStub: _i5.Stream<List<_i6.UserModel>>.empty(),
+          )
+          as _i5.Stream<List<_i6.UserModel>>);
+
+  @override
+  _i5.Future<List<_i6.UserModel>> groupHistoryPeople(String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#groupHistoryPeople, [groupId]),
+            returnValue: _i5.Future<List<_i6.UserModel>>.value(
+              <_i6.UserModel>[],
+            ),
+            returnValueForMissingStub: _i5.Future<List<_i6.UserModel>>.value(
+              <_i6.UserModel>[],
+            ),
+          )
+          as _i5.Future<List<_i6.UserModel>>);
+
+  @override
+  _i5.Future<int> countPublishers(String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#countPublishers, [groupId]),
+            returnValue: _i5.Future<int>.value(0),
+            returnValueForMissingStub: _i5.Future<int>.value(0),
+          )
+          as _i5.Future<int>);
+
+  @override
+  _i5.Future<void> publish(String? groupId, _i7.PublishedPosition? position) =>
+      (super.noSuchMethod(
+            Invocation.method(#publish, [groupId, position]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<void> setPublishing(
+    String? groupId,
+    String? email,
+    bool? isPublishing,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#setPublishing, [groupId, email, isPublishing]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<void> heartbeat(String? groupId, String? email) =>
+      (super.noSuchMethod(
+            Invocation.method(#heartbeat, [groupId, email]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<List<String>> publisherGroups(String? email) =>
+      (super.noSuchMethod(
+            Invocation.method(#publisherGroups, [email]),
+            returnValue: _i5.Future<List<String>>.value(<String>[]),
+            returnValueForMissingStub: _i5.Future<List<String>>.value(
+              <String>[],
+            ),
+          )
+          as _i5.Future<List<String>>);
+
+  @override
+  _i5.Future<void> markNotPublishing(String? email) =>
+      (super.noSuchMethod(
+            Invocation.method(#markNotPublishing, [email]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<Set<String>> trailDays(
+    String? groupId,
+    Iterable<String>? emails,
+    _i8.HistoryMonth? month,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#trailDays, [groupId, emails, month]),
+            returnValue: _i5.Future<Set<String>>.value(<String>{}),
+            returnValueForMissingStub: _i5.Future<Set<String>>.value(
+              <String>{},
+            ),
+          )
+          as _i5.Future<Set<String>>);
+
+  @override
+  _i5.Future<_i9.LocationPoint?> getLastKnownPositionForDate(
+    String? groupId,
+    String? email, {
+    required DateTime? day,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #getLastKnownPositionForDate,
+              [groupId, email],
+              {#day: day},
+            ),
+            returnValue: _i5.Future<_i9.LocationPoint?>.value(),
+            returnValueForMissingStub: _i5.Future<_i9.LocationPoint?>.value(),
+          )
+          as _i5.Future<_i9.LocationPoint?>);
+
+  @override
+  _i5.Future<bool> hasPointsOnDate(
+    String? groupId,
+    String? email,
+    DateTime? day,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#hasPointsOnDate, [groupId, email, day]),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
+          )
+          as _i5.Future<bool>);
+
+  @override
+  _i5.Stream<List<_i9.LocationPoint>> getTrajectoryForDate(
+    String? groupId,
+    String? email, {
+    required DateTime? day,
+    int? limit = 100,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #getTrajectoryForDate,
+              [groupId, email],
+              {#day: day, #limit: limit},
+            ),
+            returnValue: _i5.Stream<List<_i9.LocationPoint>>.empty(),
+            returnValueForMissingStub:
+                _i5.Stream<List<_i9.LocationPoint>>.empty(),
+          )
+          as _i5.Stream<List<_i9.LocationPoint>>);
+}
+
+/// A class which mocks [MembershipSource].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockMembershipSource extends _i1.Mock implements _i10.MembershipSource {
+  @override
+  _i5.Stream<Map<String, Object?>?> organizationMembership(
+    String? organizationId,
+    String? email,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#organizationMembership, [organizationId, email]),
+            returnValue: _i5.Stream<Map<String, Object?>?>.empty(),
+            returnValueForMissingStub:
+                _i5.Stream<Map<String, Object?>?>.empty(),
+          )
+          as _i5.Stream<Map<String, Object?>?>);
+
+  @override
+  _i5.Stream<Map<String, Object?>> groupRoles(
+    String? organizationId,
+    String? email,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#groupRoles, [organizationId, email]),
+            returnValue: _i5.Stream<Map<String, Object?>>.empty(),
+            returnValueForMissingStub: _i5.Stream<Map<String, Object?>>.empty(),
+          )
+          as _i5.Stream<Map<String, Object?>>);
+
+  @override
+  _i5.Stream<Map<String, String>> allGroupNames(String? organizationId) =>
+      (super.noSuchMethod(
+            Invocation.method(#allGroupNames, [organizationId]),
+            returnValue: _i5.Stream<Map<String, String>>.empty(),
+            returnValueForMissingStub: _i5.Stream<Map<String, String>>.empty(),
+          )
+          as _i5.Stream<Map<String, String>>);
+
+  @override
+  _i5.Stream<String?> groupName(String? organizationId, String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#groupName, [organizationId, groupId]),
+            returnValue: _i5.Stream<String?>.empty(),
+            returnValueForMissingStub: _i5.Stream<String?>.empty(),
+          )
+          as _i5.Stream<String?>);
 }
 
 /// A class which mocks [TrackingSettingsRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockTrackingSettingsRepository extends _i1.Mock
-    implements _i3.TrackingSettingsRepository {
+    implements _i11.TrackingSettingsRepository {
   @override
-  _i4.Stream<_i5.TrackingSettings> watch() =>
+  _i5.Stream<_i12.TrackingSettings> watch() =>
       (super.noSuchMethod(
             Invocation.method(#watch, []),
-            returnValue: _i4.Stream<_i5.TrackingSettings>.empty(),
-            returnValueForMissingStub: _i4.Stream<_i5.TrackingSettings>.empty(),
+            returnValue: _i5.Stream<_i12.TrackingSettings>.empty(),
+            returnValueForMissingStub:
+                _i5.Stream<_i12.TrackingSettings>.empty(),
           )
-          as _i4.Stream<_i5.TrackingSettings>);
+          as _i5.Stream<_i12.TrackingSettings>);
 
   @override
-  _i4.Future<int> minPeriodMinutes() =>
+  _i5.Future<int> minPeriodMinutes() =>
       (super.noSuchMethod(
             Invocation.method(#minPeriodMinutes, []),
-            returnValue: _i4.Future<int>.value(0),
-            returnValueForMissingStub: _i4.Future<int>.value(0),
+            returnValue: _i5.Future<int>.value(0),
+            returnValueForMissingStub: _i5.Future<int>.value(0),
           )
-          as _i4.Future<int>);
+          as _i5.Future<int>);
 
   @override
-  _i4.Future<void> save(_i5.TrackingSettings? settings) =>
+  _i5.Future<void> save(_i12.TrackingSettings? settings) =>
       (super.noSuchMethod(
             Invocation.method(#save, [settings]),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
           )
-          as _i4.Future<void>);
+          as _i5.Future<void>);
 }
 
 /// A class which mocks [UserGoogleRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockUserGoogleRepository extends _i1.Mock
-    implements _i6.UserGoogleRepository {
+    implements _i13.UserGoogleRepository {
   @override
-  _i4.Future<_i2.UserGoogleModel> saveGoogleProfile(
+  _i5.Future<_i3.UserGoogleModel> saveGoogleProfile(
     String? email,
     String? name,
     String? uid,
@@ -89,8 +320,8 @@ class MockUserGoogleRepository extends _i1.Mock
               [email, name, uid, urlImage],
               {#avatarBase64: avatarBase64},
             ),
-            returnValue: _i4.Future<_i2.UserGoogleModel>.value(
-              _FakeUserGoogleModel_0(
+            returnValue: _i5.Future<_i3.UserGoogleModel>.value(
+              _FakeUserGoogleModel_1(
                 this,
                 Invocation.method(
                   #saveGoogleProfile,
@@ -99,8 +330,8 @@ class MockUserGoogleRepository extends _i1.Mock
                 ),
               ),
             ),
-            returnValueForMissingStub: _i4.Future<_i2.UserGoogleModel>.value(
-              _FakeUserGoogleModel_0(
+            returnValueForMissingStub: _i5.Future<_i3.UserGoogleModel>.value(
+              _FakeUserGoogleModel_1(
                 this,
                 Invocation.method(
                   #saveGoogleProfile,
@@ -110,80 +341,80 @@ class MockUserGoogleRepository extends _i1.Mock
               ),
             ),
           )
-          as _i4.Future<_i2.UserGoogleModel>);
+          as _i5.Future<_i3.UserGoogleModel>);
 
   @override
-  _i4.Future<String> saveUserGoogleModel(_i2.UserGoogleModel? user) =>
+  _i5.Future<String> saveUserGoogleModel(_i3.UserGoogleModel? user) =>
       (super.noSuchMethod(
             Invocation.method(#saveUserGoogleModel, [user]),
-            returnValue: _i4.Future<String>.value(
-              _i7.dummyValue<String>(
+            returnValue: _i5.Future<String>.value(
+              _i14.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
             ),
-            returnValueForMissingStub: _i4.Future<String>.value(
-              _i7.dummyValue<String>(
+            returnValueForMissingStub: _i5.Future<String>.value(
+              _i14.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
             ),
           )
-          as _i4.Future<String>);
+          as _i5.Future<String>);
 
   @override
-  _i4.Future<_i2.UserGoogleModel?> getUserGoogleModel() =>
+  _i5.Future<_i3.UserGoogleModel?> getUserGoogleModel() =>
       (super.noSuchMethod(
             Invocation.method(#getUserGoogleModel, []),
-            returnValue: _i4.Future<_i2.UserGoogleModel?>.value(),
-            returnValueForMissingStub: _i4.Future<_i2.UserGoogleModel?>.value(),
+            returnValue: _i5.Future<_i3.UserGoogleModel?>.value(),
+            returnValueForMissingStub: _i5.Future<_i3.UserGoogleModel?>.value(),
           )
-          as _i4.Future<_i2.UserGoogleModel?>);
+          as _i5.Future<_i3.UserGoogleModel?>);
 
   @override
-  _i4.Future<String> deleteUserGoogleModel() =>
+  _i5.Future<String> deleteUserGoogleModel() =>
       (super.noSuchMethod(
             Invocation.method(#deleteUserGoogleModel, []),
-            returnValue: _i4.Future<String>.value(
-              _i7.dummyValue<String>(
+            returnValue: _i5.Future<String>.value(
+              _i14.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
             ),
-            returnValueForMissingStub: _i4.Future<String>.value(
-              _i7.dummyValue<String>(
+            returnValueForMissingStub: _i5.Future<String>.value(
+              _i14.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
             ),
           )
-          as _i4.Future<String>);
+          as _i5.Future<String>);
 
   @override
-  _i4.Future<String> clearAllUserGoogle() =>
+  _i5.Future<String> clearAllUserGoogle() =>
       (super.noSuchMethod(
             Invocation.method(#clearAllUserGoogle, []),
-            returnValue: _i4.Future<String>.value(
-              _i7.dummyValue<String>(
+            returnValue: _i5.Future<String>.value(
+              _i14.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),
             ),
-            returnValueForMissingStub: _i4.Future<String>.value(
-              _i7.dummyValue<String>(
+            returnValueForMissingStub: _i5.Future<String>.value(
+              _i14.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),
             ),
           )
-          as _i4.Future<String>);
+          as _i5.Future<String>);
 
   @override
-  _i4.Future<bool> hasUserGoogle() =>
+  _i5.Future<bool> hasUserGoogle() =>
       (super.noSuchMethod(
             Invocation.method(#hasUserGoogle, []),
-            returnValue: _i4.Future<bool>.value(false),
-            returnValueForMissingStub: _i4.Future<bool>.value(false),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i5.Future<bool>);
 }

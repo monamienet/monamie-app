@@ -7,7 +7,6 @@ import 'package:monamie_app/data/services/firebase/firebase_app_organization_fir
 import 'organization_binder.dart';
 import 'package:monamie_app/domain/models/organization/organization_binding.dart';
 import 'organization_binding_store.dart';
-import 'shared_preferences_organization_binding_store.dart';
 
 /// Binds, restores and forgets the organization in the current isolate.
 ///
@@ -15,8 +14,7 @@ import 'shared_preferences_organization_binding_store.dart';
 /// the branding and the Firebase project always belong to the same
 /// organization.
 class OrganizationSession implements OrganizationBinder {
-  OrganizationSession({OrganizationBindingStore? store})
-    : _store = store ?? SharedPreferencesOrganizationBindingStore();
+  OrganizationSession({required this._store});
 
   final OrganizationBindingStore _store;
 

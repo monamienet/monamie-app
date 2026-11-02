@@ -15,16 +15,11 @@ export 'user_state.dart';
 /// [dispose] once.
 class UserViewModel extends ChangeNotifier {
   /// [groupMap] says whether the person publishes in some group;
-  /// [repository] reads the profile saved at sign-in (Hive),
-  /// [UserGoogleRepository] by default.
-  UserViewModel({required this._groupMap, UserGoogleRepository? repository})
-    : _injectedRepository = repository;
+  /// [repository] reads the profile saved at sign-in (Hive).
+  UserViewModel({required this._groupMap, required this._repository});
 
   final GroupMapState _groupMap;
-  final UserGoogleRepository? _injectedRepository;
-
-  late final UserGoogleRepository _repository =
-      _injectedRepository ?? UserGoogleRepository();
+  final UserGoogleRepository _repository;
 
   UserState _state = const UserState();
   bool _started = false;

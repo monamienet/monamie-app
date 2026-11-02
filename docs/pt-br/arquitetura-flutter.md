@@ -204,3 +204,18 @@ Só renomeações, sem mudar comportamento.
 ## 7. Decisões tomadas durante a implementação
 
 Registro das escolhas feitas sem parada de revisão (A5, revisão 2).
+
+**Fase 1:**
+- Os arquivos de ViewModel se chamam `*_view_model.dart` (o Compass usa `*_viewmodel.dart`), para seguir o nome da classe em *snake case*.
+- Os `*Backend` foram para `lib/data/repositories/<assunto>/` com o mesmo nome; a fase 3 os divide em Service + Repository.
+- `CallController` não guardava estado e só abria o Meet: virou `CallService` em `lib/data/services/`.
+- `MonamiePage` virou `HomeScreen`, e a pasta `monamie` virou `home` (mapa) e `history` (calendário).
+- `TrackingSettingsController` fica em `lib/data/` com o nome antigo até a fase 4 e leva a marca `// check_layers: state_contract`, para a regra de camadas continuar a valer para ele.
+- Os documentos históricos (`migracao-getx.md`, `migracao-grupos-firestore.md` e as seções 2 e 5 deste plano) mantêm os caminhos antigos, porque descrevem o código de quando foram escritos.
+
+**Fase 2:**
+- `lib/config/dependencies.dart` cria a camada de dados concreta e a entrega por `provider` acima do roteador, como o `providers` do Compass. A `OrganizationSession` e o leitor de aparência são criados antes, porque o `main` os usa antes de o app rodar.
+- O isolate de segundo plano (`foreground_service.dart`) continua sendo a sua própria raiz de composição: não compartilha objetos com a interface.
+- `WidgetsBindingAppLifecycleEvents` é criado um por `PermissionsViewModel`, dentro do `OrganizationScope`: ao trocar de organização, o escopo novo começa a ouvir antes de o antigo parar, e um objeto compartilhado perderia o ouvinte.
+- O padrão `http.Client()` do leitor de aparência e o `FlutterBackgroundService()` do `FlutterBackgroundServiceTrackingStopper` ficam: são a borda com o plugin, que a fase 3 transforma em Services.
+- A regra de camadas que proíbe plugins na UI passa para o fim da fase 3. Hoje três ViewModels ainda usam plugins diretamente (`permission_handler`, `flutter_background_service`, `geolocator`), e os Services que os substituem são da fase 3.

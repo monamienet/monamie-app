@@ -9,9 +9,8 @@ import 'package:monamie_app/ui/history/view_models/history_month.dart';
 /// [dispose] once.
 class CalendarViewModel {
   /// [groupMap] gives the observed group and its history members;
-  /// [positions] reads the trail days, [FirebaseProvider] by default.
-  CalendarViewModel({required this._groupMap, FirebaseProvider? positions})
-    : _positions = positions ?? FirebaseProvider();
+  /// [positions] reads the trail days.
+  CalendarViewModel({required this._groupMap, required this._positions});
 
   final GroupMapState _groupMap;
   final FirebaseProvider _positions;
