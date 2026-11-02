@@ -1,9 +1,9 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 
 import 'appearance_controller.dart';
 
@@ -14,54 +14,70 @@ const _soft = Color(0xFFF1F0F4);
 
 /// *Aparência da organização*: an administrator changes the name, the theme and
 /// the logo. Changes reach the team on their next launch.
-class AppearanceView extends StatelessWidget {
+class AppearanceView extends StatefulWidget {
   const AppearanceView({super.key, required this.controller});
 
   final AppearanceController controller;
 
   @override
+  State<AppearanceView> createState() => _AppearanceViewState();
+}
+
+class _AppearanceViewState extends State<AppearanceView> {
+  AppearanceController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller.load();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final theme = controller.pickedTheme;
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: theme.dark,
-          foregroundColor: theme.onDark,
-          title: const Text('Aparência'),
-          centerTitle: false,
-        ),
-        body: Stack(
-          children: [
-            ListView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-              children: [
-                _header(theme),
-                const SizedBox(height: 22),
-                _identityCard(context, theme),
-                const SizedBox(height: 22),
-                _themes(theme),
-                const SizedBox(height: 22),
-                _note(),
-                const SizedBox(height: 22),
-                if (controller.errorMessage.value.isNotEmpty) _error(),
-                _saveButton(theme),
-              ],
-            ),
-            if (controller.sheet.value != LogoSheet.closed)
-              _LogoSheet(controller: controller, theme: theme),
-          ],
-        ),
-      );
-    });
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final theme = controller.pickedTheme;
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: theme.dark,
+            foregroundColor: theme.onDark,
+            title: const Text('Aparência'),
+            centerTitle: false,
+          ),
+          body: Stack(
+            children: [
+              ListView(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                children: [
+                  _header(theme),
+                  const SizedBox(height: 22),
+                  _identityCard(context, theme),
+                  const SizedBox(height: 22),
+                  _themes(theme),
+                  const SizedBox(height: 22),
+                  _note(),
+                  const SizedBox(height: 22),
+                  if (controller.state.errorMessage.isNotEmpty) _error(),
+                  _saveButton(context, theme),
+                ],
+              ),
+              if (controller.state.sheet != LogoSheet.closed)
+                _LogoSheet(controller: controller, theme: theme),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   OrganizationConfig get _preview => OrganizationConfig(
     id: controller.organization.id,
-    name: controller.name.value,
+    name: controller.state.name,
     theme: controller.pickedTheme,
-    logoVersion: controller.logoPng.value == null ? null : 1,
-    logoPng: controller.logoPng.value,
+    logoVersion: controller.state.logoPng == null ? null : 1,
+    logoPng: controller.state.logoPng,
   );
 
   Widget _header(OrganizationTheme theme) => Row(
@@ -73,7 +89,7 @@ class AppearanceView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              controller.name.value,
+              controller.state.name,
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
@@ -92,7 +108,7 @@ class AppearanceView extends StatelessWidget {
   );
 
   Widget _identityCard(BuildContext context, OrganizationTheme theme) {
-    final hasLogo = controller.logoPng.value != null;
+    final hasLogo = controller.state.logoPng != null;
     final link = TextButton.styleFrom(
       foregroundColor: theme.primary,
       textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
@@ -107,11 +123,11 @@ class AppearanceView extends StatelessWidget {
         children: [
           _row(
             label: 'Nome',
-            value: controller.name.value,
+            value: controller.state.name,
             actions: [
               TextButton(
                 style: link,
-                onPressed: controller.isSaving.value
+                onPressed: controller.state.isSaving
                     ? null
                     : () => _editName(context),
                 child: const Text('Alterar'),
@@ -123,7 +139,7 @@ class AppearanceView extends StatelessWidget {
             label: 'Logo',
             value: !hasLogo
                 ? 'Sem logo · usamos a inicial'
-                : controller.logoPng.value == controller.organization.logoPng
+                : controller.state.logoPng == controller.organization.logoPng
                 ? 'PNG quadrado de 512 px'
                 : 'Novo logo · salve para aplicar',
             hint: hasLogo ? null : 'SVG, PNG, JPEG ou WebP',
@@ -138,14 +154,14 @@ class AppearanceView extends StatelessWidget {
                     ),
                     minimumSize: const Size(44, 44),
                   ),
-                  onPressed: controller.isSaving.value
+                  onPressed: controller.state.isSaving
                       ? null
                       : controller.removeLogo,
                   child: const Text('Remover'),
                 ),
               TextButton(
                 style: link,
-                onPressed: controller.isSaving.value ? null : _pickLogo,
+                onPressed: controller.state.isSaving ? null : _pickLogo,
                 child: Text(hasLogo ? 'Alterar' : 'Adicionar'),
               ),
             ],
@@ -213,7 +229,7 @@ class AppearanceView extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 12),
-      if (controller.isLoadingThemes.value)
+      if (controller.state.isLoadingThemes)
         const Center(child: CircularProgressIndicator())
       else
         GridView.count(
@@ -224,13 +240,13 @@ class AppearanceView extends StatelessWidget {
           crossAxisSpacing: 12,
           childAspectRatio: 1.6,
           children: [
-            for (final theme in controller.themes)
+            for (final theme in controller.state.themes)
               _ThemeSwatch(
                 theme: theme,
                 selected: theme.id == picked.id,
-                onTap: controller.isSaving.value
+                onTap: controller.state.isSaving
                     ? null
-                    : () => controller.themeId.value = theme.id,
+                    : () => controller.pickTheme(theme.id),
               ),
           ],
         ),
@@ -261,7 +277,7 @@ class AppearanceView extends StatelessWidget {
   Widget _error() => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Text(
-      controller.errorMessage.value,
+      controller.state.errorMessage,
       style: const TextStyle(
         color: Color(0xFFB3261E),
         fontWeight: FontWeight.w800,
@@ -269,8 +285,8 @@ class AppearanceView extends StatelessWidget {
     ),
   );
 
-  Widget _saveButton(OrganizationTheme theme) {
-    final saving = controller.isSaving.value;
+  Widget _saveButton(BuildContext context, OrganizationTheme theme) {
+    final saving = controller.state.isSaving;
     return SizedBox(
       height: 56,
       child: FilledButton(
@@ -282,7 +298,9 @@ class AppearanceView extends StatelessWidget {
           ),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
         ),
-        onPressed: saving || !controller.hasChanges ? null : _save,
+        onPressed: saving || !controller.hasChanges
+            ? null
+            : () => _save(context),
         child: saving
             ? Row(
                 mainAxisSize: MainAxisSize.min,
@@ -304,13 +322,17 @@ class AppearanceView extends StatelessWidget {
     );
   }
 
-  Future<void> _save() async {
+  Future<void> _save(BuildContext context) async {
+    // Looked up first: the screen closes before the message shows.
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     if (await controller.save()) {
-      Get.back();
-      Get.snackbar(
-        'Aparência salva',
-        'A equipe vê a nova aparência na próxima vez que abrir o app.',
-        snackPosition: SnackPosition.BOTTOM,
+      navigator.pop();
+      messenger.showSnackBar(
+        noticeSnackBar(
+          'A equipe vê a nova aparência na próxima vez que abrir o app.',
+          title: 'Aparência salva',
+        ),
       );
     }
   }
@@ -325,7 +347,7 @@ class AppearanceView extends StatelessWidget {
   }
 
   Future<void> _editName(BuildContext context) async {
-    final field = TextEditingController(text: controller.name.value);
+    final field = TextEditingController(text: controller.state.name);
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -349,7 +371,7 @@ class AppearanceView extends StatelessWidget {
       ),
     );
     if (name != null && name.trim().length >= 2) {
-      controller.name.value = name.trim();
+      controller.setName(name.trim());
     }
   }
 }
@@ -396,7 +418,7 @@ class _LogoSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = controller.sheet.value;
+    final state = controller.state.sheet;
     final processing = state == LogoSheet.processing;
     final title = switch (state) {
       LogoSheet.error => 'Não deu para usar este arquivo',
@@ -459,7 +481,7 @@ class _LogoSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
-                        controller.sheetError.value,
+                        controller.state.sheetError,
                         style: const TextStyle(
                           color: Color(0xFFB3261E),
                           fontWeight: FontWeight.w800,
@@ -494,7 +516,7 @@ class _LogoSheet extends StatelessWidget {
   List<Widget> _preview() {
     final organization = OrganizationConfig(
       id: controller.organization.id,
-      name: controller.name.value,
+      name: controller.state.name,
       theme: theme,
       logoVersion: 1,
       logoPng: controller.candidate,

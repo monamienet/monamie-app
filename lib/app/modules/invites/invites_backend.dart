@@ -1,30 +1,28 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
 
 import 'invite.dart';
 
+part 'invites_backend.freezed.dart';
+
 /// The outcome of one send.
-class InviteSendResult {
-  const InviteSendResult({
-    required this.groupId,
-    required this.groupName,
-    required this.sent,
-    required this.notEmailed,
-    required this.skipped,
-  });
+@freezed
+abstract class InviteSendResult with _$InviteSendResult {
+  const factory InviteSendResult({
+    /// The group invited to (just created, in first-group mode).
+    required String groupId,
+    required String groupName,
 
-  /// The group invited to (just created, in first-group mode).
-  final String groupId;
-  final String groupName;
+    /// E-mails invited (a pending invite exists for each).
+    required List<String> sent,
 
-  /// E-mails invited (a pending invite exists for each).
-  final List<String> sent;
+    /// Invited, but the e-mail could not be sent: the person still sees the
+    /// invite when they sign in.
+    required List<String> notEmailed,
 
-  /// Invited, but the e-mail could not be sent: the person still sees the
-  /// invite when they sign in.
-  final List<String> notEmailed;
-
-  /// Not invited, with the reason ("Já está no grupo.").
-  final Map<String, String> skipped;
+    /// Not invited, with the reason ("Já está no grupo.").
+    required Map<String, String> skipped,
+  }) = _InviteSendResult;
 }
 
 /// The central invite functions, behind a contract so the screens are

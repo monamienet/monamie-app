@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:monamie_app/app/data/groups/firestore_organization_membership_check.dart';
 import 'package:monamie_app/app/data/groups/organization_membership_check.dart';
 import 'package:monamie_app/app/data/organization/central_organization_directory.dart';
@@ -9,26 +9,31 @@ import 'package:monamie_app/app/data/organization/organization_branding_loader.d
 import 'package:monamie_app/app/data/organization/hive_organization_local_data.dart';
 import 'package:monamie_app/app/data/organization/organization_directory.dart';
 import 'package:monamie_app/app/data/organization/organization_local_data.dart';
+import 'package:monamie_app/app/data/organization/organization_binder.dart';
 import 'package:monamie_app/app/data/organization/organization_session.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/app/data/services/flutter_background_service_tracking_stopper.dart';
-import 'package:monamie_app/app/data/theme/firestore_theme_catalog.dart';
 import 'package:monamie_app/app/modules/account/account_deletion.dart';
 import 'package:monamie_app/app/modules/account/account_deletion_backend.dart';
 import 'package:monamie_app/app/modules/account/firebase_account_deletion_backend.dart';
-import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
-import 'package:monamie_app/app/modules/creation/create_organization_view.dart';
-import 'package:monamie_app/app/modules/creation/firebase_creation_backend.dart';
 import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
+import 'package:monamie_app/app/modules/login/controllers/sign_in_actions.dart';
+import 'package:monamie_app/app/modules/login/controllers/auth_google_state.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_state.dart';
 import 'package:monamie_app/app/modules/login/id_token_expiry.dart';
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
-import 'package:get/get.dart';
-import 'package:monamie_app/app/utils/app_theme.dart';
+import 'package:monamie_app/app/utils/notice_presenter.dart';
+import 'package:monamie_app/app/utils/result.dart';
+import 'package:monamie_app/app/utils/user_notice.dart';
+
+export 'auth_google_state.dart';
+export 'session_flow.dart';
+export 'session_state.dart';
 
 /// Signs the user in and binds their organization.
 ///
@@ -38,19 +43,32 @@ import 'package:monamie_app/app/utils/app_theme.dart';
 /// an organization binds its Firebase project and branding together, signs
 /// in to the organization project and checks there that the person still
 /// has a membership.
-class AuthGoogleController extends GetxController {
+///
+/// [AuthGoogleState.session] (also [session]) says where the flow stands;
+/// the controller never navigates: the router redirects to the session's
+/// screen whenever it changes. The app scope that creates the controller
+/// calls [start] once; [dispose] stops listening to the web sign-in.
+class AuthGoogleController extends ChangeNotifier
+    implements SignInActions, SessionFlow {
+  /// [notices] shows the messages no screen is waiting for: those of the web
+  /// sign-in (a stream), of a sign-out started by a controller (removal from
+  /// the organization, account deletion) and the tracking warning, which
+  /// shows after the screen that started the sign-out is gone.
+  /// [refreshTheme] rebuilds the app's theme from the bound organization (or
+  /// MonAmie's when none).
   AuthGoogleController({
+    required this._notices,
+    required this._refreshTheme,
     AuthGoogleService? authGoogleService,
     UserGoogleRepository? userRepository,
     BackgroundTrackingStopper? trackingStopper,
     OrganizationDirectory? organizationDirectory,
     OrganizationBrandingLoader? brandingLoader,
-    OrganizationSession? organizationSession,
+    OrganizationBinder? organizationSession,
     OrganizationLocalData? organizationLocalData,
     InvitesBackend? invitesBackend,
     AccountDeletionBackend? deletionBackend,
     OrganizationMembershipCheck? membershipCheck,
-    void Function()? refreshTheme,
   }) : _membershipCheck =
            membershipCheck ?? const FirestoreOrganizationMembershipCheck(),
        _invitesBackend = invitesBackend ?? const FirebaseInvitesBackend(),
@@ -63,48 +81,26 @@ class AuthGoogleController extends GetxController {
        _injectedTrackingStopper = trackingStopper,
        _injectedOrganizationDirectory = organizationDirectory,
        _brandingLoader = brandingLoader ?? OrganizationBrandingLoader(),
-       _injectedOrganizationSession = organizationSession,
-       _refreshTheme =
-           refreshTheme ?? (() => Get.changeTheme(AppTheme.lightTheme));
+       _injectedOrganizationSession = organizationSession;
 
+  final NoticePresenter _notices;
   final AuthGoogleService? _injectedAuthGoogle;
   final UserGoogleRepository? _injectedUserRepository;
   final BackgroundTrackingStopper? _injectedTrackingStopper;
   final OrganizationDirectory? _injectedOrganizationDirectory;
   final OrganizationBrandingLoader _brandingLoader;
-  final OrganizationSession? _injectedOrganizationSession;
+  final OrganizationBinder? _injectedOrganizationSession;
   final OrganizationLocalData _organizationLocalData;
   final InvitesBackend _invitesBackend;
   final AccountDeletionBackend _deletionBackend;
   final OrganizationMembershipCheck _membershipCheck;
-
-  /// The signed-in account's pending deletion, shown on *Em exclusão*.
-  final Rxn<AccountDeletion> accountDeletion = Rxn<AccountDeletion>();
-  final RxBool cancellingDeletion = false.obs;
-
-  /// The deletion was cancelled: *Em exclusão* says everything is back.
-  final RxBool deletionRestored = false.obs;
-  final RxString deletionError = ''.obs;
-
-  /// Invites waiting for the signed-in account, shown on *Sem organização*
-  /// and *Escolher organização*.
-  final RxList<Invite> pendingInvites = <Invite>[].obs;
-
-  /// The invite being accepted (its button shows the pending state).
-  final RxnString acceptingInvite = RxnString();
-
-  /// Error of the last accept, shown on the invite card.
-  final RxString inviteError = ''.obs;
-
-  /// The invite just accepted: *Boas-vindas* is shown once, after entering.
-  final Rxn<Invite> welcome = Rxn<Invite>();
 
   /// Rebuilds the theme from the bound organization (or MonAmie when none).
   final void Function() _refreshTheme;
 
   late final OrganizationDirectory _organizationDirectory =
       _injectedOrganizationDirectory ?? CentralOrganizationDirectory();
-  late final OrganizationSession _organizationSession =
+  late final OrganizationBinder _organizationSession =
       _injectedOrganizationSession ?? OrganizationSession();
 
   late final AuthGoogleService _authGoogle =
@@ -114,76 +110,94 @@ class AuthGoogleController extends GetxController {
   late final BackgroundTrackingStopper _trackingStopper =
       _injectedTrackingStopper ?? FlutterBackgroundServiceTrackingStopper();
   StreamSubscription? _webSignInSub;
+  bool _started = false;
+  bool _disposed = false;
 
-  // indica se o GoogleSignIn já terminou de inicializar
-  final RxBool googleReady = false.obs;
+  AuthGoogleState _state = const AuthGoogleState();
 
-  // indica se uma operação de login está em andamento
-  final RxBool isLoading = false.obs;
+  /// What the entry screens show; replaced whole, never changed in place.
+  @override
+  AuthGoogleState get state => _state;
 
-  /// The login button was tapped and the sign-in has not finished: Google's
-  /// account chooser may be open. Guards against a second tap without showing
-  /// [isLoading]'s "Procurando sua organização…", which only makes sense once an
-  /// account is chosen.
-  final RxBool isChoosingAccount = false.obs;
+  final ValueNotifier<SessionState> _session = ValueNotifier(
+    const SessionState.signedOut(),
+  );
 
-  // indica se o logout (parada do rastreamento + saída) está em andamento
-  final RxBool isLoggingOut = false.obs;
+  @override
+  ValueListenable<SessionState> get session => _session;
 
-  /// The busy operation is a change of organization, not a sign-out: both set
-  /// [isLoggingOut] (the lock and the overlay), and this decides the overlay's
-  /// message.
-  final RxBool isSwitchingOrganization = false.obs;
+  /// Replaces the state, notifying only when it differs; [session] follows
+  /// its `session` (and notifies only when that changes).
+  void _emit(AuthGoogleState next) {
+    final changed = next != _state;
+    _state = next;
+    if (_disposed) return;
+    if (changed) notifyListeners();
+    _session.value = next.session;
+  }
 
-  /// Name of the organization being entered, for the "Entrando em ..." message.
-  final RxnString enteringOrganizationName = RxnString();
-
-  /// Organizations offered by the picker when the user belongs to several.
-  final RxList<OrganizationBinding> organizationChoices =
-      <OrganizationBinding>[].obs;
+  /// Sets where the flow stands; the router takes the person there.
+  void _moveTo(SessionState session) =>
+      _emit(_state.copyWith(session: session));
 
   /// Google ID token of this sign-in, kept to enter an organization after the
   /// picker or after "verificar de novo" on *Sem organização*.
   String? _pendingIdToken;
 
-  /// E-mail of the Google account signed in to MonAmie (central project),
-  /// shown on MonAmie's own screens with "Trocar".
-  final RxnString signedInEmail = RxnString();
-
-  /// Why the user is on *Sem organização* after trying to enter an
-  /// organization (no membership there any more); `null` otherwise.
-  final RxnString noAccessReason = RxnString();
-
-  @override
-  void onInit() {
-    super.onInit();
+  /// Listens to the web sign-in and initializes Google Sign-In; runs once,
+  /// called by whoever creates the controller.
+  void start() {
+    if (_started) return;
+    _started = true;
     _webSignInSub = _authGoogle.onWebSignIn.listen(_onWebGoogleSignIn);
 
     _authGoogle
         .ensureInitialized()
         .then((_) {
-          googleReady.value = true;
+          _emit(_state.copyWith(googleReady: true));
         })
         .catchError((_) {
-          googleReady.value = true;
+          _emit(_state.copyWith(googleReady: true));
         });
+  }
+
+  /// The invite just accepted was welcomed (*Boas-vindas* closed): the
+  /// person goes on to the map.
+  @override
+  void finishWelcome() {
+    _emit(_state.copyWith(welcome: null, session: const SessionState.bound()));
+  }
+
+  /// A session remembered from a previous run was restored by *Login*:
+  /// the person goes straight to the map.
+  @override
+  void sessionRestored() {
+    _emit(_state.copyWith(session: const SessionState.bound()));
   }
 
   Future<void> _onWebGoogleSignIn(String? idToken) async {
     if (idToken == null) {
-      _showLoginError(
-        "Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.",
+      _notices.show(
+        const UserNotice(
+          "Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.",
+          title: _loginErrorTitle,
+        ),
       );
       return;
     }
-    if (isLoading.value) return;
-    isLoading.value = true;
+    if (_state.isLoading) return;
+    _emit(_state.copyWith(isLoading: true));
     try {
       await _continueWithOrganizations(idToken, alwaysPick: true);
     } catch (e) {
-      _showLoginError("Ocorreu um erro ao carregar seus dados: $e");
+      _notices.show(
+        UserNotice(
+          "Ocorreu um erro ao carregar seus dados: $e",
+          title: _loginErrorTitle,
+        ),
+      );
     } finally {
-      isLoading.value = false;
+      _emit(_state.copyWith(isLoading: false));
     }
   }
 
@@ -204,52 +218,53 @@ class AuthGoogleController extends GetxController {
     String? enter,
   }) async {
     _pendingIdToken = idToken;
-    signedInEmail.value = await _authGoogle.centralEmail();
-    if (!deletionRestored.value) {
+    final email = await _authGoogle.centralEmail();
+    _emit(_state.copyWith(signedInEmail: email));
+    if (!_state.deletionRestored) {
       final deletion = await _pendingDeletion();
       if (deletion != null) {
-        accountDeletion.value = deletion;
-        Get.offAllNamed(Routes.DELETION_PENDING);
+        _emit(_state.copyWith(accountDeletion: deletion));
+        _moveTo(const SessionState.deletionPending());
         return;
       }
     }
-    deletionRestored.value = false;
-    accountDeletion.value = null;
+    _emit(_state.copyWith(deletionRestored: false, accountDeletion: null));
     final candidates = await _organizationDirectory
         .organizationsOfSignedInUser();
     if (candidates.isEmpty) {
       await _loadInvites();
-      Get.offAllNamed(Routes.NO_ORGANIZATION);
+      _moveTo(const SessionState.noOrganization());
       return;
     }
     final bindings = await Future.wait(candidates.map(_brandingLoader.load));
     final target =
-        bindings.firstWhereOrNull((b) => b.organization.id == enter) ??
+        bindings.where((b) => b.organization.id == enter).firstOrNull ??
         (bindings.length == 1 && !alwaysPick ? bindings.single : null);
     if (target != null) {
       await _enterOrganization(target, idToken);
       return;
     }
     await _loadInvites();
-    organizationChoices.assignAll(bindings);
-    Get.toNamed(Routes.ORGANIZATION_PICKER);
+    _moveTo(SessionState.picking(bindings));
   }
 
-  /// Whether the signed-in user owns each organization read so far (by id),
-  /// as [loadOwnership] last read it; cleared on sign-out. The owner-only
-  /// menu entries (*Administradores*) follow it.
-  final RxMap<String, bool> ownership = <String, bool>{}.obs;
   bool _readingOwnership = false;
 
   /// Reads once whether the signed-in user owns [organizationId] into
-  /// [ownership]. A failure leaves it unknown, so owner-only entries stay
+  /// [AuthGoogleState.ownership]. A failure leaves it unknown, so owner-only entries stay
   /// hidden (the server refuses anyone else anyway) and the next call
   /// retries.
+  @override
   Future<void> loadOwnership(String organizationId) async {
-    if (_readingOwnership || ownership.containsKey(organizationId)) return;
+    if (_readingOwnership || _state.ownership.containsKey(organizationId)) {
+      return;
+    }
     _readingOwnership = true;
     try {
-      ownership[organizationId] = await ownsOrganization(organizationId);
+      final owns = await ownsOrganization(organizationId);
+      _emit(
+        _state.copyWith(ownership: {..._state.ownership, organizationId: owns}),
+      );
     } catch (e) {
       debugPrint('[Account] Could not read the ownership: $e');
     } finally {
@@ -282,7 +297,7 @@ class AuthGoogleController extends GetxController {
     // Registry entries made before in-app creation have no name: the bound
     // organization's display name stands in.
     final organization = Organization.current;
-    accountDeletion.value =
+    final shown =
         organization != null &&
             deletion.ownedOrganizationIds.contains(organization.id) &&
             !deletion.ownedOrganizationNames.containsKey(organization.id)
@@ -295,39 +310,52 @@ class AuthGoogleController extends GetxController {
             },
           )
         : deletion;
-    deletionRestored.value = false;
-    deletionError.value = '';
-    await _signOut(destination: Routes.DELETION_PENDING);
+    _emit(
+      _state.copyWith(
+        accountDeletion: shown,
+        deletionRestored: false,
+        deletionError: '',
+      ),
+    );
+    _showFailure(
+      await _signOut(destination: const SessionState.deletionPending()),
+    );
   }
 
   /// "Cancelar exclusão": signs in again if needed (the deletion signed the
   /// account out), then cancels it.
+  @override
   Future<void> cancelAccountDeletion() async {
-    if (cancellingDeletion.value || isLoading.value) return;
-    cancellingDeletion.value = true;
-    deletionError.value = '';
+    if (_state.cancellingDeletion || _state.isLoading) return;
+    _emit(_state.copyWith(cancellingDeletion: true, deletionError: ''));
     try {
       _pendingIdToken ??= await _authGoogle.signInGoogle();
       if (_pendingIdToken == null) return;
       await _deletionBackend.cancel();
-      deletionRestored.value = true;
+      _emit(_state.copyWith(deletionRestored: true));
     } on AccountDeletionException catch (e) {
-      deletionError.value = e.message;
+      _emit(_state.copyWith(deletionError: e.message));
     } catch (e) {
       debugPrint('[Account] Cancel failed: $e');
-      deletionError.value =
-          'Não foi possível cancelar agora. Verifique a conexão e tente de novo.';
+      _emit(
+        _state.copyWith(
+          deletionError:
+              'Não foi possível cancelar agora. Verifique a conexão e tente '
+              'de novo.',
+        ),
+      );
     } finally {
-      cancellingDeletion.value = false;
+      _emit(_state.copyWith(cancellingDeletion: false));
     }
   }
 
   Future<void> _loadInvites() async {
     try {
-      pendingInvites.assignAll(await _invitesBackend.mine());
+      final invites = await _invitesBackend.mine();
+      _emit(_state.copyWith(pendingInvites: invites));
     } catch (e) {
       debugPrint('[Invites] Could not read the invites: $e');
-      pendingInvites.clear();
+      _emit(_state.copyWith(pendingInvites: const []));
     }
   }
 
@@ -346,77 +374,65 @@ class AuthGoogleController extends GetxController {
     );
   }
 
-  /// "A <nome> está pronta · Entrar": enters the organization just created.
-  Future<void> enterCreatedOrganization(String organizationId) async {
-    if (isLoading.value) return;
-    isLoading.value = true;
+  /// "A `<nome>` está pronta · Entrar": enters the organization just created.
+  /// [Err] says why it could not; [Ok] also while another entry runs.
+  Future<Result<void>> enterCreatedOrganization(String organizationId) async {
+    if (_state.isLoading) return const Ok(null);
+    _emit(_state.copyWith(isLoading: true));
     try {
       await _enterNew(organizationId);
-    } catch (e) {
-      _showLoginError("Não foi possível entrar agora: $e");
+      return const Ok(null);
+    } catch (e, stackTrace) {
+      return _loginError("Não foi possível entrar agora: $e", e, stackTrace);
     } finally {
-      isLoading.value = false;
+      _emit(_state.copyWith(isLoading: false));
     }
   }
 
   /// "Aceitar e entrar": joins the invite's group, then enters its
   /// organization and shows *Boas-vindas*.
+  @override
   Future<void> acceptInvite(Invite invite) async {
-    if (acceptingInvite.value != null || isLoading.value) return;
-    acceptingInvite.value = invite.id;
-    inviteError.value = '';
+    if (_state.acceptingInvite != null || _state.isLoading) return;
+    _emit(_state.copyWith(acceptingInvite: invite.id, inviteError: ''));
     try {
       await _invitesBackend.accept(invite);
-      welcome.value = invite;
+      _emit(_state.copyWith(welcome: invite));
       await _enterNew(invite.organizationId);
     } on InvitesException catch (e) {
-      inviteError.value = e.message;
+      _emit(_state.copyWith(inviteError: e.message));
     } catch (e) {
       debugPrint('[Invites] Accept failed: $e');
-      inviteError.value =
-          'Não foi possível aceitar agora. Verifique a conexão e tente de novo.';
+      _emit(
+        _state.copyWith(
+          inviteError:
+              'Não foi possível aceitar agora. Verifique a conexão e tente '
+              'de novo.',
+        ),
+      );
     } finally {
-      acceptingInvite.value = null;
+      _emit(_state.copyWith(acceptingInvite: null));
     }
   }
 
   /// "Já me convidaram · verificar de novo": asks again which organizations the
-  /// user belongs to, reusing this sign-in when there is one.
-  Future<void> recheckOrganizations() async {
-    if (isLoading.value) return;
-    isLoading.value = true;
-    noAccessReason.value = null;
+  /// user belongs to, reusing this sign-in when there is one. [Err] says why
+  /// it could not; [Ok] also while another operation runs.
+  @override
+  Future<Result<void>> recheckOrganizations() async {
+    if (_state.isLoading) return const Ok(null);
+    _emit(_state.copyWith(isLoading: true, noAccessReason: null));
     try {
       final idToken = _pendingIdToken ?? await _authGoogle.signInGoogle();
       if (idToken != null) {
         await _continueWithOrganizations(idToken, alwaysPick: true);
       }
-    } catch (e) {
-      _showLoginError("Não foi possível verificar agora: $e");
+      return const Ok(null);
+    } catch (e, stackTrace) {
+      return _loginError("Não foi possível verificar agora: $e", e, stackTrace);
     } finally {
-      isLoading.value = false;
+      _emit(_state.copyWith(isLoading: false));
     }
-  }
-
-  /// "Criar minha organização": the creation flow; a Community organization
-  /// is entered as soon as it is ready.
-  void startCreatingOrganization() {
-    // Registered with GetX so its lifecycle runs (onInit loads the themes);
-    // a fresh one each time the flow opens.
-    Get.delete<CreateOrganizationController>(force: true);
-    final controller = Get.put(
-      CreateOrganizationController(
-        backend: const FirebaseCreationBackend(),
-        themes: const FirestoreThemeCatalog(),
-      ),
-    );
-    Get.to(
-      () => CreateOrganizationView(
-        controller: controller,
-        ownerEmail: signedInEmail.value ?? '',
-        onReady: () => enterCreatedOrganization(controller.id.value),
-      ),
-    );
   }
 
   /// "Trocar de organização": leaves the bound organization and opens the
@@ -426,8 +442,10 @@ class AuthGoogleController extends GetxController {
   /// leaves them where they are instead of unbound. Then the tracking stops
   /// (the service outlives the screen), the organization is forgotten and the
   /// picker, or *Sem organização* when nothing is left, replaces the stack.
-  Future<void> switchOrganization() async {
-    if (isLoggingOut.value || isLoading.value) return;
+  /// [Err] says why nothing changed; [Ok] also while another operation runs.
+  @override
+  Future<Result<void>> switchOrganization() async {
+    if (_state.isLoggingOut || _state.isLoading) return const Ok(null);
     // The token kept since sign-in is used while it is good; only then does
     // Google need to be asked again (which may show its account chooser).
     final kept = _pendingIdToken;
@@ -436,18 +454,13 @@ class AuthGoogleController extends GetxController {
         : await _authGoogle.refreshGoogleIdToken();
     if (idToken == null) {
       // Nothing was changed: the person stays where they are.
-      Get.snackbar(
-        'Trocar de organização',
+      return const Err(
         'Não foi possível renovar o acesso com o Google. Tente de novo.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange.shade100,
-        duration: const Duration(seconds: 5),
+        title: _switchTitle,
       );
-      return;
     }
 
-    isLoggingOut.value = true;
-    isSwitchingOrganization.value = true;
+    _emit(_state.copyWith(isLoggingOut: true, isSwitchingOrganization: true));
     try {
       final candidates = await _organizationDirectory
           .organizationsOfSignedInUser();
@@ -463,56 +476,63 @@ class AuthGoogleController extends GetxController {
 
       await _loadInvites();
       if (bindings.isEmpty) {
-        Get.offAllNamed(Routes.NO_ORGANIZATION);
-        return;
+        _moveTo(const SessionState.noOrganization());
+        return const Ok(null);
       }
-      organizationChoices.assignAll(bindings);
-      Get.offAllNamed(Routes.ORGANIZATION_PICKER);
-    } catch (e) {
+      _moveTo(SessionState.picking(bindings));
+      return const Ok(null);
+    } catch (e, stackTrace) {
       debugPrint('Erro ao trocar de organização: $e');
-      Get.snackbar(
-        'Trocar de organização',
+      return Err(
         'Não foi possível trocar agora. Verifique a conexão e tente de novo.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange.shade100,
-        duration: const Duration(seconds: 5),
+        title: _switchTitle,
+        error: e,
+        stackTrace: stackTrace,
       );
     } finally {
-      isLoggingOut.value = false;
-      isSwitchingOrganization.value = false;
+      _emit(
+        _state.copyWith(isLoggingOut: false, isSwitchingOrganization: false),
+      );
     }
   }
 
   /// Stops the background tracking and warns when it could not be confirmed.
   /// It must run while the organization is still signed in: after that the rules
   /// refuse the write of `isPublishing = false`.
+  ///
+  /// The warning goes through [_notices]: the operation goes on, and the
+  /// screen that started it is usually replaced by then.
   Future<void> _stopTracking() async {
     final stopped = await _trackingStopper.stop(email: await _currentEmail());
     if (!stopped) {
-      Get.snackbar(
-        "Rastreamento",
-        "Não foi possível confirmar o encerramento do rastreamento. "
-            "Ele será encerrado automaticamente em instantes.",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange.shade100,
-        duration: const Duration(seconds: 5),
+      _notices.show(
+        const UserNotice(
+          "Não foi possível confirmar o encerramento do rastreamento. "
+          "Ele será encerrado automaticamente em instantes.",
+          title: "Rastreamento",
+        ),
       );
     }
   }
 
   /// Enters the organization the user picked in the organization picker.
-  Future<void> chooseOrganization(OrganizationBinding binding) async {
+  /// [Err] says why it could not; [Ok] also when there is nothing to do.
+  @override
+  Future<Result<void>> chooseOrganization(OrganizationBinding binding) async {
     final idToken = _pendingIdToken;
-    if (idToken == null || isLoading.value) return;
-    isLoading.value = true;
+    if (idToken == null || _state.isLoading) return const Ok(null);
+    _emit(_state.copyWith(isLoading: true));
     try {
       await _enterOrganization(binding, idToken);
-    } catch (e) {
-      _showLoginError(
+      return const Ok(null);
+    } catch (e, stackTrace) {
+      return _loginError(
         "Não foi possível entrar em ${binding.organization.name}: $e",
+        e,
+        stackTrace,
       );
     } finally {
-      isLoading.value = false;
+      _emit(_state.copyWith(isLoading: false));
     }
   }
 
@@ -524,7 +544,9 @@ class AuthGoogleController extends GetxController {
       await _organizationSession.bind(binding);
       // The screen stays in MonAmie's colors until the user is known to
       // belong to the organization: a removed user never sees its brand (#78).
-      enteringOrganizationName.value = binding.organization.name;
+      _emit(
+        _state.copyWith(enteringOrganizationName: binding.organization.name),
+      );
       await _authGoogle.signInToOrganization(idToken);
 
       // The person's membership first: the rules only let the
@@ -537,9 +559,14 @@ class AuthGoogleController extends GetxController {
         // organization.
         await _authGoogle.signOutOfOrganization();
         await _organizationSession.forget();
-        noAccessReason.value =
-            'Sua conta não tem mais acesso à ${binding.organization.name}.';
-        Get.offAllNamed(Routes.NO_ORGANIZATION);
+        _emit(
+          _state.copyWith(
+            noAccessReason:
+                'Sua conta não tem mais acesso à '
+                '${binding.organization.name}.',
+          ),
+        );
+        _moveTo(const SessionState.noOrganization());
         return;
       }
       _refreshTheme();
@@ -554,14 +581,14 @@ class AuthGoogleController extends GetxController {
 
       // The token stays (in memory, until sign-out) so that switching
       // organization does not need Google again while it is still good.
-      organizationChoices.clear();
+      // Leaving the picker drops its choices (they live in the session).
       // Right after accepting an invite to this organization: welcome first.
-      final invite = welcome.value;
+      final invite = _state.welcome;
       if (invite != null && invite.organizationId == binding.organization.id) {
-        Get.offAllNamed(Routes.WELCOME);
+        _moveTo(const SessionState.welcome());
       } else {
-        welcome.value = null;
-        Get.offAllNamed(Routes.MONAMIE);
+        _emit(_state.copyWith(welcome: null));
+        _moveTo(const SessionState.bound());
       }
     } catch (_) {
       // Never stay bound to an organization the user could not enter.
@@ -569,62 +596,83 @@ class AuthGoogleController extends GetxController {
       _refreshTheme();
       rethrow;
     } finally {
-      enteringOrganizationName.value = null;
+      _emit(_state.copyWith(enteringOrganizationName: null));
     }
   }
 
-  void _showLoginError(String message) {
-    Get.snackbar(
-      "Erro de Login",
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.shade100,
-      duration: const Duration(seconds: 5),
-    );
-  }
+  static const _loginErrorTitle = "Erro de Login";
+  static const _switchTitle = 'Trocar de organização';
 
-  void loginGoogle() async {
-    if (isLoading.value || isChoosingAccount.value) return;
-    isChoosingAccount.value = true;
+  Err<void> _loginError(String message, Object error, StackTrace stackTrace) =>
+      Err(
+        message,
+        title: _loginErrorTitle,
+        error: error,
+        stackTrace: stackTrace,
+      );
+
+  /// "Entrar com o Google". [Err] says why the sign-in failed; [Ok] also
+  /// while another sign-in runs.
+  @override
+  Future<Result<void>> loginGoogle() async {
+    if (_state.isLoading || _state.isChoosingAccount) return const Ok(null);
+    _emit(_state.copyWith(isChoosingAccount: true));
     try {
       // The spinner waits for an account: while Google's chooser is open there
       // is no organization to look for yet.
       final idToken = await _authGoogle.signInGoogle(
-        onAccountChosen: () => isLoading.value = true,
+        onAccountChosen: () => _emit(_state.copyWith(isLoading: true)),
       );
       // Na web o login retorna null propositalmente (o resultado chega via
       // stream), portanto não exibimos erro quando idToken é null.
       if (idToken != null) {
         await _continueWithOrganizations(idToken, alwaysPick: true);
       }
-    } catch (e) {
-      _showLoginError("Ocorreu um erro inesperado: $e");
+      return const Ok(null);
+    } catch (e, stackTrace) {
+      return _loginError("Ocorreu um erro inesperado: $e", e, stackTrace);
     } finally {
-      isLoading.value = false;
-      isChoosingAccount.value = false;
+      _emit(_state.copyWith(isLoading: false, isChoosingAccount: false));
     }
   }
 
-  Future<void> logout() => _signOut();
+  /// "Sair". [Ok] holds whether the sign-out finished (`false` while another
+  /// one runs); [Err] says why it failed.
+  @override
+  Future<Result<bool>> logout() => _signOut();
 
   /// Forgets the organization after the user's membership was removed:
   /// the same steps as [logout], then *Sem organização* saying why.
   Future<void> forgetRemovedOrganization() async {
     final name = Organization.current?.name;
-    noAccessReason.value = name == null
-        ? 'Você não faz mais parte desta organização.'
-        : 'Você não faz mais parte da $name.';
-    await _signOut(destination: Routes.NO_ORGANIZATION);
+    _emit(
+      _state.copyWith(
+        noAccessReason: name == null
+            ? 'Você não faz mais parte desta organização.'
+            : 'Você não faz mais parte da $name.',
+      ),
+    );
+    _showFailure(
+      await _signOut(destination: const SessionState.noOrganization()),
+    );
   }
 
-  /// Returns whether the sign-out finished.
-  Future<bool> _signOut({
-    String? reason,
-    String destination = Routes.LOGIN,
-  }) async {
-    if (isLoggingOut.value) return false;
+  /// Shows [result]'s message through [_notices] when it failed: for the
+  /// sign-outs no screen waits for.
+  void _showFailure(Result<Object?> result) {
+    if (result case Err(:final message, :final title)) {
+      _notices.show(UserNotice(message, title: title));
+    }
+  }
 
-    isLoggingOut.value = true;
+  /// [Ok] holds whether the sign-out finished (`false` while another one
+  /// runs); [Err] says why it failed.
+  Future<Result<bool>> _signOut({
+    SessionState destination = const SessionState.signedOut(),
+  }) async {
+    if (_state.isLoggingOut) return const Ok(false);
+
+    _emit(_state.copyWith(isLoggingOut: true));
     try {
       // O rastreamento precisa parar ANTES do signOut: o serviço sobrevive ao
       // fechamento da tela, e depois do logout as regras do Firestore recusam
@@ -637,31 +685,19 @@ class AuthGoogleController extends GetxController {
       await _organizationLocalData.clear();
       _refreshTheme();
       _pendingIdToken = null;
-      signedInEmail.value = null;
-      ownership.clear();
-      Get.offAllNamed(destination);
-      if (reason != null) {
-        Get.snackbar(
-          "Acesso encerrado",
-          reason,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange.shade100,
-          duration: const Duration(seconds: 6),
-        );
-      }
-      return true;
-    } catch (e) {
+      _emit(_state.copyWith(signedInEmail: null, ownership: const {}));
+      _moveTo(destination);
+      return const Ok(true);
+    } catch (e, stackTrace) {
       debugPrint("Erro ao sair: $e");
-      Get.snackbar(
-        "Erro ao sair",
+      return Err(
         "Não foi possível encerrar a sessão. Tente novamente.\nErro: $e",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.shade100,
-        duration: const Duration(seconds: 5),
+        title: "Erro ao sair",
+        error: e,
+        stackTrace: stackTrace,
       );
-      return false;
     } finally {
-      isLoggingOut.value = false;
+      _emit(_state.copyWith(isLoggingOut: false));
     }
   }
 
@@ -678,9 +714,13 @@ class AuthGoogleController extends GetxController {
   }
 
   @override
-  void onClose() {
-    _webSignInSub?.cancel();
-    _authGoogle.dispose();
-    super.onClose();
+  void dispose() {
+    _disposed = true;
+    _session.dispose();
+    if (_started) {
+      _webSignInSub?.cancel();
+      _authGoogle.dispose();
+    }
+    super.dispose();
   }
 }

@@ -1,11 +1,20 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'account_deletion.freezed.dart';
+
 /// A scheduled deletion of the signed-in account: in its 30 days the person
 /// can cancel; then the account (and the organizations they own) is erased.
-class AccountDeletion {
-  const AccountDeletion({
-    required this.deleteAt,
-    this.ownedOrganizationIds = const [],
-    this.ownedOrganizationNames = const {},
-  });
+@freezed
+abstract class AccountDeletion with _$AccountDeletion {
+  const factory AccountDeletion({
+    required DateTime deleteAt,
+
+    /// Ids of the organizations deleted with the account.
+    @Default([]) List<String> ownedOrganizationIds,
+    @Default({}) Map<String, String> ownedOrganizationNames,
+  }) = _AccountDeletion;
+
+  const AccountDeletion._();
 
   /// Reads `{deleteAt: ISO string, ownedOrganizationIds: [id], ownedOrganizationNames: {id:
   /// name}}`; `null` when [json] is not a deletion.
@@ -29,13 +38,6 @@ class AccountDeletion {
       },
     );
   }
-
-  final DateTime deleteAt;
-
-  /// Ids of the organizations deleted with the account.
-  final List<String> ownedOrganizationIds;
-
-  final Map<String, String> ownedOrganizationNames;
 
   /// The organization deleted with the account, as shown in the titles; the
   /// first one when there are several, `null` for a plain member.

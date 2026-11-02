@@ -1,14 +1,16 @@
 import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
 
-import 'administrators.dart';
 import 'administrators_backend.dart';
+import 'administrators_state.dart';
+
+export 'administrators_state.dart';
 
 /// State of *Administradores*, the owner's screen: who administers the
 /// organization, appointing a member and turning an administrator back
-/// into a member. One change at a time: [workingEmail] guards reentrancy
-/// and marks the row in flight; it always resets in `finally`.
-class AdministratorsController extends GetxController {
+/// into a member. One change at a time: [AdministratorsState.workingEmail]
+/// guards reentrancy and marks the row in flight; it always resets in
+/// `finally`. The screen calls [load] when it opens.
+class AdministratorsController extends ChangeNotifier {
   AdministratorsController({
     required this.organizationId,
     required this.backend,
@@ -19,56 +21,71 @@ class AdministratorsController extends GetxController {
   /// The central functions (a fake in tests).
   final AdministratorsBackend backend;
 
-  final Rx<OrganizationAdministrators> people =
-      const OrganizationAdministrators().obs;
-  final RxBool isLoading = false.obs;
+  AdministratorsState _state = const AdministratorsState();
+  bool _disposed = false;
 
-  /// The e-mail whose role is being changed, or `null`.
-  final RxnString workingEmail = RxnString();
-  final RxString errorMessage = ''.obs;
+  /// What the screen shows; replaced whole, never changed in place.
+  AdministratorsState get state => _state;
+
+  /// Replaces the state, notifying only when it differs.
+  void _emit(AdministratorsState next) {
+    final changed = next != _state;
+    _state = next;
+    if (changed && !_disposed) notifyListeners();
+  }
 
   @override
-  void onInit() {
-    super.onInit();
-    load();
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   Future<void> load() async {
-    if (isLoading.value) return;
-    isLoading.value = true;
-    errorMessage.value = '';
+    if (_state.isLoading) return;
+    _emit(_state.copyWith(isLoading: true, errorMessage: ''));
     try {
-      people.value = await backend.list(organizationId);
+      final people = await backend.list(organizationId);
+      _emit(_state.copyWith(people: people));
     } on AdministratorsException catch (e) {
-      errorMessage.value = e.message;
+      _emit(_state.copyWith(errorMessage: e.message));
     } catch (e) {
       debugPrint('[Administrators] Could not load: $e');
-      errorMessage.value = 'Não foi possível carregar os administradores.';
+      _emit(
+        _state.copyWith(
+          errorMessage: 'Não foi possível carregar os administradores.',
+        ),
+      );
     } finally {
-      isLoading.value = false;
+      _emit(_state.copyWith(isLoading: false));
     }
   }
 
   /// Makes [email] an administrator ([admin] true) or a member again;
-  /// returns whether it changed (the message is in [errorMessage] when not).
+  /// returns whether it changed (the message is in
+  /// [AdministratorsState.errorMessage] when not).
   Future<bool> setAdministrator(String email, {required bool admin}) async {
-    if (workingEmail.value != null || isLoading.value) return false;
-    workingEmail.value = email;
-    errorMessage.value = '';
+    if (_state.workingEmail != null || _state.isLoading) return false;
+    _emit(_state.copyWith(workingEmail: email, errorMessage: ''));
     try {
       await backend.setAdministrator(organizationId, email, admin: admin);
-      people.value = await backend.list(organizationId);
+      final people = await backend.list(organizationId);
+      _emit(_state.copyWith(people: people));
       return true;
     } on AdministratorsException catch (e) {
-      errorMessage.value = e.message;
+      _emit(_state.copyWith(errorMessage: e.message));
       return false;
     } catch (e) {
       debugPrint('[Administrators] Change failed: $e');
-      errorMessage.value =
-          'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
+      _emit(
+        _state.copyWith(
+          errorMessage:
+              'Não foi possível concluir agora. Verifique a conexão e tente '
+              'de novo.',
+        ),
+      );
       return false;
     } finally {
-      workingEmail.value = null;
+      _emit(_state.copyWith(workingEmail: null));
     }
   }
 }

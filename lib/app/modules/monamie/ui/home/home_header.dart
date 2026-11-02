@@ -1,13 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
+import 'package:monamie_app/app/modules/monamie/history/history_calendar_sheet.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_chip.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/initials.dart';
@@ -20,11 +20,20 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 /// The group chip is what answers "which group am I with?" for everyone: a
 /// person who watches picks it, a person who only shares sees theirs.
 class HomeHeader extends StatelessWidget {
-  const HomeHeader({super.key});
+  const HomeHeader({
+    super.key,
+    required this.groups,
+    required this.user,
+    required this.calendar,
+  });
 
-  GroupMapState get _groups => Get.find<GroupMapState>();
-  UserController get _user => Get.find<UserController>();
-  CalendarController get _calendar => Get.find<CalendarController>();
+  final GroupMapState groups;
+  final UserController user;
+  final CalendarController calendar;
+
+  GroupMapState get _groups => groups;
+  UserController get _user => user;
+  CalendarController get _calendar => calendar;
 
   @override
   Widget build(BuildContext context) {
@@ -70,14 +79,23 @@ class HomeHeader extends StatelessWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: Obx(() => _avatar()),
+                    child: ListenableBuilder(
+                      listenable: _user,
+                      builder: (context, _) => _avatar(),
+                    ),
                   ),
                 ],
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-                child: Obx(
-                  () => Wrap(
+                child: ListenableBuilder(
+                  listenable: Listenable.merge([
+                    _groups.capabilities,
+                    _groups.selectedGroup,
+                    _groups.publishGroups,
+                    _calendar.observedDay,
+                  ]),
+                  builder: (context, _) => Wrap(
                     spacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
@@ -99,9 +117,11 @@ class HomeHeader extends StatelessWidget {
     final label = groupChipLabel(
       canWatch: canWatch,
       observedGroup: _groups.selectedGroup.value?.name,
-      publishGroups: [for (final group in _groups.publishGroups) group.name],
+      publishGroups: [
+        for (final group in _groups.publishGroups.value) group.name,
+      ],
     );
-    if (canWatch) return GroupMenuButton(label: label);
+    if (canWatch) return GroupMenuButton(groups: _groups, label: label);
     return HomeChip(label: label, semanticsLabel: 'Grupo: $label');
   }
 
@@ -114,7 +134,10 @@ class HomeHeader extends StatelessWidget {
           label: day,
           icon: Icons.calendar_month_outlined,
           semanticsLabel: 'Histórico por data, $day',
-          onTap: () => _calendar.pickDay(context),
+          onTap: () {
+            _calendar.showObservedMonth();
+            HistoryCalendarSheet.show(context, _calendar);
+          },
         ),
       ),
       if (!isToday)

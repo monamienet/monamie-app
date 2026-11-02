@@ -102,8 +102,10 @@ jobs:
 
       - run: flutter pub get
 
-      # Integration tests are skipped: they need the Firebase emulators.
-      - run: flutter test test/unit
+      # Runs every *_test.dart under test/. The security-rules tests in
+      # test/rules/ are a Node project with no Dart test files, so they are
+      # not collected; they need the Firebase emulators.
+      - run: flutter test -j 2
 
       # The build fetches the central project's google-services.json with
       # `tool/organization.dart firebase`. Organizations' projects are bound at runtime.

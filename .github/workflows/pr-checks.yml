@@ -1,0 +1,64 @@
+# Checks every pull request to main before it is merged: generated files up
+# to date, formatting, the analyzer (infos included, flutter analyze's
+# default), the layer rule and the tests. The deploy workflow runs the tests
+# again after the merge; this one catches problems while the PR can still be
+# fixed.
+#
+# Line-by-line walkthrough: docs/pt-br/entendendo-o-ci.md
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+
+# A new push to the same PR cancels the run in progress: only the latest
+# commit matters.
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Same version as deploy-play-internal.yml.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Generated files (mockito mocks, freezed classes) are committed because
+      # the deploy runs no build_runner. Regenerate them and fail if anything
+      # differs from what is committed, including new untracked files.
+      - name: Generated files up to date
+        run: |
+          dart run build_runner build
+          git diff --exit-code
+          test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
+
+      - name: Formatting
+        run: dart format --output=none --set-exit-if-changed lib test tool
+
+      - name: Analyzer
+        run: flutter analyze
+
+      # Controllers and state contracts never import Flutter's UI libraries
+      # (tool/src/state_layer_imports.dart). A script rather than an analyzer
+      # plugin: on Dart 3.13, flutter analyze exits before a plugin has
+      # checked every file, so a violation could pass unseen.
+      - name: Layer rule
+        run: dart run tool/check_layers.dart
+
+      # Runs every *_test.dart under test/. The security-rules tests in
+      # test/rules/ are a Node project with no Dart test files, so they are
+      # not collected; they need the Firebase emulators.
+      - name: Tests
+        run: flutter test -j 2

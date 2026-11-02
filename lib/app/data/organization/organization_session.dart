@@ -4,6 +4,7 @@ import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/app/data/firebase/firebase_app_organization_firebase.dart';
 
+import 'organization_binder.dart';
 import 'organization_binding.dart';
 import 'organization_binding_store.dart';
 import 'shared_preferences_organization_binding_store.dart';
@@ -13,7 +14,7 @@ import 'shared_preferences_organization_binding_store.dart';
 /// Binding sets [Organization.current] and [CurrentOrganizationFirebase] together, so
 /// the branding and the Firebase project always belong to the same
 /// organization.
-class OrganizationSession {
+class OrganizationSession implements OrganizationBinder {
   OrganizationSession({OrganizationBindingStore? store})
     : _store = store ?? SharedPreferencesOrganizationBindingStore();
 
@@ -21,6 +22,7 @@ class OrganizationSession {
 
   /// Binds [binding] in this isolate and, when [remember] is true, stores it
   /// so the next launch (and the background isolate) binds it too.
+  @override
   Future<void> bind(OrganizationBinding binding, {bool remember = true}) async {
     final app = await organizationFirebaseApp(binding);
     CurrentOrganizationFirebase.set(
@@ -56,6 +58,7 @@ class OrganizationSession {
   /// caches instances by app name and never evicts them, so a deleted app
   /// can break Firestore for the whole process. Without a signed-in user the
   /// app reaches no data, and it goes away when the process ends.
+  @override
   Future<void> forget() async {
     await _store.clear();
     Organization.unbind();

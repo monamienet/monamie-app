@@ -1,44 +1,86 @@
-import 'package:flutter/material.dart';
+import 'dart:ui' show AppLifecycleState;
+
+import 'package:flutter/foundation.dart';
+
+import 'package:monamie_app/app/data/services/app_lifecycle_events.dart';
 import 'package:monamie_app/app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/app/data/services/method_channel_background_restriction_checker.dart';
 import 'package:monamie_app/app/data/services/method_channel_background_usage_settings_launcher.dart';
-import 'package:monamie_app/app/utils/color_pallete.dart';
-import 'package:get/get.dart';
+import 'package:monamie_app/app/data/services/widgets_binding_app_lifecycle_events.dart';
+import 'package:monamie_app/app/modules/monamie/controller/permission_prompts.dart';
+import 'package:monamie_app/app/utils/notice_presenter.dart';
+import 'package:monamie_app/app/utils/user_notice.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-class PermissionsController extends GetxController with WidgetsBindingObserver {
+/// The permissions the tracking needs and the battery restriction, read
+/// from the system. Each one is its own [ValueListenable], so the tracking
+/// controller reacts to the one it needs.
+///
+/// Whoever creates it calls [start] once, which follows the app's return to
+/// the foreground and reads the statuses, and [dispose] once.
+class PermissionsController {
+  /// [prompts] asks the questions in the middle of the permission flows;
+  /// [notices] shows the warning given on returning from the battery
+  /// settings, when no screen is waiting for it; [lifecycle] tells when the
+  /// app comes back to the foreground ([WidgetsBindingAppLifecycleEvents] by
+  /// default).
   PermissionsController({
+    required this._prompts,
+    required this._notices,
     BackgroundRestrictionChecker? backgroundRestrictionChecker,
     BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
-  }) : _backgroundRestrictionChecker =
+    AppLifecycleEvents? lifecycle,
+  }) : _lifecycle = lifecycle ?? WidgetsBindingAppLifecycleEvents(),
+       _backgroundRestrictionChecker =
            backgroundRestrictionChecker ??
            MethodChannelBackgroundRestrictionChecker(),
        _backgroundUsageSettingsLauncher =
            backgroundUsageSettingsLauncher ??
            MethodChannelBackgroundUsageSettingsLauncher();
 
+  final PermissionPrompts _prompts;
+  final AppLifecycleEvents _lifecycle;
+  final NoticePresenter _notices;
   final BackgroundRestrictionChecker _backgroundRestrictionChecker;
   final BackgroundUsageSettingsLauncher _backgroundUsageSettingsLauncher;
 
-  final hasWhenInUseLocationPermission = false.obs;
-  final hasAlwaysLocationPermission = false.obs;
-  final hasNotificationPermission = false.obs;
+  final _hasWhenInUseLocationPermission = ValueNotifier<bool>(false);
+  final _hasAlwaysLocationPermission = ValueNotifier<bool>(false);
+  final _hasNotificationPermission = ValueNotifier<bool>(false);
+  final _isBackgroundRestricted = ValueNotifier<bool>(false);
+
+  bool _started = false;
+  bool _disposed = false;
+
+  ValueListenable<bool> get hasWhenInUseLocationPermission =>
+      _hasWhenInUseLocationPermission;
+  ValueListenable<bool> get hasAlwaysLocationPermission =>
+      _hasAlwaysLocationPermission;
+  ValueListenable<bool> get hasNotificationPermission =>
+      _hasNotificationPermission;
 
   /// `true` quando o app está no modo de bateria "Restrito". Nesse modo o
   /// Android derruba o serviço de rastreamento assim que o app sai da tela.
-  final isBackgroundRestricted = false.obs;
+  ValueListenable<bool> get isBackgroundRestricted => _isBackgroundRestricted;
 
-  @override
-  Future<void> onInit() async {
-    super.onInit();
-    WidgetsBinding.instance.addObserver(this);
+  /// Sets [notifier] (which notifies only when the value differs), unless
+  /// disposed: a system answer may land after [dispose].
+  void _set(ValueNotifier<bool> notifier, bool value) {
+    if (!_disposed) notifier.value = value;
+  }
+
+  /// Follows the app's return to the foreground and reads the statuses.
+  /// Only the first call does anything.
+  Future<void> start() async {
+    if (_started || _disposed) return;
+    _started = true;
+    _lifecycle.start(didChangeAppLifecycleState);
     await _refreshStatuses();
   }
 
   /// Esta função realiza trabalho quando o usuário volta para o aplicativo
   /// após ter saído do mesmo (neste caso, quando ele volta das configurações).
-  @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed) {
       await _refreshStatuses();
@@ -54,35 +96,36 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
   void _warnIfStillRestrictedAfterSettings() {
     if (!_awaitingBackgroundUsageReturn) return;
     _awaitingBackgroundUsageReturn = false;
-    if (!isBackgroundRestricted.value) return;
+    if (!_isBackgroundRestricted.value) return;
 
-    Get.snackbar(
-      'Uso em segundo plano ainda restrito',
-      "A alteração não foi aplicada. Toque em 'Permitir uso em segundo "
-          "plano' e, se o interruptor já estiver ativado, desative-o e "
-          "ative-o novamente.",
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.amber.shade100,
-      colorText: Colors.black87,
-      icon: const Icon(Icons.battery_alert, color: Colors.orange),
-      duration: const Duration(seconds: 8),
+    _notices.show(
+      const UserNotice(
+        "A alteração não foi aplicada. Toque em 'Permitir uso em segundo "
+        "plano' e, se o interruptor já estiver ativado, desative-o e "
+        "ative-o novamente.",
+        title: 'Uso em segundo plano ainda restrito',
+      ),
     );
   }
 
   Future<void> _refreshStatuses() async {
-    hasWhenInUseLocationPermission.value =
-        await Permission.locationWhenInUse.isGranted;
-    hasAlwaysLocationPermission.value =
-        await Permission.locationAlways.isGranted;
-    hasNotificationPermission.value = await Permission.notification.isGranted;
+    _set(
+      _hasWhenInUseLocationPermission,
+      await Permission.locationWhenInUse.isGranted,
+    );
+    _set(
+      _hasAlwaysLocationPermission,
+      await Permission.locationAlways.isGranted,
+    );
+    _set(_hasNotificationPermission, await Permission.notification.isGranted);
     await refreshBackgroundRestriction();
   }
 
   /// Reconsulta o sistema e atualiza [isBackgroundRestricted].
   Future<bool> refreshBackgroundRestriction() async {
-    isBackgroundRestricted.value = await _backgroundRestrictionChecker
-        .isRestricted();
-    return isBackgroundRestricted.value;
+    final restricted = await _backgroundRestrictionChecker.isRestricted();
+    _set(_isBackgroundRestricted, restricted);
+    return restricted;
   }
 
   Future<void> requestWhenInUsePermission() async {
@@ -92,8 +135,10 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
       await Permission.locationWhenInUse.request();
     }
 
-    hasWhenInUseLocationPermission.value =
-        await Permission.locationWhenInUse.isGranted;
+    _set(
+      _hasWhenInUseLocationPermission,
+      await Permission.locationWhenInUse.isGranted,
+    );
   }
 
   Future<void> requestAlwaysPermission() async {
@@ -102,7 +147,7 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
         .request();
 
     if (locationWhenInUseStatus.isGranted) {
-      bool userAgreed = await _showBackgroundDisclosure();
+      bool userAgreed = await _prompts.confirmBackgroundLocation();
 
       if (userAgreed) {
         PermissionStatus locationAlwaysStatus = await Permission.locationAlways
@@ -114,8 +159,10 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
       await openAppSettings();
     }
 
-    hasAlwaysLocationPermission.value =
-        await Permission.locationAlways.isGranted;
+    _set(
+      _hasAlwaysLocationPermission,
+      await Permission.locationAlways.isGranted,
+    );
   }
 
   /// Precisamos de permissão para exibibir notificações pois serviços de
@@ -129,15 +176,15 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
       await Permission.notification.request();
     }
 
-    hasNotificationPermission.value = await Permission.notification.isGranted;
+    _set(_hasNotificationPermission, await Permission.notification.isGranted);
   }
 
   /// Verifica se todas as permissões necessárias para o MonAmie funcionar
   /// adequadamente já foram concedidas ao aplicativo pelo usuário.
   bool arePermissionsGranted() {
-    return hasAlwaysLocationPermission.value &&
-        hasNotificationPermission.value &&
-        !isBackgroundRestricted.value;
+    return _hasAlwaysLocationPermission.value &&
+        _hasNotificationPermission.value &&
+        !_isBackgroundRestricted.value;
   }
 
   /// Explica a restrição de bateria e abre a tela de bateria do app, onde o
@@ -165,128 +212,29 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
     // restrição já foi removida.
     if (!await refreshBackgroundRestriction()) return;
 
-    final bool userAgreed = await _showBackgroundUsageDialog(
-      "O seu aparelho está restringindo o aplicativo em segundo plano. "
-      "Assim, o rastreamento é desabilitado quando você sai do aplicativo ou "
-      "desliga a tela.\n\n"
-      "Como ajustar:\n"
-      "1. Toque em 'Prosseguir'.\n"
-      "2. Ative 'Permitir o uso em segundo plano' (ou escolha 'Sem restrições').\n"
-      "3. Volte para o aplicativo.\n\n"
-      "Se abrir a tela de informações do app, toque antes em 'Uso da "
-      "bateria pelo app' (ou 'Bateria'). "
-      "Se o interruptor já aparecer ativado, desative-o e ative-o novamente.",
-    );
+    final bool userAgreed = await _prompts.confirmBackgroundUsageSettings();
     if (userAgreed) {
       _awaitingBackgroundUsageReturn = await _backgroundUsageSettingsLauncher
           .open();
     }
   }
 
-  Future<bool> _showBackgroundUsageDialog(String message) async {
-    return await Get.dialog<bool>(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5.0),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.battery_alert, color: AppColors.darkBlue()),
-                const SizedBox(width: 10),
-                const Text("Atenção"),
-              ],
-            ),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.darkBlue(),
-                ),
-                child: const Text("AGORA NÃO"),
-              ),
-              TextButton(
-                onPressed: () => Get.back(result: true),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.darkBlue(),
-                ),
-                child: const Text("PROSSEGUIR"),
-              ),
-            ],
-          ),
-          barrierDismissible: false,
-        ) ??
-        false;
-  }
+  /// Says the GPS is off (see [PermissionPrompts.notifyGpsDisabled]).
+  Future<void> notifyGpsDisabled() => _prompts.notifyGpsDisabled();
 
-  /// Aviso requerido pela Google Play.
-  Future<bool> _showBackgroundDisclosure() async {
-    return await Get.dialog<bool>(
-          AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5.0),
-            ),
-            title: Row(
-              children: [
-                Icon(Icons.security, color: AppColors.darkBlue()),
-                const SizedBox(width: 10),
-                const Text("Atenção"),
-              ],
-            ),
-            content: const Text(
-              "O app deseja coletar dados de localização mesmo quando o aplicativo estiver fechado ou não estiver em uso.\n\n"
-              "Esses dados permitem que um grupo de pessoas, determinado e gerenciado pela sua empresa, visualize sua posição em tempo real.\n\n"
-              "Como ativar:\n"
-              "1. Toque em 'Prosseguir'.\n"
-              "2. Em Permissões > Localização.\n"
-              "3. Selecione 'Permitir o tempo todo'.",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(result: false),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.darkBlue(),
-                ),
-                child: Text("AGORA NÃO"),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Get.back(result: true);
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.darkBlue(),
-                ),
-                child: const Text("PROSSEGUIR"),
-              ),
-            ],
-          ),
-          barrierDismissible: false, // Impede fechar clicando fora
-        ) ??
-        false;
-  }
-
-  Future<void> notifyGpsDisabled() async {
-    await Get.dialog(
-      AlertDialog(
-        title: Text("O GPS está desativado"),
-        content: Text("Por favor, ative o GPS para continuar."),
-        actions: [
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: AppColors.darkBlue()),
-            child: Text("ENTENDI"),
-            onPressed: () {
-              Get.back(); // Fecha o diálogo
-            },
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-  }
-
-  @override
-  void onClose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.onClose();
+  /// Stops following the app's lifecycle and releases the values. Only the
+  /// first call does anything.
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _lifecycle.stop();
+    for (final notifier in [
+      _hasWhenInUseLocationPermission,
+      _hasAlwaysLocationPermission,
+      _hasNotificationPermission,
+      _isBackgroundRestricted,
+    ]) {
+      notifier.dispose();
+    }
   }
 }

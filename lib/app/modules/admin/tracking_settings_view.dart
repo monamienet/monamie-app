@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_palette.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
@@ -13,10 +12,23 @@ const _line = Color(0xFFDDD9E4);
 
 /// *Ajustes de acompanhamento*: how often people in the field send their
 /// location, for the whole organization.
-class TrackingSettingsView extends StatelessWidget {
+class TrackingSettingsView extends StatefulWidget {
   const TrackingSettingsView({super.key, required this.controller});
 
   final TrackingSettingsEditController controller;
+
+  @override
+  State<TrackingSettingsView> createState() => _TrackingSettingsViewState();
+}
+
+class _TrackingSettingsViewState extends State<TrackingSettingsView> {
+  TrackingSettingsEditController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller.load();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,169 +42,172 @@ class TrackingSettingsView extends StatelessWidget {
         title: const Text('Ajustes de acompanhamento'),
         centerTitle: false,
       ),
-      body: Obx(() {
-        final draft = controller.draft.value;
-        final saving = controller.isSaving.value;
-        final minutes = (int n) => n == 1 ? '1 min' : '$n min';
-        return Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                children: [
-                  const Text(
-                    'Com que frequência a equipe envia a localização?',
-                    style: TextStyle(
-                      fontSize: 24,
-                      height: 1.15,
-                      fontWeight: FontWeight.w800,
-                      color: _ink,
+      body: ListenableBuilder(
+        listenable: controller,
+        builder: (context, _) {
+          final draft = controller.state.draft;
+          final saving = controller.state.isSaving;
+          String minutes(int n) => n == 1 ? '1 min' : '$n min';
+          return Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  children: [
+                    const Text(
+                      'Com que frequência a equipe envia a localização?',
+                      style: TextStyle(
+                        fontSize: 24,
+                        height: 1.15,
+                        fontWeight: FontWeight.w800,
+                        color: _ink,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Vale para todos da $name que estão em campo.',
-                    style: const TextStyle(fontSize: 15, color: _muted),
-                  ),
-                  if (controller.minPeriodMinutes.value > 0) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'No plano Community, a localização é enviada no máximo a '
-                      'cada ${controller.minPeriodMinutes.value} min.',
-                      style: const TextStyle(fontSize: 13, color: _muted),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  for (final option in TrackingPreset.values)
-                    _PresetTile(
-                      option: option,
-                      selected: controller.preset.value == option,
-                      current:
-                          option.settings == controller.savedSettings.value,
-                      enabled: !saving && controller.allows(option),
-                      color: palette.primary,
-                      onTap: () => controller.pickPreset(option),
-                    ),
-                  if (controller.preset.value ==
-                      TrackingPreset.personalizado) ...[
                     const SizedBox(height: 8),
-                    _Slider(
-                      label: 'Intervalo',
-                      valueLabel: 'a cada ${minutes(draft.periodMinutes)}',
-                      values: trackingPeriods,
-                      value: draft.periodMinutes,
-                      color: palette.primary,
-                      onChanged: saving ? null : controller.setPeriod,
+                    Text(
+                      'Vale para todos da $name que estão em campo.',
+                      style: const TextStyle(fontSize: 15, color: _muted),
                     ),
-                    _Slider(
-                      label: 'Distância mínima',
-                      valueLabel: '${draft.radiusMeters} m',
-                      values: trackingRadii,
-                      value: draft.radiusMeters,
-                      color: palette.primary,
-                      onChanged: saving ? null : controller.setRadius,
+                    if (controller.state.minPeriodMinutes > 0) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'No plano Community, a localização é enviada no máximo a '
+                        'cada ${controller.state.minPeriodMinutes} min.',
+                        style: const TextStyle(fontSize: 13, color: _muted),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    for (final option in TrackingPreset.values)
+                      _PresetTile(
+                        option: option,
+                        selected: controller.state.preset == option,
+                        current:
+                            option.settings == controller.state.savedSettings,
+                        enabled: !saving && controller.allows(option),
+                        color: palette.primary,
+                        onTap: () => controller.pickPreset(option),
+                      ),
+                    if (controller.state.preset ==
+                        TrackingPreset.personalizado) ...[
+                      const SizedBox(height: 8),
+                      _Slider(
+                        label: 'Intervalo',
+                        valueLabel: 'a cada ${minutes(draft.periodMinutes)}',
+                        values: trackingPeriods,
+                        value: draft.periodMinutes,
+                        color: palette.primary,
+                        onChanged: saving ? null : controller.setPeriod,
+                      ),
+                      _Slider(
+                        label: 'Distância mínima',
+                        valueLabel: '${draft.radiusMeters} m',
+                        values: trackingRadii,
+                        value: draft.radiusMeters,
+                        color: palette.primary,
+                        onChanged: saving ? null : controller.setRadius,
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    _Fact(
+                      icon: Icons.send_outlined,
+                      text:
+                          'Até ${draft.positionsPerHour} '
+                          '${draft.positionsPerHour == 1 ? 'posição' : 'posições'} '
+                          'por hora, só quando a pessoa se mover '
+                          '${draft.radiusMeters} m ou mais.',
+                    ),
+                    _Fact(
+                      icon: Icons.schedule,
+                      text:
+                          'Quem ficar '
+                          '${minutes(validity.inMinutes)} sem dar notícia '
+                          'sai do mapa.',
+                    ),
+                    _Fact(
+                      icon: Icons.battery_std,
+                      text:
+                          'Uso de bateria: '
+                          '${const ['Baixo', 'Médio', 'Alto'][draft.batteryLevel - 1]}',
                     ),
                   ],
-                  const SizedBox(height: 16),
-                  _Fact(
-                    icon: Icons.send_outlined,
-                    text:
-                        'Até ${draft.positionsPerHour} '
-                        '${draft.positionsPerHour == 1 ? 'posição' : 'posições'} '
-                        'por hora, só quando a pessoa se mover '
-                        '${draft.radiusMeters} m ou mais.',
-                  ),
-                  _Fact(
-                    icon: Icons.schedule,
-                    text:
-                        'Quem ficar '
-                        '${minutes(validity.inMinutes)} sem dar notícia '
-                        'sai do mapa.',
-                  ),
-                  _Fact(
-                    icon: Icons.battery_std,
-                    text:
-                        'Uso de bateria: '
-                        '${const ['Baixo', 'Médio', 'Alto'][draft.batteryLevel - 1]}',
-                  ),
-                ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (controller.justSaved.value)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        'Salvo. A equipe recebe em instantes, sem desligar o '
-                        'compartilhamento.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          color: palette.dark,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (controller.state.justSaved)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          'Salvo. A equipe recebe em instantes, sem desligar o '
+                          'compartilhamento.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: palette.dark,
+                          ),
                         ),
                       ),
-                    ),
-                  if (controller.errorMessage.value.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        controller.errorMessage.value,
-                        style: const TextStyle(
-                          color: Color(0xFFB3261E),
-                          fontWeight: FontWeight.w800,
+                    if (controller.state.errorMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          controller.state.errorMessage,
+                          style: const TextStyle(
+                            color: Color(0xFFB3261E),
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
-                  SizedBox(
-                    height: 56,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: palette.primary,
-                        foregroundColor: palette.onPrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                    SizedBox(
+                      height: 56,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: palette.primary,
+                          foregroundColor: palette.onPrimary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      onPressed: saving || !controller.hasChanges
-                          ? null
-                          : controller.save,
-                      child: saving
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.4,
-                                    color: palette.onPrimary,
+                        onPressed: saving || !controller.hasChanges
+                            ? null
+                            : controller.save,
+                        child: saving
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: palette.onPrimary,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text('Salvando…'),
-                              ],
-                            )
-                          : Text(
-                              controller.hasChanges
-                                  ? 'Salvar alterações'
-                                  : 'Nenhuma alteração',
-                            ),
+                                  const SizedBox(width: 12),
+                                  const Text('Salvando…'),
+                                ],
+                              )
+                            : Text(
+                                controller.hasChanges
+                                    ? 'Salvar alterações'
+                                    : 'Nenhuma alteração',
+                              ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        );
-      }),
+            ],
+          );
+        },
+      ),
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 
 import 'account_deletion.dart';
@@ -9,7 +8,7 @@ import 'my_account_controller.dart';
 /// administrator included) leaves the organization at once; the owner
 /// (*titular*) deletes it with the account. Either way there are 30 days to
 /// cancel.
-class MyAccountView extends StatelessWidget {
+class MyAccountView extends StatefulWidget {
   const MyAccountView({
     super.key,
     required this.controller,
@@ -20,6 +19,21 @@ class MyAccountView extends StatelessWidget {
   final MyAccountController controller;
   final String email;
   final String organizationName;
+
+  @override
+  State<MyAccountView> createState() => _MyAccountViewState();
+}
+
+class _MyAccountViewState extends State<MyAccountView> {
+  MyAccountController get controller => widget.controller;
+  String get email => widget.email;
+  String get organizationName => widget.organizationName;
+
+  @override
+  void initState() {
+    super.initState();
+    controller.loadOwnership();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,102 +75,109 @@ class MyAccountView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Obx(() {
-              final owner = controller.isOwner.value;
-              if (owner == null) {
-                return controller.isCheckingOwner.value
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    : Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          onPressed: controller.loadOwnership,
-                          child: const Text('Tentar de novo'),
+            ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) {
+                final owner = controller.state.isOwner;
+                if (owner == null) {
+                  return controller.state.isCheckingOwner
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton(
+                            onPressed: controller.loadOwnership,
+                            child: const Text('Tentar de novo'),
+                          ),
+                        );
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final line in [
+                      if (owner)
+                        'Você é titular da $organizationName, então a organização '
+                            'inteira é excluída junto com a sua conta.'
+                      else
+                        'Você sai da $organizationName agora e deixa de aparecer no '
+                            'mapa.',
+                      'Em $deleteAt apagamos de vez sua conta e seus dados no '
+                          'MonAmie.',
+                      'Até lá, é só entrar de novo e cancelar a exclusão.',
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          line,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            height: 1.5,
+                            color: MonAmieBrand.mutedInk,
+                          ),
+                        ),
+                      ),
+                    if (owner) ..._confirmation(),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) {
+                final error = controller.state.errorMessage;
+                return error.isEmpty
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          error,
+                          style: TextStyle(color: Colors.red.shade800),
                         ),
                       );
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final line in [
-                    if (owner)
-                      'Você é titular da $organizationName, então a organização '
-                          'inteira é excluída junto com a sua conta.'
-                    else
-                      'Você sai da $organizationName agora e deixa de aparecer no '
-                          'mapa.',
-                    'Em $deleteAt apagamos de vez sua conta e seus dados no '
-                        'MonAmie.',
-                    'Até lá, é só entrar de novo e cancelar a exclusão.',
-                  ])
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        line,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          height: 1.5,
-                          color: MonAmieBrand.mutedInk,
-                        ),
+              },
+            ),
+            ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) {
+                final deleting = controller.state.isDeleting;
+                return SizedBox(
+                  height: 56,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red.shade800,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                  if (owner) ..._confirmation(),
-                ],
-              );
-            }),
-            const SizedBox(height: 24),
-            Obx(() {
-              final error = controller.errorMessage.value;
-              return error.isEmpty
-                  ? const SizedBox.shrink()
-                  : Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        error,
-                        style: TextStyle(color: Colors.red.shade800),
-                      ),
-                    );
-            }),
-            Obx(() {
-              final deleting = controller.isDeleting.value;
-              // Read here so the button follows the typing.
-              controller.confirmation.value;
-              return SizedBox(
-                height: 56,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red.shade800,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  onPressed: controller.canDelete
-                      ? controller.deleteAccount
-                      : null,
-                  child: deleting
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: Colors.white,
+                    onPressed: controller.canDelete
+                        ? controller.deleteAccount
+                        : null,
+                    child: deleting
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            controller.state.isOwner == true
+                                ? 'Excluir conta e organização'
+                                : 'Excluir conta',
                           ),
-                        )
-                      : Text(
-                          controller.isOwner.value == true
-                              ? 'Excluir conta e organização'
-                              : 'Excluir conta',
-                        ),
-                ),
-              );
-            }),
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -176,7 +197,7 @@ class MyAccountView extends StatelessWidget {
     TextField(
       autocorrect: false,
       enableSuggestions: false,
-      onChanged: (value) => controller.confirmation.value = value,
+      onChanged: controller.setConfirmation,
       decoration: InputDecoration(
         hintText: controller.organizationId,
         hintStyle: TextStyle(

@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
+import 'package:monamie_app/app/modules/monamie/controller/call_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
@@ -14,20 +16,34 @@ import 'package:monamie_app/app/modules/monamie/ui/home/home_menu.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_sheet.dart';
 import 'package:monamie_app/app/modules/monamie/ui/widgets/logout_progress_overlay.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
-import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 
+/// The map of the bound organization, with its header, sheet and menu. The
+/// organization's route hands it the controllers of the organization's
+/// scope and the app's sign-in flow.
 class MonamiePage extends StatelessWidget {
-  const MonamiePage({super.key});
+  const MonamiePage({
+    super.key,
+    required this.userCtrl,
+    required this.permissionsCtrl,
+    required this.trackingCtrl,
+    required this.groupMap,
+    required this.calendar,
+    required this.calls,
+    required this.authCtrl,
+  });
 
-  UserController get userCtrl => Get.find<UserController>();
-  PermissionsController get permissionsCtrl =>
-      Get.find<PermissionsController>();
-  TrackingController get trackingCtrl => Get.find<TrackingController>();
-  GroupMapState get groupMap => Get.find<GroupMapState>();
-  AuthGoogleController get authCtrl => Get.find<AuthGoogleController>();
+  final UserController userCtrl;
+  final PermissionsController permissionsCtrl;
+  final TrackingController trackingCtrl;
+  final GroupMapState groupMap;
+  final CalendarController calendar;
+  final CallController calls;
+
+  /// The sign-in flow: the menu's sign-out and switch, and their overlay.
+  final SessionFlow authCtrl;
 
   @override
   Widget build(BuildContext context) {
@@ -35,20 +51,30 @@ class MonamiePage extends StatelessWidget {
       // The header is dark, so the status bar icons are light.
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        drawer: const HomeMenu(),
+        drawer: HomeMenu(
+          groups: groupMap,
+          user: userCtrl,
+          session: authCtrl,
+          tracking: trackingCtrl,
+        ),
         body: Stack(
           fit: StackFit.expand,
           children: [
             Column(
               children: [
-                const HomeHeader(),
+                HomeHeader(
+                  groups: groupMap,
+                  user: userCtrl,
+                  calendar: calendar,
+                ),
                 Expanded(child: _body(context)),
               ],
             ),
-            Obx(
-              () => authCtrl.isLoggingOut.value
+            ListenableBuilder(
+              listenable: authCtrl,
+              builder: (context, _) => authCtrl.state.isLoggingOut
                   ? LogoutProgressOverlay(
-                      message: authCtrl.isSwitchingOrganization.value
+                      message: authCtrl.state.isSwitchingOrganization
                           ? 'Trocando de organização…'
                           : 'Encerrando sessão…',
                     )
@@ -60,9 +86,23 @@ class MonamiePage extends StatelessWidget {
     );
   }
 
+  /// What [UserController.isTrackable] reads: the profile and the
+  /// capabilities.
+  Listenable get _trackable =>
+      Listenable.merge([userCtrl, groupMap.capabilities]);
+
+  /// What [PermissionsController.arePermissionsGranted] reads.
+  Listenable get _granted => Listenable.merge([
+    permissionsCtrl.hasAlwaysLocationPermission,
+    permissionsCtrl.hasNotificationPermission,
+    permissionsCtrl.isBackgroundRestricted,
+  ]);
+
   Widget _centralizeButton() {
-    return Obx(
-      () => permissionsCtrl.arePermissionsGranted() && userCtrl.isTrackable()
+    return ListenableBuilder(
+      listenable: Listenable.merge([_trackable, _granted]),
+      builder: (context, _) =>
+          permissionsCtrl.arePermissionsGranted() && userCtrl.isTrackable()
           ? Positioned(
               bottom: 16,
               right: 16,
@@ -78,24 +118,32 @@ class MonamiePage extends StatelessWidget {
   }
 
   Widget _body(BuildContext context) {
-    return Obx(() {
-      if (userCtrl.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
-      }
+    return ListenableBuilder(
+      listenable: Listenable.merge([_trackable, _granted]),
+      builder: (context, _) {
+        final granted = permissionsCtrl.arePermissionsGranted();
+        if (userCtrl.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-      if (userCtrl.isTrackable() &
-          !kIsWeb &
-          !permissionsCtrl.arePermissionsGranted()) {
-        return _permissionScreen();
-      }
+        if (userCtrl.isTrackable() & !kIsWeb & !granted) {
+          return _permissionScreen();
+        }
 
-      return Column(
-        children: [
-          Expanded(child: mapa(context)),
-          const HomeSheet(),
-        ],
-      );
-    });
+        return Column(
+          children: [
+            Expanded(child: mapa(context)),
+            HomeSheet(
+              groups: groupMap,
+              tracking: trackingCtrl,
+              calendar: calendar,
+              calls: calls,
+              user: userCtrl,
+            ),
+          ],
+        );
+      },
+    );
   }
 
   /// Usuário verá essa tela apenas se todas as permissões necessárias já tiverem
@@ -141,119 +189,126 @@ class MonamiePage extends StatelessWidget {
   /// "Carregando `grupo`…" over the map while a group picked in the group
   /// menu loads, as on the design canvas.
   Widget _switchingGroupPill() {
-    return Obx(() {
-      if (!groupMap.switchingGroup.value) {
-        return const SizedBox.shrink();
-      }
-      final group = groupMap.selectedGroup.value?.name ?? '';
-      return Positioned(
-        top: 14,
-        left: 0,
-        right: 0,
-        child: Center(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 220),
-            curve: const Cubic(0.2, 0.8, 0.2, 1),
-            builder: (context, t, child) => Opacity(
-              opacity: t,
-              child: Transform.translate(
-                offset: Offset(0, -10 * (1 - t)),
-                child: child,
-              ),
-            ),
-            child: Semantics(
-              liveRegion: true,
-              child: Container(
-                width: 220,
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryDark,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x47091416),
-                      blurRadius: 14,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        groupMap.switchingGroup,
+        groupMap.selectedGroup,
+      ]),
+      builder: (context, _) {
+        if (!groupMap.switchingGroup.value) {
+          return const SizedBox.shrink();
+        }
+        final group = groupMap.selectedGroup.value?.name ?? '';
+        return Positioned(
+          top: 14,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 220),
+              curve: const Cubic(0.2, 0.8, 0.2, 1),
+              builder: (context, t, child) => Opacity(
+                opacity: t,
+                child: Transform.translate(
+                  offset: Offset(0, -10 * (1 - t)),
+                  child: child,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.8,
-                        color: AppColors.onPrimaryDark,
-                        backgroundColor: Colors.white.withAlpha(77),
+              ),
+              child: Semantics(
+                liveRegion: true,
+                child: Container(
+                  width: 220,
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryDark,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x47091416),
+                        blurRadius: 14,
+                        offset: Offset(0, 4),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        'Carregando $group…',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.8,
+                          color: AppColors.onPrimaryDark,
+                          backgroundColor: Colors.white.withAlpha(77),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          'Carregando $group…',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   /// Desenha as trajetórias dos usuários destacados (highlightedObservedUsers).
   Widget _highlightedTrajectories() {
-    return Obx(() {
-      final trajectories = trackingCtrl.highlightedTrajectories;
+    return ValueListenableBuilder(
+      valueListenable: trackingCtrl.highlightedTrajectories,
+      builder: (context, trajectories, _) {
+        if (trajectories.isEmpty) {
+          return PolylineLayer<Object>(polylines: []);
+        }
 
-      if (trajectories.isEmpty) {
-        return PolylineLayer<Object>(polylines: []);
-      }
+        final polylines = <Polyline<Object>>[];
+        for (final entry in trajectories.entries) {
+          final points = entry.value;
+          if (points.length < 2) continue;
 
-      final polylines = <Polyline<Object>>[];
-      for (final entry in trajectories.entries) {
-        final points = entry.value;
-        if (points.length < 2) continue;
+          final latLngPoints = points.map((p) => LatLng(p.lat, p.lng)).toList();
 
-        final latLngPoints = points.map((p) => LatLng(p.lat, p.lng)).toList();
+          // Cor baseada no email para consistência
+          final hash = entry.key.hashCode;
+          final hue = (hash % 360).toDouble();
+          final baseColor = HSLColor.fromAHSL(1.0, hue, 0.7, 0.5).toColor();
 
-        // Cor baseada no email para consistência
-        final hash = entry.key.hashCode;
-        final hue = (hash % 360).toDouble();
-        final baseColor = HSLColor.fromAHSL(1.0, hue, 0.7, 0.5).toColor();
+          final darkerBorderColor = Color.fromARGB(
+            (baseColor.a * 255.0).round().clamp(0, 255),
+            (baseColor.r * 255.0 * 0.5).round().clamp(0, 255),
+            (baseColor.g * 255.0 * 0.5).round().clamp(0, 255),
+            (baseColor.b * 255.0 * 0.5).round().clamp(0, 255),
+          );
 
-        final darkerBorderColor = Color.fromARGB(
-          (baseColor.a * 255.0).round().clamp(0, 255),
-          (baseColor.r * 255.0 * 0.5).round().clamp(0, 255),
-          (baseColor.g * 255.0 * 0.5).round().clamp(0, 255),
-          (baseColor.b * 255.0 * 0.5).round().clamp(0, 255),
-        );
+          polylines.add(
+            Polyline<Object>(
+              points: latLngPoints,
+              strokeWidth: 4.0,
+              color: baseColor,
+              borderStrokeWidth: 1.5,
+              borderColor: darkerBorderColor,
+            ),
+          );
+        }
 
-        polylines.add(
-          Polyline<Object>(
-            points: latLngPoints,
-            strokeWidth: 4.0,
-            color: baseColor,
-            borderStrokeWidth: 1.5,
-            borderColor: darkerBorderColor,
-          ),
-        );
-      }
-
-      return PolylineLayer<Object>(polylines: polylines);
-    });
+        return PolylineLayer<Object>(polylines: polylines);
+      },
+    );
   }
 
   /// Usuário verá essa tela apenas se algumas das permissões necessárias
@@ -261,8 +316,14 @@ class MonamiePage extends StatelessWidget {
   Widget _permissionScreen() {
     return Container(
       decoration: BoxDecoration(gradient: AppColors.appBarBottomGradient()),
-      child: Obx(
-        () => Align(
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          permissionsCtrl.hasNotificationPermission,
+          permissionsCtrl.hasWhenInUseLocationPermission,
+          permissionsCtrl.hasAlwaysLocationPermission,
+          permissionsCtrl.isBackgroundRestricted,
+        ]),
+        builder: (context, _) => Align(
           alignment: Alignment.center,
           child: IntrinsicWidth(
             child: Column(
@@ -406,55 +467,71 @@ class MonamiePage extends StatelessWidget {
   /// someone it does not.
   Widget _ownMarker() {
     const markerSize = 50.0;
-    return Obx(() {
-      final point = trackingCtrl.ownPosition.value;
-      final me = userCtrl.user?.email;
-      if (point == null ||
-          me == null ||
-          !userCtrl.isTrackable() ||
-          !trackingCtrl.isTrackingEnabled.value) {
-        return const SizedBox.shrink();
-      }
-      final drawnWithTheGroup =
-          groupMap.observedMembers.any((m) => m.email == me) &&
-          trackingCtrl.firebaseUsers.any((u) => u.email == me);
-      if (drawnWithTheGroup) return const SizedBox.shrink();
-      return MarkerLayer(
-        markers: [
-          Marker(
-            point: point,
-            width: markerSize,
-            height: markerSize,
-            child: Container(
-              margin: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.indigo,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        _trackable,
+        groupMap.observedMembers,
+        trackingCtrl.ownPosition,
+        trackingCtrl.isTrackingEnabled,
+        trackingCtrl.firebaseUsers,
+      ]),
+      builder: (context, _) {
+        final point = trackingCtrl.ownPosition.value;
+        final me = userCtrl.user?.email;
+        if (point == null ||
+            me == null ||
+            !userCtrl.isTrackable() ||
+            !trackingCtrl.isTrackingEnabled.value) {
+          return const SizedBox.shrink();
+        }
+        final drawnWithTheGroup =
+            groupMap.observedMembers.value.any((m) => m.email == me) &&
+            trackingCtrl.firebaseUsers.value.any((u) => u.email == me);
+        if (drawnWithTheGroup) return const SizedBox.shrink();
+        return MarkerLayer(
+          markers: [
+            Marker(
+              point: point,
+              width: markerSize,
+              height: markerSize,
+              child: Container(
+                margin: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.indigo,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      );
-    });
+          ],
+        );
+      },
+    );
   }
 
   Widget _firebaseMarkers() {
     const double markerSize = 50.0;
 
-    return Obx(
-      () => MarkerLayer(
-        markers: trackingCtrl.firebaseUsers
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        groupMap.observedMembers,
+        calendar.observedDay,
+        userCtrl,
+        trackingCtrl.firebaseUsers,
+        trackingCtrl.animatedMarkerPositions,
+      ]),
+      builder: (context, _) => MarkerLayer(
+        markers: trackingCtrl.firebaseUsers.value
             .where((user) {
               final isObservingToday = trackingCtrl.isObservingToday;
-              final observedMembersEmails = groupMap.observedMembers.map(
+              final observedMembersEmails = groupMap.observedMembers.value.map(
                 (member) => member.email,
               );
               final isObservedMember = observedMembersEmails.contains(
@@ -466,6 +543,7 @@ class MonamiePage extends StatelessWidget {
                 // tem posição histórica carregada em `animatedMarkerPositions`.
                 final hasHistoricalPosition = trackingCtrl
                     .animatedMarkerPositions
+                    .value
                     .containsKey(user.email);
                 return isObservedMember && hasHistoricalPosition;
               }
@@ -476,9 +554,13 @@ class MonamiePage extends StatelessWidget {
             .map((user) {
               final isCurrentUser =
                   user.email == trackingCtrl.userCtrl.user?.email;
+              // The signed-in person's pin has a colour of its own.
+              final markerColor = isCurrentUser
+                  ? Colors.indigo
+                  : Colors.lightBlue;
               // Usa a posição animada se disponível, caso contrário usa a posição atual
               final animatedPos =
-                  trackingCtrl.animatedMarkerPositions[user.email];
+                  trackingCtrl.animatedMarkerPositions.value[user.email];
               final position =
                   animatedPos ?? LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
 
@@ -494,19 +576,21 @@ class MonamiePage extends StatelessWidget {
                     clipBehavior: Clip.none,
                     children: [
                       if (isCurrentUser)
-                        Obx(() {
-                          final heading = trackingCtrl.heading.value;
-                          if (heading == null) return const SizedBox.shrink();
+                        ValueListenableBuilder(
+                          valueListenable: trackingCtrl.heading,
+                          builder: (context, heading, _) {
+                            if (heading == null) return const SizedBox.shrink();
 
-                          return Transform.rotate(
-                            angle: heading * (math.pi / 180),
-                            child: SizedBox(
-                              width: markerSize * 3,
-                              height: markerSize * 3,
-                              child: CustomPaint(painter: _BeamPainter()),
-                            ),
-                          );
-                        }),
+                            return Transform.rotate(
+                              angle: heading * (math.pi / 180),
+                              child: SizedBox(
+                                width: markerSize * 3,
+                                height: markerSize * 3,
+                                child: CustomPaint(painter: _BeamPainter()),
+                              ),
+                            );
+                          },
+                        ),
                       SizedBox(
                         width: markerSize,
                         height: markerSize,
@@ -518,10 +602,8 @@ class MonamiePage extends StatelessWidget {
                                           user.capturedAt!,
                                         ) >=
                                         validity
-                                ? trackingCtrl
-                                      .setMarkerColor(user)
-                                      .withAlpha(100)
-                                : trackingCtrl.setMarkerColor(user),
+                                ? markerColor.withAlpha(100)
+                                : markerColor,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 3),
                             boxShadow: const [

@@ -1,19 +1,27 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
 
+part 'invite.freezed.dart';
+
 /// A pending invite to a group, as the central invite functions return it.
-class Invite {
-  const Invite({
-    required this.id,
-    required this.organizationId,
-    required this.organizationName,
-    required this.groupId,
-    required this.groupName,
-    required this.email,
-    required this.roles,
-    required this.inviterName,
-    required this.expiresAt,
-    this.expired = false,
-  });
+@freezed
+abstract class Invite with _$Invite {
+  const factory Invite({
+    required String id,
+    required String organizationId,
+    required String organizationName,
+    required String groupId,
+    required String groupName,
+    required String email,
+    required Set<GroupRole> roles,
+    required String inviterName,
+    required DateTime? expiresAt,
+
+    /// Past its 14 days: shown as *Expirado* with *Reenviar*.
+    @Default(false) bool expired,
+  }) = _Invite;
+
+  const Invite._();
 
   /// Reads one invite; `null` when malformed.
   static Invite? fromJson(Object? json) {
@@ -50,19 +58,6 @@ class Invite {
       expired: json['expired'] == true,
     );
   }
-
-  final String id;
-  final String organizationId;
-  final String organizationName;
-  final String groupId;
-  final String groupName;
-  final String email;
-  final Set<GroupRole> roles;
-  final String inviterName;
-  final DateTime? expiresAt;
-
-  /// Past its 14 days: shown as *Expirado* with *Reenviar*.
-  final bool expired;
 
   /// "Em campo · Vê o mapa".
   String get rolesLabel => groupRolesLabel(roles);
@@ -110,11 +105,14 @@ String dayMonth(DateTime date) {
 }
 
 /// A person on *Convidar pessoas* before sending: e-mail and roles.
-class InviteDraft {
-  InviteDraft(this.email) : roles = {GroupRole.publisher};
-
-  final String email;
-  final Set<GroupRole> roles;
+@freezed
+abstract class InviteDraft with _$InviteDraft {
+  /// [email] with the default role (*Em campo*) unless [roles] says
+  /// otherwise.
+  const factory InviteDraft(
+    String email, {
+    @Default({GroupRole.publisher}) Set<GroupRole> roles,
+  }) = _InviteDraft;
 }
 
 final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');

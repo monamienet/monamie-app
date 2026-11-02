@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_palette.dart';
 
 import 'package:monamie_app/app/modules/invites/firebase_invites_backend.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
-import 'package:monamie_app/app/modules/invites/invite_controller.dart';
-import 'package:monamie_app/app/modules/invites/invite_view.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
+import 'package:monamie_app/app/routes/app_routes.dart';
 
 import 'group.dart';
 import 'groups_controller.dart';
@@ -119,10 +118,23 @@ Widget _initialTile(String name, {double size = 44, double? fontSize}) {
 
 /// *Grupos*: every group of the organization for an administrator, or the
 /// groups a maintainer (*Gestor do grupo*) maintains.
-class GroupsView extends StatelessWidget {
+class GroupsView extends StatefulWidget {
   const GroupsView({super.key, required this.controller});
 
   final GroupsController controller;
+
+  @override
+  State<GroupsView> createState() => _GroupsViewState();
+}
+
+class _GroupsViewState extends State<GroupsView> {
+  GroupsController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller.load();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -131,41 +143,44 @@ class GroupsView extends StatelessWidget {
     body: Column(
       children: [
         Expanded(
-          child: Obx(() {
-            if (controller.isLoading.value && controller.groups.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return RefreshIndicator(
-              onRefresh: controller.load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
-                children: [
-                  if (controller.errorMessage.value.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: _errorText(controller.errorMessage.value),
-                    ),
-                  if (controller.groups.isEmpty &&
-                      controller.errorMessage.value.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-                      child: Text(
-                        controller.isAdmin
-                            ? 'Sua organização ainda não tem grupos. Crie o '
-                                  'primeiro e convide quem vai trabalhar nele.'
-                            : 'Você não é gestor de nenhum grupo agora.',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          height: 1.45,
-                          color: _muted,
+          child: ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) {
+              final state = controller.state;
+              if (state.isLoading && state.groups.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return RefreshIndicator(
+                onRefresh: controller.load,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+                  children: [
+                    if (state.errorMessage.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: _errorText(state.errorMessage),
+                      ),
+                    if (state.groups.isEmpty && state.errorMessage.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                        child: Text(
+                          controller.isAdmin
+                              ? 'Sua organização ainda não tem grupos. Crie o '
+                                    'primeiro e convide quem vai trabalhar nele.'
+                              : 'Você não é gestor de nenhum grupo agora.',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            height: 1.45,
+                            color: _muted,
+                          ),
                         ),
                       ),
-                    ),
-                  for (final group in controller.groups) _groupRow(group),
-                ],
-              ),
-            );
-          }),
+                    for (final group in state.groups) _groupRow(group),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
         // Only administrators create groups.
         if (controller.isAdmin)
@@ -183,7 +198,7 @@ class GroupsView extends StatelessWidget {
                 busyLabel: '',
                 icon: Icons.add,
                 onPressed: () =>
-                    Get.to(() => CreateGroupView(controller: controller)),
+                    context.push<void>(Routes.newGroup, extra: controller),
               ),
             ),
           ),
@@ -193,8 +208,7 @@ class GroupsView extends StatelessWidget {
 
   Widget _groupRow(Group group) => InkWell(
     borderRadius: BorderRadius.circular(16),
-    onTap: () =>
-        Get.to(() => GroupView(controller: controller, groupId: group.id)),
+    onTap: () => context.push<void>(Routes.group(group.id), extra: controller),
     child: ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 64),
       child: Padding(
@@ -273,68 +287,71 @@ class _CreateGroupViewState extends State<CreateGroupView> {
     ),
   );
 
-  Widget _form() => Obx(() {
-    final busy = c.isWorking.value;
-    final typed = _name.text.trim();
-    final problem = typed.isEmpty ? null : c.nameProblem(typed);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'Criar um grupo',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
-            color: _ink,
+  Widget _form() => ListenableBuilder(
+    listenable: c,
+    builder: (context, _) {
+      final busy = c.state.isWorking;
+      final typed = _name.text.trim();
+      final problem = typed.isEmpty ? null : c.nameProblem(typed);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Criar um grupo',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: _ink,
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        TextField(
-          controller: _name,
-          enabled: !busy,
-          maxLength: 40,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            labelText: 'Nome do grupo',
-            hintText: 'Ex.: Motoristas',
-            errorText: problem,
-            helperText: 'É assim que o grupo aparece no mapa e nos convites.',
-            border: const OutlineInputBorder(),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _name,
+            enabled: !busy,
+            maxLength: 40,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: 'Nome do grupo',
+              hintText: 'Ex.: Motoristas',
+              errorText: problem,
+              helperText: 'É assim que o grupo aparece no mapa e nos convites.',
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
           ),
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: _soft,
-            borderRadius: BorderRadius.circular(14),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _soft,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Text(
+              'Você administra a organização, então já vê todos os grupos no '
+              'mapa. O grupo nasce vazio: depois de criar, convide quem vai '
+              'fazer parte dele.',
+              style: TextStyle(fontSize: 13, height: 1.45, color: _muted),
+            ),
           ),
-          child: const Text(
-            'Você administra a organização, então já vê todos os grupos no '
-            'mapa. O grupo nasce vazio: depois de criar, convide quem vai '
-            'fazer parte dele.',
-            style: TextStyle(fontSize: 13, height: 1.45, color: _muted),
+          const Spacer(),
+          _errorText(c.state.errorMessage),
+          _primaryButton(
+            label: 'Criar grupo',
+            busy: busy,
+            busyLabel: 'Criando…',
+            onPressed: typed.isEmpty || problem != null
+                ? null
+                : () async {
+                    final group = await c.create(typed);
+                    if (group != null && mounted) {
+                      setState(() => _created = group);
+                    }
+                  },
           ),
-        ),
-        const Spacer(),
-        _errorText(c.errorMessage.value),
-        _primaryButton(
-          label: 'Criar grupo',
-          busy: busy,
-          busyLabel: 'Criando…',
-          onPressed: typed.isEmpty || problem != null
-              ? null
-              : () async {
-                  final group = await c.create(typed);
-                  if (group != null && mounted) {
-                    setState(() => _created = group);
-                  }
-                },
-        ),
-      ],
-    );
-  });
+        ],
+      );
+    },
+  );
 
   Widget _done(Group group) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -362,9 +379,12 @@ class _CreateGroupViewState extends State<CreateGroupView> {
         busy: false,
         busyLabel: '',
         onPressed: () =>
-            Get.off(() => GroupView(controller: c, groupId: group.id)),
+            context.pushReplacement(Routes.group(group.id), extra: c),
       ),
-      TextButton(onPressed: Get.back, child: const Text('Voltar')),
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('Voltar'),
+      ),
     ],
   );
 }
@@ -379,7 +399,8 @@ String get _organization => Organization.current?.name ?? 'organização';
 /// confirm button that runs [onConfirm] (an error message, or `null` on
 /// success). While it runs the sheet cannot close and the button shows
 /// [busyLabel]; a failure stays in the sheet. Returns whether it succeeded.
-Future<bool> _actionSheet({
+Future<bool> _actionSheet(
+  BuildContext context, {
   required String title,
   required String confirmLabel,
   required String busyLabel,
@@ -391,8 +412,9 @@ Future<bool> _actionSheet({
 }) async {
   var busy = false;
   var error = '';
-  final done = await Get.bottomSheet<bool>(
-    StatefulBuilder(
+  final done = await showModalBottomSheet<bool>(
+    context: context,
+    builder: (_) => StatefulBuilder(
       builder: (context, setSheet) {
         final tone = danger ? _error : _palette.primary;
         final onTone = danger ? Colors.white : _palette.onPrimary;
@@ -556,6 +578,10 @@ Future<bool> _actionSheet({
     // Dragging would close the sheet past PopScope while an operation runs.
     enableDrag: false,
     barrierColor: const Color(0x8C091416),
+    // The sheet draws its own white, rounded background, across the whole
+    // width as before (Material 3 caps a sheet at 640 px otherwise).
+    backgroundColor: Colors.transparent,
+    constraints: const BoxConstraints(),
   );
   return done == true;
 }
@@ -650,67 +676,70 @@ class _GroupViewState extends State<GroupView> {
   }
 
   /// The controller's message for a failed operation.
-  String get _failure => c.errorMessage.value.isEmpty
+  String get _failure => c.state.errorMessage.isEmpty
       ? 'Não foi possível concluir agora. Tente de novo.'
-      : c.errorMessage.value;
+      : c.state.errorMessage;
 
   @override
-  Widget build(BuildContext context) => Obx(() {
-    final deleted = _deleted;
-    if (deleted != null) return _deletedScreen(deleted);
-    final group = c.byId(widget.groupId);
-    if (group == null) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: c,
+    builder: (context, _) {
+      final deleted = _deleted;
+      if (deleted != null) return _deletedScreen(deleted);
+      final group = c.byId(widget.groupId);
+      if (group == null) {
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: _bar('Grupo'),
+          body: const Center(child: Text('Grupo não encontrado.')),
+        );
+      }
+      final invites = _invites;
+      final pending = pendingInvitesLabel(invites?.length ?? 0);
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: _bar('Grupo'),
-        body: const Center(child: Text('Grupo não encontrado.')),
-      );
-    }
-    final invites = _invites;
-    final pending = pendingInvitesLabel(invites?.length ?? 0);
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _bar('Grupo'),
-      // Only the list scrolls: header, tabs and the two buttons stay put.
-      body: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _header(
-                group,
-                [
-                  group.peopleLabel,
-                  if (pending.isNotEmpty) pending,
-                ].join(' · '),
-              ),
-              const SizedBox(height: 20),
-              _tabs(group.people.length, invites?.length),
-              const SizedBox(height: 20),
-              // Loose height: a short list keeps its size, a long one
-              // scrolls inside the card.
-              Expanded(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: _onInvites
-                      ? _invitesCard(invites)
-                      : _membersCard(group),
+        // Only the list scrolls: header, tabs and the two buttons stay put.
+        body: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _header(
+                  group,
+                  [
+                    group.peopleLabel,
+                    if (pending.isNotEmpty) pending,
+                  ].join(' · '),
                 ),
-              ),
-              const SizedBox(height: 20),
-              _inviteButton(),
-              if (c.isAdmin) ...[
-                const SizedBox(height: 12),
-                _deleteButton(group),
+                const SizedBox(height: 20),
+                _tabs(group.people.length, invites?.length),
+                const SizedBox(height: 20),
+                // Loose height: a short list keeps its size, a long one
+                // scrolls inside the card.
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: _onInvites
+                        ? _invitesCard(invites)
+                        : _membersCard(group),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _inviteButton(),
+                if (c.isAdmin) ...[
+                  const SizedBox(height: 12),
+                  _deleteButton(group),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 
   Widget _header(Group group, String summary) => Row(
     children: [
@@ -1027,7 +1056,7 @@ class _GroupViewState extends State<GroupView> {
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
       ),
       onPressed: () async {
-        await openInvite(c, groupId: widget.groupId);
+        await openInvite(context, c, groupId: widget.groupId);
         await _loadInvites();
       },
       child: const Row(
@@ -1120,7 +1149,7 @@ class _GroupViewState extends State<GroupView> {
               label: 'Ver grupos',
               busy: false,
               busyLabel: '',
-              onPressed: Get.back,
+              onPressed: () => Navigator.pop(context),
             ),
           ],
         ),
@@ -1134,6 +1163,7 @@ class _GroupViewState extends State<GroupView> {
     String? problem() =>
         typed().isEmpty ? null : c.nameProblem(typed(), renaming: group.id);
     final ok = await _actionSheet(
+      context,
       title: 'Renomear grupo',
       confirmLabel: 'Salvar nome',
       busyLabel: 'Salvando…',
@@ -1210,6 +1240,7 @@ class _GroupViewState extends State<GroupView> {
     final choices = c.assignableRoles;
     String? problem() => rolesChoiceProblem(roles, byAdmin: c.isAdmin);
     final ok = await _actionSheet(
+      context,
       title: 'O que ${person.email} faz',
       confirmLabel: 'Salvar',
       busyLabel: 'Salvando…',
@@ -1338,6 +1369,7 @@ class _GroupViewState extends State<GroupView> {
 
   Future<void> _remove(Group group, GroupPerson person) async {
     final ok = await _actionSheet(
+      context,
       title: 'Remover ${person.email} de ${group.name}?',
       confirmLabel: 'Remover',
       busyLabel: 'Removendo…',
@@ -1374,6 +1406,7 @@ class _GroupViewState extends State<GroupView> {
 
   Future<void> _resend(Invite invite) async {
     final ok = await _actionSheet(
+      context,
       title: 'Reenviar o convite?',
       confirmLabel: 'Reenviar convite',
       busyLabel: 'Reenviando…',
@@ -1390,6 +1423,7 @@ class _GroupViewState extends State<GroupView> {
 
   Future<void> _cancelInvite(Invite invite) async {
     final ok = await _actionSheet(
+      context,
       title: 'Cancelar o convite?',
       confirmLabel: 'Cancelar convite',
       busyLabel: 'Cancelando…',
@@ -1421,6 +1455,7 @@ class _GroupViewState extends State<GroupView> {
     }
     final loses = impact.loses.length;
     await _actionSheet(
+      context,
       title: 'Excluir ${group.name}?',
       confirmLabel: 'Excluir grupo',
       busyLabel: 'Excluindo…',
@@ -1443,22 +1478,19 @@ class _GroupViewState extends State<GroupView> {
   }
 }
 
+/// What *Convidar pessoas* opens with: the groups screen's controller and
+/// the group to preselect.
+typedef InviteRequest = ({GroupsController groups, String? groupId});
+
 /// Opens *Convidar pessoas* for the organization's groups (preselecting
 /// [groupId]); completes after the groups are reloaded.
-Future<void> openInvite(GroupsController controller, {String? groupId}) async {
-  await Get.to(
-    () => InviteView(
-      controller: InviteController(
-        organizationId: controller.organizationId,
-        organizationName:
-            Organization.current?.name ?? controller.organizationId,
-        groups: controller.groups.toList(),
-        groupId: groupId,
-        backend: const FirebaseInvitesBackend(),
-        canCreateFirstGroup: controller.isAdmin,
-      ),
-    ),
-  );
+Future<void> openInvite(
+  BuildContext context,
+  GroupsController controller, {
+  String? groupId,
+}) async {
+  final InviteRequest request = (groups: controller, groupId: groupId);
+  await context.push<void>(Routes.invite, extra: request);
   await controller.load();
 }
 
@@ -1468,7 +1500,8 @@ AppBar adminAppBar(String title) => _bar(title);
 /// The administration screens' confirmation sheet (see the group screens):
 /// completes with whether [onConfirm] succeeded; [onConfirm] returns an
 /// error message to show in the sheet, or `null`.
-Future<bool> adminActionSheet({
+Future<bool> adminActionSheet(
+  BuildContext context, {
   required String title,
   required String confirmLabel,
   required String busyLabel,
@@ -1476,6 +1509,7 @@ Future<bool> adminActionSheet({
   bool danger = false,
   List<String> lines = const [],
 }) => _actionSheet(
+  context,
   title: title,
   confirmLabel: confirmLabel,
   busyLabel: busyLabel,

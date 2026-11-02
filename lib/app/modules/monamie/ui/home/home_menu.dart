@@ -1,34 +1,63 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_colors.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/initials.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
+import 'package:monamie_app/app/routes/app_routes.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
+import 'package:monamie_app/app/utils/result.dart';
 
 /// The side menu: who the person is and where, the organization's
 /// administration (for its administrators only) and sign-out.
 class HomeMenu extends StatelessWidget {
-  const HomeMenu({super.key});
+  const HomeMenu({
+    super.key,
+    required this.groups,
+    required this.user,
+    required this.session,
+    required this.tracking,
+  });
 
-  GroupMapState get _groups => Get.find<GroupMapState>();
-  UserController get _user => Get.find<UserController>();
-  AuthGoogleController get _auth => Get.find<AuthGoogleController>();
-  TrackingController get _tracking => Get.find<TrackingController>();
+  final GroupMapState groups;
+  final UserController user;
 
-  /// Closes the menu, then goes to [route].
-  void _open(String route) {
-    Get.back<void>();
-    Get.toNamed<void>(route);
+  /// The sign-in flow: sign-out, switching organization, ownership.
+  final SessionFlow session;
+  final TrackingController tracking;
+
+  GroupMapState get _groups => groups;
+  UserController get _user => user;
+  SessionFlow get _auth => session;
+  TrackingController get _tracking => tracking;
+
+  /// Closes the menu, then opens [route] over the map. A push, not a go:
+  /// the screen stays inside the organization's scope, and going back
+  /// returns to the map.
+  void _open(BuildContext context, String route) {
+    final router = GoRouter.of(context);
+    Navigator.pop(context);
+    router.push<void>(route);
+  }
+
+  /// Closes the menu, then runs [action] and shows its message when it fails.
+  /// The messenger outlives the menu (and the home screen, on sign-out).
+  Future<void> _closeAndRun(
+    BuildContext context,
+    Future<Result<Object?>> Function() action,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    showErrorOf(messenger, await action());
   }
 
   @override
@@ -47,43 +76,46 @@ class HomeMenu extends StatelessWidget {
             children: [
               _identity(),
               const SizedBox(height: 8),
-              _account(),
+              _account(context),
               const SizedBox(height: 8),
               _MenuItem(
                 icon: Icons.swap_horiz,
                 label: 'Trocar de organização',
-                onTap: () {
-                  Get.back<void>();
-                  _auth.switchOrganization();
+                onTap: () => _closeAndRun(context, _auth.switchOrganization),
+              ),
+              ListenableBuilder(
+                listenable: _groups.capabilities,
+                builder: (context, _) {
+                  if (_groups.isAdmin) return _admin(context);
+                  // A group's maintainer manages only their groups.
+                  if (_groups.capabilities.value.canManageGroups) {
+                    return _maintainer(context);
+                  }
+                  return const SizedBox.shrink();
                 },
               ),
-              Obx(() {
-                if (_groups.isAdmin) return _admin();
-                // A group's maintainer manages only their groups.
-                if (_groups.capabilities.value.canManageGroups) {
-                  return _maintainer();
-                }
-                return const SizedBox.shrink();
-              }),
               const Spacer(),
               const Divider(color: HomeColors.divider, height: 1),
               const SizedBox(height: 8),
               // Disabled while signing out and while tracking starts or
               // stops: leaving in the middle of the start could turn the
               // service on after the sign-out.
-              Obx(
-                () => _MenuItem(
-                  icon: Icons.logout,
-                  label: 'Sair',
-                  onTap:
-                      _auth.isLoggingOut.value ||
-                          _tracking.isTrackingLoading.value
-                      ? null
-                      : () {
-                          Get.back<void>();
-                          _auth.logout();
-                        },
-                ),
+              ListenableBuilder(
+                listenable: Listenable.merge([
+                  _auth,
+                  _tracking.isTrackingLoading,
+                ]),
+                builder: (context, _) {
+                  final trackingBusy = _tracking.isTrackingLoading.value;
+                  final loggingOut = _auth.state.isLoggingOut;
+                  return _MenuItem(
+                    icon: Icons.logout,
+                    label: 'Sair',
+                    onTap: loggingOut || trackingBusy
+                        ? null
+                        : () => _closeAndRun(context, _auth.logout),
+                  );
+                },
               ),
             ],
           ),
@@ -115,14 +147,19 @@ class HomeMenu extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Obx(
-                  () => Text(
+                ListenableBuilder(
+                  listenable: Listenable.merge([
+                    _groups.capabilities,
+                    _groups.publishGroups,
+                  ]),
+                  builder: (context, _) => Text(
                     menuSubtitle(
                       isAdmin: _groups.isAdmin,
                       canWatch: _groups.canWatch,
                       canShare: _groups.canPublish,
                       publishGroups: [
-                        for (final group in _groups.publishGroups) group.name,
+                        for (final group in _groups.publishGroups.value)
+                          group.name,
                       ],
                     ),
                     maxLines: 1,
@@ -142,85 +179,88 @@ class HomeMenu extends StatelessWidget {
     );
   }
 
-  Widget _account() {
-    return Obx(() {
-      final user = _user.googleUser;
-      final name = user?.name ?? '';
-      final email = user?.email ?? '';
-      final avatar = user?.avatarBase64;
-      return Semantics(
-        button: true,
-        label: 'Minha conta',
-        excludeSemantics: true,
-        child: Material(
-          color: HomeColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
+  Widget _account(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _user,
+      builder: (context, _) {
+        final user = _user.googleUser;
+        final name = user?.name ?? '';
+        final email = user?.email ?? '';
+        final avatar = user?.avatarBase64;
+        return Semantics(
+          button: true,
+          label: 'Minha conta',
+          excludeSemantics: true,
+          child: Material(
+            color: HomeColors.surface,
             borderRadius: BorderRadius.circular(16),
-            onTap: () => _open(Routes.MY_ACCOUNT),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  if (avatar != null && avatar.isNotEmpty)
-                    ClipOval(
-                      child: Image.memory(
-                        base64Decode(avatar),
-                        width: 36,
-                        height: 36,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  else
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppColors.lightBlue(),
-                      child: Text(
-                        initialsOf(name.isEmpty ? email : name),
-                        style: TextStyle(
-                          color: AppColors.darkBlue(),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _open(context, Routes.myAccount),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    if (avatar != null && avatar.isNotEmpty)
+                      ClipOval(
+                        child: Image.memory(
+                          base64Decode(avatar),
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
                         ),
-                      ),
-                    ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name.isEmpty ? email : name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: HomeColors.ink,
-                            fontSize: 15,
+                      )
+                    else
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.lightBlue(),
+                        child: Text(
+                          initialsOf(name.isEmpty ? email : name),
+                          style: TextStyle(
+                            color: AppColors.darkBlue(),
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        if (name.isNotEmpty)
+                      ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            email,
+                            name.isEmpty ? email : name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: HomeColors.muted,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                              color: HomeColors.ink,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                      ],
+                          if (name.isNotEmpty)
+                            Text(
+                              email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: HomeColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Icon(Icons.chevron_right, color: HomeColors.muted),
-                ],
+                    const Icon(Icons.chevron_right, color: HomeColors.muted),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   Widget _sectionTitle(String title) => Padding(
@@ -237,7 +277,7 @@ class HomeMenu extends StatelessWidget {
   );
 
   /// The maintainer's section: their groups only.
-  Widget _maintainer() {
+  Widget _maintainer(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Column(
@@ -248,14 +288,14 @@ class HomeMenu extends StatelessWidget {
           _MenuItem(
             icon: Icons.groups_outlined,
             label: 'Meus grupos',
-            onTap: () => _open(Routes.GROUPS),
+            onTap: () => _open(context, Routes.groups),
           ),
         ],
       ),
     );
   }
 
-  Widget _admin() {
+  Widget _admin(BuildContext context) {
     final organizationId = Organization.current?.id;
     // The owner-only entry needs to know who owns the organization: read
     // once per organization, while the menu is open.
@@ -270,26 +310,28 @@ class HomeMenu extends StatelessWidget {
           _MenuItem(
             icon: Icons.groups_outlined,
             label: 'Grupos',
-            onTap: () => _open(Routes.GROUPS),
+            onTap: () => _open(context, Routes.groups),
           ),
-          Obx(
-            () => _auth.ownership[organizationId] == true
+          ListenableBuilder(
+            listenable: _auth,
+            builder: (context, _) =>
+                _auth.state.ownership[organizationId] == true
                 ? _MenuItem(
                     icon: Icons.admin_panel_settings_outlined,
                     label: 'Administradores',
-                    onTap: () => _open(Routes.ADMINISTRATORS),
+                    onTap: () => _open(context, Routes.administrators),
                   )
                 : const SizedBox.shrink(),
           ),
           _MenuItem(
             icon: Icons.palette_outlined,
             label: 'Aparência da organização',
-            onTap: () => _open(Routes.APPEARANCE),
+            onTap: () => _open(context, Routes.appearance),
           ),
           _MenuItem(
             icon: Icons.tune,
             label: 'Ajustes de acompanhamento',
-            onTap: () => _open(Routes.TRACKING_SETTINGS),
+            onTap: () => _open(context, Routes.trackingSettings),
           ),
         ],
       ),

@@ -1,9 +1,13 @@
 import 'dart:typed_data';
 
+import 'package:freezed_annotation/freezed_annotation.dart';
+
 import 'organization_id.dart';
 import 'organization_theme.dart';
 
 export 'organization_id.dart';
+
+part 'organization_config.freezed.dart';
 
 /// The organization's Firebase project: `monamienet-<id>`.
 String firebaseProjectIdFor(String organizationId) =>
@@ -20,15 +24,35 @@ String fallbackOrganizationName(String id) =>
 /// Only [id] and [name] are always present. A missing or unknown theme uses
 /// Grafite; a missing logo (or one that does not decode) shows the name's
 /// initial in a tile of the theme's primary color.
-class OrganizationConfig {
-  const OrganizationConfig({
-    required this.id,
-    required this.name,
-    this.themeId,
-    this.theme,
-    this.logoVersion,
-    this.logoPng,
-  });
+@Freezed(fromJson: false, toJson: false)
+abstract class OrganizationConfig with _$OrganizationConfig {
+  const factory OrganizationConfig({
+    /// Permanent organization id: `<id>` in `monamienet-<id>` and in
+    /// `organizations/<id>`.
+    required String id,
+
+    /// The organization's own name. Users see it alone: the MonAmie name and
+    /// a organization's name are never shown side by side.
+    required String name,
+
+    /// `themeId`: the catalog theme the organization picked, or `null`.
+    String? themeId,
+
+    /// The catalog theme [themeId] resolved to, kept with the binding so the
+    /// first screen is branded without network. `null` while unresolved,
+    /// which shows the default theme.
+    OrganizationTheme? theme,
+
+    /// `logoVersion`: set when an administrator uploads a logo, so devices
+    /// know to fetch it again. `null` when the organization has no logo.
+    int? logoVersion,
+
+    /// The logo file (a square 512 px PNG) for [logoVersion], kept with the
+    /// binding. `null` when there is no logo or it was not downloaded yet.
+    Uint8List? logoPng,
+  }) = _OrganizationConfig;
+
+  const OrganizationConfig._();
 
   /// Reads the organization's `config/branding` document.
   ///
@@ -58,30 +82,6 @@ class OrganizationConfig {
       logoPng: logoVersion is int ? logoPng : null,
     );
   }
-
-  /// Permanent organization id: `<id>` in `monamienet-<id>` and in
-  /// `organizations/<id>`.
-  final String id;
-
-  /// The organization's own name. Users see it alone: the MonAmie name and a
-  /// organization's name are never shown side by side.
-  final String name;
-
-  /// `themeId`: the catalog theme the organization picked, or `null`.
-  final String? themeId;
-
-  /// The catalog theme [themeId] resolved to, kept with the binding so the
-  /// first screen is branded without network. `null` while unresolved, which
-  /// shows the default theme.
-  final OrganizationTheme? theme;
-
-  /// `logoVersion`: set when an administrator uploads a logo, so devices know to
-  /// fetch it again. `null` when the organization has no logo.
-  final int? logoVersion;
-
-  /// The logo file (a square 512 px PNG) for [logoVersion], kept with the
-  /// binding. `null` when there is no logo or it was not downloaded yet.
-  final Uint8List? logoPng;
 
   /// The theme the app uses: [theme], or the default (Grafite).
   OrganizationTheme get effectiveTheme => theme ?? defaultOrganizationTheme;

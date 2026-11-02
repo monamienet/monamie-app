@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_palette.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
@@ -51,15 +50,18 @@ class _InviteViewState extends State<InviteView> {
       centerTitle: false,
     ),
     body: SafeArea(
-      child: Obx(() {
-        final result = c.result.value;
-        return result == null ? _form() : _sent(result);
-      }),
+      child: ListenableBuilder(
+        listenable: c,
+        builder: (context, _) {
+          final result = c.state.result;
+          return result == null ? _form() : _sent(result);
+        },
+      ),
     ),
   );
 
   Widget _form() {
-    final sending = c.isSending.value;
+    final sending = c.state.isSending;
     return Column(
       children: [
         Expanded(
@@ -84,11 +86,11 @@ class _InviteViewState extends State<InviteView> {
                   decoration: InputDecoration(
                     hintText: 'Ex.: Motoristas',
                     border: const OutlineInputBorder(),
-                    errorText: c.firstGroupName.value.isEmpty
+                    errorText: c.state.firstGroupName.isEmpty
                         ? null
                         : c.firstGroupProblem,
                   ),
-                  onChanged: (v) => c.firstGroupName.value = v,
+                  onChanged: c.setFirstGroupName,
                 ),
               ] else ...[
                 const Text(
@@ -97,18 +99,18 @@ class _InviteViewState extends State<InviteView> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  initialValue: c.groupId.value,
+                  initialValue: c.state.groupId,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                   ),
                   items: [
-                    for (final group in c.groups)
+                    for (final group in c.state.groups)
                       DropdownMenuItem(
                         value: group.id,
                         child: Text('${group.name} · ${group.peopleLabel}'),
                       ),
                   ],
-                  onChanged: sending ? null : (v) => c.groupId.value = v,
+                  onChanged: sending ? null : c.selectGroup,
                 ),
               ],
               const SizedBox(height: 20),
@@ -129,9 +131,9 @@ class _InviteViewState extends State<InviteView> {
                       decoration: InputDecoration(
                         hintText: 'email@exemplo.com',
                         border: const OutlineInputBorder(),
-                        errorText: c.draftError.value.isEmpty
+                        errorText: c.state.draftError.isEmpty
                             ? null
-                            : c.draftError.value,
+                            : c.state.draftError,
                       ),
                       onSubmitted: (_) => _add(),
                     ),
@@ -146,13 +148,14 @@ class _InviteViewState extends State<InviteView> {
                   ),
                 ],
               ),
-              if (c.people.isNotEmpty) ...[
+              if (c.state.people.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 const Text(
                   'O que cada pessoa faz? Uma ou as duas.',
                   style: TextStyle(fontWeight: FontWeight.w800, color: _ink),
                 ),
-                for (final person in c.people) _personCard(person, sending),
+                for (final person in c.state.people)
+                  _personCard(person, sending),
                 const SizedBox(height: 4),
                 const Text(
                   'Em campo compartilha a própria localização. Vê o mapa vê '
@@ -182,11 +185,11 @@ class _InviteViewState extends State<InviteView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (c.errorMessage.value.isNotEmpty)
+              if (c.state.errorMessage.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Text(
-                    c.errorMessage.value,
+                    c.state.errorMessage,
                     style: const TextStyle(
                       color: _error,
                       fontWeight: FontWeight.w800,
@@ -225,9 +228,9 @@ class _InviteViewState extends State<InviteView> {
                           ],
                         )
                       : Text(
-                          c.people.length <= 1
+                          c.state.people.length <= 1
                               ? 'Enviar convite'
-                              : 'Enviar ${c.people.length} convites',
+                              : 'Enviar ${c.state.people.length} convites',
                         ),
                 ),
               ),
@@ -333,7 +336,10 @@ class _InviteViewState extends State<InviteView> {
           onPressed: c.again,
           child: const Text('Convidar mais pessoas'),
         ),
-        TextButton(onPressed: Get.back, child: const Text('Voltar')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Voltar'),
+        ),
       ],
     );
   }

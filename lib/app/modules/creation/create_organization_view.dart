@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
+import 'package:monamie_app/app/utils/result.dart';
 
 import 'create_organization_controller.dart';
 import 'id_input_formatter.dart';
@@ -30,7 +31,7 @@ class CreateOrganizationView extends StatefulWidget {
   final String ownerEmail;
 
   /// Enters the new organization (Community, once it is `active`).
-  final Future<void> Function() onReady;
+  final Future<Result<void>> Function() onReady;
 
   @override
   State<CreateOrganizationView> createState() => _CreateOrganizationViewState();
@@ -49,13 +50,23 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   CreateOrganizationController get c => widget.controller;
 
   @override
+  void initState() {
+    super.initState();
+    c.load();
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     _id.dispose();
     super.dispose();
   }
 
-  void _back() => _step == 0 ? Get.back() : setState(() => _step--);
+  void _back() => _step == 0 ? Navigator.pop(context) : setState(() => _step--);
+
+  /// "Entrar na `<nome>`": enters the organization and shows why it could
+  /// not.
+  Future<void> _enter() => runReportingErrors(context, widget.onReady);
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -63,46 +74,49 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     child: Scaffold(
       backgroundColor: MonAmieBrand.cream,
       body: SafeArea(
-        child: Obx(() {
-          final result = c.result.value;
-          if (result != null) return _outcome(result);
-          // The plan screen scrolls between a header and a footer bar that
-          // reach the screen's edges (`Plano.dc.html`); the others are one
-          // column with 24 px margins.
-          final plan = _step == 2;
-          return Padding(
-            padding: plan
-                ? const EdgeInsets.only(top: 8)
-                : const EdgeInsets.fromLTRB(24, 8, 24, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (plan)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: _header(),
-                  )
-                else
-                  _header(),
-                SizedBox(
-                  height: switch (_step) {
-                    0 => 24,
-                    2 => 12,
-                    _ => 20,
-                  },
-                ),
-                Expanded(
-                  child: switch (_step) {
-                    0 => _nameStep(),
-                    1 => _themeStep(),
-                    2 => _planStep(),
-                    _ => _reviewStep(),
-                  },
-                ),
-              ],
-            ),
-          );
-        }),
+        child: ListenableBuilder(
+          listenable: c,
+          builder: (context, _) {
+            final result = c.state.result;
+            if (result != null) return _outcome(result);
+            // The plan screen scrolls between a header and a footer bar that
+            // reach the screen's edges (`Plano.dc.html`); the others are one
+            // column with 24 px margins.
+            final plan = _step == 2;
+            return Padding(
+              padding: plan
+                  ? const EdgeInsets.only(top: 8)
+                  : const EdgeInsets.fromLTRB(24, 8, 24, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (plan)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: _header(),
+                    )
+                  else
+                    _header(),
+                  SizedBox(
+                    height: switch (_step) {
+                      0 => 24,
+                      2 => 12,
+                      _ => 20,
+                    },
+                  ),
+                  Expanded(
+                    child: switch (_step) {
+                      0 => _nameStep(),
+                      1 => _themeStep(),
+                      2 => _planStep(),
+                      _ => _reviewStep(),
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     ),
   );
@@ -126,7 +140,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                   height: 48,
                 ),
                 padding: EdgeInsets.zero,
-                onPressed: c.isCreating.value ? null : _back,
+                onPressed: c.state.isCreating ? null : _back,
                 icon: const Icon(Icons.arrow_back, color: _navy),
               ),
               const SizedBox(width: 8),
@@ -241,15 +255,15 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   );
 
   Widget _nameStep() {
-    final check = c.idCheck.value;
-    final id = c.id.value;
-    final name = c.name.value.trim();
+    final check = c.state.idCheck;
+    final id = c.state.id;
+    final name = c.state.name.trim();
     if (_id.text != id) _id.text = id;
     // "Mínimo 3 letras" is the field's own status; any other problem goes
     // under it, in red.
     final isShort = id.isNotEmpty && id.length < 3;
     final problem = check == IdCheck.unavailable && !isShort
-        ? c.idProblem.value
+        ? c.state.idProblem
         : '';
     final ring = isShort || problem.isNotEmpty ? _danger : _ring;
     return Column(
@@ -501,8 +515,8 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   }
 
   OrganizationConfig get _preview => OrganizationConfig(
-    id: c.id.value.length >= 3 ? c.id.value : 'nova',
-    name: c.name.value.trim().isEmpty ? 'Organização' : c.name.value.trim(),
+    id: c.state.id.length >= 3 ? c.state.id : 'nova',
+    name: c.state.name.trim().isEmpty ? 'Organização' : c.state.name.trim(),
     theme: c.pickedTheme,
   );
 
@@ -678,7 +692,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   /// Four chips per row, each a swatch of the theme's color with its dark
   /// shade as a band, and the theme's name under it.
   Widget _themeGrid() {
-    final themes = c.themes.toList();
+    final themes = c.state.themes;
     return LayoutBuilder(
       builder: (context, box) {
         const columns = 4;
@@ -691,7 +705,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
             for (final theme in themes)
               SizedBox(
                 width: chip,
-                child: _themeChip(theme, theme.id == c.themeId.value),
+                child: _themeChip(theme, theme.id == c.state.themeId),
               ),
           ],
         );
@@ -705,7 +719,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     button: true,
     excludeSemantics: true,
     child: InkWell(
-      onTap: () => c.themeId.value = theme.id,
+      onTap: () => c.pickTheme(theme.id),
       borderRadius: BorderRadius.circular(16),
       child: Column(
         children: [
@@ -851,12 +865,12 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                   children: [
                     _reviewRow(
                       'Nome',
-                      Text(c.name.value.trim(), style: _value),
+                      Text(c.state.name.trim(), style: _value),
                       0,
                     ),
                     _reviewRow(
                       'Identificador',
-                      Text(c.id.value, style: _value),
+                      Text(c.state.id, style: _value),
                       0,
                     ),
                     _reviewRow(
@@ -880,7 +894,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                     _reviewRow(
                       'Plano',
                       Text(
-                        c.plan.value == 'community' ? 'Community' : 'Standard',
+                        c.state.plan == 'community' ? 'Community' : 'Standard',
                         style: _value,
                       ),
                       2,
@@ -954,11 +968,11 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
           ),
         ),
         const SizedBox(height: 20),
-        if (c.errorMessage.value.isNotEmpty)
+        if (c.state.errorMessage.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
-              c.errorMessage.value,
+              c.state.errorMessage,
               style: const TextStyle(
                 fontSize: 13,
                 height: 19 / 13,
@@ -977,7 +991,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
                 activeColor: _navy,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
-                onChanged: c.isCreating.value
+                onChanged: c.state.isCreating
                     ? null
                     : (v) => setState(() => _acceptedTerms = v ?? false),
               ),
@@ -1009,7 +1023,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         _button(
           'Criar organização',
           _acceptedTerms ? c.create : null,
-          busy: c.isCreating.value,
+          busy: c.state.isCreating,
           busyLabel: 'Criando…',
         ),
       ],
@@ -1055,7 +1069,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         ),
         const SizedBox(width: 12),
         InkWell(
-          onTap: c.isCreating.value ? null : () => setState(() => _step = step),
+          onTap: c.state.isCreating ? null : () => setState(() => _step = step),
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Text(
@@ -1075,7 +1089,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   /// *Escolha um plano* (`Plano.dc.html`): the two plans as radio cards, a
   /// note, and a footer bar whose button goes on to the review.
   Widget _planStep() {
-    final community = c.plan.value == 'community';
+    final community = c.state.plan == 'community';
     final name = _preview.name;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1194,7 +1208,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
     String tagline,
     List<(bool, String)> points,
   ) {
-    final selected = c.plan.value == id;
+    final selected = c.state.plan == id;
     final offered = CreateOrganizationController.offeredPlans.contains(id);
     return Semantics(
       inMutuallyExclusiveGroup: true,
@@ -1203,7 +1217,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
       enabled: offered,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: c.isCreating.value || !offered ? null : () => c.pickPlan(id),
+        onTap: c.state.isCreating || !offered ? null : () => c.pickPlan(id),
         child: Opacity(
           opacity: offered ? 1 : 0.45,
           child: Container(
@@ -1315,7 +1329,7 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
   }
 
   Widget _outcome(String status) {
-    final name = c.name.value.trim();
+    final name = c.state.name.trim();
     final (title, text, action) = switch (status) {
       'active' => (
         'A $name está pronta',
@@ -1327,14 +1341,14 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
         'Falta ativar o faturamento',
         'A $name roda num projeto do Google Cloud pago pela sua organização. '
             'Entre no Google Cloud com esta mesma Conta Google, escolha ou crie '
-            'uma conta de faturamento e vincule ao projeto monamienet-${c.id.value}. '
+            'uma conta de faturamento e vincule ao projeto monamienet-${c.state.id}. '
             'O identificador fica reservado por 7 dias.',
         'Entendi',
       ),
       _ => (
         'Algo deu errado ao criar a $name',
         'Não é nada que você precise fazer. A equipe do MonAmie já foi avisada e '
-            'vai terminar a criação. O identificador ${c.id.value} continua '
+            'vai terminar a criação. O identificador ${c.state.id} continua '
             'reservado para vocês enquanto isso.',
         'Sair',
       ),
@@ -1364,7 +1378,10 @@ class _CreateOrganizationViewState extends State<CreateOrganizationView> {
             style: const TextStyle(fontSize: 16, height: 1.5, color: _muted),
           ),
           const Spacer(),
-          _button(action, status == 'active' ? widget.onReady : Get.back),
+          _button(
+            action,
+            status == 'active' ? _enter : () => Navigator.pop(context),
+          ),
         ],
       ),
     );

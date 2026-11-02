@@ -1,7 +1,11 @@
-/// A person of the observed group: someone with a position there.
-class GroupMember {
-  const GroupMember({required this.name, required this.email});
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  final String name;
-  final String email;
+part 'group_member.freezed.dart';
+
+/// A person of the observed group: someone with a position there. Compared
+/// by content, so lists of members compare by content too.
+@freezed
+abstract class GroupMember with _$GroupMember {
+  const factory GroupMember({required String name, required String email}) =
+      _GroupMember;
 }

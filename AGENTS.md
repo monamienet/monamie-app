@@ -46,6 +46,17 @@ Who belongs where lives in Firestore documents of the organization's project, **
 
 ## Frontend & Architectural Best Practices
 
+### Controllers & State
+- **Controllers are `ChangeNotifier`s** (`package:flutter/foundation.dart`) holding one immutable state class made with `freezed` (`<name>_state.dart` next to the controller, its generated `.freezed.dart` committed). They replace the state whole with `copyWith` and call `notifyListeners()` only when the new state differs (`==`); lists in a state are never changed in place. Models a state holds have value equality (`freezed`), so the deep comparison works.
+- **State contracts other classes react to value by value** (`GroupMapState`, `CalendarController`) expose one `ValueListenable` per value instead, each notifying only when its content changes, so a listener reacts to the one value it needs; widgets that read several combine them with `Listenable.merge`.
+- **Dependencies through the constructor**, results as `Result`: controllers never look up services, show messages or navigate; screens show the messages.
+- **Screens listen with `ListenableBuilder`** and receive their controller as a parameter; they call the controller's `load()` when they open and keep their `TextEditingController`s themselves (controllers import no Flutter UI library, checked by `dart run tool/check_layers.dart`).
+
+### Navigation & Injection
+- **`go_router` with `MaterialApp.router`** (`lib/app/routes/app_router.dart`, paths in `app_routes.dart`). The sign-in flow never navigates: `AuthGoogleController` sets its `SessionState`, the router listens to it (`refreshListenable`) and the pure `sessionRedirect(session, location)` (`session_redirect.dart`) picks the screen.
+- **Two `provider` scopes**, read only in route assembly (route builders hand controllers to screens as parameters): the app scope (`MonAmieApp`, above the router) owns `AuthGoogleController` and the theme; the organization's `ShellRoute` (`OrganizationScope`) creates, starts and disposes the bound organization's controllers. Controllers used by one screen are created by its route and disposed when it closes.
+- **Inside the organization's shell open screens with `push`; leave it only through the session** (a redirect, i.e. a `go`, which disposes the shell). Dialogs and sheets open on the root navigator, outside the scopes: they receive controllers as parameters, never through `context.read`.
+
 ### Asynchronous Actions & Visual Feedback
 - **Immediate Visual Feedback**: Any interactive trigger initiating an asynchronous operation (background services, location hardware, authentication, remote queries) must immediately render a visible pending/loading state (e.g., progress spinner, transitional colors).
 - **Debouncing & Reentrancy Guards**: Disable interactive triggers (`onPressed: null`) and protect controllers with reentrancy guard clauses (`if (isLoading.value) return;`) while operations are in flight to prevent concurrent executions and race conditions.
@@ -54,6 +65,7 @@ Who belongs where lives in Firestore documents of the organization's project, **
 ### Contract & Interface Segregation (SOLID)
 - **Dedicated Contract Files**: When creating abstract interfaces/contracts for widgets or controllers (e.g., to support dependency injection and testability), place the interface in its own dedicated file rather than inside the concrete implementation file.
 - **Avoid Transitive Bloat**: Pure UI components and widget tests must only depend on lightweight contracts, avoiding transitive dependencies on heavy concrete controllers that import background services, map rendering, or native hardware plugins.
+- **State Never Imports the UI**: Controllers (`*_controller.dart`) and state contracts (files with the line `// check_layers: state_contract`) under `lib/` never import Flutter's UI libraries (`material.dart`, `widgets.dart`, `cupertino.dart`, `painting.dart`, `rendering.dart` and the like); `foundation.dart`, `services.dart` and `dart:ui` are allowed. `dart run tool/check_layers.dart` enforces it in the PR checks, together with a second rule: no file under `lib/` imports GetX (`package:get`).
 
 ### Hardware & Sensor Operations UX
 - **User-Facing Transparency**: Never silently swallow hardware or sensor timeouts (e.g., GPS satellite fix) with developer-only `debugPrint`. When a service starts but sensor calibration is pending, provide transparent, non-blocking user feedback (e.g., an informative SnackBar or status banner) clarifying that the service is running while satellites/hardware sync.
@@ -62,13 +74,14 @@ Who belongs where lives in Firestore documents of the organization's project, **
 
 ## Testing
 
-Follow `.agents/rules/AI_UNIT_TESTING_GUIDELINES.md`: test only code that makes decisions, never configuration files read with regex, and keep `flutter test test/unit -j 2` under two minutes on an 8 GB laptop. Remove a feature's tests in the same commit that removes the feature.
+- Tests follow the versioned skills in `.agents/skills/`: `dart-add-unit-test`, `dart-generate-test-mocks`, `flutter-add-widget-test` and `flutter-add-integration-test` (and `dart-collect-coverage` for coverage). Test doubles are mockito mocks.
+- The tests of a task are written by an agent with a different context window than the agent that did the main task.
 
 Security rules are tested for real against the emulators in `test/rules/` (Node, `@firebase/rules-unit-testing`): `cd test/rules && npm ci && nice -n 10 npm test`. Each test file uses its own `demo-*` project id so they share one emulator run.
 
 ## Resource Limits on Dev Machines
 
-Dev laptops have 8 GB of RAM shared with the IDE and a browser. Run heavy commands at low priority and low parallelism: `nice -n 15 flutter test test/unit -j 2`, and Gradle with at most two workers (`org.gradle.workers.max=2` in `~/.gradle/gradle.properties`; `flutter build` gives no flag for it). The project caps the Gradle heap at 2 GB. Avoid running more than one build or test process at a time.
+Dev laptops have 8 GB of RAM shared with the IDE and a browser. Run heavy commands at low priority and low parallelism: `nice -n 15 flutter test -j 2`, `nice -n 15 dart run build_runner build` (never its `watch` mode), and Gradle with at most two workers (`org.gradle.workers.max=2` in `~/.gradle/gradle.properties`; `flutter build` gives no flag for it). The project caps the Gradle heap at 2 GB. Avoid running more than one build or test process at a time.
 
 
 ## Running the Web App Locally

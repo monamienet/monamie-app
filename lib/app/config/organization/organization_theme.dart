@@ -1,5 +1,9 @@
 import 'dart:ui' show Color;
 
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'organization_theme.freezed.dart';
+
 final _hexColorPattern = RegExp(r'^#[0-9A-Fa-f]{6}$');
 
 /// One theme of the catalog in the central project (`themes/{id}`).
@@ -7,18 +11,36 @@ final _hexColorPattern = RegExp(r'^#[0-9A-Fa-f]{6}$');
 /// Organizations pick a theme, never free colors. Every theme passes WCAG AA for
 /// [onPrimary] on [primary] and [onDark] on [dark], and for [dark] text on
 /// [light].
-class OrganizationTheme {
-  const OrganizationTheme({
-    required this.id,
-    required this.name,
-    required this.primary,
-    required this.dark,
-    required this.light,
-    required this.onPrimary,
-    required this.onDark,
-    this.order = 0,
-    this.active = true,
-  });
+@freezed
+abstract class OrganizationTheme with _$OrganizationTheme {
+  const factory OrganizationTheme({
+    required String id,
+    required String name,
+
+    /// Buttons, selected states, the logo tile.
+    required Color primary,
+
+    /// App bars and headers.
+    required Color dark,
+
+    /// Pale containers, with [dark] text on them.
+    required Color light,
+
+    /// Text and icons on [primary].
+    required Color onPrimary,
+
+    /// Text and icons on [dark].
+    required Color onDark,
+
+    /// Position in the picker.
+    @Default(0) int order,
+
+    /// Inactive themes are hidden from the picker but still resolve, so a
+    /// organization that uses one keeps it.
+    @Default(true) bool active,
+  }) = _OrganizationTheme;
+
+  const OrganizationTheme._();
 
   /// Reads a catalog document (or the local copy written by [toJson]).
   /// Returns `null` when a color is missing or malformed: a broken theme is
@@ -43,31 +65,6 @@ class OrganizationTheme {
       active: data['active'] != false,
     );
   }
-
-  final String id;
-  final String name;
-
-  /// Buttons, selected states, the logo tile.
-  final Color primary;
-
-  /// App bars and headers.
-  final Color dark;
-
-  /// Pale containers, with [dark] text on them.
-  final Color light;
-
-  /// Text and icons on [primary].
-  final Color onPrimary;
-
-  /// Text and icons on [dark].
-  final Color onDark;
-
-  /// Position in the picker.
-  final int order;
-
-  /// Inactive themes are hidden from the picker but still resolve, so a
-  /// organization that uses one keeps it.
-  final bool active;
 
   Map<String, Object?> toJson() => {
     'name': name,

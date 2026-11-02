@@ -2,16 +2,22 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
 
+part 'organization_binding.freezed.dart';
+
 /// Everything the app remembers about the organization a user is bound to: the
 /// organization and its branding, and the options of its Firebase project.
-class OrganizationBinding {
-  const OrganizationBinding({
-    required this.organization,
-    required this.options,
-  });
+@Freezed(fromJson: false, toJson: false)
+abstract class OrganizationBinding with _$OrganizationBinding {
+  const factory OrganizationBinding({
+    required OrganizationConfig organization,
+    required FirebaseOptions options,
+  }) = _OrganizationBinding;
+
+  const OrganizationBinding._();
 
   /// Reads what [toJson] wrote. Throws a [FormatException] when a required
   /// field is missing.
@@ -56,9 +62,6 @@ class OrganizationBinding {
       ),
     );
   }
-
-  final OrganizationConfig organization;
-  final FirebaseOptions options;
 
   /// Name of the organization's [FirebaseApp]. One name per organization, so an app
   /// is never reused for another project.

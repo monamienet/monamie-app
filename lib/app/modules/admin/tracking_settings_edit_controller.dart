@@ -1,105 +1,127 @@
 import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings_repository.dart';
 
+import 'tracking_settings_edit_state.dart';
+
+export 'tracking_settings_edit_state.dart';
+
 /// State of *Ajustes de acompanhamento*: an administrator picks a preset or custom
-/// values and saves them for everyone in the field.
-class TrackingSettingsEditController extends GetxController {
+/// values and saves them for everyone in the field. The screen calls [load]
+/// when it opens.
+class TrackingSettingsEditController extends ChangeNotifier {
   TrackingSettingsEditController({
-    required TrackingSettingsRepository repository,
+    required this._repository,
     required TrackingSettings saved,
-  }) : _repository = repository,
-       savedSettings = saved.obs,
-       draft = saved.obs,
-       preset = saved.preset.obs;
+  }) : _state = TrackingSettingsEditState(
+         savedSettings: saved,
+         draft: saved,
+         preset: saved.preset,
+       );
 
   final TrackingSettingsRepository _repository;
 
-  /// What is saved now.
-  final Rx<TrackingSettings> savedSettings;
+  TrackingSettingsEditState _state;
+  bool _disposed = false;
 
-  /// What an administrator is choosing.
-  final Rx<TrackingSettings> draft;
-  final Rx<TrackingPreset> preset;
+  /// What the screen shows; replaced whole, never changed in place.
+  TrackingSettingsEditState get state => _state;
 
-  /// The plan's minimum period (Community: 15 min); presets below it are
-  /// not offered.
-  final RxInt minPeriodMinutes = 0.obs;
-  final RxBool isSaving = false.obs;
-  final RxBool justSaved = false.obs;
-  final RxString errorMessage = ''.obs;
-
-  @override
-  void onInit() {
-    super.onInit();
-    _loadPlan();
+  /// Replaces the state, notifying only when it differs.
+  void _emit(TrackingSettingsEditState next) {
+    final changed = next != _state;
+    _state = next;
+    if (changed && !_disposed) notifyListeners();
   }
 
-  Future<void> _loadPlan() async {
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  /// Reads the plan's minimum period; nothing is restricted when it cannot
+  /// be read.
+  Future<void> load() async {
     try {
-      minPeriodMinutes.value = await _repository.minPeriodMinutes();
+      final minutes = await _repository.minPeriodMinutes();
+      _emit(_state.copyWith(minPeriodMinutes: minutes));
     } catch (e) {
       debugPrint('[TrackingSettings] Could not read the plan: $e');
     }
   }
 
-  bool get hasChanges => draft.value != savedSettings.value;
+  bool get hasChanges => _state.draft != _state.savedSettings;
 
   /// Whether [option] can be picked: in [offeredPresets] and allowed by the
   /// plan's minimum period.
   bool allows(TrackingPreset option) =>
       offeredPresets.contains(option) &&
       (option.periodMinutes == null ||
-          option.periodMinutes! >= minPeriodMinutes.value);
+          option.periodMinutes! >= _state.minPeriodMinutes);
 
   void pickPreset(TrackingPreset option) {
-    if (isSaving.value || !allows(option)) return;
-    preset.value = option;
-    justSaved.value = false;
+    if (_state.isSaving || !allows(option)) return;
     final settings = option.settings;
-    if (settings != null) draft.value = settings;
+    _emit(
+      _state.copyWith(
+        preset: option,
+        justSaved: false,
+        draft: settings ?? _state.draft,
+      ),
+    );
   }
 
   void setPeriod(int minutes) {
-    if (isSaving.value ||
+    if (_state.isSaving ||
         !allows(TrackingPreset.personalizado) ||
-        minutes < minPeriodMinutes.value) {
+        minutes < _state.minPeriodMinutes) {
       return;
     }
-    justSaved.value = false;
-    draft.value = TrackingSettings(
-      periodMinutes: minutes,
-      radiusMeters: draft.value.radiusMeters,
+    _emit(
+      _state.copyWith(
+        justSaved: false,
+        draft: TrackingSettings(
+          periodMinutes: minutes,
+          radiusMeters: _state.draft.radiusMeters,
+        ),
+      ),
     );
   }
 
   void setRadius(int meters) {
-    if (isSaving.value || !allows(TrackingPreset.personalizado)) return;
-    justSaved.value = false;
-    draft.value = TrackingSettings(
-      periodMinutes: draft.value.periodMinutes,
-      radiusMeters: meters,
+    if (_state.isSaving || !allows(TrackingPreset.personalizado)) return;
+    _emit(
+      _state.copyWith(
+        justSaved: false,
+        draft: TrackingSettings(
+          periodMinutes: _state.draft.periodMinutes,
+          radiusMeters: meters,
+        ),
+      ),
     );
   }
 
   /// Saves the draft. Returns whether it worked.
   Future<bool> save() async {
-    if (isSaving.value || !hasChanges) return false;
-    isSaving.value = true;
-    errorMessage.value = '';
+    if (_state.isSaving || !hasChanges) return false;
+    _emit(_state.copyWith(isSaving: true, errorMessage: ''));
     try {
-      await _repository.save(draft.value);
-      savedSettings.value = draft.value;
-      justSaved.value = true;
+      await _repository.save(_state.draft);
+      _emit(_state.copyWith(savedSettings: _state.draft, justSaved: true));
       return true;
     } catch (e) {
       debugPrint('[TrackingSettings] Save failed: $e');
-      errorMessage.value =
-          'Não foi possível salvar agora. Verifique a conexão e tente de novo.';
+      _emit(
+        _state.copyWith(
+          errorMessage:
+              'Não foi possível salvar agora. Verifique a conexão e tente de '
+              'novo.',
+        ),
+      );
       return false;
     } finally {
-      isSaving.value = false;
+      _emit(_state.copyWith(isSaving: false));
     }
   }
 }

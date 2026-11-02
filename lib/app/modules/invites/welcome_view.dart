@@ -1,28 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
 import 'package:monamie_app/app/config/organization/organization_palette.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
 
 /// *Boas-vindas*: shown once, after accepting an invite: the organization,
 /// the group and what the person does in the app. People in the field go on
 /// to the existing location disclosure on the map.
-class WelcomeView extends GetView<AuthGoogleController> {
-  const WelcomeView({super.key});
+class WelcomeView extends StatelessWidget {
+  const WelcomeView({super.key, required this.controller});
+
+  final SessionFlow controller;
 
   @override
   Widget build(BuildContext context) {
-    final invite = controller.welcome.value;
+    // Read once: the screen shows the invite it opened with, and leaving it
+    // clears the invite.
+    final invite = controller.state.welcome;
     final organization = Organization.current;
     final palette = OrganizationPalette.fromConfig(organization);
     final shares = invite?.roles.contains(GroupRole.publisher) ?? false;
-    void open() {
-      controller.welcome.value = null;
-      Get.offAllNamed(Routes.MONAMIE);
-    }
+    // The router follows the session to the map.
+    void open() => controller.finishWelcome();
 
     return Scaffold(
       backgroundColor: Colors.white,

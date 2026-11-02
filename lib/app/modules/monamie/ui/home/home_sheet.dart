@@ -1,12 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:go_router/go_router.dart';
+import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/call_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
+import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/home_layout.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/people_list.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/share_card.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/sheet_colors.dart';
-import 'package:monamie_app/app/routes/app_pages.dart';
+import 'package:monamie_app/app/routes/app_routes.dart';
 import 'package:monamie_app/app/utils/color_pallete.dart';
 
 /// The panel under the map: the sharing switch for people who share, the
@@ -16,14 +20,27 @@ import 'package:monamie_app/app/utils/color_pallete.dart';
 /// Dragging the grabber down hides the group's list so the map gets the
 /// room; dragging it up (or tapping it) shows the list again.
 class HomeSheet extends StatefulWidget {
-  const HomeSheet({super.key});
+  const HomeSheet({
+    super.key,
+    required this.groups,
+    required this.tracking,
+    required this.calendar,
+    required this.calls,
+    required this.user,
+  });
+
+  final GroupMapState groups;
+  final TrackingController tracking;
+  final CalendarController calendar;
+  final CallController calls;
+  final UserController user;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
 }
 
 class _HomeSheetState extends State<HomeSheet> {
-  GroupMapState get _groups => Get.find<GroupMapState>();
+  GroupMapState get _groups => widget.groups;
 
   /// Whether the group's list is hidden.
   bool _collapsed = false;
@@ -44,55 +61,62 @@ class _HomeSheetState extends State<HomeSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.45;
-    return Obx(() {
-      final layout = HomeLayout.of(
-        canShare: _groups.canPublish,
-        canWatch: _groups.canWatch,
-        isWeb: kIsWeb,
-      );
-      if (!layout.showShareCard && !layout.showGroup) {
-        return const SizedBox.shrink();
-      }
-      return Material(
-        color: SheetColors.background,
-        elevation: 12,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (layout.showGroup)
-                  _grabber()
-                else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: _grabberBar(),
-                  ),
-                if (layout.showShareCard) ...[
-                  const SizedBox(height: 4),
-                  const ShareCard(),
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        _groups.capabilities,
+        _groups.selectedGroup,
+        _groups.observedMembers,
+      ]),
+      builder: (context, _) {
+        final layout = HomeLayout.of(
+          canShare: _groups.canPublish,
+          canWatch: _groups.canWatch,
+          isWeb: kIsWeb,
+        );
+        if (!layout.showShareCard && !layout.showGroup) {
+          return const SizedBox.shrink();
+        }
+        return Material(
+          color: SheetColors.background,
+          elevation: 12,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (layout.showGroup)
+                    _grabber()
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: _grabberBar(),
+                    ),
+                  if (layout.showShareCard) ...[
+                    const SizedBox(height: 4),
+                    ShareCard(controller: widget.tracking),
+                  ],
+                  if (layout.showGroup)
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _collapsed
+                          ? const SizedBox(width: double.infinity)
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: _group(afterCard: layout.showShareCard),
+                            ),
+                    ),
                 ],
-                if (layout.showGroup)
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.topCenter,
-                    child: _collapsed
-                        ? const SizedBox(width: double.infinity)
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: _group(afterCard: layout.showShareCard),
-                          ),
-                  ),
-              ],
+              ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   /// The bar drawn at the top of the sheet.
@@ -127,7 +151,7 @@ class _HomeSheetState extends State<HomeSheet> {
   /// 12 px under the share card; right under the grabber it needs only 4.
   List<Widget> _group({required bool afterCard}) {
     final group = _groups.selectedGroup.value;
-    final count = _groups.observedMembers.length;
+    final count = _groups.observedMembers.value.length;
     return [
       SizedBox(height: afterCard ? 12 : 4),
       Padding(
@@ -163,7 +187,13 @@ class _HomeSheetState extends State<HomeSheet> {
       if (group != null && count == 0)
         _emptyGroup()
       else if (group != null)
-        const PeopleList(),
+        PeopleList(
+          groups: _groups,
+          tracking: widget.tracking,
+          calendar: widget.calendar,
+          calls: widget.calls,
+          user: widget.user,
+        ),
     ];
   }
 
@@ -194,7 +224,7 @@ class _HomeSheetState extends State<HomeSheet> {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              onPressed: () => Get.toNamed<void>(Routes.GROUPS),
+              onPressed: () => context.push<void>(Routes.groups),
               child: const Text(
                 'Convidar pessoas',
                 style: TextStyle(fontWeight: FontWeight.w800),

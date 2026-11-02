@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
+import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
-import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/login/controllers/session_flow.dart';
 
 import 'widgets/invite_card.dart';
 import 'widgets/monamie_account_header.dart';
@@ -10,8 +10,17 @@ import 'widgets/monamie_account_header.dart';
 /// *Sem organização*: the signed-in account belongs to no organization yet
 /// (or just lost access to one). The person can create their own or check
 /// again after someone adds or invites them.
-class NoOrganizationView extends GetView<AuthGoogleController> {
-  const NoOrganizationView({super.key});
+class NoOrganizationView extends StatelessWidget {
+  const NoOrganizationView({
+    super.key,
+    required this.controller,
+    required this.onCreateOrganization,
+  });
+
+  final SessionFlow controller;
+
+  /// "Criar minha organização": opens the creation flow over this screen.
+  final VoidCallback onCreateOrganization;
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -22,111 +31,118 @@ class NoOrganizationView extends GetView<AuthGoogleController> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-          child: Obx(() {
-            final busy = controller.isLoading.value;
-            final reason = controller.noAccessReason.value;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                MonAmieAccountHeader(
-                  email: controller.signedInEmail.value,
-                  onSwitch: busy || controller.isLoggingOut.value
-                      ? null
-                      : controller.logout,
-                ),
-                const SizedBox(height: 32),
-                if (reason != null) ...[
-                  _Notice(text: reason),
-                  const SizedBox(height: 24),
-                ],
-                // Membership starts on acceptance, so an invited person has
-                // no group yet and lands here, with the invite.
-                for (final invite in controller.pendingInvites) ...[
-                  InviteCard(invite: invite, controller: controller),
-                  const SizedBox(height: 20),
-                ],
-                const Text(
-                  'Você ainda não faz parte de uma organização',
-                  style: TextStyle(
-                    fontSize: 34,
-                    height: 1.08,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.1,
-                    color: MonAmieBrand.navy,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Crie a da sua equipe agora ou peça para alguém dela '
-                  'adicionar você.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    height: 1.5,
-                    color: MonAmieBrand.mutedInk,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                for (final line in const [
-                  'Nome e tema em menos de 2 minutos',
-                  'Você administra e convida a equipe',
-                  'O logo e a aparência você ajusta depois, no app',
-                ])
-                  _Bullet(text: line),
-                const Spacer(),
-                SizedBox(
-                  height: 56,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: MonAmieBrand.navy,
-                      foregroundColor: MonAmieBrand.cream,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    onPressed: busy
+          child: ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) {
+              final state = controller.state;
+              final busy = state.isLoading;
+              final reason = state.noAccessReason;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  MonAmieAccountHeader(
+                    email: state.signedInEmail,
+                    onSwitch: busy || state.isLoggingOut
                         ? null
-                        : controller.startCreatingOrganization,
-                    child: const Text('Criar minha organização'),
+                        : () => runReportingErrors(context, controller.logout),
                   ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 52,
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: MonAmieBrand.navy,
-                      textStyle: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
+                  const SizedBox(height: 32),
+                  if (reason != null) ...[
+                    _Notice(text: reason),
+                    const SizedBox(height: 24),
+                  ],
+                  // Membership starts on acceptance, so an invited person has
+                  // no group yet and lands here, with the invite.
+                  for (final invite in state.pendingInvites) ...[
+                    InviteCard(invite: invite, controller: controller),
+                    const SizedBox(height: 20),
+                  ],
+                  const Text(
+                    'Você ainda não faz parte de uma organização',
+                    style: TextStyle(
+                      fontSize: 34,
+                      height: 1.08,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.1,
+                      color: MonAmieBrand.navy,
                     ),
-                    onPressed: busy ? null : controller.recheckOrganizations,
-                    child: busy
-                        ? const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  color: MonAmieBrand.navy,
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Text('Verificando…'),
-                            ],
-                          )
-                        : const Text('Já me convidaram · verificar de novo'),
                   ),
-                ),
-              ],
-            );
-          }),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Crie a da sua equipe agora ou peça para alguém dela '
+                    'adicionar você.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
+                      color: MonAmieBrand.mutedInk,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  for (final line in const [
+                    'Nome e tema em menos de 2 minutos',
+                    'Você administra e convida a equipe',
+                    'O logo e a aparência você ajusta depois, no app',
+                  ])
+                    _Bullet(text: line),
+                  const Spacer(),
+                  SizedBox(
+                    height: 56,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: MonAmieBrand.navy,
+                        foregroundColor: MonAmieBrand.cream,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onPressed: busy ? null : onCreateOrganization,
+                      child: const Text('Criar minha organização'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 52,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: MonAmieBrand.navy,
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onPressed: busy
+                          ? null
+                          : () => runReportingErrors(
+                              context,
+                              controller.recheckOrganizations,
+                            ),
+                      child: busy
+                          ? const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    color: MonAmieBrand.navy,
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Text('Verificando…'),
+                              ],
+                            )
+                          : const Text('Já me convidaram · verificar de novo'),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     ),

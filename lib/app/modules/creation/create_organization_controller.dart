@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization_id.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/data/theme/theme_catalog.dart';
 
+import 'create_organization_state.dart';
 import 'creation_backend.dart';
+
+export 'create_organization_state.dart';
 
 const _maxIdLength = 20;
 
@@ -63,36 +65,41 @@ String? idFormatProblem(String id) {
   return null;
 }
 
-/// Where the id check is.
-enum IdCheck { idle, checking, available, unavailable }
-
 /// State of *Criar organização*: name and identifier, theme, plan, review,
-/// then the creation itself.
-class CreateOrganizationController extends GetxController {
+/// then the creation itself. The screen calls [load] when it opens; its
+/// route disposes the controller when it closes, which stops the pending id
+/// check.
+class CreateOrganizationController extends ChangeNotifier {
   CreateOrganizationController({
-    required CreationBackend backend,
-    required ThemeCatalog themes,
+    required this._backend,
+    required this._themes,
     this.debounce = const Duration(milliseconds: 500),
-  }) : _backend = backend,
-       _themes = themes;
+  });
 
   final CreationBackend _backend;
   final ThemeCatalog _themes;
   final Duration debounce;
 
-  final RxString name = ''.obs;
-  final RxString id = ''.obs;
+  CreateOrganizationState _state = CreateOrganizationState(
+    themeId: defaultOrganizationTheme.id,
+  );
+  bool _disposed = false;
+
+  /// What the screen shows; replaced whole, never changed in place.
+  CreateOrganizationState get state => _state;
+
+  /// Replaces the state, notifying only when it differs.
+  void _emit(CreateOrganizationState next) {
+    final changed = next != _state;
+    _state = next;
+    if (changed && !_disposed) notifyListeners();
+  }
 
   /// Once the person edits the id, the name stops suggesting it.
   bool _idEdited = false;
 
-  final Rx<IdCheck> idCheck = IdCheck.idle.obs;
-  final RxString idProblem = ''.obs;
+  /// The pending id check, run once the person stops typing.
   Timer? _timer;
-
-  final RxList<OrganizationTheme> themes = <OrganizationTheme>[].obs;
-  final RxString themeId = defaultOrganizationTheme.id.obs;
-  final RxString plan = 'community'.obs;
 
   /// The plans that can be picked for now. Standard stays on screen, greyed
   /// out, until it is opened to organizations.
@@ -100,43 +107,38 @@ class CreateOrganizationController extends GetxController {
 
   /// Picks [id] when it is offered and nothing is being created.
   void pickPlan(String id) {
-    if (isCreating.value || !offeredPlans.contains(id)) return;
-    plan.value = id;
+    if (_state.isCreating || !offeredPlans.contains(id)) return;
+    _emit(_state.copyWith(plan: id));
   }
 
-  final RxBool isCreating = false.obs;
-  final RxString errorMessage = ''.obs;
-
-  /// The status after creating (`active`, `awaiting_billing`, `failed`).
-  final RxnString result = RxnString();
+  /// Picks theme [id].
+  void pickTheme(String id) => _emit(_state.copyWith(themeId: id));
 
   @override
-  void onInit() {
-    super.onInit();
-    _loadThemes();
-  }
-
-  @override
-  void onClose() {
+  void dispose() {
+    _disposed = true;
     _timer?.cancel();
-    super.onClose();
+    super.dispose();
   }
 
-  Future<void> _loadThemes() async {
+  /// Loads the themes that can be picked; the default theme alone when the
+  /// catalog cannot be read.
+  Future<void> load() async {
     try {
-      themes.assignAll(pickableThemes((await _themes.themes()).values));
+      final themes = pickableThemes((await _themes.themes()).values);
+      _emit(_state.copyWith(themes: themes));
     } catch (e) {
       debugPrint('[Creation] Could not load themes: $e');
-      themes.assignAll([defaultOrganizationTheme]);
+      _emit(_state.copyWith(themes: [defaultOrganizationTheme]));
     }
   }
 
   OrganizationTheme get pickedTheme =>
-      themes.firstWhereOrNull((t) => t.id == themeId.value) ??
+      _state.themes.where((t) => t.id == _state.themeId).firstOrNull ??
       defaultOrganizationTheme;
 
   void setName(String value) {
-    name.value = value;
+    _emit(_state.copyWith(name: value));
     if (!_idEdited) _setId(suggestOrganizationId(value));
   }
 
@@ -146,66 +148,82 @@ class CreateOrganizationController extends GetxController {
   }
 
   void _setId(String value) {
-    id.value = value;
     _timer?.cancel();
     final problem = idFormatProblem(value);
     if (problem != null) {
-      idCheck.value = IdCheck.unavailable;
-      idProblem.value = problem;
+      _emit(
+        _state.copyWith(
+          id: value,
+          idCheck: IdCheck.unavailable,
+          idProblem: problem,
+        ),
+      );
       return;
     }
-    idCheck.value = IdCheck.checking;
-    idProblem.value = '';
+    _emit(_state.copyWith(id: value, idCheck: IdCheck.checking, idProblem: ''));
     _timer = Timer(debounce, () => _check(value));
   }
 
   Future<void> _check(String value) async {
     try {
       final problem = await _backend.idProblem(value);
-      if (id.value != value) return; // typed on meanwhile
-      idCheck.value = problem == null ? IdCheck.available : IdCheck.unavailable;
-      idProblem.value = problem ?? '';
+      if (_state.id != value) return; // typed on meanwhile
+      _emit(
+        _state.copyWith(
+          idCheck: problem == null ? IdCheck.available : IdCheck.unavailable,
+          idProblem: problem ?? '',
+        ),
+      );
     } catch (e) {
-      if (id.value != value) return;
-      idCheck.value = IdCheck.unavailable;
-      idProblem.value = 'Não foi possível verificar agora.';
+      if (_state.id != value) return;
+      _emit(
+        _state.copyWith(
+          idCheck: IdCheck.unavailable,
+          idProblem: 'Não foi possível verificar agora.',
+        ),
+      );
     }
   }
 
   bool get nameValid {
-    final clean = name.value.trim();
+    final clean = _state.name.trim();
     return clean.length >= 2 &&
         clean.length <= 40 &&
         !clean.toLowerCase().startsWith('monamie ');
   }
 
   bool get canContinueFromName =>
-      nameValid && idCheck.value == IdCheck.available;
+      nameValid && _state.idCheck == IdCheck.available;
 
   /// Creates the organization. Returns whether the call went through (the
-  /// status is in [result]).
+  /// status is in [CreateOrganizationState.result]).
   Future<bool> create() async {
-    if (isCreating.value || !canContinueFromName) return false;
-    isCreating.value = true;
-    errorMessage.value = '';
+    if (_state.isCreating || !canContinueFromName) return false;
+    _emit(_state.copyWith(isCreating: true, errorMessage: ''));
     try {
-      result.value = await _backend.create(
-        id: id.value,
-        name: name.value.trim(),
-        themeId: themeId.value,
-        plan: plan.value,
+      final result = await _backend.create(
+        id: _state.id,
+        name: _state.name.trim(),
+        themeId: _state.themeId,
+        plan: _state.plan,
       );
+      _emit(_state.copyWith(result: result));
       return true;
     } on CreationException catch (e) {
-      errorMessage.value = e.message;
+      _emit(_state.copyWith(errorMessage: e.message));
       return false;
     } catch (e) {
       debugPrint('[Creation] Create failed: $e');
-      errorMessage.value =
-          'Não foi possível criar agora. Verifique a conexão e tente de novo.';
+      _emit(
+        _state.copyWith(
+          errorMessage:
+              'Não foi possível criar agora. Verifique a conexão e tente de '
+              'novo.',
+        ),
+      );
       return false;
     } finally {
-      isCreating.value = false;
+      _emit(_state.copyWith(isCreating: false));
     }
   }
 }
