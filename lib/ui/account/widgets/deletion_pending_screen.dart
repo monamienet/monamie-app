@@ -1,0 +1,149 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:monamie_app/ui/core/ui/app_messenger.dart';
+import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
+import 'package:monamie_app/ui/auth/view_models/session_flow.dart';
+
+import 'package:monamie_app/domain/models/account_deletion.dart';
+
+/// *Em exclusão*: the account (and the organization its owner deletes with
+/// it) is waiting to be erased. Cancelling within the 30 days brings
+/// everything back.
+class DeletionPendingScreen extends StatelessWidget {
+  const DeletionPendingScreen({super.key, required this.controller});
+
+  final SessionFlow controller;
+
+  @override
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+    value: SystemUiOverlayStyle.dark,
+    child: Scaffold(
+      backgroundColor: MonAmieBrand.cream,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
+          child: ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) {
+              final state = controller.state;
+              final deletion = state.accountDeletion;
+              final restored = state.deletionRestored;
+              final busy = state.cancellingDeletion || state.isLoading;
+              final name = deletion?.organizationName;
+              final when = deletion == null
+                  ? ''
+                  : inDays(daysLeft(deletion.deleteAt, DateTime.now()));
+              final title = restored
+                  ? (name == null
+                        ? 'Sua conta está de volta'
+                        : 'A $name está de volta')
+                  : (name == null
+                        ? 'Sua conta será excluída $when'
+                        : 'A $name será excluída $when');
+              final body = restored
+                  ? 'Nada foi apagado. Entre para continuar de onde parou.'
+                  : deletion == null
+                  ? ''
+                  : name == null
+                  ? 'Em ${longDate(deletion.deleteAt)} apagamos de vez sua '
+                        'conta e seus dados no MonAmie.'
+                  : 'Em ${longDate(deletion.deleteAt)} apagamos de vez a $name, '
+                        'os grupos, o histórico de todos e a sua conta. Até lá '
+                        'ninguém usa a organização.';
+              final error = state.deletionError;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Icon(
+                    restored ? Icons.restore : Icons.hourglass_bottom,
+                    size: 48,
+                    color: restored ? MonAmieBrand.navy : MonAmieBrand.coral,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 32,
+                      height: 1.1,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1,
+                      color: MonAmieBrand.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    body,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
+                      color: MonAmieBrand.mutedInk,
+                    ),
+                  ),
+                  if (error.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(error, style: TextStyle(color: Colors.red.shade800)),
+                  ],
+                  const Spacer(),
+                  SizedBox(
+                    height: 56,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: MonAmieBrand.navy,
+                        foregroundColor: MonAmieBrand.cream,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onPressed: busy
+                          ? null
+                          : restored
+                          ? () => runReportingErrors(
+                              context,
+                              controller.recheckOrganizations,
+                            )
+                          : controller.cancelAccountDeletion,
+                      child: busy
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.4,
+                                color: MonAmieBrand.cream,
+                              ),
+                            )
+                          : Text(
+                              restored
+                                  ? 'Entrar'
+                                  : name == null
+                                  ? 'Cancelar exclusão da conta'
+                                  : 'Cancelar exclusão',
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 52,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: MonAmieBrand.navy,
+                      ),
+                      onPressed: busy || state.isLoggingOut
+                          ? null
+                          : () =>
+                                runReportingErrors(context, controller.logout),
+                      child: const Text('Sair'),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    ),
+  );
+}

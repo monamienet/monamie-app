@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:monamie_app/app/config/organization/organization_error_app.dart';
-import 'package:monamie_app/app/data/firebase/central_firebase.dart';
-import 'package:monamie_app/app/data/models/user_google_model.dart';
-import 'package:monamie_app/app/data/organization/organization_branding_loader.dart';
-import 'package:monamie_app/app/data/organization/organization_session.dart';
+import 'package:monamie_app/ui/core/ui/organization_error_app.dart';
+import 'package:monamie_app/data/services/firebase/central_firebase.dart';
+import 'package:monamie_app/data/model/user_google_model.dart';
+import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
+import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 
-import 'app/monamie_app.dart';
+import 'ui/core/monamie_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

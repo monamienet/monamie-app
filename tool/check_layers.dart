@@ -4,7 +4,7 @@ import 'package:path/path.dart' as p;
 
 import 'src/state_layer_imports.dart';
 
-/// Fails (exit code 1) when a controller or state contract under `lib/`
+/// Fails (exit code 1) when a view model or state contract under `lib/`
 /// imports one of Flutter's UI libraries, or any file under `lib/` imports
 /// GetX (see `src/state_layer_imports.dart`).
 /// Run from anywhere in the repo: `dart run tool/check_layers.dart`.

@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
-import 'package:monamie_app/app/data/organization/person_key.dart';
+import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
+import 'package:monamie_app/data/services/firebase/person_key.dart';
 
 import 'access_token_source.dart';
 import 'firestore_documents.dart';

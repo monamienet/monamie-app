@@ -8,7 +8,7 @@ import 'firebase_cli.dart';
 import 'firestore_documents.dart';
 import 'organization_check.dart';
 import 'organizations.dart';
-import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
+import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
 
 /// Path of organization `<id>`'s entry in the central registry.
 String registryDocumentPath(String id) => FirestorePaths.organization(id);

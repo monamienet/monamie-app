@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../tool/src/state_layer_imports.dart';
 
-const controllerPath = 'lib/app/modules/x/controller/x_controller.dart';
+const viewModelPath = 'lib/ui/x/view_models/x_view_model.dart';
 const marker = '// check_layers: state_contract';
 
 const getUris = [
@@ -27,12 +27,12 @@ const uiLibraries = [
 
 void main() {
   group('isStateFile', () {
-    test('a *_controller.dart under lib/ is a state file', () {
+    test('a *_view_model.dart under lib/ is a state file', () {
       // 1. Arrange
       const content = "import 'package:flutter/foundation.dart';\n";
 
       // 2. Act
-      final result = isStateFile(controllerPath, content);
+      final result = isStateFile(viewModelPath, content);
 
       // 3. Assert
       expect(result, isTrue);
@@ -44,7 +44,7 @@ void main() {
           "import 'dart:async';\n\n  $marker  \nabstract class S {}\n";
 
       // 2. Act
-      final result = isStateFile('lib/app/x/group_map_state.dart', content);
+      final result = isStateFile('lib/ui/x/group_map_state.dart', content);
 
       // 3. Assert
       expect(result, isTrue);
@@ -52,7 +52,7 @@ void main() {
 
     test('Windows separators are accepted', () {
       // 1. Arrange
-      const path = r'lib\app\x\x_controller.dart';
+      const path = r'lib\ui\x\x_view_model.dart';
 
       // 2. Act
       final result = isStateFile(path, '');
@@ -66,7 +66,7 @@ void main() {
       const content = "import 'package:flutter/material.dart';\n";
 
       // 2. Act
-      final result = isStateFile('lib/app/x/ui/x_page.dart', content);
+      final result = isStateFile('lib/ui/x/ui/x_screen.dart', content);
 
       // 3. Assert
       expect(result, isFalse);
@@ -77,18 +77,18 @@ void main() {
       const content = "abstract class S {} $marker\n";
 
       // 2. Act
-      final result = isStateFile('lib/app/x/s.dart', content);
+      final result = isStateFile('lib/ui/x/s.dart', content);
 
       // 3. Assert
       expect(result, isFalse);
     });
 
     for (final path in [
-      'test/app/x/x_controller.dart',
-      'tool/x_controller.dart',
-      'mylib/x_controller.dart',
+      'test/ui/x/x_view_model.dart',
+      'tool/x_view_model.dart',
+      'mylib/x_view_model.dart',
     ]) {
-      test('a controller outside lib/ is not a state file: $path', () {
+      test('a view model outside lib/ is not a state file: $path', () {
         // 1. Arrange
         const content = marker;
 
@@ -101,16 +101,16 @@ void main() {
     }
 
     for (final name in [
-      'x_controller.mocks.dart',
-      'x_controller.freezed.dart',
-      'x_controller.g.dart',
+      'x_view_model.mocks.dart',
+      'x_view_model.freezed.dart',
+      'x_view_model.g.dart',
     ]) {
       test('a generated file is skipped even with the marker: $name', () {
         // 1. Arrange
         const content = '$marker\n';
 
         // 2. Act
-        final result = isStateFile('lib/app/x/$name', content);
+        final result = isStateFile('lib/ui/x/$name', content);
 
         // 3. Assert
         expect(result, isFalse);
@@ -122,7 +122,7 @@ void main() {
       const content = '$marker\n';
 
       // 2. Act
-      final result = isStateFile('lib/app/x/notes.txt', content);
+      final result = isStateFile('lib/ui/x/notes.txt', content);
 
       // 3. Assert
       expect(result, isFalse);
@@ -141,7 +141,7 @@ export 'package:flutter/foundation.dart' show ChangeNotifier;
 ''';
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(result, isEmpty);
@@ -152,19 +152,19 @@ export 'package:flutter/foundation.dart' show ChangeNotifier;
       const content = "import 'package:flutter/material.dart';\n";
 
       // 2. Act
-      final result = findLayerViolations('lib/app/x/ui/x_page.dart', content);
+      final result = findLayerViolations('lib/ui/x/ui/x_screen.dart', content);
 
       // 3. Assert
       expect(result, isEmpty);
     });
 
-    test('a generated controller importing material is ignored', () {
+    test('a generated view model importing material is ignored', () {
       // 1. Arrange
       const content = "import 'package:flutter/material.dart';\n";
 
       // 2. Act
       final result = findLayerViolations(
-        'lib/app/x/x_controller.mocks.dart',
+        'lib/ui/x/x_view_model.mocks.dart',
         content,
       );
 
@@ -179,7 +179,7 @@ export 'package:flutter/foundation.dart' show ChangeNotifier;
           final content = "$directive '$uri';\n";
 
           // 2. Act
-          final result = findLayerViolations(controllerPath, content);
+          final result = findLayerViolations(viewModelPath, content);
 
           // 3. Assert
           expect(result.map((v) => (v.uri, v.rule)), [
@@ -194,7 +194,7 @@ export 'package:flutter/foundation.dart' show ChangeNotifier;
       const content = "$marker\nimport 'package:flutter/widgets.dart';\n";
 
       // 2. Act
-      final result = findLayerViolations('lib/app/x/x_state.dart', content);
+      final result = findLayerViolations('lib/ui/x/x_state.dart', content);
 
       // 3. Assert
       expect(result.single.uri, 'package:flutter/widgets.dart');
@@ -206,12 +206,12 @@ export 'package:flutter/foundation.dart' show ChangeNotifier;
           "import 'dart:async';\n\n  import \"package:flutter/material.dart\";\n";
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(
         (result.single.path, result.single.line, result.single.column),
-        (controllerPath, 3, 10),
+        (viewModelPath, 3, 10),
       );
     });
 
@@ -225,7 +225,7 @@ import 'package:flutter/gestures.dart';
 ''';
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(result.map((v) => (v.line, v.uri)), [
@@ -249,7 +249,7 @@ import 'package:flutter/gestures.dart';
         // 1. Arrange (content from the table)
 
         // 2. Act
-        final result = findLayerViolations(controllerPath, content);
+        final result = findLayerViolations(viewModelPath, content);
 
         // 3. Assert
         expect(result.single.uri, 'package:flutter/material.dart');
@@ -264,7 +264,7 @@ import 'package:flutter/material.dart'
 ''';
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(result.single.uri, 'package:flutter/material.dart');
@@ -278,7 +278,7 @@ import 'src/stub.dart'
 """;
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(
@@ -297,7 +297,7 @@ import 'package:flutter/foundation.dart';
 """;
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(result, isEmpty);
@@ -312,7 +312,7 @@ import 'package:flutter/material.dart';
 """;
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(result, isEmpty);
@@ -330,7 +330,7 @@ import 'package:flutter/material.dart';
         // 1. Arrange (content from the table)
 
         // 2. Act
-        final result = findLayerViolations(controllerPath, content);
+        final result = findLayerViolations(viewModelPath, content);
 
         // 3. Assert
         expect(result, isEmpty);
@@ -342,7 +342,7 @@ import 'package:flutter/material.dart';
       const content = "import 'package:flutter/material.dart\";\n";
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(result, isEmpty);
@@ -353,7 +353,7 @@ import 'package:flutter/material.dart';
       const content = "import 'material.dart';\n";
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(result, isEmpty);
@@ -365,7 +365,7 @@ import 'package:flutter/material.dart';
 
       // 2. Act
       final message = findLayerViolations(
-        controllerPath,
+        viewModelPath,
         content,
       ).single.toString();
 
@@ -373,9 +373,9 @@ import 'package:flutter/material.dart';
       expect(
         message,
         allOf(
-          startsWith('$controllerPath:1:8 '),
+          startsWith('$viewModelPath:1:8 '),
           contains("'package:flutter/material.dart'"),
-          contains('State files (controllers and state contracts)'),
+          contains('State files (view models and state contracts)'),
           endsWith(' - $stateImportsFlutterUi'),
         ),
       );
@@ -390,7 +390,7 @@ import 'package:flutter/material.dart';
           final content = "$directive '$uri';\n";
 
           // 2. Act
-          final result = findLayerViolations(controllerPath, content);
+          final result = findLayerViolations(viewModelPath, content);
 
           // 3. Assert
           expect(result.map((v) => (v.uri, v.rule)), [(uri, libImportsGet)]);
@@ -399,10 +399,10 @@ import 'package:flutter/material.dart';
     }
 
     for (final path in [
-      'lib/app/x/ui/x_page.dart',
-      'lib/app/data/model/x.dart',
+      'lib/ui/x/ui/x_screen.dart',
+      'lib/data/model/x.dart',
       'lib/main.dart',
-      r'lib\app\x\ui\x_page.dart',
+      r'lib\ui\x\ui\x_screen.dart',
     ]) {
       test(
         'a non-state file under lib/ importing get is a violation: $path',
@@ -420,13 +420,13 @@ import 'package:flutter/material.dart';
     }
 
     for (final path in [
-      'test/app/x/x_page_test.dart',
+      'test/ui/x/x_page_test.dart',
       'tool/x.dart',
       'mylib/x.dart',
-      'lib/app/x/x.g.dart',
-      'lib/app/x/x.freezed.dart',
-      'lib/app/x/x_controller.mocks.dart',
-      'lib/app/x/notes.txt',
+      'lib/ui/x/x.g.dart',
+      'lib/ui/x/x.freezed.dart',
+      'lib/ui/x/x_view_model.mocks.dart',
+      'lib/ui/x/notes.txt',
     ]) {
       test('get is ignored outside hand-written lib/ Dart files: $path', () {
         // 1. Arrange
@@ -452,7 +452,7 @@ import 'package:flutter/material.dart';
         // 1. Arrange (content from the table)
 
         // 2. Act
-        final result = findLayerViolations('lib/app/x/x.dart', content);
+        final result = findLayerViolations('lib/ui/x/x.dart', content);
 
         // 3. Assert
         expect(result.single.rule, libImportsGet);
@@ -467,7 +467,7 @@ import 'package:get/get.dart'
 ''';
 
       // 2. Act
-      final result = findLayerViolations('lib/app/x/x.dart', content);
+      final result = findLayerViolations('lib/ui/x/x.dart', content);
 
       // 3. Assert
       expect(
@@ -484,7 +484,7 @@ import 'src/stub.dart'
 """;
 
       // 2. Act
-      final result = findLayerViolations('lib/app/x/x.dart', content);
+      final result = findLayerViolations('lib/ui/x/x.dart', content);
 
       // 3. Assert
       expect(
@@ -505,7 +505,7 @@ import 'src/stub.dart'
         final content = "import '$uri';\n";
 
         // 2. Act
-        final result = findLayerViolations('lib/app/x/x.dart', content);
+        final result = findLayerViolations('lib/ui/x/x.dart', content);
 
         // 3. Assert
         expect(result, isEmpty);
@@ -522,7 +522,7 @@ export 'package:get/get.dart';
 """;
 
       // 2. Act
-      final result = findLayerViolations('lib/app/x/x.dart', content);
+      final result = findLayerViolations('lib/ui/x/x.dart', content);
 
       // 3. Assert
       expect(result, isEmpty);
@@ -537,7 +537,7 @@ import 'package:flutter/material.dart';
 ''';
 
       // 2. Act
-      final result = findLayerViolations(controllerPath, content);
+      final result = findLayerViolations(viewModelPath, content);
 
       // 3. Assert
       expect(result.map((v) => (v.line, v.uri, v.rule)), [
@@ -554,7 +554,7 @@ import 'package:get/get.dart';
 ''';
 
       // 2. Act
-      final result = findLayerViolations('lib/app/x/ui/x_page.dart', content);
+      final result = findLayerViolations('lib/ui/x/ui/x_screen.dart', content);
 
       // 3. Assert
       expect(result.map((v) => (v.line, v.rule)), [(2, libImportsGet)]);
@@ -562,7 +562,7 @@ import 'package:get/get.dart';
 
     test('the get message names the file, position, URI and rule', () {
       // 1. Arrange
-      const path = 'lib/app/x/ui/x_page.dart';
+      const path = 'lib/ui/x/ui/x_screen.dart';
       const content = "import 'dart:async';\nimport 'package:get/get.dart';\n";
 
       // 2. Act
@@ -615,7 +615,7 @@ import 'package:get/get.dart';
     test('exits 0 and says so when no rule is broken', () async {
       // 1. Arrange
       writeLib(
-        'a/a_controller.dart',
+        'a/a_view_model.dart',
         "import 'package:flutter/foundation.dart';\n",
       );
       writeLib('a/a_page.dart', "import 'package:flutter/material.dart';\n");
@@ -634,7 +634,7 @@ import 'package:get/get.dart';
     test('exits 1 and lists every violation, nested files included', () async {
       // 1. Arrange
       writeLib(
-        'a/b/c/c_controller.dart',
+        'a/b/c/c_view_model.dart',
         "import 'package:flutter/material.dart';\n",
       );
       writeLib(
@@ -652,7 +652,7 @@ import 'package:get/get.dart';
       expect(
         result.stderr,
         allOf(
-          contains(p.join('lib', 'a', 'b', 'c', 'c_controller.dart')),
+          contains(p.join('lib', 'a', 'b', 'c', 'c_view_model.dart')),
           contains(p.join('lib', 'z_state.dart')),
           contains('${p.join('lib', 'm', 'model.dart')}:1:8'),
           isNot(contains('model.g.dart')),

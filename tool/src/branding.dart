@@ -1,4 +1,4 @@
-import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
+import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
 
 import 'organizations.dart';
 

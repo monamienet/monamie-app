@@ -123,7 +123,7 @@ opened against `main` (the `pull_request` event), with no path filter:
    Fix it by running `dart format lib test tool` and committing.
 3. `flutter analyze`: the Dart analyzer. It also fails on *info*-level findings, because `--fatal-infos`
    is on by default.
-4. `dart run tool/check_layers.dart`: the layer rule. It fails if a controller (`*_controller.dart`) or a
+4. `dart run tool/check_layers.dart`: the layer rule. It fails if a view model (`*_view_model.dart`) or a
    state contract (a file with the line `// check_layers: state_contract`) in `lib/` imports a Flutter UI
    library (`material.dart`, `widgets.dart`, `cupertino.dart` and similar). `foundation.dart`,
    `services.dart` and `dart:ui` are allowed. Fix it by switching the import to one of those or by moving

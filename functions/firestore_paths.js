@@ -1,7 +1,7 @@
 /**
  * The Firestore collection and document names the organization functions
  * use, in one place, so a rename cannot miss one. The app (`FirestorePaths`
- * in lib/app/data/firebase/firestore_paths.dart), the central functions
+ * in lib/data/services/firebase/firestore_paths.dart), the central functions
  * (central/functions/firestore_paths.js) and the rules use the same names.
  */
 

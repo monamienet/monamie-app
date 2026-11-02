@@ -1,0 +1,135 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+import 'package:monamie_app/domain/models/group_member.dart';
+import 'package:monamie_app/domain/models/user_model.dart';
+import 'package:monamie_app/ui/home/widgets/people_list.dart';
+import 'package:monamie_app/ui/home/widgets/person_row_tile.dart';
+import 'package:monamie_app/ui/home/widgets/presence.dart';
+
+import 'home_doubles.dart';
+
+const _bia = GroupMember(name: 'Bia', email: 'bia@example.com');
+const _caio = GroupMember(name: 'Caio', email: 'caio@example.com');
+
+/// The list over [doubles].
+Future<void> pumpList(WidgetTester tester, HomeDoubles doubles) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: PeopleList(
+            groups: doubles.groups,
+            tracking: doubles.tracking,
+            calendar: doubles.calendar,
+            calls: doubles.calls,
+            user: doubles.user,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+void main() {
+  group('PeopleList - Widget Test Suite', () {
+    testWidgets('Happy Path: new people on the map show up in the list', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final doubles = HomeDoubles()..observedMembers.value = const [_bia];
+      await pumpList(tester, doubles);
+
+      // 2. Act
+      doubles.observedMembers.value = const [_bia, _caio];
+      await tester.pump();
+
+      // 3. Assert
+      expect(find.text('Caio'), findsOneWidget);
+    });
+
+    testWidgets('Edge Case: pressing a marker marks that person\'s row', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final doubles = HomeDoubles()..observedMembers.value = const [_bia];
+      await pumpList(tester, doubles);
+
+      // 2. Act
+      doubles.selectedMemberEmail.value = _bia.email;
+      await tester.pump();
+
+      // 3. Assert
+      expect(
+        tester.widget<PersonRowTile>(find.byType(PersonRowTile)).selected,
+        isTrue,
+      );
+    });
+
+    testWidgets('Edge Case: on a past day the history read later fills the '
+        'list', (tester) async {
+      // 1. Arrange
+      final doubles = HomeDoubles()..observedMembers.value = const [_bia];
+      when(doubles.calendar.isObservingToday).thenReturn(false);
+      await pumpList(tester, doubles);
+
+      // 2. Act
+      doubles.historyMembers.value = const [_bia, _caio];
+      await tester.pump();
+
+      // 3. Assert
+      expect(find.text('Caio'), findsOneWidget);
+    });
+
+    testWidgets('Happy Path: a person who starts sharing shows up as live', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final doubles = HomeDoubles()..observedMembers.value = const [_bia];
+      await pumpList(tester, doubles);
+
+      // 2. Act
+      doubles.groupUsers.value = [
+        UserModel(
+          email: _bia.email,
+          name: _bia.name,
+          isPublishing: true,
+          capturedAt: DateTime.now(),
+        ),
+      ];
+      await tester.pump();
+
+      // 3. Assert
+      expect(
+        tester
+            .widget<PersonRowTile>(find.byType(PersonRowTile))
+            .row
+            .presence
+            .kind,
+        PresenceKind.live,
+      );
+    });
+
+    testWidgets('Edge Case: on a past day, positions found later mark the '
+        'person as having positions that day', (tester) async {
+      // 1. Arrange
+      final doubles = HomeDoubles()..observedMembers.value = const [_bia];
+      when(doubles.calendar.isObservingToday).thenReturn(false);
+      await pumpList(tester, doubles);
+
+      // 2. Act
+      doubles.usersWithPoints.value = {_bia.email};
+      await tester.pump();
+
+      // 3. Assert
+      expect(
+        tester
+            .widget<PersonRowTile>(find.byType(PersonRowTile))
+            .row
+            .presence
+            .kind,
+        PresenceKind.live,
+      );
+    });
+  });
+}

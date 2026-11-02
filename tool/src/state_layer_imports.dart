@@ -1,5 +1,5 @@
 /// The layer rules run by `dart run tool/check_layers.dart`: Flutter's UI
-/// libraries stay out of the state layer (controllers and state contracts),
+/// libraries stay out of the state layer (view models and state contracts),
 /// and no file under `lib/` uses GetX, which the app no longer depends on.
 library;
 
@@ -61,7 +61,7 @@ class LayerViolation {
       ? "$path:$line:$column - Files under lib/ must not import or export "
             "'$uri': the app no longer uses GetX. Use ChangeNotifier, go_router "
             'or provider. - $libImportsGet'
-      : "$path:$line:$column - State files (controllers and state contracts) "
+      : "$path:$line:$column - State files (view models and state contracts) "
             "must not import or export '$uri'. Try 'package:flutter/foundation.dart', "
             "'package:flutter/services.dart' or 'dart:ui', or move the UI piece to "
             'the screen. - $stateImportsFlutterUi';
@@ -69,11 +69,11 @@ class LayerViolation {
 
 /// Whether the Dart file at [path] (relative to the package root, `/` or `\`
 /// separated) with [content] belongs to the state layer: under `lib/`, not
-/// generated, and either named `*_controller.dart` or carrying
+/// generated, and either named `*_view_model.dart` or carrying
 /// [stateContractMarker].
 bool isStateFile(String path, String content) {
   if (!_isLibSource(path)) return false;
-  if (path.endsWith('_controller.dart')) return true;
+  if (path.endsWith('_view_model.dart')) return true;
   return content.split('\n').any((line) => line.trim() == stateContractMarker);
 }
 
