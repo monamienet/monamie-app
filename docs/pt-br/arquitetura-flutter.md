@@ -1,6 +1,6 @@
 # Plano: alinhar a arquitetura à recomendação oficial do Flutter
 
-Revisão 1 · 2026-11-02 · aprovado pelo João. Acompanhamento: [#203](https://github.com/monamienet/monamie-app/issues/203), uma sub-issue por fase.
+Revisão 2 · 2026-11-02 · aprovado pelo João (a revisão 2 troca a A5). Acompanhamento: [#203](https://github.com/monamienet/monamie-app/issues/203), uma sub-issue por fase.
 
 ## 1. Objetivo e fontes
 
@@ -87,14 +87,14 @@ As fases seguem esse peso.
 - **A2** `Command0`/`Command1` próprios em `lib/utils/command.dart`, sem dependência nova. Substitui a regra manual de ações assíncronas do `AGENTS.md`.
 - **A3** mockito para os Services e fakes em memória para os Repositories nos testes de widget. Revê a D5 do [#187](https://github.com/monamienet/monamie-app/issues/187) só para os repositórios.
 - **A4** Entram os quatro itens condicionais: l10n, modelos sem Firestore, URLs sem `#` e casos de uso.
-- **A5** Um PR por fase (diferente da D1 do #187): cada fase deixa o app funcionando sozinha.
+- **A5** (revisão 2) Um único PR para as fases 0 a 8, com um ou mais commits por fase, no branch `refactor/architecture-alignment`. As fases seguem sem parada de revisão entre elas; o que for ambíguo é decidido e anotado na seção 7. Antes de pedir o PR: testes, CI e um roteiro no tablet (Galaxy Tab S6 Lite). A revisão 1 previa um PR por fase.
 
 ## 4. Como cada fase entra em produção
 
-Todo merge no `main` que toca o app vira uma versão na trilha interna do Play (`AGENTS.md`, *Releases*). Por isso:
-- Cada fase precisa terminar com o app funcionando e os testes passando.
+Todo merge no `main` que toca o app vira uma versão na trilha interna do Play (`AGENTS.md`, *Releases*). Com um PR só, o merge inteiro vira uma versão. Mesmo assim:
+- Cada fase (cada commit) precisa terminar com o app funcionando e os testes passando, para que um `git bisect` encontre a fase que quebrou algo.
 - As fases 0 a 6 e a 8 são `refactor:`, `ci:`, `test:` ou `docs:`. Elas não exigem notas de versão.
-- A fase 7 é `feat:` e reescreve `distribution/whatsnew`.
+- A fase 7 é `feat:` e reescreve `distribution/whatsnew`; por causa dela, o PR sobe a versão *minor*.
 
 A fase 0 ([#19](https://github.com/monamienet/monamie-app/issues/19), [#20](https://github.com/monamienet/monamie-app/issues/20), [#21](https://github.com/monamienet/monamie-app/issues/21)) e a fase 8 não dependem da cadeia principal.
 
@@ -200,3 +200,7 @@ Só renomeações, sem mudar comportamento.
 - **Linhas citadas:** referem-se ao `main` em `feed1dd` e mudam a partir da fase 1.
 - **Esforço:** ainda não estimado.
 - **Fase 8:** não foi verificado se algum teste depende do `#` nas URLs.
+
+## 7. Decisões tomadas durante a implementação
+
+Registro das escolhas feitas sem parada de revisão (A5, revisão 2).
