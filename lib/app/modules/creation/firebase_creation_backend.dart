@@ -14,7 +14,7 @@ class FirebaseCreationBackend implements CreationBackend {
             name,
             options: HttpsCallableOptions(timeout: const Duration(seconds: 90)),
           )
-          .call(data);
+          .call<Object?>(data);
       return result.data;
     } on FirebaseFunctionsException catch (e) {
       throw CreationException(switch (e.code) {

@@ -380,7 +380,7 @@ void main() {
       // 3. Assert
       expect(
         json['theme'],
-        isA<Map>()
+        isA<Map<Object?, Object?>>()
             .having((theme) => theme['id'], 'id', 'oceano')
             .having((theme) => theme['primary'], 'primary', '#0B7F7B'),
       );

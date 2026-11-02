@@ -18,7 +18,7 @@ class FirebaseAccountDeletionBackend implements AccountDeletionBackend {
             name,
             options: HttpsCallableOptions(timeout: const Duration(seconds: 60)),
           )
-          .call(data);
+          .call<Object?>(data);
       return result.data;
     } on FirebaseFunctionsException catch (e) {
       throw AccountDeletionException(switch (e.code) {

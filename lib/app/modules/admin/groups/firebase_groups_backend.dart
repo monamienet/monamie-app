@@ -16,7 +16,7 @@ class FirebaseGroupsBackend implements GroupsBackend {
             name,
             options: HttpsCallableOptions(timeout: const Duration(seconds: 60)),
           )
-          .call(data);
+          .call<Object?>(data);
       return result.data;
     } on FirebaseFunctionsException catch (e) {
       throw GroupsException(switch (e.code) {
@@ -45,7 +45,7 @@ class FirebaseGroupsBackend implements GroupsBackend {
       'organizationId': organizationId,
       'name': name,
     });
-    return Group.fromJson({...?(data as Map?), 'people': const []}) ??
+    return Group.fromJson({...?(data as Map?), 'people': const <Object?>[]}) ??
         (throw const GroupsException('Resposta inesperada ao criar o grupo.'));
   }
 

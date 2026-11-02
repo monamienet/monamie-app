@@ -259,7 +259,11 @@ void main() {
     test('Edge Case: a missing document (404) is null', () async {
       // 1. Arrange
       final documents = HttpFirestoreDocuments(
-        client: answering([], status: 404, body: {'error': {}}),
+        client: answering(
+          [],
+          status: 404,
+          body: {'error': <String, Object?>{}},
+        ),
       );
 
       // 2. Act
@@ -277,7 +281,11 @@ void main() {
       () async {
         // 1. Arrange
         final documents = HttpFirestoreDocuments(
-          client: answering([], status: 403, body: {'error': {}}),
+          client: answering(
+            [],
+            status: 403,
+            body: {'error': <String, Object?>{}},
+          ),
         );
 
         // 2. Act
@@ -376,7 +384,11 @@ void main() {
       () async {
         // 1. Arrange
         final documents = HttpFirestoreDocuments(
-          client: answering([], status: 500, body: {'error': {}}),
+          client: answering(
+            [],
+            status: 500,
+            body: {'error': <String, Object?>{}},
+          ),
         );
 
         // 2. Act
@@ -404,7 +416,11 @@ void main() {
     test('Sad Path: a missing document (404) on write throws', () async {
       // 1. Arrange
       final documents = HttpFirestoreDocuments(
-        client: answering([], status: 404, body: {'error': {}}),
+        client: answering(
+          [],
+          status: 404,
+          body: {'error': <String, Object?>{}},
+        ),
       );
 
       // 2. Act
@@ -528,7 +544,11 @@ void main() {
       () async {
         // 1. Arrange
         final documents = HttpFirestoreDocuments(
-          client: answering([], status: 403, body: {'error': {}}),
+          client: answering(
+            [],
+            status: 403,
+            body: {'error': <String, Object?>{}},
+          ),
         );
 
         // 2. Act
@@ -557,7 +577,11 @@ void main() {
     test('Sad Path: a missing document (404) on update throws', () async {
       // 1. Arrange
       final documents = HttpFirestoreDocuments(
-        client: answering([], status: 404, body: {'error': {}}),
+        client: answering(
+          [],
+          status: 404,
+          body: {'error': <String, Object?>{}},
+        ),
       );
 
       // 2. Act

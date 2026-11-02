@@ -71,7 +71,7 @@ abstract class OrganizationConfig with _$OrganizationConfig {
   }) {
     final idProblem = organizationIdProblem(id);
     if (idProblem != null) throw ArgumentError.value(id, 'id', idProblem);
-    final map = data is Map ? data : const {};
+    final map = data is Map ? data : const <Object?, Object?>{};
     final logoVersion = map['logoVersion'];
     return OrganizationConfig(
       id: id,

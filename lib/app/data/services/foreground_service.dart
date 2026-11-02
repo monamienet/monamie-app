@@ -122,8 +122,8 @@ void onStart(ServiceInstance service) async {
   });
 
   service.on('setUserInfo').listen((event) async {
-    if (event != null) {
-      await updateLocation(service, event['email'], event['name']);
+    if (event case {'email': final String email, 'name': final String name}) {
+      await updateLocation(service, email, name);
     }
   });
 

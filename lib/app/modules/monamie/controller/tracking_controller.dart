@@ -203,8 +203,8 @@ class TrackingController implements TrackingToggleController {
   final Map<String, StreamSubscription<List<LocationPoint>>>
   _highlightedTrajectorySubscriptions = {};
 
-  StreamSubscription? _readySubscription;
-  StreamSubscription? _locationSubscription;
+  StreamSubscription<Map<String, dynamic>?>? _readySubscription;
+  StreamSubscription<Map<String, dynamic>?>? _locationSubscription;
 
   /// Timer para debounce do listener de highlightedObservedUsers.
   Timer? _highlightedUsersDebounce;

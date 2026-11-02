@@ -16,7 +16,7 @@ class FirebaseInvitesBackend implements InvitesBackend {
             name,
             options: HttpsCallableOptions(timeout: const Duration(seconds: 60)),
           )
-          .call(data);
+          .call<Object?>(data);
       return result.data;
     } on FirebaseFunctionsException catch (e) {
       throw InvitesException(switch (e.code) {
@@ -56,7 +56,7 @@ class FirebaseInvitesBackend implements InvitesBackend {
           },
       ],
     });
-    final map = data is Map ? data : const {};
+    final map = data is Map ? data : const <Object?, Object?>{};
     final sent = [
       for (final s in (map['sent'] as List?) ?? const [])
         if (s is Map && s['email'] is String) s,

@@ -54,7 +54,7 @@ class FirebaseAppearanceBackend implements AppearanceBackend {
     try {
       await CurrentOrganizationFirebase.instance.functions
           .httpsCallable('setBranding')
-          .call({
+          .call<Object?>({
             'organizationId': organizationId,
             'name': ?name,
             'themeId': ?themeId,

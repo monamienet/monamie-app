@@ -99,7 +99,7 @@ abstract class Group with _$Group {
       for (final person in (json['people'] as List?) ?? const [])
         if (person case {
           'email': final String email,
-          'roles': final List roles,
+          'roles': final List<Object?> roles,
         })
           GroupPerson(
             email: email,

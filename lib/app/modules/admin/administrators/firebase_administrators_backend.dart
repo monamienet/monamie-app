@@ -16,7 +16,7 @@ class FirebaseAdministratorsBackend implements AdministratorsBackend {
             name,
             options: HttpsCallableOptions(timeout: const Duration(seconds: 60)),
           )
-          .call(data);
+          .call<Object?>(data);
       return result.data;
     } on FirebaseFunctionsException catch (e) {
       throw AdministratorsException(

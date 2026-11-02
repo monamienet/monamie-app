@@ -51,7 +51,10 @@ class HttpFirestoreDocuments implements FirestoreDocuments {
       );
       _checkStatus(response, 'read', projectId, collectionPath);
       final body = jsonDecode(response.body);
-      for (final document in body is Map ? body['documents'] ?? [] : []) {
+      for (final document
+          in body is Map
+              ? body['documents'] as List<Object?>? ?? const []
+              : const []) {
         if (document case {'name': final String name}) {
           final fields = document['fields'];
           documents.add((

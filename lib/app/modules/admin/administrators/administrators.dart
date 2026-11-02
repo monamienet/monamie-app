@@ -31,8 +31,9 @@ abstract class OrganizationAdministrators with _$OrganizationAdministrators {
   /// malformed entries are left out, a malformed response is empty.
   static OrganizationAdministrators fromJson(Object? json) {
     if (json is! Map) return const OrganizationAdministrators();
-    List<Map> entries(String key) => [
-      for (final e in json[key] is List ? json[key] as List : const [])
+    List<Map<Object?, Object?>> entries(String key) => [
+      for (final e
+          in json[key] is List ? json[key] as List<Object?> : const <Object?>[])
         if (e is Map && e['email'] is String && (e['email'] as String) != '') e,
     ];
     return OrganizationAdministrators(

@@ -109,7 +109,7 @@ class AuthGoogleController extends ChangeNotifier
       _injectedUserRepository ?? UserGoogleRepository();
   late final BackgroundTrackingStopper _trackingStopper =
       _injectedTrackingStopper ?? FlutterBackgroundServiceTrackingStopper();
-  StreamSubscription? _webSignInSub;
+  StreamSubscription<String?>? _webSignInSub;
   bool _started = false;
   bool _disposed = false;
 
