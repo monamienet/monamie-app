@@ -1,4 +1,7 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
+
+part 'group.freezed.dart';
 
 /// A person's role in a group.
 enum GroupRole {
@@ -63,21 +66,28 @@ bool canRemoveFromGroup(GroupPerson person, {required bool byAdmin}) =>
     byAdmin || !person.roles.contains(GroupRole.maintainer);
 
 /// A person in a group, with one or both roles.
-class GroupPerson {
-  const GroupPerson({required this.email, required this.roles});
-
-  final String email;
-  final Set<GroupRole> roles;
+@freezed
+abstract class GroupPerson with _$GroupPerson {
+  const factory GroupPerson({
+    required String email,
+    required Set<GroupRole> roles,
+  }) = _GroupPerson;
 }
 
 /// A group of the bound organization, as `listGroups` returns it.
-class Group {
-  const Group({
-    required this.id,
-    required this.name,
-    required this.people,
-    this.createdAt,
-  });
+@freezed
+abstract class Group with _$Group {
+  const factory Group({
+    /// The group's Firestore id (an auto id): never changes, never reused.
+    required String id,
+    required String name,
+    required List<GroupPerson> people,
+
+    /// When the group was created, when known.
+    DateTime? createdAt,
+  }) = _Group;
+
+  const Group._();
 
   /// Reads one entry of `listGroups`; `null` when malformed.
   static Group? fromJson(Object? json) {
@@ -104,14 +114,6 @@ class Group {
       createdAt: createdAt is String ? DateTime.tryParse(createdAt) : null,
     );
   }
-
-  /// The group's Firestore id (an auto id): never changes, never reused.
-  final String id;
-  final String name;
-  final List<GroupPerson> people;
-
-  /// When the group was created, when known.
-  final DateTime? createdAt;
 
   /// "4 pessoas", "1 pessoa", "Ninguém ainda".
   String get peopleLabel => switch (people.length) {

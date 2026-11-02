@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
+import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invite_controller.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
 
@@ -107,7 +108,7 @@ void main() {
       final controller = controllerWith(groups: teams);
 
       // 3. Assert
-      expect(controller.groupId.value, '01');
+      expect(controller.state.groupId, '01');
       expect(controller.firstGroupMode, isFalse);
     });
 
@@ -119,7 +120,7 @@ void main() {
       final controller = controllerWith(groupId: team);
 
       // 3. Assert
-      expect(controller.groupId.value, '03');
+      expect(controller.state.groupId, '03');
     });
 
     test('Edge Case: with no teams it is in first-team mode', () {
@@ -148,7 +149,7 @@ void main() {
           final controller = controllerWith(groups: const []);
 
           // 2. Act
-          controller.firstGroupName.value = name;
+          controller.setFirstGroupName(name);
 
           // 3. Assert
           expect(controller.firstGroupProblem == null, valid);
@@ -199,7 +200,7 @@ void main() {
         groups: const [],
         canCreateFirstGroup: false,
       );
-      controller.firstGroupName.value = 'Equipe Serra';
+      controller.setFirstGroupName('Equipe Serra');
       controller.add('ana@x.com');
 
       // 2. Act
@@ -221,9 +222,9 @@ void main() {
 
       // 3. Assert
       expect(added, isTrue);
-      expect(controller.people.map((p) => p.email), ['ana@x.com']);
-      expect(controller.people.single.roles, {GroupRole.publisher});
-      expect(controller.draftError.value, isEmpty);
+      expect(controller.state.people.map((p) => p.email), ['ana@x.com']);
+      expect(controller.state.people.single.roles, {GroupRole.publisher});
+      expect(controller.state.draftError, isEmpty);
     });
 
     test('Edge Case: a duplicate e-mail in another case is refused', () {
@@ -235,21 +236,25 @@ void main() {
 
       // 3. Assert
       expect(added, isFalse);
-      expect(controller.people, hasLength(1));
-      expect(controller.draftError.value, isNotEmpty);
+      expect(controller.state.people, hasLength(1));
+      expect(controller.state.draftError, isNotEmpty);
     });
 
-    test('Edge Case: adding is ignored while sending', () {
+    test('Edge Case: adding is ignored while sending', () async {
       // 1. Arrange
-      final controller = controllerWith();
-      controller.isSending.value = true;
+      final controller = readyController();
+      final gate = Completer<void>();
+      stubSend(() => gate.future);
+      final pending = controller.send();
 
       // 2. Act
-      final added = controller.add('ana@x.com');
+      final added = controller.add('bia@x.com');
 
       // 3. Assert
       expect(added, isFalse);
-      expect(controller.people, isEmpty);
+      expect(controller.state.people.map((p) => p.email), ['ana@x.com']);
+      gate.complete();
+      await pending;
     });
 
     test('Sad Path: a malformed e-mail is refused with draftError', () {
@@ -261,8 +266,8 @@ void main() {
 
       // 3. Assert
       expect(added, isFalse);
-      expect(controller.people, isEmpty);
-      expect(controller.draftError.value, 'Digite um e-mail válido.');
+      expect(controller.state.people, isEmpty);
+      expect(controller.state.draftError, 'Digite um e-mail válido.');
     });
   });
 
@@ -270,32 +275,35 @@ void main() {
     test('Happy Path: toggling watch adds it to the person', () {
       // 1. Arrange
       final controller = readyController();
-      final ana = controller.people.single;
+      final ana = controller.state.people.single;
 
       // 2. Act
       controller.toggle(ana, GroupRole.subscriber);
 
       // 3. Assert
-      expect(ana.roles, {GroupRole.publisher, GroupRole.subscriber});
+      expect(controller.state.people.single.roles, {
+        GroupRole.publisher,
+        GroupRole.subscriber,
+      });
     });
 
     test('Edge Case: toggling share again removes it', () {
       // 1. Arrange
       final controller = readyController();
-      final ana = controller.people.single;
+      final ana = controller.state.people.single;
       controller.toggle(ana, GroupRole.subscriber);
 
       // 2. Act
       controller.toggle(ana, GroupRole.publisher);
 
       // 3. Assert
-      expect(ana.roles, {GroupRole.subscriber});
+      expect(controller.state.people.single.roles, {GroupRole.subscriber});
     });
 
     test('Sad Path: a person left with no role blocks the send', () {
       // 1. Arrange
       final controller = readyController();
-      final ana = controller.people.single;
+      final ana = controller.state.people.single;
 
       // 2. Act
       controller.toggle(ana, GroupRole.publisher);
@@ -321,8 +329,8 @@ void main() {
       expect(call.firstGroupName, isNull);
       expect(call.invites.map((p) => p.email), ['ana@x.com']);
       expect(call.invites.single.roles, {GroupRole.publisher});
-      expect(controller.result.value, same(_result));
-      expect(controller.isSending.value, isFalse);
+      expect(controller.state.result, same(_result));
+      expect(controller.state.isSending, isFalse);
     });
 
     test(
@@ -330,7 +338,7 @@ void main() {
       () async {
         // 1. Arrange
         final controller = controllerWith(groups: const []);
-        controller.firstGroupName.value = 'Equipe Serra';
+        controller.setFirstGroupName('Equipe Serra');
         controller.add('ana@x.com');
 
         // 2. Act
@@ -359,7 +367,7 @@ void main() {
         // 3. Assert
         expect(second, isFalse);
         verify(anySend()).called(1);
-        expect(controller.isSending.value, isTrue);
+        expect(controller.state.isSending, isTrue);
         gate.complete();
         await first;
       },
@@ -379,9 +387,9 @@ void main() {
 
         // 3. Assert
         expect(sent, isFalse);
-        expect(controller.errorMessage.value, 'Escolha uma equipe.');
-        expect(controller.result.value, isNull);
-        expect(controller.isSending.value, isFalse);
+        expect(controller.state.errorMessage, 'Escolha uma equipe.');
+        expect(controller.state.result, isNull);
+        expect(controller.state.isSending, isFalse);
       },
     );
 
@@ -408,8 +416,83 @@ void main() {
       controller.again();
 
       // 3. Assert
-      expect(controller.people, isEmpty);
-      expect(controller.result.value, isNull);
+      expect(controller.state.people, isEmpty);
+      expect(controller.state.result, isNull);
+    });
+  });
+
+  group('InviteController (listeners) - Unit Test Suite', () {
+    test('Happy Path: choosing another group notifies once', () {
+      // 1. Arrange
+      final controller = controllerWith();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.selectGroup('03');
+
+      // 3. Assert
+      expect(notifications, 1);
+      expect(controller.state.groupId, '03');
+    });
+
+    test('Edge Case: choosing the group already chosen notifies nobody', () {
+      // 1. Arrange
+      final controller = controllerWith();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.selectGroup('01');
+
+      // 3. Assert
+      expect(notifications, 0);
+    });
+
+    test('Edge Case: removing someone not in the list notifies nobody, '
+        'though the list is rebuilt', () {
+      // 1. Arrange
+      final controller = readyController();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.remove(const InviteDraft('bia@x.com'));
+
+      // 3. Assert
+      expect(notifications, 0);
+    });
+
+    test('Sad Path: a refused e-mail notifies once with the problem', () {
+      // 1. Arrange
+      final controller = controllerWith();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.add('ana@');
+
+      // 3. Assert
+      expect(notifications, 1);
+    });
+
+    test('Sad Path: a send finishing after dispose notifies nobody and does '
+        'not throw', () async {
+      // 1. Arrange
+      final controller = readyController();
+      final gate = Completer<void>();
+      stubSend(() => gate.future);
+      var notifications = 0;
+      final pending = controller.send();
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      gate.complete();
+
+      // 3. Assert
+      await expectLater(pending, completion(isTrue));
+      expect(notifications, 0);
     });
   });
 }

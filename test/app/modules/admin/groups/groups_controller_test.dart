@@ -41,6 +41,10 @@ void writesFail(Object failure) => stubWrites(() async => throw failure);
 
 late MockGroupsBackend backend;
 
+/// A controller for Rota Sul, not loaded yet.
+GroupsController newController() =>
+    GroupsController(organizationId: 'rotasul', backend: backend);
+
 /// A started controller for Rota Sul with [norte] and [leste] loaded and
 /// the backend's interactions cleared; [isAdmin] false is a group's
 /// maintainer.
@@ -50,7 +54,7 @@ Future<GroupsController> loadedController({bool isAdmin = false}) async {
     backend: backend,
     isAdmin: isAdmin,
   );
-  controller.onStart();
+  controller.load();
   await pumpEventQueue();
   clearInteractions(backend);
   return controller;
@@ -64,8 +68,8 @@ void main() {
     stubWrites(() async {});
   });
 
-  group('GroupsController.onInit - Unit Test Suite', () {
-    test('Happy Path: starting loads the organization groups', () async {
+  group('GroupsController.load - Unit Test Suite', () {
+    test('Happy Path: loading reads the organization groups', () async {
       // 1. Arrange
       final controller = GroupsController(
         organizationId: 'rotasul',
@@ -73,14 +77,14 @@ void main() {
       );
 
       // 2. Act
-      controller.onStart();
+      controller.load();
       await pumpEventQueue();
 
       // 3. Assert
       verify(backend.list('rotasul')).called(1);
       verifyNoMoreInteractions(backend);
-      expect(controller.groups, [norte, leste]);
-      expect(controller.isLoading.value, isFalse);
+      expect(controller.state.groups, [norte, leste]);
+      expect(controller.state.isLoading, isFalse);
     });
 
     test(
@@ -96,13 +100,13 @@ void main() {
         );
 
         // 2. Act
-        controller.onStart();
+        controller.load();
         await pumpEventQueue();
 
         // 3. Assert
-        expect(controller.errorMessage.value, 'Sem permissão.');
-        expect(controller.groups, isEmpty);
-        expect(controller.isLoading.value, isFalse);
+        expect(controller.state.errorMessage, 'Sem permissão.');
+        expect(controller.state.groups, isEmpty);
+        expect(controller.state.isLoading, isFalse);
       },
     );
   });
@@ -155,10 +159,10 @@ void main() {
 
       // 3. Assert
       expect(created, serra);
-      expect(controller.groups, [norte, leste, serra]);
+      expect(controller.state.groups, [norte, leste, serra]);
       verify(backend.create('rotasul', 'Equipe Serra')).called(1);
       verifyNoMoreInteractions(backend);
-      expect(controller.isWorking.value, isFalse);
+      expect(controller.state.isWorking, isFalse);
     });
 
     test(
@@ -192,7 +196,7 @@ void main() {
       final pending = controller.create('Equipe Serra');
 
       // 3. Assert
-      expect(controller.isWorking.value, isTrue);
+      expect(controller.state.isWorking, isTrue);
       gate.complete();
       await pending;
     });
@@ -207,9 +211,9 @@ void main() {
 
       // 3. Assert
       expect(created, isNull);
-      expect(controller.errorMessage.value, 'Já existe a equipe Equipe Serra.');
-      expect(controller.groups, [norte, leste]);
-      expect(controller.isWorking.value, isFalse);
+      expect(controller.state.errorMessage, 'Já existe a equipe Equipe Serra.');
+      expect(controller.state.groups, [norte, leste]);
+      expect(controller.state.isWorking, isFalse);
     });
   });
 
@@ -355,7 +359,7 @@ void main() {
       // 3. Assert
       expect(ok, isFalse);
       verifyNoMoreInteractions(backend);
-      expect(controller.errorMessage.value, 'Marque pelo menos uma opção.');
+      expect(controller.state.errorMessage, 'Marque pelo menos uma opção.');
     });
   });
 
@@ -369,7 +373,7 @@ void main() {
 
       // 3. Assert
       expect(ok, isTrue);
-      expect(controller.groups, [leste]);
+      expect(controller.state.groups, [leste]);
       verify(backend.delete('rotasul', '01')).called(1);
       verifyNoMoreInteractions(backend);
     });
@@ -384,8 +388,8 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      expect(controller.errorMessage.value, isNotEmpty);
-      expect(controller.isWorking.value, isFalse);
+      expect(controller.state.errorMessage, isNotEmpty);
+      expect(controller.state.isWorking, isFalse);
     });
 
     test('Sad Path: a failed delete keeps the team', () async {
@@ -398,9 +402,9 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      expect(controller.groups, [norte, leste]);
-      expect(controller.errorMessage.value, 'Equipe não encontrada.');
-      expect(controller.isWorking.value, isFalse);
+      expect(controller.state.groups, [norte, leste]);
+      expect(controller.state.errorMessage, 'Equipe não encontrada.');
+      expect(controller.state.isWorking, isFalse);
     });
   });
 
@@ -434,10 +438,10 @@ void main() {
       final pending = controller.rename('01', 'Guias');
 
       // 3. Assert
-      expect(controller.isWorking.value, isTrue);
+      expect(controller.state.isWorking, isTrue);
       gate.complete();
       await pending;
-      expect(controller.isWorking.value, isFalse);
+      expect(controller.state.isWorking, isFalse);
     });
 
     test(
@@ -453,7 +457,7 @@ void main() {
         // 3. Assert
         expect(ok, isFalse);
         expect(
-          controller.errorMessage.value,
+          controller.state.errorMessage,
           'Já existe o grupo Equipe Léste.',
         );
         verify(backend.rename('rotasul', '01', 'equipe leste')).called(1);
@@ -502,7 +506,7 @@ void main() {
 
       // 3. Assert
       expect(impact, isNull);
-      expect(controller.errorMessage.value, 'Grupo não encontrado.');
+      expect(controller.state.errorMessage, 'Grupo não encontrado.');
     });
   });
 
@@ -533,7 +537,7 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      expect(controller.errorMessage.value, contains('tente de novo'));
+      expect(controller.state.errorMessage, contains('tente de novo'));
     });
 
     test('Sad Path: a refused removal does not reload the groups', () async {
@@ -548,7 +552,170 @@ void main() {
       expect(ok, isFalse);
       verify(backend.remove('rotasul', '01', 'vera@x.com')).called(1);
       verifyNoMoreInteractions(backend);
-      expect(controller.errorMessage.value, 'Essa pessoa não está no grupo.');
+      expect(controller.state.errorMessage, 'Essa pessoa não está no grupo.');
+    });
+  });
+
+  group('GroupsController.load (more cases) - Unit Test Suite', () {
+    test('Edge Case: isLoading is true while the groups are read', () async {
+      // 1. Arrange
+      final gate = Completer<List<Group>>();
+      when(backend.list(any)).thenAnswer((_) => gate.future);
+      final controller = newController();
+
+      // 2. Act
+      final pending = controller.load();
+
+      // 3. Assert
+      expect(controller.state.isLoading, isTrue);
+      gate.complete([norte]);
+      await pending;
+      expect(controller.state.isLoading, isFalse);
+    });
+
+    test('Edge Case: an organization with no group loads an empty '
+        'list', () async {
+      // 1. Arrange
+      when(backend.list(any)).thenAnswer((_) async => <Group>[]);
+      final controller = newController();
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(controller.state.groups, isEmpty);
+      expect(controller.state.errorMessage, isEmpty);
+    });
+
+    test('Edge Case: a second load while one runs reads nothing', () async {
+      // 1. Arrange
+      final gate = Completer<List<Group>>();
+      when(backend.list(any)).thenAnswer((_) => gate.future);
+      final controller = newController();
+      final first = controller.load();
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      verify(backend.list(any)).called(1);
+      gate.complete([norte]);
+      await first;
+    });
+
+    test('Sad Path: an unexpected error shows a generic message', () async {
+      // 1. Arrange
+      when(
+        backend.list(any),
+      ).thenAnswer((_) async => throw StateError('offline'));
+      final controller = newController();
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(controller.state.errorMessage, isNotEmpty);
+      expect(controller.state.errorMessage, isNot(contains('offline')));
+      expect(controller.state.isLoading, isFalse);
+    });
+  });
+
+  group('GroupsController (listeners) - Unit Test Suite', () {
+    test('Happy Path: a load that changes the groups notifies three times: '
+        'loading, groups, loaded', () async {
+      // 1. Arrange
+      final controller = newController();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(notifications, 3);
+    });
+
+    test('Edge Case: reloading groups equal by content notifies only for '
+        'the loading flag', () async {
+      // 1. Arrange
+      // Fresh objects on every read, as the backend builds them from JSON.
+      when(backend.list(any)).thenAnswer(
+        (_) async => [
+          Group(
+            id: '01',
+            name: 'Equipe Norte',
+            people: [
+              GroupPerson(
+                email: 'ana@x.com',
+                roles: {GroupRole.publisher, GroupRole.subscriber},
+              ),
+            ],
+            createdAt: DateTime.utc(2026, 10, 1),
+          ),
+        ],
+      );
+      final controller = newController();
+      await controller.load();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(notifications, 2);
+    });
+
+    test('Sad Path: roles refused locally notify once with the '
+        'problem', () async {
+      // 1. Arrange
+      final controller = await loadedController();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      await controller.setRoles('01', 'ana@x.com', {});
+
+      // 3. Assert
+      expect(notifications, 1);
+    });
+
+    test('Sad Path: a load finishing after dispose notifies nobody and does '
+        'not throw', () async {
+      // 1. Arrange
+      final gate = Completer<List<Group>>();
+      when(backend.list(any)).thenAnswer((_) => gate.future);
+      final controller = newController();
+      var notifications = 0;
+      final pending = controller.load();
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      gate.complete([norte]);
+
+      // 3. Assert
+      await expectLater(pending, completes);
+      expect(notifications, 0);
+    });
+
+    test('Sad Path: an operation finishing after dispose notifies nobody '
+        'and does not throw', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+      final gate = Completer<void>();
+      writesWaitOn(gate);
+      var notifications = 0;
+      final pending = controller.create('Equipe Serra');
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      gate.complete();
+
+      // 3. Assert
+      await expectLater(pending, completion(serra));
+      expect(notifications, 0);
     });
   });
 }

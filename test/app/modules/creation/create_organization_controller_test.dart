@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show Color;
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
@@ -68,7 +69,7 @@ CreateOrganizationController startedController({ThemeCatalog? themes}) =>
       backend: backend,
       themes: themes ?? mockCatalog(),
       debounce: Duration.zero,
-    )..onStart();
+    )..load();
 
 /// Lets the debounce timer fire and the mock answers resolve.
 Future<void> settle() async {
@@ -177,7 +178,7 @@ void main() {
       controller.setName('Rota Sul');
 
       // 3. Assert
-      expect(controller.id.value, 'rotasul');
+      expect(controller.state.id, 'rotasul');
     });
 
     test('Edge Case: every name change suggests again', () {
@@ -188,7 +189,7 @@ void main() {
       controller.setName('Rota Sul');
 
       // 3. Assert
-      expect(controller.id.value, 'rotasul');
+      expect(controller.state.id, 'rotasul');
     });
 
     test('Sad Path: after the id is edited the name no longer changes it', () {
@@ -201,7 +202,7 @@ void main() {
       controller.setName('Rota Sul Turismo');
 
       // 3. Assert
-      expect(controller.id.value, 'rsul');
+      expect(controller.state.id, 'rsul');
     });
   });
 
@@ -214,7 +215,7 @@ void main() {
       controller.setId('rotasul');
 
       // 3. Assert
-      expect(controller.idCheck.value, IdCheck.checking);
+      expect(controller.state.idCheck, IdCheck.checking);
     });
 
     test(
@@ -227,7 +228,7 @@ void main() {
         await settle();
 
         // 3. Assert
-        expect(controller.idCheck.value, IdCheck.available);
+        expect(controller.state.idCheck, IdCheck.available);
         expect(verify(backend.idProblem(captureAny)).captured, ['rotasul']);
       },
     );
@@ -245,9 +246,9 @@ void main() {
         await settle();
 
         // 3. Assert
-        expect(controller.idCheck.value, IdCheck.unavailable);
+        expect(controller.state.idCheck, IdCheck.unavailable);
         expect(
-          controller.idProblem.value,
+          controller.state.idProblem,
           'Esse identificador já está em uso.',
         );
       },
@@ -264,8 +265,8 @@ void main() {
         await settle();
 
         // 3. Assert
-        expect(controller.idCheck.value, IdCheck.unavailable);
-        expect(controller.idProblem.value, isNotEmpty);
+        expect(controller.state.idCheck, IdCheck.unavailable);
+        expect(controller.state.idProblem, isNotEmpty);
         verifyNever(backend.idProblem(any));
       },
     );
@@ -292,7 +293,7 @@ void main() {
         await settle();
 
         // 3. Assert
-        expect(controller.idCheck.value, IdCheck.checking);
+        expect(controller.state.idCheck, IdCheck.checking);
       },
     );
   });
@@ -365,8 +366,8 @@ void main() {
       // 1. Arrange
       final controller = startedController()..setName('  Rota Sul  ');
       await settle();
-      controller.themeId.value = 'oceano';
-      controller.plan.value = 'standard';
+      controller.pickTheme('oceano');
+      controller.pickPlan('community');
 
       // 2. Act
       await controller.create();
@@ -380,7 +381,7 @@ void main() {
           plan: captureAnyNamed('plan'),
         ),
       ).captured;
-      expect(sent, ['rotasul', 'Rota Sul', 'oceano', 'standard']);
+      expect(sent, ['rotasul', 'Rota Sul', 'oceano', 'community']);
     });
 
     test('Happy Path: returns true and keeps the returned status', () async {
@@ -393,7 +394,7 @@ void main() {
 
       // 3. Assert
       expect(ok, isTrue);
-      expect(controller.result.value, 'awaiting_billing');
+      expect(controller.state.result, 'awaiting_billing');
     });
 
     test('Happy Path: isCreating resets after success', () async {
@@ -404,7 +405,7 @@ void main() {
       await controller.create();
 
       // 3. Assert
-      expect(controller.isCreating.value, isFalse);
+      expect(controller.state.isCreating, isFalse);
     });
 
     test('Edge Case: isCreating is true while the call is in flight', () async {
@@ -417,7 +418,7 @@ void main() {
       final pending = controller.create();
 
       // 3. Assert
-      expect(controller.isCreating.value, isTrue);
+      expect(controller.state.isCreating, isTrue);
       gate.complete();
       await pending;
     });
@@ -459,7 +460,7 @@ void main() {
         // 3. Assert
         expect(ok, isFalse);
         expect(
-          controller.errorMessage.value,
+          controller.state.errorMessage,
           'Esse identificador já está em uso.',
         );
       },
@@ -474,7 +475,7 @@ void main() {
       await controller.create();
 
       // 3. Assert
-      expect(controller.isCreating.value, isFalse);
+      expect(controller.state.isCreating, isFalse);
     });
 
     test(
@@ -508,16 +509,18 @@ void main() {
   });
 
   group('CreateOrganizationController.pickPlan - Unit Test Suite', () {
-    test('Happy Path: community is picked', () {
+    test('Happy Path: picking community keeps it without notifying', () {
       // 1. Arrange
       final controller = startedController();
-      controller.plan.value = 'standard';
+      var notifications = 0;
+      controller.addListener(() => notifications++);
 
       // 2. Act
       controller.pickPlan('community');
 
       // 3. Assert
-      expect(controller.plan.value, 'community');
+      expect(controller.state.plan, 'community');
+      expect(notifications, 0);
     });
 
     test('Sad Path: standard leaves the plan unchanged', () {
@@ -528,7 +531,7 @@ void main() {
       controller.pickPlan('standard');
 
       // 3. Assert
-      expect(controller.plan.value, 'community');
+      expect(controller.state.plan, 'community');
     });
 
     test('Sad Path: an unknown plan leaves the plan unchanged', () {
@@ -539,22 +542,24 @@ void main() {
       controller.pickPlan('premium');
 
       // 3. Assert
-      expect(controller.plan.value, 'community');
+      expect(controller.state.plan, 'community');
     });
 
-    test('Edge Case: nothing is picked while creating', () async {
+    test('Edge Case: picking a plan while creating leaves the state as it '
+        'is', () async {
       // 1. Arrange
       final gate = Completer<void>();
       stubCreate(() => gate.future);
       final controller = await readyController();
-      controller.plan.value = 'standard';
       final pending = controller.create();
+      final creating = controller.state;
 
       // 2. Act
       controller.pickPlan('community');
 
       // 3. Assert
-      expect(controller.plan.value, 'standard');
+      expect(controller.state, creating);
+      expect(controller.state.isCreating, isTrue);
       gate.complete();
       await pending;
     });
@@ -569,7 +574,7 @@ void main() {
       await settle();
 
       // 3. Assert
-      expect(controller.themes.map((t) => t.id), [
+      expect(controller.state.themes.map((t) => t.id), [
         'sol',
         'oceano',
         defaultOrganizationTheme.id,
@@ -584,7 +589,180 @@ void main() {
       await settle();
 
       // 3. Assert
-      expect(controller.themes.map((t) => t.id), [defaultOrganizationTheme.id]);
+      expect(controller.state.themes.map((t) => t.id), [
+        defaultOrganizationTheme.id,
+      ]);
+    });
+  });
+
+  group('CreateOrganizationController.load - Unit Test Suite', () {
+    test('Edge Case: an empty catalog leaves no theme to pick and the '
+        'default theme picked', () async {
+      // 1. Arrange
+      final catalog = MockThemeCatalog();
+      when(catalog.themes()).thenAnswer((_) async => {});
+      final controller = CreateOrganizationController(
+        backend: backend,
+        themes: catalog,
+      );
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(controller.state.themes, isEmpty);
+      expect(controller.pickedTheme, defaultOrganizationTheme);
+    });
+  });
+
+  group('CreateOrganizationController.cancelIdCheck - Unit Test Suite', () {
+    test('Happy Path: a pending id check never reaches the backend', () {
+      fakeAsync((async) {
+        // 1. Arrange
+        final controller = CreateOrganizationController(
+          backend: backend,
+          themes: mockCatalog(),
+        )..setId('rotasul');
+
+        // 2. Act
+        controller.cancelIdCheck();
+        async.elapse(const Duration(seconds: 1));
+
+        // 3. Assert
+        verifyNever(backend.idProblem(any));
+      });
+    });
+
+    test('Edge Case: an id typed after cancelling is checked again', () {
+      fakeAsync((async) {
+        // 1. Arrange
+        final controller = CreateOrganizationController(
+          backend: backend,
+          themes: mockCatalog(),
+        )..setId('rotasul');
+        controller.cancelIdCheck();
+
+        // 2. Act
+        controller.setId('rotanorte');
+        async.elapse(const Duration(seconds: 1));
+
+        // 3. Assert
+        expect(verify(backend.idProblem(captureAny)).captured, ['rotanorte']);
+        expect(controller.state.idCheck, IdCheck.available);
+      });
+    });
+
+    test('Sad Path: without a pending check it does nothing', () {
+      // 1. Arrange
+      final controller = startedController();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.cancelIdCheck();
+
+      // 3. Assert
+      expect(notifications, 0);
+      expect(controller.state.idCheck, IdCheck.idle);
+    });
+  });
+
+  group('CreateOrganizationController.dispose - Unit Test Suite', () {
+    test('Happy Path: disposing stops the pending id check', () {
+      fakeAsync((async) {
+        // 1. Arrange
+        final controller = CreateOrganizationController(
+          backend: backend,
+          themes: mockCatalog(),
+        )..setId('rotasul');
+
+        // 2. Act
+        controller.dispose();
+        async.elapse(const Duration(seconds: 1));
+
+        // 3. Assert
+        verifyNever(backend.idProblem(any));
+      });
+    });
+
+    test('Sad Path: an id answer arriving after dispose notifies nobody and '
+        'does not throw', () async {
+      // 1. Arrange
+      final answer = Completer<String?>();
+      when(backend.idProblem('rotasul')).thenAnswer((_) => answer.future);
+      final controller = startedController()..setId('rotasul');
+      await settle();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      answer.complete(null);
+      await settle();
+
+      // 3. Assert
+      expect(notifications, 0);
+    });
+
+    test('Sad Path: a creation finishing after dispose notifies nobody and '
+        'does not throw', () async {
+      // 1. Arrange
+      final gate = Completer<void>();
+      stubCreate(() => gate.future);
+      final controller = await readyController();
+      var notifications = 0;
+      final pending = controller.create();
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      gate.complete();
+
+      // 3. Assert
+      await expectLater(pending, completion(isTrue));
+      expect(notifications, 0);
+    });
+  });
+
+  group('CreateOrganizationController (listeners) - Unit Test Suite', () {
+    test('Happy Path: picking another theme notifies once', () {
+      // 1. Arrange
+      final controller = startedController();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.pickTheme('oceano');
+
+      // 3. Assert
+      expect(notifications, 1);
+    });
+
+    test('Edge Case: picking the theme already picked notifies nobody', () {
+      // 1. Arrange
+      final controller = startedController()..pickTheme('oceano');
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.pickTheme('oceano');
+
+      // 3. Assert
+      expect(notifications, 0);
+    });
+
+    test('Edge Case: reloading an unchanged catalog notifies nobody', () async {
+      // 1. Arrange
+      final controller = startedController();
+      await settle();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(notifications, 0);
     });
   });
 }

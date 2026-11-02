@@ -46,6 +46,11 @@ Who belongs where lives in Firestore documents of the organization's project, **
 
 ## Frontend & Architectural Best Practices
 
+### Controllers & State
+- **Controllers are `ChangeNotifier`s** (`package:flutter/foundation.dart`) holding one immutable state class made with `freezed` (`<name>_state.dart` next to the controller, its generated `.freezed.dart` committed). They replace the state whole with `copyWith` and call `notifyListeners()` only when the new state differs (`==`); lists in a state are never changed in place. Models a state holds have value equality (`freezed`), so the deep comparison works.
+- **Dependencies through the constructor**, results as `Result`: controllers never look up services, show messages or navigate; screens show the messages.
+- **Screens listen with `ListenableBuilder`** and receive their controller as a parameter; they call the controller's `load()` when they open and keep their `TextEditingController`s themselves (controllers import no Flutter UI library, checked by `dart run tool/check_layers.dart`).
+
 ### Asynchronous Actions & Visual Feedback
 - **Immediate Visual Feedback**: Any interactive trigger initiating an asynchronous operation (background services, location hardware, authentication, remote queries) must immediately render a visible pending/loading state (e.g., progress spinner, transitional colors).
 - **Debouncing & Reentrancy Guards**: Disable interactive triggers (`onPressed: null`) and protect controllers with reentrancy guard clauses (`if (isLoading.value) return;`) while operations are in flight to prevent concurrent executions and race conditions.

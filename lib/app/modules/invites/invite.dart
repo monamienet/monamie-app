@@ -1,4 +1,7 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
+
+part 'invite.freezed.dart';
 
 /// A pending invite to a group, as the central invite functions return it.
 class Invite {
@@ -110,11 +113,14 @@ String dayMonth(DateTime date) {
 }
 
 /// A person on *Convidar pessoas* before sending: e-mail and roles.
-class InviteDraft {
-  InviteDraft(this.email) : roles = {GroupRole.publisher};
-
-  final String email;
-  final Set<GroupRole> roles;
+@freezed
+abstract class InviteDraft with _$InviteDraft {
+  /// [email] with the default role (*Em campo*) unless [roles] says
+  /// otherwise.
+  const factory InviteDraft(
+    String email, {
+    @Default({GroupRole.publisher}) Set<GroupRole> roles,
+  }) = _InviteDraft;
 }
 
 final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');

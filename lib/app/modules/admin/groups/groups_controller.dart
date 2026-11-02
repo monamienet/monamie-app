@@ -1,20 +1,22 @@
 import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
 
 import 'group.dart';
 import 'groups_backend.dart';
+import 'groups_state.dart';
+
+export 'groups_state.dart';
 
 /// State of the group screens (*Grupos*, *Criar grupo*, *Grupo*) for an
 /// administrator, who manages every group, or a group's maintainer
 /// (*Gestor do grupo*), who sees only the groups they maintain and manages
 /// their people, invites and name. The server checks the same; [isAdmin]
 /// only hides what the person may not do. One operation at a time:
-/// [isWorking] guards reentrancy and drives the pending states; it always
-/// resets in `finally`.
+/// [GroupsState.isWorking] guards reentrancy and drives the pending states;
+/// it always resets in `finally`. The screen calls [load] when it opens.
 ///
 /// The map under these screens needs no notice: it follows the groups in
 /// Firestore by itself.
-class GroupsController extends GetxController {
+class GroupsController extends ChangeNotifier {
   GroupsController({
     required this.organizationId,
     required this._backend,
@@ -36,67 +38,81 @@ class GroupsController extends GetxController {
       canRemoveFromGroup(person, byAdmin: isAdmin);
   final GroupsBackend _backend;
 
-  final RxList<Group> groups = <Group>[].obs;
-  final RxBool isLoading = false.obs;
-  final RxBool isWorking = false.obs;
-  final RxString errorMessage = ''.obs;
+  GroupsState _state = const GroupsState();
+  bool _disposed = false;
+
+  /// What the screens show; replaced whole, never changed in place.
+  GroupsState get state => _state;
+
+  /// Replaces the state, notifying only when it differs.
+  void _emit(GroupsState next) {
+    final changed = next != _state;
+    _state = next;
+    if (changed && !_disposed) notifyListeners();
+  }
 
   @override
-  void onInit() {
-    super.onInit();
-    load();
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   Group? byId(String groupId) =>
-      groups.firstWhereOrNull((g) => g.id == groupId);
+      _state.groups.where((g) => g.id == groupId).firstOrNull;
 
   /// Why [name] cannot be a new group (or the new name of group [renaming]).
   String? nameProblem(String name, {String? renaming}) => groupNameProblem(
     name,
-    groups.where((g) => g.id != renaming).map((g) => g.name),
+    _state.groups.where((g) => g.id != renaming).map((g) => g.name),
   );
 
   Future<void> load() async {
-    if (isLoading.value) return;
-    isLoading.value = true;
-    errorMessage.value = '';
+    if (_state.isLoading) return;
+    _emit(_state.copyWith(isLoading: true, errorMessage: ''));
     try {
-      groups.assignAll(await _backend.list(organizationId));
+      final groups = await _backend.list(organizationId);
+      _emit(_state.copyWith(groups: groups));
     } on GroupsException catch (e) {
-      errorMessage.value = e.message;
+      _emit(_state.copyWith(errorMessage: e.message));
     } catch (e) {
       debugPrint('[Groups] Could not load: $e');
-      errorMessage.value = 'Não foi possível carregar os grupos.';
+      _emit(
+        _state.copyWith(errorMessage: 'Não foi possível carregar os grupos.'),
+      );
     } finally {
-      isLoading.value = false;
+      _emit(_state.copyWith(isLoading: false));
     }
   }
 
   /// Runs [operation] guarded; returns its result, or `null` when it did
-  /// not run or failed (the message is in [errorMessage]).
+  /// not run or failed (the message is in [GroupsState.errorMessage]).
   Future<T?> _guarded<T>(Future<T> Function() operation) async {
-    if (isWorking.value) return null;
-    isWorking.value = true;
-    errorMessage.value = '';
+    if (_state.isWorking) return null;
+    _emit(_state.copyWith(isWorking: true, errorMessage: ''));
     try {
       return await operation();
     } on GroupsException catch (e) {
-      errorMessage.value = e.message;
+      _emit(_state.copyWith(errorMessage: e.message));
       return null;
     } catch (e) {
       debugPrint('[Groups] Operation failed: $e');
-      errorMessage.value =
-          'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
+      _emit(
+        _state.copyWith(
+          errorMessage:
+              'Não foi possível concluir agora. Verifique a conexão e tente '
+              'de novo.',
+        ),
+      );
       return null;
     } finally {
-      isWorking.value = false;
+      _emit(_state.copyWith(isWorking: false));
     }
   }
 
   /// Creates a group; returns it, or `null` on failure.
   Future<Group?> create(String name) => _guarded(() async {
     final group = await _backend.create(organizationId, name.trim());
-    groups.add(group);
+    _emit(_state.copyWith(groups: [..._state.groups, group]));
     return group;
   });
 
@@ -115,7 +131,14 @@ class GroupsController extends GetxController {
   Future<bool> delete(String groupId) async =>
       await _guarded(() async {
         await _backend.delete(organizationId, groupId);
-        groups.removeWhere((g) => g.id == groupId);
+        _emit(
+          _state.copyWith(
+            groups: [
+              for (final g in _state.groups)
+                if (g.id != groupId) g,
+            ],
+          ),
+        );
         return true;
       }) ??
       false;
@@ -129,7 +152,7 @@ class GroupsController extends GetxController {
   ) async {
     final problem = rolesChoiceProblem(roles, byAdmin: isAdmin);
     if (problem != null) {
-      errorMessage.value = problem;
+      _emit(_state.copyWith(errorMessage: problem));
       return false;
     }
     return await _guarded(() async {

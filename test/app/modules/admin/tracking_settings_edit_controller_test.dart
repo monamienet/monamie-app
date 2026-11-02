@@ -40,7 +40,7 @@ Future<TrackingSettingsEditController> controllerFor(
     repository: repository,
     saved: saved,
   );
-  controller.onStart();
+  controller.load();
   await pumpEventQueue();
   return controller;
 }
@@ -75,7 +75,7 @@ void main() {
       );
 
       // 2. Act
-      controller.onStart();
+      controller.load();
       await pumpEventQueue();
 
       // 3. Assert
@@ -90,11 +90,11 @@ void main() {
       );
 
       // 2. Act
-      controller.onStart();
+      controller.load();
       await pumpEventQueue();
 
       // 3. Assert
-      expect(controller.preset.value, TrackingPreset.economia);
+      expect(controller.state.preset, TrackingPreset.economia);
     });
 
     test('Edge Case: custom saved settings start on Personalizado', () async {
@@ -105,11 +105,11 @@ void main() {
       );
 
       // 2. Act
-      controller.onStart();
+      controller.load();
       await pumpEventQueue();
 
       // 3. Assert
-      expect(controller.preset.value, TrackingPreset.personalizado);
+      expect(controller.state.preset, TrackingPreset.personalizado);
     });
 
     test('Edge Case: the plan minimum is loaded on start', () async {
@@ -121,11 +121,11 @@ void main() {
       );
 
       // 2. Act
-      controller.onStart();
+      controller.load();
       await pumpEventQueue();
 
       // 3. Assert
-      expect(controller.minPeriodMinutes.value, 15);
+      expect(controller.state.minPeriodMinutes, 15);
     });
   });
 
@@ -193,8 +193,8 @@ void main() {
       // 3. Assert
       expect(
         [
-          controller.draft.value,
-          controller.preset.value,
+          controller.state.draft,
+          controller.state.preset,
           controller.hasChanges,
         ],
         [economia, TrackingPreset.economia, true],
@@ -213,7 +213,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [controller.draft.value, controller.preset.value],
+        [controller.state.draft, controller.state.preset],
         [economia, TrackingPreset.economia],
       );
     });
@@ -229,8 +229,8 @@ void main() {
         // 3. Assert
         expect(
           [
-            controller.draft.value,
-            controller.preset.value,
+            controller.state.draft,
+            controller.state.preset,
             controller.hasChanges,
           ],
           [economia, TrackingPreset.economia, false],
@@ -249,7 +249,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [controller.draft.value, controller.hasChanges],
+        [controller.state.draft, controller.hasChanges],
         [economia, false],
       );
     });
@@ -263,7 +263,7 @@ void main() {
       controller.setPeriod(20);
 
       // 3. Assert
-      expect([controller.draft.value, controller.hasChanges], [custom, false]);
+      expect([controller.state.draft, controller.hasChanges], [custom, false]);
     });
   });
 
@@ -277,7 +277,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [controller.draft.value, controller.hasChanges],
+        [controller.state.draft, controller.hasChanges],
         [economia, false],
       );
     });
@@ -293,7 +293,7 @@ void main() {
 
         // 3. Assert
         expect(
-          [controller.draft.value, controller.hasChanges],
+          [controller.state.draft, controller.hasChanges],
           [custom, false],
         );
       },
@@ -322,7 +322,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [ok, controller.savedSettings.value, controller.justSaved.value],
+        [ok, controller.state.savedSettings, controller.state.justSaved],
         [true, economia, true],
       );
     });
@@ -335,7 +335,7 @@ void main() {
       await controller.save();
 
       // 3. Assert
-      expect(controller.isSaving.value, isFalse);
+      expect(controller.state.isSaving, isFalse);
     });
 
     test('Sad Path: no changes returns false and calls nothing', () async {
@@ -363,7 +363,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [ok, controller.errorMessage.value, controller.savedSettings.value],
+        [ok, controller.state.errorMessage, controller.state.savedSettings],
         [false, isNotEmpty, equilibrio],
       );
     });
@@ -379,7 +379,7 @@ void main() {
       await controller.save();
 
       // 3. Assert
-      expect(controller.isSaving.value, isFalse);
+      expect(controller.state.isSaving, isFalse);
     });
   });
 
@@ -394,7 +394,7 @@ void main() {
       final pending = controller.save();
 
       // 3. Assert
-      expect(controller.isSaving.value, isTrue);
+      expect(controller.state.isSaving, isTrue);
       gate.complete();
       await pending;
     });
@@ -418,23 +418,112 @@ void main() {
       verify(repository.save(any)).called(1);
     });
 
-    test('Sad Path: picking Economia does nothing while saving', () async {
+    test('Sad Path: picking Economia while saving leaves the state as it '
+        'is', () async {
       // 1. Arrange
-      final controller = await controllerFor(equilibrio);
-      // A draft only Economia would change, set directly since no other
-      // preset can be picked.
-      controller.draft.value = custom;
+      // Saved on a custom draft, with Economia picked and being saved:
+      // Economia is the only preset offered, so the pick repeats it.
+      final controller = await controllerFor(custom);
+      controller.pickPreset(TrackingPreset.economia);
       final gate = Completer<void>();
       saveWaitsOn(gate);
       final pending = controller.save();
+      final saving = controller.state;
 
       // 2. Act
       controller.pickPreset(TrackingPreset.economia);
 
       // 3. Assert
-      expect(controller.draft.value, custom);
+      expect(controller.state, saving);
+      expect(controller.state.isSaving, isTrue);
       gate.complete();
       await pending;
+    });
+  });
+
+  group('TrackingSettingsEditController.load - Unit Test Suite', () {
+    test('Edge Case: an unreadable plan restricts nothing', () async {
+      // 1. Arrange
+      when(
+        repository.minPeriodMinutes(),
+      ).thenAnswer((_) async => throw StateError('offline'));
+      final controller = TrackingSettingsEditController(
+        repository: repository,
+        saved: equilibrio,
+      );
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(controller.state.minPeriodMinutes, 0);
+      expect(controller.allows(TrackingPreset.economia), isTrue);
+    });
+  });
+
+  group('TrackingSettingsEditController (listeners) - Unit Test Suite', () {
+    test('Happy Path: picking a preset that changes the draft notifies '
+        'once', () async {
+      // 1. Arrange
+      final controller = await controllerFor(equilibrio);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.pickPreset(TrackingPreset.economia);
+
+      // 3. Assert
+      expect(notifications, 1);
+    });
+
+    test('Edge Case: picking the preset already picked notifies '
+        'nobody', () async {
+      // 1. Arrange
+      final controller = await controllerFor(economia);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.pickPreset(TrackingPreset.economia);
+
+      // 3. Assert
+      expect(notifications, 0);
+    });
+
+    test('Edge Case: a plan minimum equal to the default notifies '
+        'nobody', () async {
+      // 1. Arrange
+      final controller = TrackingSettingsEditController(
+        repository: repository,
+        saved: equilibrio,
+      );
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(notifications, 0);
+    });
+
+    test('Sad Path: a save finishing after dispose notifies nobody and does '
+        'not throw', () async {
+      // 1. Arrange
+      final controller = await changedController();
+      final gate = Completer<void>();
+      saveWaitsOn(gate);
+      var notifications = 0;
+      final pending = controller.save();
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      gate.complete();
+
+      // 3. Assert
+      await expectLater(pending, completion(isTrue));
+      expect(notifications, 0);
     });
   });
 }

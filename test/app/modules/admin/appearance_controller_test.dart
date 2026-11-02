@@ -82,6 +82,15 @@ void stubSave(Future<void> Function() answer) {
 late MockAppearanceBackend backend;
 late List<OrganizationConfig> onSavedWith;
 
+/// A controller for [organization] whose themes are not loaded yet.
+AppearanceController newController(OrganizationConfig organization) =>
+    AppearanceController(
+      organization: organization,
+      backend: backend,
+      convertLogo: (_) async => convertedPng,
+      onSaved: (saved) async => onSavedWith.add(saved),
+    );
+
 /// A controller for [organization] whose themes are already loaded, with a
 /// converter that returns [convertedPng] (or [convert] when given).
 Future<AppearanceController> controllerFor(
@@ -94,7 +103,7 @@ Future<AppearanceController> controllerFor(
     convertLogo: convert ?? (_) async => convertedPng,
     onSaved: (saved) async => onSavedWith.add(saved),
   );
-  controller.onStart();
+  controller.load();
   await pumpEventQueue();
   clearInteractions(backend);
   return controller;
@@ -122,7 +131,7 @@ void main() {
       final controller = await controllerFor(rotaSul);
 
       // 2. Act
-      controller.name.value = 'Rota Norte';
+      controller.setName('Rota Norte');
 
       // 3. Assert
       expect(controller.hasChanges, isTrue);
@@ -133,7 +142,7 @@ void main() {
       final controller = await controllerFor(rotaSul);
 
       // 2. Act
-      controller.themeId.value = 'oceano';
+      controller.pickTheme('oceano');
 
       // 3. Assert
       expect(controller.hasChanges, isTrue);
@@ -177,10 +186,10 @@ void main() {
       () async {
         // 1. Arrange
         final controller = await controllerFor(rotaSul);
-        controller.name.value = 'Rota Norte';
+        controller.setName('Rota Norte');
 
         // 2. Act
-        controller.name.value = 'Rota Sul';
+        controller.setName('Rota Sul');
 
         // 3. Assert
         expect(controller.hasChanges, isFalse);
@@ -192,7 +201,7 @@ void main() {
     test('Happy Path: a new name alone sends only the name', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.name.value = 'Rota Norte';
+      controller.setName('Rota Norte');
 
       // 2. Act
       await controller.save();
@@ -205,7 +214,7 @@ void main() {
     test('Happy Path: a new theme alone sends only the theme', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.themeId.value = 'oceano';
+      controller.pickTheme('oceano');
 
       // 2. Act
       await controller.save();
@@ -255,8 +264,8 @@ void main() {
     test('Happy Path: onSaved receives the new name and theme', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.name.value = 'Rota Norte';
-      controller.themeId.value = 'oceano';
+      controller.setName('Rota Norte');
+      controller.pickTheme('oceano');
 
       // 2. Act
       await controller.save();
@@ -275,7 +284,7 @@ void main() {
     test('Happy Path: a successful save returns true', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.name.value = 'Rota Norte';
+      controller.setName('Rota Norte');
 
       // 2. Act
       final ok = await controller.save();
@@ -287,7 +296,7 @@ void main() {
     test('Edge Case: the name is trimmed before it is sent', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.name.value = '  Rota Norte ';
+      controller.setName('  Rota Norte ');
 
       // 2. Act
       await controller.save();
@@ -312,7 +321,7 @@ void main() {
         'returns false', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.name.value = 'Rota Norte';
+      controller.setName('Rota Norte');
       stubSave(() async => throw const AppearanceException('Nome inválido.'));
 
       // 2. Act
@@ -320,7 +329,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [ok, controller.errorMessage.value, onSavedWith],
+        [ok, controller.state.errorMessage, onSavedWith],
         [false, 'Nome inválido.', isEmpty],
       );
     });
@@ -330,7 +339,7 @@ void main() {
     test('Happy Path: isSaving is true while the save is in flight', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.name.value = 'Rota Norte';
+      controller.setName('Rota Norte');
       final gate = Completer<void>();
       stubSave(() => gate.future);
 
@@ -338,7 +347,7 @@ void main() {
       final pending = controller.save();
 
       // 3. Assert
-      expect(controller.isSaving.value, isTrue);
+      expect(controller.state.isSaving, isTrue);
       gate.complete();
       await pending;
     });
@@ -346,20 +355,20 @@ void main() {
     test('Happy Path: isSaving is false after the save', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.name.value = 'Rota Norte';
+      controller.setName('Rota Norte');
 
       // 2. Act
       await controller.save();
 
       // 3. Assert
-      expect(controller.isSaving.value, isFalse);
+      expect(controller.state.isSaving, isFalse);
     });
 
     test('Edge Case: a second save while the first is in flight returns '
         'false and does not call the backend again', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.name.value = 'Rota Norte';
+      controller.setName('Rota Norte');
       final gate = Completer<void>();
       stubSave(() => gate.future);
       final first = controller.save();
@@ -379,14 +388,14 @@ void main() {
     test('Sad Path: isSaving is false after an AppearanceException', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
-      controller.name.value = 'Rota Norte';
+      controller.setName('Rota Norte');
       stubSave(() async => throw const AppearanceException('Sem permissão.'));
 
       // 2. Act
       await controller.save();
 
       // 3. Assert
-      expect(controller.isSaving.value, isFalse);
+      expect(controller.state.isSaving, isFalse);
     });
   });
 
@@ -400,7 +409,7 @@ void main() {
 
       // 3. Assert
       expect(
-        [controller.sheet.value, controller.candidate],
+        [controller.state.sheet, controller.candidate],
         [LogoSheet.preview, convertedPng],
       );
     });
@@ -417,7 +426,7 @@ void main() {
       final pending = controller.pickLogo(pickedFile);
 
       // 3. Assert
-      expect(controller.sheet.value, LogoSheet.processing);
+      expect(controller.state.sheet, LogoSheet.processing);
       conversion.complete(convertedPng);
       await pending;
     });
@@ -435,9 +444,9 @@ void main() {
         // 3. Assert
         expect(
           [
-            controller.logoPng.value,
+            controller.state.logoPng,
             controller.candidate,
-            controller.sheet.value,
+            controller.state.sheet,
           ],
           [convertedPng, null, LogoSheet.closed],
         );
@@ -457,7 +466,7 @@ void main() {
       controller.closeSheet();
 
       // 3. Assert
-      expect(controller.sheet.value, LogoSheet.processing);
+      expect(controller.state.sheet, LogoSheet.processing);
       conversion.complete(convertedPng);
       await pending;
     });
@@ -475,9 +484,9 @@ void main() {
         // 3. Assert
         expect(
           [
-            controller.sheet.value,
+            controller.state.sheet,
             controller.candidate,
-            controller.logoPng.value,
+            controller.state.logoPng,
           ],
           [LogoSheet.closed, null, null],
         );
@@ -501,10 +510,167 @@ void main() {
 
         // 3. Assert
         expect(
-          [controller.sheet.value, controller.sheetError.value],
+          [controller.state.sheet, controller.state.sheetError],
           [LogoSheet.error, 'O arquivo tem 12 MB. Envie um de até 10 MB.'],
         );
       },
     );
+  });
+
+  group('AppearanceController.load - Unit Test Suite', () {
+    test('Happy Path: loads the pickable themes', () async {
+      // 1. Arrange
+      final controller = newController(rotaSul);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(controller.state.themes, [oceano, defaultOrganizationTheme]);
+      expect(controller.state.isLoadingThemes, isFalse);
+    });
+
+    test('Edge Case: isLoadingThemes is true while the themes are '
+        'read', () async {
+      // 1. Arrange
+      final gate = Completer<List<OrganizationTheme>>();
+      when(backend.pickableThemes()).thenAnswer((_) => gate.future);
+      final controller = newController(rotaSul);
+
+      // 2. Act
+      final pending = controller.load();
+
+      // 3. Assert
+      expect(controller.state.isLoadingThemes, isTrue);
+      gate.complete([oceano]);
+      await pending;
+      expect(controller.state.isLoadingThemes, isFalse);
+    });
+
+    test('Edge Case: an empty catalog leaves the saved theme '
+        'picked', () async {
+      // 1. Arrange
+      when(
+        backend.pickableThemes(),
+      ).thenAnswer((_) async => <OrganizationTheme>[]);
+      final controller = newController(rotaSul);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(controller.state.themes, isEmpty);
+      expect(controller.pickedTheme, defaultOrganizationTheme);
+    });
+
+    test('Sad Path: an unreadable catalog offers only the saved '
+        'theme', () async {
+      // 1. Arrange
+      when(
+        backend.pickableThemes(),
+      ).thenAnswer((_) async => throw StateError('offline'));
+      final controller = newController(rotaSul);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(controller.state.themes, [defaultOrganizationTheme]);
+      expect(controller.state.isLoadingThemes, isFalse);
+    });
+  });
+
+  group('AppearanceController (listeners) - Unit Test Suite', () {
+    test('Happy Path: typing a new name notifies once', () async {
+      // 1. Arrange
+      final controller = await controllerFor(rotaSul);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.setName('Rota Norte');
+
+      // 3. Assert
+      expect(notifications, 1);
+      expect(controller.hasChanges, isTrue);
+    });
+
+    test('Happy Path: picking another theme notifies once', () async {
+      // 1. Arrange
+      final controller = await controllerFor(rotaSul);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.pickTheme('oceano');
+
+      // 3. Assert
+      expect(notifications, 1);
+      expect(controller.pickedTheme, oceano);
+    });
+
+    test('Edge Case: picking the theme already picked notifies '
+        'nobody', () async {
+      // 1. Arrange
+      final controller = await controllerFor(rotaSul);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.pickTheme(defaultOrganizationTheme.id);
+
+      // 3. Assert
+      expect(notifications, 0);
+    });
+
+    test('Edge Case: reloading themes equal by content notifies only for '
+        'the loading flag', () async {
+      // 1. Arrange
+      // Fresh objects on every read, as the backend builds them from
+      // Firestore documents.
+      when(backend.pickableThemes()).thenAnswer(
+        (_) async => [
+          OrganizationTheme(
+            id: 'oceano',
+            name: 'Oceano',
+            primary: const Color(0xFF0B7F7B),
+            dark: const Color(0xFF0A3D3B),
+            light: const Color(0xFFD3EEEC),
+            onPrimary: const Color(0xFFFFFFFF),
+            onDark: const Color(0xFFFFFFFF),
+          ),
+        ],
+      );
+      final controller = newController(rotaSul);
+      await controller.load();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(notifications, 2);
+    });
+
+    test('Sad Path: a save finishing after dispose notifies nobody and does '
+        'not throw', () async {
+      // 1. Arrange
+      final controller = await controllerFor(rotaSul);
+      controller.setName('Rota Norte');
+      final gate = Completer<void>();
+      stubSave(() => gate.future);
+      var notifications = 0;
+      final pending = controller.save();
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      gate.complete();
+
+      // 3. Assert
+      await expectLater(pending, completion(isTrue));
+      expect(notifications, 0);
+    });
   });
 }

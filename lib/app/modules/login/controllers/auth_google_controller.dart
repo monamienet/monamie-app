@@ -424,20 +424,16 @@ class AuthGoogleController extends GetxController implements SignInActions {
   /// "Criar minha organização": the creation flow; a Community organization
   /// is entered as soon as it is ready.
   void startCreatingOrganization() {
-    // Registered with GetX so its lifecycle runs (onInit loads the themes);
-    // a fresh one each time the flow opens.
-    Get.delete<CreateOrganizationController>(force: true);
-    final controller = Get.put(
-      CreateOrganizationController(
-        backend: const FirebaseCreationBackend(),
-        themes: const FirestoreThemeCatalog(),
-      ),
+    // A fresh one each time the flow opens; its screen loads the themes.
+    final controller = CreateOrganizationController(
+      backend: const FirebaseCreationBackend(),
+      themes: const FirestoreThemeCatalog(),
     );
     Get.to(
       () => CreateOrganizationView(
         controller: controller,
         ownerEmail: signedInEmail.value ?? '',
-        onReady: () => enterCreatedOrganization(controller.id.value),
+        onReady: () => enterCreatedOrganization(controller.state.id),
       ),
     );
   }

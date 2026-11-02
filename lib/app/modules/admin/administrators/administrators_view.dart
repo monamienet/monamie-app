@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_palette.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
@@ -20,80 +19,96 @@ OrganizationPalette get _palette =>
 /// *Administradores*: the owner (*Titular*) sees who administers the
 /// organization, appoints a member and turns an administrator back into a
 /// member. Shown only to the owner; the server checks the same.
-class AdministratorsView extends StatelessWidget {
+class AdministratorsView extends StatefulWidget {
   const AdministratorsView({super.key, required this.controller});
 
   final AdministratorsController controller;
 
-  AdministratorsController get c => controller;
+  @override
+  State<AdministratorsView> createState() => _AdministratorsViewState();
+}
+
+class _AdministratorsViewState extends State<AdministratorsView> {
+  AdministratorsController get c => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    c.load();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.white,
     appBar: adminAppBar('Administradores'),
-    body: Obx(() {
-      final people = c.people.value;
-      if (c.isLoading.value &&
-          people.administrators.isEmpty &&
-          people.members.isEmpty) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      return RefreshIndicator(
-        onRefresh: c.load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-          children: [
-            const Text(
-              'Quem administra cuida de todos os grupos, dos convites, da '
-              'aparência e dos ajustes da organização, e vê todos os grupos '
-              'no mapa. Só você, titular, escolhe quem administra.',
-              style: TextStyle(fontSize: 14, height: 1.45, color: _muted),
-            ),
-            const SizedBox(height: 16),
-            if (c.errorMessage.value.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  c.errorMessage.value,
-                  style: const TextStyle(
-                    color: _error,
-                    fontWeight: FontWeight.w800,
+    body: ListenableBuilder(
+      listenable: c,
+      builder: (context, _) {
+        final people = c.state.people;
+        if (c.state.isLoading &&
+            people.administrators.isEmpty &&
+            people.members.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return RefreshIndicator(
+          onRefresh: c.load,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+            children: [
+              const Text(
+                'Quem administra cuida de todos os grupos, dos convites, da '
+                'aparência e dos ajustes da organização, e vê todos os grupos '
+                'no mapa. Só você, titular, escolhe quem administra.',
+                style: TextStyle(fontSize: 14, height: 1.45, color: _muted),
+              ),
+              const SizedBox(height: 16),
+              if (c.state.errorMessage.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    c.state.errorMessage,
+                    style: const TextStyle(
+                      color: _error,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
-              ),
-            _section('Administradores', people.administrators.length),
-            _card([
-              for (final admin in people.administrators)
-                _row(
-                  context,
-                  email: admin.email,
-                  detail: admin.owner ? 'Titular' : 'Administra a organização',
-                  highlighted: true,
-                  actionText: admin.owner ? null : 'Tornar membro',
-                  onAction: () => _demote(context, admin.email),
-                ),
-            ], 'Ninguém administra a organização.'),
-            const SizedBox(height: 24),
-            _section('Membros', people.members.length),
-            _card(
-              [
-                for (final email in people.members)
+              _section('Administradores', people.administrators.length),
+              _card([
+                for (final admin in people.administrators)
                   _row(
                     context,
-                    email: email,
-                    detail: 'Membro',
-                    highlighted: false,
-                    actionText: 'Tornar administrador',
-                    onAction: () => _promote(context, email),
+                    email: admin.email,
+                    detail: admin.owner
+                        ? 'Titular'
+                        : 'Administra a organização',
+                    highlighted: true,
+                    actionText: admin.owner ? null : 'Tornar membro',
+                    onAction: () => _demote(context, admin.email),
                   ),
-              ],
-              'Ninguém mais na organização ainda. Quem aceitar um convite '
-              'para um grupo aparece aqui.',
-            ),
-          ],
-        ),
-      );
-    }),
+              ], 'Ninguém administra a organização.'),
+              const SizedBox(height: 24),
+              _section('Membros', people.members.length),
+              _card(
+                [
+                  for (final email in people.members)
+                    _row(
+                      context,
+                      email: email,
+                      detail: 'Membro',
+                      highlighted: false,
+                      actionText: 'Tornar administrador',
+                      onAction: () => _promote(context, email),
+                    ),
+                ],
+                'Ninguém mais na organização ainda. Quem aceitar um convite '
+                'para um grupo aparece aqui.',
+              ),
+            ],
+          ),
+        );
+      },
+    ),
   );
 
   Widget _section(String title, int count) => Padding(
@@ -201,41 +216,44 @@ class AdministratorsView extends StatelessWidget {
         ),
         if (actionText != null) ...[
           const SizedBox(width: 8),
-          Obx(() {
-            final working = c.workingEmail.value;
-            return SizedBox(
-              height: 44,
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: _palette.dark,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  textStyle: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
+          ListenableBuilder(
+            listenable: c,
+            builder: (context, _) {
+              final working = c.state.workingEmail;
+              return SizedBox(
+                height: 44,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: _palette.dark,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
+                  // One change at a time: every row waits for the one in
+                  // flight.
+                  onPressed: working == null ? onAction : null,
+                  child: working == email
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2.4),
+                        )
+                      : Text(actionText),
                 ),
-                // One change at a time: every row waits for the one in
-                // flight.
-                onPressed: working == null ? onAction : null,
-                child: working == email
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2.4),
-                      )
-                    : Text(actionText),
-              ),
-            );
-          }),
+              );
+            },
+          ),
         ],
       ],
     ),
   );
 
   /// The controller's message for a failed change.
-  String get _failure => c.errorMessage.value.isEmpty
+  String get _failure => c.state.errorMessage.isEmpty
       ? 'Não foi possível concluir agora. Tente de novo.'
-      : c.errorMessage.value;
+      : c.state.errorMessage;
 
   Future<void> _promote(BuildContext context, String email) async {
     final ok = await adminActionSheet(

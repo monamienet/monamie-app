@@ -84,9 +84,9 @@ void main() {
         await controller.loadOwnership();
 
         // 3. Assert
-        expect(controller.isOwner.value, owner);
-        expect(controller.isCheckingOwner.value, isFalse);
-        expect(controller.errorMessage.value, isEmpty);
+        expect(controller.state.isOwner, owner);
+        expect(controller.state.isCheckingOwner, isFalse);
+        expect(controller.state.errorMessage, isEmpty);
       });
     }
 
@@ -96,12 +96,12 @@ void main() {
       final controller = newController(check);
 
       // 2. Act
-      controller.onStart();
+      controller.loadOwnership();
       await pumpEventQueue();
 
       // 3. Assert
       expect(check.calls, 1);
-      expect(controller.isOwner.value, isTrue);
+      expect(controller.state.isOwner, isTrue);
     });
 
     test(
@@ -115,11 +115,11 @@ void main() {
         final pending = controller.loadOwnership();
 
         // 3. Assert
-        expect(controller.isOwner.value, isNull);
-        expect(controller.isCheckingOwner.value, isTrue);
+        expect(controller.state.isOwner, isNull);
+        expect(controller.state.isCheckingOwner, isTrue);
         check.gate!.complete();
         await pending;
-        expect(controller.isCheckingOwner.value, isFalse);
+        expect(controller.state.isCheckingOwner, isFalse);
       },
     );
 
@@ -152,8 +152,8 @@ void main() {
       await controller.loadOwnership();
 
       // 3. Assert
-      expect(controller.isOwner.value, isFalse);
-      expect(controller.errorMessage.value, isEmpty);
+      expect(controller.state.isOwner, isFalse);
+      expect(controller.state.errorMessage, isEmpty);
     });
 
     test('Sad Path: a failed read leaves the ownership unknown with a '
@@ -166,10 +166,10 @@ void main() {
       await controller.loadOwnership();
 
       // 3. Assert
-      expect(controller.isOwner.value, isNull);
-      expect(controller.errorMessage.value, isNotEmpty);
-      expect(controller.errorMessage.value, isNot(contains('offline')));
-      expect(controller.isCheckingOwner.value, isFalse);
+      expect(controller.state.isOwner, isNull);
+      expect(controller.state.errorMessage, isNotEmpty);
+      expect(controller.state.errorMessage, isNot(contains('offline')));
+      expect(controller.state.isCheckingOwner, isFalse);
     });
   });
 
@@ -190,25 +190,29 @@ void main() {
       final controller = await controllerFor(isOwner: true);
 
       // 2. Act
-      controller.confirmation.value = ' RotaSul ';
+      controller.setConfirmation(' RotaSul ');
 
       // 3. Assert
       expect(controller.canDelete, isTrue);
     });
 
-    test(
-      'Edge Case: nobody can delete while a deletion is in flight',
-      () async {
-        // 1. Arrange
-        final controller = await controllerFor(isOwner: false);
+    test('Edge Case: an owner who typed the id cannot delete again while the '
+        'deletion is in flight', () async {
+      // 1. Arrange
+      final controller = await controllerFor(isOwner: true)
+        ..setConfirmation('rotasul');
+      final gate = Completer<void>();
+      stubRequest(() => gate.future);
+      final pending = controller.deleteAccount();
 
-        // 2. Act
-        controller.isDeleting.value = true;
+      // 2. Act
+      final canDelete = controller.canDelete;
 
-        // 3. Assert
-        expect(controller.canDelete, isFalse);
-      },
-    );
+      // 3. Assert
+      expect(canDelete, isFalse);
+      gate.complete();
+      await pending;
+    });
 
     test('Edge Case: nobody can delete while the ownership is being read', () {
       // 1. Arrange
@@ -255,7 +259,7 @@ void main() {
       final controller = await controllerFor(isOwner: true);
 
       // 2. Act
-      controller.confirmation.value = 'frota';
+      controller.setConfirmation('frota');
 
       // 3. Assert
       expect(controller.canDelete, isFalse);
@@ -273,14 +277,14 @@ void main() {
       // 3. Assert
       expect(requestedConfirmIds(), [<String>[]]);
       expect(deleted, [_deletion]);
-      expect(controller.errorMessage.value, isEmpty);
-      expect(controller.isDeleting.value, isFalse);
+      expect(controller.state.errorMessage, isEmpty);
+      expect(controller.state.isDeleting, isFalse);
     });
 
     test('Happy Path: an owner confirms the bound organization', () async {
       // 1. Arrange
       final controller = await controllerFor(isOwner: true)
-        ..confirmation.value = 'rotasul';
+        ..setConfirmation('rotasul');
 
       // 2. Act
       await controller.deleteAccount();
@@ -302,11 +306,11 @@ void main() {
       final pending = controller.deleteAccount();
 
       // 3. Assert
-      expect(controller.isDeleting.value, isTrue);
+      expect(controller.state.isDeleting, isTrue);
       expect(controller.canDelete, isFalse);
       gate.complete();
       await pending;
-      expect(controller.isDeleting.value, isFalse);
+      expect(controller.state.isDeleting, isFalse);
     });
 
     test('Edge Case: a second tap while in flight sends nothing', () async {
@@ -363,9 +367,9 @@ void main() {
       await controller.deleteAccount();
 
       // 3. Assert
-      expect(controller.errorMessage.value, 'Recusado.');
+      expect(controller.state.errorMessage, 'Recusado.');
       expect(deleted, isEmpty);
-      expect(controller.isDeleting.value, isFalse);
+      expect(controller.state.isDeleting, isFalse);
     });
 
     test('Sad Path: an unexpected error shows a generic message', () async {
@@ -377,10 +381,93 @@ void main() {
       await controller.deleteAccount();
 
       // 3. Assert
-      expect(controller.errorMessage.value, isNotEmpty);
-      expect(controller.errorMessage.value, isNot(contains('offline')));
+      expect(controller.state.errorMessage, isNotEmpty);
+      expect(controller.state.errorMessage, isNot(contains('offline')));
       expect(deleted, isEmpty);
-      expect(controller.isDeleting.value, isFalse);
+      expect(controller.state.isDeleting, isFalse);
+    });
+  });
+
+  group('MyAccountController (listeners) - Unit Test Suite', () {
+    test('Happy Path: typing the confirmation notifies the listeners', () {
+      // 1. Arrange
+      final controller = newController(FakeOwnerCheck(true));
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.setConfirmation('rotasul');
+
+      // 3. Assert
+      expect(notifications, 1);
+    });
+
+    test('Edge Case: typing the same confirmation again notifies nobody', () {
+      // 1. Arrange
+      final controller = newController(FakeOwnerCheck(true))
+        ..setConfirmation('rotasul');
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller.setConfirmation('rotasul');
+
+      // 3. Assert
+      expect(notifications, 0);
+    });
+
+    test(
+      'Edge Case: reading the ownership notifies when the read starts, with the result '
+      'and when it ends',
+      () async {
+        // 1. Arrange
+        final controller = newController(FakeOwnerCheck(false));
+        var notifications = 0;
+        controller.addListener(() => notifications++);
+
+        // 2. Act
+        await controller.loadOwnership();
+
+        // 3. Assert
+        expect(notifications, 3);
+      },
+    );
+
+    test('Sad Path: a read finishing after dispose notifies nobody and does '
+        'not throw', () async {
+      // 1. Arrange
+      final check = FakeOwnerCheck(true)..gate = Completer<void>();
+      final controller = newController(check);
+      var notifications = 0;
+      final pending = controller.loadOwnership();
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      check.gate!.complete();
+
+      // 3. Assert
+      await expectLater(pending, completes);
+      expect(notifications, 0);
+    });
+
+    test('Sad Path: a deletion finishing after dispose notifies nobody and '
+        'does not throw', () async {
+      // 1. Arrange
+      final controller = await controllerFor(isOwner: false);
+      final gate = Completer<void>();
+      stubRequest(() => gate.future);
+      var notifications = 0;
+      final pending = controller.deleteAccount();
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      gate.complete();
+
+      // 3. Assert
+      await expectLater(pending, completes);
+      expect(notifications, 0);
     });
   });
 }

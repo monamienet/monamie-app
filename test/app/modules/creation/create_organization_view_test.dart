@@ -71,7 +71,7 @@ Future<void> pumpView(
   await tester.pumpWidget(
     GetMaterialApp(
       home: CreateOrganizationView(
-        controller: controller..onStart(),
+        controller: controller,
         ownerEmail: 'ana@example.com',
         onReady: onReady ?? () async => const Ok(null),
       ),
@@ -307,6 +307,66 @@ void main() {
       // 3. Assert
       expect(entered, 1);
       expect(find.byType(SnackBar), findsNothing);
+    });
+  });
+
+  group('CreateOrganizationView (lifecycle) - Unit Test Suite', () {
+    testWidgets('Happy Path: opening the screen loads the themes', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final controller = CreateOrganizationController(
+        backend: backend,
+        themes: catalog,
+      );
+
+      // 2. Act
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CreateOrganizationView(
+            controller: controller,
+            ownerEmail: 'ana@example.com',
+            onReady: () async => const Ok(null),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // 3. Assert
+      verify(catalog.themes()).called(1);
+      expect(
+        controller.state.themes.map((t) => t.id),
+        unorderedEquals([defaultOrganizationTheme.id, 'oceano']),
+      );
+    });
+
+    testWidgets('Edge Case: leaving the screen stops the pending id check', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final controller = CreateOrganizationController(
+        backend: backend,
+        themes: catalog,
+        debounce: const Duration(seconds: 1),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CreateOrganizationView(
+            controller: controller,
+            ownerEmail: 'ana@example.com',
+            onReady: () async => const Ok(null),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextField).first, 'Rota Sul');
+      await tester.pump();
+
+      // 2. Act
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 2));
+
+      // 3. Assert
+      verifyNever(backend.idProblem(any));
     });
   });
 }

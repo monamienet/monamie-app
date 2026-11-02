@@ -50,7 +50,7 @@ AdministratorsController newController() =>
 /// interactions cleared.
 Future<AdministratorsController> loadedController() async {
   final controller = newController();
-  controller.onStart();
+  controller.load();
   await pumpEventQueue();
   clearInteractions(backend);
   return controller;
@@ -69,14 +69,14 @@ void main() {
       final controller = newController();
 
       // 2. Act
-      controller.onStart();
+      controller.load();
       await pumpEventQueue();
 
       // 3. Assert
       verify(backend.list('rotasul')).called(1);
       verifyNoMoreInteractions(backend);
-      expect(controller.people.value, same(_before));
-      expect(controller.isLoading.value, isFalse);
+      expect(controller.state.people, same(_before));
+      expect(controller.state.isLoading, isFalse);
     });
 
     test('Edge Case: isLoading is true while the list is read', () async {
@@ -89,10 +89,10 @@ void main() {
       final pending = controller.load();
 
       // 3. Assert
-      expect(controller.isLoading.value, isTrue);
+      expect(controller.state.isLoading, isTrue);
       gate.complete();
       await pending;
-      expect(controller.isLoading.value, isFalse);
+      expect(controller.state.isLoading, isFalse);
     });
 
     test('Edge Case: a second load while one runs reads nothing', () async {
@@ -124,8 +124,8 @@ void main() {
       await controller.load();
 
       // 3. Assert
-      expect(controller.errorMessage.value, 'Sem permissão.');
-      expect(controller.isLoading.value, isFalse);
+      expect(controller.state.errorMessage, 'Sem permissão.');
+      expect(controller.state.isLoading, isFalse);
     });
 
     test('Sad Path: an unexpected error shows a generic message', () async {
@@ -140,10 +140,10 @@ void main() {
 
       // 3. Assert
       expect(
-        controller.errorMessage.value,
+        controller.state.errorMessage,
         'Não foi possível carregar os administradores.',
       );
-      expect(controller.isLoading.value, isFalse);
+      expect(controller.state.isLoading, isFalse);
     });
   });
 
@@ -163,7 +163,7 @@ void main() {
         backend.list('rotasul'),
       ]);
       verifyNoMoreInteractions(backend);
-      expect(controller.people.value, same(_after));
+      expect(controller.state.people, same(_after));
     });
 
     test('Edge Case: the row in flight is marked and then cleared', () async {
@@ -176,10 +176,10 @@ void main() {
       final pending = controller.setAdministrator('ana@x.com', admin: false);
 
       // 3. Assert
-      expect(controller.workingEmail.value, 'ana@x.com');
+      expect(controller.state.workingEmail, 'ana@x.com');
       gate.complete();
       await pending;
-      expect(controller.workingEmail.value, isNull);
+      expect(controller.state.workingEmail, isNull);
     });
 
     test('Edge Case: a second change while one runs returns false', () async {
@@ -236,11 +236,11 @@ void main() {
       // 3. Assert
       expect(ok, isFalse);
       expect(
-        controller.errorMessage.value,
+        controller.state.errorMessage,
         'Essa pessoa não faz parte da organização.',
       );
-      expect(controller.workingEmail.value, isNull);
-      expect(controller.people.value, same(_before));
+      expect(controller.state.workingEmail, isNull);
+      expect(controller.state.people, same(_before));
     });
 
     test('Sad Path: an unexpected error gives a generic message', () async {
@@ -256,11 +256,85 @@ void main() {
       // 3. Assert
       expect(ok, isFalse);
       expect(
-        controller.errorMessage.value,
+        controller.state.errorMessage,
         'Não foi possível concluir agora. Verifique a conexão e tente de '
         'novo.',
       );
-      expect(controller.workingEmail.value, isNull);
+      expect(controller.state.workingEmail, isNull);
+    });
+  });
+
+  group('AdministratorsController (load and listeners) - Unit Test Suite', () {
+    test('Edge Case: an organization with nobody to list loads empty '
+        'lists', () async {
+      // 1. Arrange
+      when(
+        backend.list(any),
+      ).thenAnswer((_) async => const OrganizationAdministrators());
+      final controller = newController();
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(controller.state.people.administrators, isEmpty);
+      expect(controller.state.people.members, isEmpty);
+      expect(controller.state.errorMessage, isEmpty);
+    });
+
+    test('Happy Path: a load that changes the people notifies three times: '
+        'loading, people, loaded', () async {
+      // 1. Arrange
+      final controller = newController();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(notifications, 3);
+    });
+
+    test('Edge Case: reloading people equal by content notifies only for '
+        'the loading flag', () async {
+      // 1. Arrange
+      // Fresh objects on every read, as the backend builds them from JSON.
+      when(backend.list(any)).thenAnswer(
+        (_) async => OrganizationAdministrators(
+          administrators: [Administrator(email: 'olga@x.com', owner: true)],
+          members: ['caio@x.com'],
+        ),
+      );
+      final controller = newController();
+      await controller.load();
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      await controller.load();
+
+      // 3. Assert
+      expect(notifications, 2);
+    });
+
+    test('Sad Path: a change finishing after dispose notifies nobody and '
+        'does not throw', () async {
+      // 1. Arrange
+      final controller = await loadedController();
+      final gate = Completer<void>();
+      setWaitsOn(gate);
+      var notifications = 0;
+      final pending = controller.setAdministrator('caio@x.com', admin: true);
+      controller.addListener(() => notifications++);
+      controller.dispose();
+
+      // 2. Act
+      gate.complete();
+
+      // 3. Assert
+      await expectLater(pending, completion(isTrue));
+      expect(notifications, 0);
     });
   });
 }
