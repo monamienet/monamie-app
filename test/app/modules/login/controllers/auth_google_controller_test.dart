@@ -21,6 +21,8 @@ import 'package:monamie_app/app/data/organization/organization_local_data.dart';
 import 'package:monamie_app/app/data/organization/organization_session.dart';
 import 'package:monamie_app/app/data/repository/user_google_repository.dart';
 import 'package:monamie_app/app/data/services/background_tracking_stopper.dart';
+import 'package:monamie_app/app/modules/account/account_deletion.dart';
+import 'package:monamie_app/app/modules/account/account_deletion_backend.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
 import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
@@ -33,6 +35,7 @@ import 'package:monamie_app/app/utils/user_notice.dart';
 import '../../../../support/test_organization.dart';
 
 @GenerateNiceMocks([
+  MockSpec<AccountDeletionBackend>(),
   MockSpec<AuthGoogleService>(),
   MockSpec<BackgroundTrackingStopper>(),
   MockSpec<InvitesBackend>(),
@@ -50,6 +53,25 @@ import '../../../../support/test_organization.dart';
 import 'auth_google_controller_test.mocks.dart';
 
 const String _kHomeRoute = '/home-test';
+
+/// Calls [onChange] with [select]'s value each time it changes (as the GetX
+/// `ever` worker these tests used did); returns the function that stops it.
+void Function() _onChange<T>(
+  AuthGoogleController controller,
+  T Function(AuthGoogleState state) select,
+  void Function(T value) onChange,
+) {
+  var last = select(controller.state);
+  void listener() {
+    final value = select(controller.state);
+    if (value == last) return;
+    last = value;
+    onChange(value);
+  }
+
+  controller.addListener(listener);
+  return () => controller.removeListener(listener);
+}
 
 const String _kIdToken = 'google-id-token';
 
@@ -245,6 +267,8 @@ class _HarnessSignIn {
     Object? signInError,
     Object? logoutError,
     Completer<void>? chooser,
+    Completer<bool>? pendingStop,
+    AccountDeletionBackend? deletionBackend,
   }) {
     authService = _authServiceSignIn(
       log,
@@ -265,11 +289,12 @@ class _HarnessSignIn {
       notices: notices,
       authGoogleService: authService,
       userRepository: _userRepository(),
-      trackingStopper: _trackingStopper(log),
+      trackingStopper: _trackingStopper(log, pending: pendingStop),
       organizationDirectory: directory,
       brandingLoader: _brandingLoader((_) => _kRotaSulName),
       organizationSession: session,
       organizationLocalData: MockOrganizationLocalData(),
+      deletionBackend: deletionBackend,
       membershipCheck: membershipCheck,
       refreshTheme: () => log.add('refreshTheme'),
     );
@@ -315,7 +340,7 @@ Future<Object?> _run(
   final outcome = await act();
   for (
     var i = 0;
-    i < 50 && (controller.isLoading.value || controller.isLoggingOut.value);
+    i < 50 && (controller.state.isLoading || controller.state.isLoggingOut);
     i++
   ) {
     await tester.pump();
@@ -486,8 +511,8 @@ Future<void> _drive(
   for (
     var i = 0;
     i < 60 &&
-        (controller.acceptingInvite.value != null ||
-            controller.isLoading.value);
+        (controller.state.acceptingInvite != null ||
+            controller.state.isLoading);
     i++
   ) {
     await tester.pump(const Duration(seconds: 1));
@@ -511,7 +536,7 @@ void _directoryAnswers() {
 
 late MockOrganizationDirectory directory;
 
-/// Built without `Get.put`, so the real `onInit` (Google Sign-In) never runs.
+/// Built without calling `start`, so Google Sign-In is never initialized.
 AuthGoogleController newController() => AuthGoogleController(
   notices: MockNoticePresenter(),
   organizationDirectory: directory,
@@ -716,24 +741,28 @@ void main() {
             await _pumpAppSignIn(tester);
             final controller = harness.controller;
             final loadingHistory = <bool>[];
-            final worker = ever<bool>(controller.isLoading, loadingHistory.add);
+            final worker = _onChange(
+              controller,
+              (state) => state.isLoading,
+              loadingHistory.add,
+            );
             controller.loginGoogle();
             await tester.pump();
-            final loadingWhileChooserOpen = controller.isLoading.value;
-            final guardedWhileChooserOpen = controller.isChoosingAccount.value;
+            final loadingWhileChooserOpen = controller.state.isLoading;
+            final guardedWhileChooserOpen = controller.state.isChoosingAccount;
             final historyWhileChooserOpen = List<bool>.of(loadingHistory);
 
             // 2. Act
             chooser.complete();
             await _run(tester, controller, () => null);
-            worker.dispose();
+            worker();
 
             // 3. Assert
             expect(loadingWhileChooserOpen, isFalse);
             expect(guardedWhileChooserOpen, isTrue);
             expect(historyWhileChooserOpen, isEmpty);
             expect(loadingHistory, [true, false]);
-            expect(controller.isChoosingAccount.value, isFalse);
+            expect(controller.state.isChoosingAccount, isFalse);
           },
         );
 
@@ -773,8 +802,9 @@ void main() {
             await _pumpAppSignIn(tester);
             final controller = harness.controller;
             var loadingEverTrue = false;
-            final worker = ever<bool>(
-              controller.isLoading,
+            final worker = _onChange(
+              controller,
+              (state) => state.isLoading,
               (value) => loadingEverTrue = loadingEverTrue || value,
             );
             controller.loginGoogle();
@@ -783,12 +813,12 @@ void main() {
             // 2. Act
             chooser.completeError(Exception('cancelled'));
             await _run(tester, controller, () => null);
-            worker.dispose();
+            worker();
 
             // 3. Assert
             expect(loadingEverTrue, isFalse);
-            expect(controller.isLoading.value, isFalse);
-            expect(controller.isChoosingAccount.value, isFalse);
+            expect(controller.state.isLoading, isFalse);
+            expect(controller.state.isChoosingAccount, isFalse);
             verify(
               harness.authService.signInGoogle(
                 onAccountChosen: anyNamed('onAccountChosen'),
@@ -836,7 +866,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(harness.controller.signedInEmail.value, _kCentralEmail);
+            expect(harness.controller.state.signedInEmail, _kCentralEmail);
           },
         );
 
@@ -877,7 +907,7 @@ void main() {
 
             // 3. Assert
             expect(result, _errTitled(_kLoginErrorTitle));
-            expect(harness.controller.isLoading.value, isFalse);
+            expect(harness.controller.state.isLoading, isFalse);
           },
         );
       },
@@ -906,7 +936,7 @@ void main() {
             // 3. Assert
             expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
             expect(
-              harness.controller.organizationChoices.map(
+              harness.controller.state.organizationChoices.map(
                 (b) => b.organization.id,
               ),
               ['rotasul'],
@@ -934,7 +964,7 @@ void main() {
             // 3. Assert
             expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
             expect(
-              harness.controller.organizationChoices.map(
+              harness.controller.state.organizationChoices.map(
                 (b) => b.organization.id,
               ),
               ['rotasul', 'verdemar'],
@@ -986,7 +1016,7 @@ void main() {
             // 3. Assert
             expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
             expect(
-              harness.controller.organizationChoices.map(
+              harness.controller.state.organizationChoices.map(
                 (b) => b.organization.id,
               ),
               ['rotasul'],
@@ -1014,7 +1044,7 @@ void main() {
 
             // 3. Assert
             expect(Get.currentRoute, _kHomeRoute);
-            expect(harness.controller.organizationChoices, isEmpty);
+            expect(harness.controller.state.organizationChoices, isEmpty);
             verifyNever(harness.directory.organizationsOfSignedInUser());
           },
         );
@@ -1044,13 +1074,13 @@ void main() {
               tester,
               harness.controller,
               () => harness.controller.chooseOrganization(
-                harness.controller.organizationChoices.single,
+                harness.controller.state.organizationChoices.single,
               ),
             );
 
             // 3. Assert
             expect(
-              harness.controller.noAccessReason.value,
+              harness.controller.state.noAccessReason,
               'Sua conta não tem mais acesso à Rota Sul.',
             );
           },
@@ -1076,7 +1106,7 @@ void main() {
               tester,
               harness.controller,
               () => harness.controller.chooseOrganization(
-                harness.controller.organizationChoices.single,
+                harness.controller.state.organizationChoices.single,
               ),
             );
 
@@ -1105,7 +1135,7 @@ void main() {
               tester,
               harness.controller,
               () => harness.controller.chooseOrganization(
-                harness.controller.organizationChoices.single,
+                harness.controller.state.organizationChoices.single,
               ),
             );
 
@@ -1135,7 +1165,7 @@ void main() {
               tester,
               harness.controller,
               () => harness.controller.chooseOrganization(
-                harness.controller.organizationChoices.single,
+                harness.controller.state.organizationChoices.single,
               ),
             );
 
@@ -1164,7 +1194,7 @@ void main() {
               tester,
               harness.controller,
               () => harness.controller.chooseOrganization(
-                harness.controller.organizationChoices.single,
+                harness.controller.state.organizationChoices.single,
               ),
             );
 
@@ -1193,7 +1223,7 @@ void main() {
               tester,
               harness.controller,
               () => harness.controller.chooseOrganization(
-                harness.controller.organizationChoices.single,
+                harness.controller.state.organizationChoices.single,
               ),
             );
 
@@ -1225,12 +1255,12 @@ void main() {
               tester,
               harness.controller,
               () => harness.controller.chooseOrganization(
-                harness.controller.organizationChoices.single,
+                harness.controller.state.organizationChoices.single,
               ),
             );
 
             // 3. Assert
-            expect(harness.controller.noAccessReason.value, isNull);
+            expect(harness.controller.state.noAccessReason, isNull);
             expect(Get.currentRoute, isNot(Routes.NO_ORGANIZATION));
           },
         );
@@ -1255,12 +1285,12 @@ void main() {
               tester,
               harness.controller,
               () => harness.controller.chooseOrganization(
-                harness.controller.organizationChoices.single,
+                harness.controller.state.organizationChoices.single,
               ),
             );
 
             // 3. Assert
-            expect(harness.controller.noAccessReason.value, isNull);
+            expect(harness.controller.state.noAccessReason, isNull);
             verifyNever(harness.authService.signOutOfOrganization());
           },
         );
@@ -1324,11 +1354,22 @@ void main() {
         WidgetTester tester,
       ) async {
         // 1. Arrange
-        final harness = _HarnessSignIn();
+        // Entering an organization without a membership there sets the
+        // reason (and lands on Sem organização).
+        final harness = _HarnessSignIn(
+          organizations: [_kRotaSul],
+          member: false,
+        );
         await _pumpAppSignIn(tester);
         await _run(tester, harness.controller, harness.controller.loginGoogle);
-        harness.controller.noAccessReason.value =
-            'Sua conta não tem mais acesso à Rota Sul.';
+        await _run(
+          tester,
+          harness.controller,
+          () => harness.controller.chooseOrganization(
+            harness.controller.state.organizationChoices.single,
+          ),
+        );
+        expect(harness.controller.state.noAccessReason, isNotNull);
 
         // 2. Act
         await _run(
@@ -1338,7 +1379,7 @@ void main() {
         );
 
         // 3. Assert
-        expect(harness.controller.noAccessReason.value, isNull);
+        expect(harness.controller.state.noAccessReason, isNull);
       });
 
       testWidgets(
@@ -1364,23 +1405,34 @@ void main() {
         },
       );
 
-      test(
+      testWidgets(
         'Edge Case: Não deve fazer nada quando chamado com isLoading true (reentrância)',
-        () async {
+        (WidgetTester tester) async {
           // 1. Arrange
+          // A first check held open at the directory keeps isLoading true.
           final harness = _HarnessSignIn();
-          harness.controller.isLoading.value = true;
+          await _pumpAppSignIn(tester);
+          final lookup = Completer<List<OrganizationCandidate>>();
+          when(
+            harness.directory.organizationsOfSignedInUser(),
+          ).thenAnswer((_) => lookup.future);
+          final first = harness.controller.recheckOrganizations();
+          await tester.pump();
+          expect(harness.controller.state.isLoading, isTrue);
 
           // 2. Act
-          await harness.controller.recheckOrganizations();
+          final second = await harness.controller.recheckOrganizations();
 
           // 3. Assert
-          verifyNever(
+          expect(second, isA<Ok<void>>());
+          verify(
             harness.authService.signInGoogle(
               onAccountChosen: anyNamed('onAccountChosen'),
             ),
-          );
-          verifyNever(harness.directory.organizationsOfSignedInUser());
+          ).called(1);
+          verify(harness.directory.organizationsOfSignedInUser()).called(1);
+          lookup.complete(const []);
+          await _run(tester, harness.controller, () => first);
         },
       );
 
@@ -1399,7 +1451,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.controller.isLoading.value, isFalse);
+          expect(harness.controller.state.isLoading, isFalse);
         },
       );
     });
@@ -1426,7 +1478,7 @@ void main() {
 
             // 3. Assert
             expect(
-              harness.controller.noAccessReason.value,
+              harness.controller.state.noAccessReason,
               'Você não faz mais parte da Rota Sul.',
             );
           },
@@ -1490,7 +1542,7 @@ void main() {
 
             // 3. Assert
             expect(
-              harness.controller.noAccessReason.value,
+              harness.controller.state.noAccessReason,
               'Você não faz mais parte desta organização.',
             );
           },
@@ -1537,7 +1589,7 @@ void main() {
           // 3. Assert
           expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
           expect(
-            harness.controller.organizationChoices.map(
+            harness.controller.state.organizationChoices.map(
               (b) => b.organization.id,
             ),
             ['rotasul'],
@@ -1728,40 +1780,67 @@ void main() {
 
           // 3. Assert
           expect(Get.currentRoute, Routes.NO_ORGANIZATION);
-          expect(harness.controller.organizationChoices, isEmpty);
+          expect(harness.controller.state.organizationChoices, isEmpty);
           verifyNever(harness.authService.logoutGoogle());
         },
       );
 
-      test(
+      testWidgets(
         'Edge Case: Não deve fazer nada quando chamado com isLoggingOut true (reentrância)',
-        () async {
+        (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _HarnessSignIn(organizations: [_kRotaSul]);
-          harness.controller.isLoggingOut.value = true;
+          // A logout held open at the tracking stop keeps isLoggingOut true.
+          final pendingStop = Completer<bool>();
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul],
+            pendingStop: pendingStop,
+          );
+          await _pumpAppSignIn(tester);
+          final logout = harness.controller.logout();
+          await tester.pump();
+          expect(harness.controller.state.isLoggingOut, isTrue);
+          harness.log.clear();
 
           // 2. Act
-          await harness.controller.switchOrganization();
+          final result = await harness.controller.switchOrganization();
 
           // 3. Assert
+          expect(result, isA<Ok<void>>());
           expect(harness.log, isEmpty);
+          verifyNever(harness.authService.refreshGoogleIdToken());
           verifyNever(harness.directory.organizationsOfSignedInUser());
+          pendingStop.complete(true);
+          await _run(tester, harness.controller, () => logout);
         },
       );
 
-      test(
+      testWidgets(
         'Edge Case: Não deve fazer nada quando chamado com isLoading true (reentrância)',
-        () async {
+        (WidgetTester tester) async {
           // 1. Arrange
+          // A sign-in held open at the directory (after the account was
+          // chosen) keeps isLoading true.
           final harness = _HarnessSignIn(organizations: [_kRotaSul]);
-          harness.controller.isLoading.value = true;
+          await _pumpAppSignIn(tester);
+          final lookup = Completer<List<OrganizationCandidate>>();
+          when(
+            harness.directory.organizationsOfSignedInUser(),
+          ).thenAnswer((_) => lookup.future);
+          final login = harness.controller.loginGoogle();
+          await tester.pump();
+          expect(harness.controller.state.isLoading, isTrue);
+          harness.log.clear();
 
           // 2. Act
-          await harness.controller.switchOrganization();
+          final result = await harness.controller.switchOrganization();
 
           // 3. Assert
+          expect(result, isA<Ok<void>>());
           expect(harness.log, isEmpty);
-          verifyNever(harness.directory.organizationsOfSignedInUser());
+          verifyNever(harness.authService.refreshGoogleIdToken());
+          verify(harness.directory.organizationsOfSignedInUser()).called(1);
+          lookup.complete(const []);
+          await _run(tester, harness.controller, () => login);
         },
       );
 
@@ -1835,7 +1914,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.controller.isLoggingOut.value, isFalse);
+          expect(harness.controller.state.isLoggingOut, isFalse);
         },
       );
 
@@ -1899,7 +1978,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.controller.isLoggingOut.value, isFalse);
+          expect(harness.controller.state.isLoggingOut, isFalse);
         },
       );
 
@@ -1912,7 +1991,9 @@ void main() {
           final harness = _HarnessSignIn(organizations: [_kRotaSul]);
           await _pumpAppSignIn(tester);
           final seen = <bool>[];
-          final sub = harness.controller.isSwitchingOrganization.listen(
+          final sub = _onChange(
+            harness.controller,
+            (state) => state.isSwitchingOrganization,
             seen.add,
           );
 
@@ -1924,9 +2005,9 @@ void main() {
           );
 
           // 3. Assert
-          await sub.cancel();
+          sub();
           expect(seen, [true, false]);
-          expect(harness.controller.isSwitchingOrganization.value, isFalse);
+          expect(harness.controller.state.isSwitchingOrganization, isFalse);
         },
       );
 
@@ -1937,7 +2018,9 @@ void main() {
           final harness = _HarnessSignIn(directoryError: Exception('sem rede'));
           await _pumpAppSignIn(tester);
           final seen = <bool>[];
-          final sub = harness.controller.isSwitchingOrganization.listen(
+          final sub = _onChange(
+            harness.controller,
+            (state) => state.isSwitchingOrganization,
             seen.add,
           );
 
@@ -1949,9 +2032,9 @@ void main() {
           );
 
           // 3. Assert
-          await sub.cancel();
+          sub();
           expect(seen, [true, false]);
-          expect(harness.controller.isSwitchingOrganization.value, isFalse);
+          expect(harness.controller.state.isSwitchingOrganization, isFalse);
         },
       );
 
@@ -1962,7 +2045,9 @@ void main() {
           final harness = _HarnessSignIn();
           await _pumpAppSignIn(tester);
           final seen = <bool>[];
-          final sub = harness.controller.isSwitchingOrganization.listen(
+          final sub = _onChange(
+            harness.controller,
+            (state) => state.isSwitchingOrganization,
             seen.add,
           );
 
@@ -1970,20 +2055,30 @@ void main() {
           await _run(tester, harness.controller, harness.controller.logout);
 
           // 3. Assert
-          await sub.cancel();
+          sub();
           expect(seen, isEmpty);
-          expect(harness.controller.isSwitchingOrganization.value, isFalse);
+          expect(harness.controller.state.isSwitchingOrganization, isFalse);
         },
       );
 
-      test(
+      testWidgets(
         'Edge Case: Não deve marcar isSwitchingOrganization quando chamado com isLoggingOut true (reentrância)',
-        () async {
+        (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _HarnessSignIn(organizations: [_kRotaSul]);
-          harness.controller.isLoggingOut.value = true;
+          // A logout held open at the tracking stop keeps isLoggingOut true.
+          final pendingStop = Completer<bool>();
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul],
+            pendingStop: pendingStop,
+          );
+          await _pumpAppSignIn(tester);
+          final logout = harness.controller.logout();
+          await tester.pump();
+          expect(harness.controller.state.isLoggingOut, isTrue);
           final seen = <bool>[];
-          final sub = harness.controller.isSwitchingOrganization.listen(
+          final sub = _onChange(
+            harness.controller,
+            (state) => state.isSwitchingOrganization,
             seen.add,
           );
 
@@ -1991,9 +2086,11 @@ void main() {
           await harness.controller.switchOrganization();
 
           // 3. Assert
-          await sub.cancel();
+          sub();
           expect(seen, isEmpty);
-          expect(harness.controller.isSwitchingOrganization.value, isFalse);
+          expect(harness.controller.state.isSwitchingOrganization, isFalse);
+          pendingStop.complete(true);
+          await _run(tester, harness.controller, () => logout);
         },
       );
 
@@ -2007,7 +2104,9 @@ void main() {
           );
           await _pumpAppSignIn(tester);
           final seen = <bool>[];
-          final sub = harness.controller.isSwitchingOrganization.listen(
+          final sub = _onChange(
+            harness.controller,
+            (state) => state.isSwitchingOrganization,
             seen.add,
           );
 
@@ -2019,9 +2118,9 @@ void main() {
           );
 
           // 3. Assert
-          await sub.cancel();
+          sub();
           expect(seen, isEmpty);
-          expect(harness.controller.isSwitchingOrganization.value, isFalse);
+          expect(harness.controller.state.isSwitchingOrganization, isFalse);
         },
       );
     });
@@ -2155,7 +2254,7 @@ void main() {
         await _accept(tester, harness.controller);
 
         // 3. Assert
-        expect(harness.controller.welcome.value, same(_kInvite));
+        expect(harness.controller.state.welcome, same(_kInvite));
       });
 
       testWidgets(
@@ -2174,7 +2273,7 @@ void main() {
             harness.log,
             containsAllInOrder(['bind', 'signInToOrganization']),
           );
-          expect(harness.controller.acceptingInvite.value, isNull);
+          expect(harness.controller.state.acceptingInvite, isNull);
         },
       );
 
@@ -2212,7 +2311,7 @@ void main() {
 
           // 3. Assert
           verify(harness.backend.accept(_kInvite)).called(1);
-          expect(harness.controller.acceptingInvite.value, 'inv1');
+          expect(harness.controller.state.acceptingInvite, 'inv1');
         },
       );
 
@@ -2232,10 +2331,10 @@ void main() {
 
           // 3. Assert
           expect(
-            harness.controller.inviteError.value,
+            harness.controller.state.inviteError,
             'Este convite expirou. Peça um novo a quem convidou você.',
           );
-          expect(harness.controller.acceptingInvite.value, isNull);
+          expect(harness.controller.state.acceptingInvite, isNull);
           verifyNever(harness.directory.organizationsOfSignedInUser());
         },
       );
@@ -2258,7 +2357,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.controller.pendingInvites, [_kInvite]);
+          expect(harness.controller.state.pendingInvites, [_kInvite]);
           expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
         },
       );
@@ -2285,7 +2384,10 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.controller.pendingInvites, [_kInvite, _kOtherInvite]);
+          expect(harness.controller.state.pendingInvites, [
+            _kInvite,
+            _kOtherInvite,
+          ]);
           expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
           expect(harness.log, isNot(contains('bind')));
         },
@@ -2295,12 +2397,20 @@ void main() {
         'Sad Path: a failing invite read leaves pendingInvites empty and still opens the picker',
         (WidgetTester tester) async {
           // 1. Arrange
+          // A first check loads one invite; the second read fails.
           final harness = _HarnessInvites();
-          harness.controller.pendingInvites.add(_kOtherInvite);
-          when(
-            harness.backend.mine(),
-          ).thenAnswer((_) async => throw Exception('sem rede'));
+          var reads = 0;
+          when(harness.backend.mine()).thenAnswer((_) async {
+            if (reads++ == 0) return [_kOtherInvite];
+            throw Exception('sem rede');
+          });
           await _pumpAppInvites(tester);
+          await _drive(
+            tester,
+            harness.controller,
+            harness.controller.recheckOrganizations,
+          );
+          expect(harness.controller.state.pendingInvites, [_kOtherInvite]);
 
           // 2. Act
           await _drive(
@@ -2310,8 +2420,8 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.controller.pendingInvites, isEmpty);
-          expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
+          expect(harness.controller.state.pendingInvites, isEmpty);
+          expect(harness.controller.state.session, isA<SessionPicking>());
         },
       );
     });
@@ -2510,7 +2620,7 @@ void main() {
           await controller.loadOwnership('rotasul');
 
           // 3. Assert
-          expect(controller.ownership, {'rotasul': true});
+          expect(controller.state.ownership, {'rotasul': true});
         },
       );
 
@@ -2523,7 +2633,7 @@ void main() {
         await controller.loadOwnership('verdemar');
 
         // 3. Assert
-        expect(controller.ownership, {'verdemar': false});
+        expect(controller.state.ownership, {'verdemar': false});
       });
 
       test(
@@ -2551,7 +2661,10 @@ void main() {
 
         // 3. Assert
         verify(directory.organizationsOfSignedInUser()).called(2);
-        expect(controller.ownership, {'rotasul': true, 'verdemar': false});
+        expect(controller.state.ownership, {
+          'rotasul': true,
+          'verdemar': false,
+        });
       });
 
       test('Edge Case: a call while one is reading reads nothing', () async {
@@ -2586,7 +2699,7 @@ void main() {
           await controller.loadOwnership('rotasul');
 
           // 3. Assert
-          expect(controller.ownership.containsKey('rotasul'), isFalse);
+          expect(controller.state.ownership.containsKey('rotasul'), isFalse);
         },
       );
 
@@ -2604,7 +2717,7 @@ void main() {
 
         // 3. Assert
         verify(directory.organizationsOfSignedInUser()).called(2);
-        expect(controller.ownership, {'rotasul': true});
+        expect(controller.state.ownership, {'rotasul': true});
       });
     });
   });
@@ -2705,7 +2818,7 @@ void main() {
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.controller.isLoggingOut.value, isFalse);
+          expect(harness.controller.state.isLoggingOut, isFalse);
         },
       );
 
@@ -2713,15 +2826,21 @@ void main() {
         'Happy Path: Deve limpar signedInEmail ao concluir o logout',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _HarnessLogout(storedUser: _storedUser());
-          await _pumpAppLogout(tester, harness);
-          harness.controller.signedInEmail.value = _kStoredEmail;
+          // A sign-in (with no organization) records the central e-mail.
+          final harness = _HarnessSignIn();
+          await _pumpAppSignIn(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+          expect(harness.controller.state.signedInEmail, _kCentralEmail);
 
           // 2. Act
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.controller.signedInEmail.value, isNull);
+          expect(harness.controller.state.signedInEmail, isNull);
         },
       );
 
@@ -2729,15 +2848,25 @@ void main() {
         'Happy Path: Deve esquecer a titularidade lida ao concluir o logout',
         (WidgetTester tester) async {
           // 1. Arrange
-          final harness = _HarnessLogout(storedUser: _storedUser());
-          await _pumpAppLogout(tester, harness);
-          harness.controller.ownership['rotasul'] = true;
+          // The owner's organization is read first.
+          final harness = _HarnessSignIn(
+            organizations: const [
+              OrganizationCandidate(
+                id: 'rotasul',
+                options: _kOptions,
+                owner: true,
+              ),
+            ],
+          );
+          await _pumpAppSignIn(tester);
+          await harness.controller.loadOwnership('rotasul');
+          expect(harness.controller.state.ownership, {'rotasul': true});
 
           // 2. Act
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.controller.ownership, isEmpty);
+          expect(harness.controller.state.ownership, isEmpty);
         },
       );
 
@@ -2762,7 +2891,7 @@ void main() {
         );
 
         // 3. Assert
-        expect(controller.isLoggingOut.value, isFalse);
+        expect(controller.state.isLoggingOut, isFalse);
       });
 
       testWidgets(
@@ -2815,7 +2944,7 @@ void main() {
           await tester.pump();
 
           // 3. Assert
-          expect(harness.controller.isLoggingOut.value, isTrue);
+          expect(harness.controller.state.isLoggingOut, isTrue);
         },
       );
 
@@ -3015,7 +3144,7 @@ void main() {
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.controller.isLoggingOut.value, isFalse);
+          expect(harness.controller.state.isLoggingOut, isFalse);
         },
       );
 
@@ -3071,7 +3200,913 @@ void main() {
 
           // 3. Assert
           expect(run.error, isNull);
-          expect(harness.controller.isLoggingOut.value, isFalse);
+          expect(harness.controller.state.isLoggingOut, isFalse);
+        },
+      );
+    });
+  });
+
+  // The session state each navigation decision leaves the controller in. The
+  // router's redirect will read it alone, so these tests never look at the
+  // current route.
+  group('session state', () {
+    setUp(() {
+      Get.testMode = true;
+    });
+
+    tearDown(() {
+      Get.reset();
+      Organization.bind(testOrganization);
+      CurrentOrganizationFirebase.debugReset();
+    });
+
+    /// Rota Sul as the branding loader of [_HarnessSignIn] names it.
+    final rotaSul = OrganizationBinding(
+      organization: const OrganizationConfig(
+        id: 'rotasul',
+        name: _kRotaSulName,
+      ),
+      options: _kRotaSul.options,
+    );
+
+    /// Signs in and picks Rota Sul, ending bound to it (the person has a
+    /// membership there).
+    Future<void> bindRotaSul(
+      WidgetTester tester,
+      _HarnessSignIn harness,
+    ) async {
+      await _run(tester, harness.controller, harness.controller.loginGoogle);
+      await _run(
+        tester,
+        harness.controller,
+        () => harness.controller.chooseOrganization(
+          harness.controller.state.organizationChoices.single,
+        ),
+      );
+      expect(harness.controller.state.session, const SessionState.bound());
+    }
+
+    group('AuthGoogleController.loginGoogle - Unit Test Suite', () {
+      testWidgets(
+        'Happy Path: several organizations end in picking with their choices',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul, _kVerdeMarSignIn],
+          );
+          await _pumpAppSignIn(tester);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            SessionState.picking([
+              rotaSul,
+              OrganizationBinding(
+                organization: const OrganizationConfig(
+                  id: 'verdemar',
+                  name: _kRotaSulName,
+                ),
+                options: _kVerdeMarSignIn.options,
+              ),
+            ]),
+          );
+          verify(harness.directory.organizationsOfSignedInUser()).called(1);
+        },
+      );
+
+      testWidgets(
+        'Happy Path: a single organization still ends in picking (a sign-in just made)',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(organizations: [_kRotaSul]);
+          await _pumpAppSignIn(tester);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            SessionState.picking([rotaSul]),
+          );
+        },
+      );
+
+      testWidgets('Edge Case: no organization ends in noOrganization', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _HarnessSignIn();
+        await _pumpAppSignIn(tester);
+
+        // 2. Act
+        await _run(tester, harness.controller, harness.controller.loginGoogle);
+
+        // 3. Assert
+        expect(
+          harness.controller.state.session,
+          const SessionState.noOrganization(),
+        );
+      });
+
+      testWidgets(
+        'Edge Case: a pending deletion ends in deletionPending without looking up organizations',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final deletion = AccountDeletion(deleteAt: DateTime.utc(2026, 12, 2));
+          final deletionBackend = MockAccountDeletionBackend();
+          when(deletionBackend.pending()).thenAnswer((_) async => deletion);
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul],
+            deletionBackend: deletionBackend,
+          );
+          await _pumpAppSignIn(tester);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            const SessionState.deletionPending(),
+          );
+          expect(harness.controller.state.accountDeletion, deletion);
+          verify(deletionBackend.pending()).called(1);
+          verifyNever(harness.directory.organizationsOfSignedInUser());
+        },
+      );
+
+      testWidgets(
+        'Sad Path: a failing organization lookup leaves the session signedOut',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(directoryError: Exception('offline'));
+          await _pumpAppSignIn(tester);
+
+          // 2. Act
+          final result = await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 3. Assert
+          expect(result, _errTitled(_kLoginErrorTitle));
+          expect(
+            harness.controller.state.session,
+            const SessionState.signedOut(),
+          );
+        },
+      );
+    });
+
+    group('AuthGoogleController web sign-in - Unit Test Suite', () {
+      testWidgets(
+        'Happy Path: a web sign-in token with no organization ends in noOrganization',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn();
+          final webSignIns = StreamController<String?>();
+          when(
+            harness.authService.onWebSignIn,
+          ).thenAnswer((_) => webSignIns.stream);
+          when(
+            harness.authService.ensureInitialized(),
+          ).thenAnswer((_) async {});
+          await _pumpAppSignIn(tester);
+          harness.controller.start();
+
+          // 2. Act
+          webSignIns.add(_kIdToken);
+          await tester.pump();
+          await _run(tester, harness.controller, () => null);
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            const SessionState.noOrganization(),
+          );
+          verify(harness.directory.organizationsOfSignedInUser()).called(1);
+          await webSignIns.close();
+        },
+      );
+
+      testWidgets(
+        'Sad Path: a failed web sign-in (null token) keeps signedOut and shows the login error',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn();
+          final webSignIns = StreamController<String?>();
+          when(
+            harness.authService.onWebSignIn,
+          ).thenAnswer((_) => webSignIns.stream);
+          when(
+            harness.authService.ensureInitialized(),
+          ).thenAnswer((_) async {});
+          await _pumpAppSignIn(tester);
+          harness.controller.start();
+
+          // 2. Act
+          webSignIns.add(null);
+          await tester.pump();
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            const SessionState.signedOut(),
+          );
+          verify(
+            harness.notices.show(argThat(_noticeTitled(_kLoginErrorTitle))),
+          ).called(1);
+          verifyNever(harness.directory.organizationsOfSignedInUser());
+          await webSignIns.close();
+        },
+      );
+    });
+
+    group('AuthGoogleController.chooseOrganization - Unit Test Suite', () {
+      testWidgets('Happy Path: a member ends bound', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _HarnessSignIn(
+          organizations: [_kRotaSul],
+          member: true,
+        );
+        await _pumpAppSignIn(tester);
+        await _run(tester, harness.controller, harness.controller.loginGoogle);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          () => harness.controller.chooseOrganization(rotaSul),
+        );
+
+        // 3. Assert
+        expect(harness.controller.state.session, const SessionState.bound());
+        verify(harness.session.bind(rotaSul)).called(1);
+      });
+
+      testWidgets(
+        'Edge Case: an unreadable membership (null) still ends bound',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul],
+            member: null,
+          );
+          await _pumpAppSignIn(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            () => harness.controller.chooseOrganization(rotaSul),
+          );
+
+          // 3. Assert
+          expect(harness.controller.state.session, const SessionState.bound());
+        },
+      );
+
+      testWidgets('Edge Case: a membership gone ends in noOrganization', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _HarnessSignIn(
+          organizations: [_kRotaSul],
+          member: false,
+        );
+        await _pumpAppSignIn(tester);
+        await _run(tester, harness.controller, harness.controller.loginGoogle);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          () => harness.controller.chooseOrganization(rotaSul),
+        );
+
+        // 3. Assert
+        expect(
+          harness.controller.state.session,
+          const SessionState.noOrganization(),
+        );
+        verify(harness.session.forget()).called(1);
+      });
+
+      testWidgets(
+        'Sad Path: an entry that fails after binding keeps picking with the same choices',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul],
+            member: true,
+          );
+          when(
+            harness.authService.saveOrganizationProfile(),
+          ).thenAnswer((_) async => null);
+          await _pumpAppSignIn(tester);
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.loginGoogle,
+          );
+
+          // 2. Act
+          final result = await _run(
+            tester,
+            harness.controller,
+            () => harness.controller.chooseOrganization(rotaSul),
+          );
+
+          // 3. Assert
+          expect(result, _errTitled(_kLoginErrorTitle));
+          expect(
+            harness.controller.state.session,
+            SessionState.picking([rotaSul]),
+          );
+          verify(harness.session.forget()).called(1);
+        },
+      );
+    });
+
+    group('AuthGoogleController.switchOrganization - Unit Test Suite', () {
+      testWidgets(
+        'Happy Path: organizations left end in picking with their choices',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul],
+            member: true,
+          );
+          await _pumpAppSignIn(tester);
+          await bindRotaSul(tester, harness);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.switchOrganization,
+          );
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            SessionState.picking([rotaSul]),
+          );
+        },
+      );
+
+      testWidgets('Edge Case: nothing left ends in noOrganization', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _HarnessSignIn(
+          organizations: [_kRotaSul],
+          member: true,
+        );
+        await _pumpAppSignIn(tester);
+        await bindRotaSul(tester, harness);
+        when(
+          harness.directory.organizationsOfSignedInUser(),
+        ).thenAnswer((_) async => const []);
+
+        // 2. Act
+        await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(
+          harness.controller.state.session,
+          const SessionState.noOrganization(),
+        );
+      });
+
+      testWidgets('Sad Path: a failing lookup keeps the session bound', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _HarnessSignIn(
+          organizations: [_kRotaSul],
+          member: true,
+        );
+        await _pumpAppSignIn(tester);
+        await bindRotaSul(tester, harness);
+        when(
+          harness.directory.organizationsOfSignedInUser(),
+        ).thenAnswer((_) async => throw Exception('offline'));
+
+        // 2. Act
+        final result = await _run(
+          tester,
+          harness.controller,
+          harness.controller.switchOrganization,
+        );
+
+        // 3. Assert
+        expect(result, _errTitled('Trocar de organização'));
+        expect(harness.controller.state.session, const SessionState.bound());
+      });
+    });
+
+    group('AuthGoogleController sign-outs - Unit Test Suite', () {
+      testWidgets('Happy Path: logout from bound ends signedOut', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _HarnessSignIn(
+          organizations: [_kRotaSul],
+          member: true,
+        );
+        await _pumpAppSignIn(tester);
+        await bindRotaSul(tester, harness);
+
+        // 2. Act
+        final result = await _run(
+          tester,
+          harness.controller,
+          harness.controller.logout,
+        );
+
+        // 3. Assert
+        expect(result, isA<Ok<bool>>().having((ok) => ok.value, 'value', true));
+        expect(
+          harness.controller.state.session,
+          const SessionState.signedOut(),
+        );
+      });
+
+      testWidgets(
+        'Happy Path: accountDeleted from bound ends deletionPending with the deletion',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul],
+            member: true,
+          );
+          await _pumpAppSignIn(tester);
+          await bindRotaSul(tester, harness);
+          final deletion = AccountDeletion(deleteAt: DateTime.utc(2026, 12, 2));
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            () => harness.controller.accountDeleted(deletion),
+          );
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            const SessionState.deletionPending(),
+          );
+          expect(harness.controller.state.accountDeletion, deletion);
+          verify(harness.authService.logoutGoogle()).called(1);
+        },
+      );
+
+      testWidgets(
+        'Happy Path: forgetRemovedOrganization from bound ends in noOrganization',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(
+            organizations: [_kRotaSul],
+            member: true,
+          );
+          await _pumpAppSignIn(tester);
+          await bindRotaSul(tester, harness);
+
+          // 2. Act
+          await _run(
+            tester,
+            harness.controller,
+            harness.controller.forgetRemovedOrganization,
+          );
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            const SessionState.noOrganization(),
+          );
+          expect(
+            harness.controller.state.noAccessReason,
+            'Você não faz mais parte da $_kRotaSulName.',
+          );
+        },
+      );
+
+      testWidgets('Sad Path: a failing logout keeps the session bound', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _HarnessSignIn(
+          organizations: [_kRotaSul],
+          member: true,
+          logoutError: Exception('offline'),
+        );
+        await _pumpAppSignIn(tester);
+        await bindRotaSul(tester, harness);
+
+        // 2. Act
+        final result = await _run(
+          tester,
+          harness.controller,
+          harness.controller.logout,
+        );
+
+        // 3. Assert
+        expect(result, _errTitled('Erro ao sair'));
+        expect(harness.controller.state.session, const SessionState.bound());
+      });
+    });
+
+    group('AuthGoogleController.sessionRestored - Unit Test Suite', () {
+      test('Happy Path: a restored session ends bound', () {
+        // 1. Arrange
+        final harness = _HarnessSignIn();
+
+        // 2. Act
+        harness.controller.sessionRestored();
+
+        // 3. Assert
+        expect(harness.controller.state.session, const SessionState.bound());
+      });
+
+      test('Edge Case: a second call does not notify again', () {
+        // 1. Arrange
+        final harness = _HarnessSignIn();
+        harness.controller.sessionRestored();
+        var notifications = 0;
+        harness.controller.addListener(() => notifications++);
+
+        // 2. Act
+        harness.controller.sessionRestored();
+
+        // 3. Assert
+        expect(notifications, 0);
+        expect(harness.controller.state.session, const SessionState.bound());
+      });
+
+      test('Sad Path: a disposed controller is not notified', () {
+        // 1. Arrange
+        final harness = _HarnessSignIn();
+        harness.controller.dispose();
+
+        // 2. Act
+        final act = harness.controller.sessionRestored;
+
+        // 3. Assert
+        expect(act, returnsNormally);
+      });
+    });
+  });
+
+  group('session state after invites', () {
+    setUp(() {
+      Get.testMode = true;
+    });
+
+    tearDown(() {
+      Get.reset();
+      Organization.bind(testOrganization);
+      CurrentOrganizationFirebase.debugReset();
+    });
+
+    group('AuthGoogleController.acceptInvite - Unit Test Suite', () {
+      testWidgets(
+        "Happy Path: entering the invite's organization ends in welcome",
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessInvites();
+          await _pumpAppInvites(tester);
+
+          // 2. Act
+          await _accept(tester, harness.controller);
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            const SessionState.welcome(),
+          );
+          expect(harness.controller.state.welcome, _kInvite);
+        },
+      );
+
+      testWidgets(
+        "Edge Case: the invite's organization not listed ends in noOrganization",
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessInvites(answers: const [[]]);
+          await _pumpAppInvites(tester);
+
+          // 2. Act
+          await _accept(tester, harness.controller);
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            const SessionState.noOrganization(),
+          );
+        },
+      );
+
+      testWidgets(
+        'Sad Path: a refused invite leaves the session where it was',
+        (WidgetTester tester) async {
+          // 1. Arrange
+          final harness = _HarnessInvites();
+          when(harness.backend.accept(any)).thenAnswer(
+            (_) async => throw const InvitesException('Este convite expirou.'),
+          );
+          await _pumpAppInvites(tester);
+
+          // 2. Act
+          await _accept(tester, harness.controller);
+
+          // 3. Assert
+          expect(
+            harness.controller.state.session,
+            const SessionState.signedOut(),
+          );
+          expect(harness.controller.state.welcome, isNull);
+        },
+      );
+    });
+
+    group('AuthGoogleController.finishWelcome - Unit Test Suite', () {
+      testWidgets('Happy Path: closing the welcome ends bound', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _HarnessInvites();
+        await _pumpAppInvites(tester);
+        await _accept(tester, harness.controller);
+
+        // 2. Act
+        harness.controller.finishWelcome();
+
+        // 3. Assert
+        expect(harness.controller.state.session, const SessionState.bound());
+      });
+
+      testWidgets('Edge Case: closing the welcome forgets the invite', (
+        WidgetTester tester,
+      ) async {
+        // 1. Arrange
+        final harness = _HarnessInvites();
+        await _pumpAppInvites(tester);
+        await _accept(tester, harness.controller);
+
+        // 2. Act
+        harness.controller.finishWelcome();
+
+        // 3. Assert
+        expect(harness.controller.state.welcome, isNull);
+      });
+
+      test('Sad Path: with no welcome pending it still ends bound', () {
+        // 1. Arrange
+        final harness = _HarnessInvites();
+
+        // 2. Act
+        harness.controller.finishWelcome();
+
+        // 3. Assert
+        expect(harness.controller.state.session, const SessionState.bound());
+      });
+    });
+
+    group(
+      'AuthGoogleController.enterCreatedOrganization - Unit Test Suite',
+      () {
+        testWidgets('Happy Path: the organization just created ends bound', (
+          WidgetTester tester,
+        ) async {
+          // 1. Arrange
+          final harness = _HarnessInvites(
+            answers: const [
+              [_kVerdeMarInvites, _kRotaSul],
+            ],
+          );
+          await _pumpAppInvites(tester);
+
+          // 2. Act
+          await _drive(
+            tester,
+            harness.controller,
+            () => harness.controller.enterCreatedOrganization('rotasul'),
+          );
+
+          // 3. Assert
+          expect(harness.controller.state.session, const SessionState.bound());
+        });
+      },
+    );
+  });
+
+  group('lifecycle', () {
+    setUp(() {
+      Get.testMode = true;
+    });
+
+    tearDown(() {
+      Get.reset();
+    });
+
+    group('AuthGoogleController.start - Unit Test Suite', () {
+      test(
+        'Happy Path: start initializes Google and then marks it ready',
+        () async {
+          // 1. Arrange
+          final harness = _HarnessSignIn();
+          when(
+            harness.authService.ensureInitialized(),
+          ).thenAnswer((_) async {});
+
+          // 2. Act
+          harness.controller.start();
+          await pumpEventQueue();
+
+          // 3. Assert
+          expect(harness.controller.state.googleReady, isTrue);
+          verify(harness.authService.ensureInitialized()).called(1);
+        },
+      );
+
+      test('Edge Case: a second start does nothing', () async {
+        // 1. Arrange
+        final harness = _HarnessSignIn();
+        when(harness.authService.ensureInitialized()).thenAnswer((_) async {});
+        harness.controller.start();
+
+        // 2. Act
+        harness.controller.start();
+        await pumpEventQueue();
+
+        // 3. Assert
+        verify(harness.authService.onWebSignIn).called(1);
+        verify(harness.authService.ensureInitialized()).called(1);
+      });
+
+      test(
+        'Sad Path: a failing initialization still marks Google ready',
+        () async {
+          // 1. Arrange
+          final harness = _HarnessSignIn();
+          when(
+            harness.authService.ensureInitialized(),
+          ).thenAnswer((_) async => throw StateError('no Play services'));
+
+          // 2. Act
+          harness.controller.start();
+          await pumpEventQueue();
+
+          // 3. Assert
+          expect(harness.controller.state.googleReady, isTrue);
+        },
+      );
+    });
+
+    group('AuthGoogleController.dispose - Unit Test Suite', () {
+      test(
+        'Happy Path: dispose stops listening to the web sign-in and disposes the service',
+        () async {
+          // 1. Arrange
+          final harness = _HarnessSignIn();
+          final webSignIns = StreamController<String?>();
+          when(
+            harness.authService.onWebSignIn,
+          ).thenAnswer((_) => webSignIns.stream);
+          when(
+            harness.authService.ensureInitialized(),
+          ).thenAnswer((_) async {});
+          harness.controller.start();
+          await pumpEventQueue();
+          expect(webSignIns.hasListener, isTrue);
+
+          // 2. Act
+          harness.controller.dispose();
+
+          // 3. Assert
+          expect(webSignIns.hasListener, isFalse);
+          verify(harness.authService.dispose()).called(1);
+          await webSignIns.close();
+        },
+      );
+
+      test(
+        'Edge Case: dispose without start never touches the Google service',
+        () {
+          // 1. Arrange
+          final harness = _HarnessSignIn();
+
+          // 2. Act
+          harness.controller.dispose();
+
+          // 3. Assert
+          verifyZeroInteractions(harness.authService);
+        },
+      );
+
+      test(
+        'Sad Path: an initialization finishing after dispose does not notify',
+        () async {
+          // 1. Arrange
+          final harness = _HarnessSignIn();
+          final init = Completer<void>();
+          when(
+            harness.authService.ensureInitialized(),
+          ).thenAnswer((_) => init.future);
+          harness.controller.start();
+          harness.controller.dispose();
+
+          // 2. Act
+          init.complete();
+          await pumpEventQueue();
+
+          // 3. Assert
+          // A ChangeNotifier notified after dispose throws; reaching here
+          // without an error is the check.
+          expect(harness.controller.state.googleReady, isTrue);
+        },
+      );
+    });
+
+    group('AuthGoogleController notifications - Unit Test Suite', () {
+      test('Happy Path: a state change notifies the listeners once', () {
+        // 1. Arrange
+        final harness = _HarnessSignIn();
+        var notifications = 0;
+        harness.controller.addListener(() => notifications++);
+
+        // 2. Act
+        harness.controller.finishWelcome();
+
+        // 3. Assert
+        expect(notifications, 1);
+      });
+
+      test('Edge Case: an ownership already read does not notify', () async {
+        // 1. Arrange
+        final harness = _HarnessSignIn(
+          organizations: const [
+            OrganizationCandidate(
+              id: 'rotasul',
+              options: _kOptions,
+              owner: true,
+            ),
+          ],
+        );
+        await harness.controller.loadOwnership('rotasul');
+        var notifications = 0;
+        harness.controller.addListener(() => notifications++);
+
+        // 2. Act
+        await harness.controller.loadOwnership('rotasul');
+
+        // 3. Assert
+        expect(notifications, 0);
+      });
+
+      test(
+        'Sad Path: a failed ownership read changes nothing and does not notify',
+        () async {
+          // 1. Arrange
+          final harness = _HarnessSignIn(directoryError: StateError('offline'));
+          var notifications = 0;
+          harness.controller.addListener(() => notifications++);
+
+          // 2. Act
+          await harness.controller.loadOwnership('rotasul');
+
+          // 3. Assert
+          expect(notifications, 0);
+          expect(harness.controller.state, const AuthGoogleState());
         },
       );
     });

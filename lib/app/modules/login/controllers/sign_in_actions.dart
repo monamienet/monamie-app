@@ -12,4 +12,9 @@ abstract interface class SignInActions {
   /// Signs out. [Ok] holds whether the sign-out finished (`false` while
   /// another one runs); [Err] says why it failed.
   Future<Result<bool>> logout();
+
+  /// A session remembered from a previous run was restored: the person goes
+  /// straight to the map (sets the session to bound before the screen
+  /// navigates).
+  void sessionRestored();
 }

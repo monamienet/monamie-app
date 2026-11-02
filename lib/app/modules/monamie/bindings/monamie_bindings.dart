@@ -1,3 +1,4 @@
+import 'package:monamie_app/app/modules/login/bindings/login_binding.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/call_controller.dart';
@@ -34,12 +35,7 @@ class MonamieBindings implements Bindings {
         notices: const ScaffoldNoticePresenter(),
       ),
     );
-    if (!Get.isRegistered<AuthGoogleController>()) {
-      Get.put(
-        AuthGoogleController(notices: const ScaffoldNoticePresenter()),
-        permanent: true,
-      );
-    }
+    ensureAuthGoogleController();
     // Registered under its contract: screens and controllers find
     // [GroupMapState], never the Firestore-backed class.
     Get.lazyPut<GroupMapState>(

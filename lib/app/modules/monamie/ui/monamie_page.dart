@@ -45,10 +45,11 @@ class MonamiePage extends StatelessWidget {
                 Expanded(child: _body(context)),
               ],
             ),
-            Obx(
-              () => authCtrl.isLoggingOut.value
+            ListenableBuilder(
+              listenable: authCtrl,
+              builder: (context, _) => authCtrl.state.isLoggingOut
                   ? LogoutProgressOverlay(
-                      message: authCtrl.isSwitchingOrganization.value
+                      message: authCtrl.state.isSwitchingOrganization
                           ? 'Trocando de organização…'
                           : 'Encerrando sessão…',
                     )

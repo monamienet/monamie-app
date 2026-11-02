@@ -10,17 +10,21 @@ import 'package:monamie_app/app/routes/app_pages.dart';
 /// *Boas-vindas*: shown once, after accepting an invite: the organization,
 /// the group and what the person does in the app. People in the field go on
 /// to the existing location disclosure on the map.
-class WelcomeView extends GetView<AuthGoogleController> {
-  const WelcomeView({super.key});
+class WelcomeView extends StatelessWidget {
+  const WelcomeView({super.key, required this.controller});
+
+  final AuthGoogleController controller;
 
   @override
   Widget build(BuildContext context) {
-    final invite = controller.welcome.value;
+    // Read once: the screen shows the invite it opened with, and leaving it
+    // clears the invite.
+    final invite = controller.state.welcome;
     final organization = Organization.current;
     final palette = OrganizationPalette.fromConfig(organization);
     final shares = invite?.roles.contains(GroupRole.publisher) ?? false;
     void open() {
-      controller.welcome.value = null;
+      controller.finishWelcome();
       Get.offAllNamed(Routes.MONAMIE);
     }
 

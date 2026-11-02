@@ -28,6 +28,7 @@ import 'package:monamie_app/app/modules/login/controllers/auth_google_controller
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
 
 import '../modules/login/bindings/login_binding.dart';
+import '../modules/login/controllers/login_controller.dart';
 import '../modules/login/views/login_view.dart';
 import '../modules/invites/welcome_view.dart';
 import '../modules/login/views/no_organization_view.dart';
@@ -43,17 +44,25 @@ class AppPages {
   static final routes = [
     GetPage(
       name: _Paths.LOGIN,
-      page: () => const LoginView(),
+      page: () => LoginView(
+        controller: Get.find<LoginController>(),
+        auth: Get.find<AuthGoogleController>(),
+      ),
       binding: LoginBinding(),
     ),
     GetPage(
       name: _Paths.ORGANIZATION_PICKER,
-      page: () => const OrganizationPickerView(),
+      page: () =>
+          OrganizationPickerView(controller: Get.find<AuthGoogleController>()),
     ),
-    GetPage(name: _Paths.WELCOME, page: () => const WelcomeView()),
+    GetPage(
+      name: _Paths.WELCOME,
+      page: () => WelcomeView(controller: Get.find<AuthGoogleController>()),
+    ),
     GetPage(
       name: _Paths.DELETION_PENDING,
-      page: () => const DeletionPendingView(),
+      page: () =>
+          DeletionPendingView(controller: Get.find<AuthGoogleController>()),
     ),
     GetPage(
       name: _Paths.MY_ACCOUNT,
@@ -74,7 +83,8 @@ class AppPages {
     ),
     GetPage(
       name: _Paths.NO_ORGANIZATION,
-      page: () => const NoOrganizationView(),
+      page: () =>
+          NoOrganizationView(controller: Get.find<AuthGoogleController>()),
     ),
     GetPage(
       name: _Paths.TRACKING_SETTINGS,

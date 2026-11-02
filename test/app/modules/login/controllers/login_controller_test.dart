@@ -76,7 +76,7 @@ void main() {
         final controller = _controller(_bondCheck(hasBond: hasBond));
 
         // 3. Assert
-        expect(controller.isRestoringSession.value, isTrue);
+        expect(controller.state.isRestoringSession, isTrue);
       },
     );
 
@@ -88,7 +88,7 @@ void main() {
         final controller = _controller(_bondCheck(hasBond: true));
 
         // 2. Act
-        Get.put<LoginController>(controller);
+        controller.restoreSession();
         await tester.pumpAndSettle();
 
         // 3. Assert
@@ -105,11 +105,11 @@ void main() {
         final controller = _controller(_bondCheck(hasBond: true));
 
         // 2. Act
-        Get.put<LoginController>(controller);
+        controller.restoreSession();
         await tester.pumpAndSettle();
 
         // 3. Assert
-        expect(controller.isRestoringSession.value, isFalse);
+        expect(controller.state.isRestoringSession, isFalse);
       },
     );
 
@@ -122,7 +122,7 @@ void main() {
         final controller = _controller(bondCheck);
 
         // 2. Act
-        Get.put<LoginController>(controller);
+        controller.restoreSession();
         await tester.pumpAndSettle();
 
         // 3. Assert
@@ -139,11 +139,11 @@ void main() {
         final controller = _controller(_bondCheck(pending: pending));
 
         // 2. Act
-        Get.put<LoginController>(controller);
+        controller.restoreSession();
         await tester.pump();
 
         // 3. Assert
-        expect(controller.isRestoringSession.value, isTrue);
+        expect(controller.state.isRestoringSession, isTrue);
         expect(Get.currentRoute, _kLoginRoute);
       },
     );
@@ -156,7 +156,7 @@ void main() {
         final controller = _controller(_bondCheck(hasBond: false));
 
         // 2. Act
-        Get.put<LoginController>(controller);
+        controller.restoreSession();
         await tester.pumpAndSettle();
 
         // 3. Assert
@@ -174,11 +174,11 @@ void main() {
         final controller = _controller(_bondCheck(hasBond: false));
 
         // 2. Act
-        Get.put<LoginController>(controller);
+        controller.restoreSession();
         await tester.pumpAndSettle();
 
         // 3. Assert
-        expect(controller.isRestoringSession.value, isFalse);
+        expect(controller.state.isRestoringSession, isFalse);
       },
     );
 
@@ -196,14 +196,83 @@ void main() {
         // via post-frame callback sem await. A exceção escapa como erro
         // assíncrono não tratado; a zona guardada a captura para inspeção.
         await runZonedGuarded(() async {
-          Get.put<LoginController>(controller);
+          controller.restoreSession();
           await tester.pumpAndSettle();
         }, (error, _) => uncaughtErrors.add(error));
 
         // 3. Assert
         expect(uncaughtErrors, [same(failure)]);
-        expect(controller.isRestoringSession.value, isFalse);
+        expect(controller.state.isRestoringSession, isFalse);
         expect(Get.currentRoute, _kLoginRoute);
+      },
+    );
+  });
+
+  group('LoginController.restoreSession - SignInActions', () {
+    testWidgets(
+      'Happy Path: a remembered session tells the sign-in it was restored',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final signIn = MockSignInActions();
+        final controller = LoginController(
+          signIn: signIn,
+          bondCheck: _bondCheck(hasBond: true),
+        );
+
+        // 2. Act
+        await controller.restoreSession();
+        await tester.pumpAndSettle();
+
+        // 3. Assert
+        verify(signIn.sessionRestored()).called(1);
+      },
+    );
+
+    testWidgets(
+      'Edge Case: a second call checks nothing and notifies nothing',
+      (WidgetTester tester) async {
+        // 1. Arrange
+        await tester.pumpWidget(_buildTestApp());
+        final bondCheck = _bondCheck(hasBond: true);
+        final signIn = MockSignInActions();
+        final controller = LoginController(
+          signIn: signIn,
+          bondCheck: bondCheck,
+        );
+        await controller.restoreSession();
+        await tester.pumpAndSettle();
+        var notifications = 0;
+        controller.addListener(() => notifications++);
+
+        // 2. Act
+        await controller.restoreSession();
+
+        // 3. Assert
+        verify(bondCheck.hasActiveBond()).called(1);
+        verify(signIn.sessionRestored()).called(1);
+        expect(notifications, 0);
+      },
+    );
+
+    test(
+      'Sad Path: no remembered session never says it was restored',
+      () async {
+        // 1. Arrange
+        final signIn = MockSignInActions();
+        final controller = LoginController(
+          signIn: signIn,
+          bondCheck: _bondCheck(hasBond: false),
+        );
+        var notifications = 0;
+        controller.addListener(() => notifications++);
+
+        // 2. Act
+        await controller.restoreSession();
+
+        // 3. Assert
+        verifyNever(signIn.sessionRestored());
+        expect(notifications, 1);
       },
     );
   });

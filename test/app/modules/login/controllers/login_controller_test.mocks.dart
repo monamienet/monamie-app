@@ -85,4 +85,10 @@ class MockSignInActions extends _i1.Mock implements _i4.SignInActions {
             ),
           )
           as _i3.Future<_i5.Result<bool>>);
+
+  @override
+  void sessionRestored() => super.noSuchMethod(
+    Invocation.method(#sessionRestored, []),
+    returnValueForMissingStub: null,
+  );
 }

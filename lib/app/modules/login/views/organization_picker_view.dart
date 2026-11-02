@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/utils/app_messenger.dart';
 import 'package:monamie_app/app/config/organization/monamie_brand.dart';
 import 'package:monamie_app/app/config/organization/organization_icon.dart';
@@ -11,8 +10,10 @@ import 'widgets/invite_card.dart';
 import 'widgets/monamie_account_header.dart';
 
 /// *Escolher organização*: the account belongs to several organizations.
-class OrganizationPickerView extends GetView<AuthGoogleController> {
-  const OrganizationPickerView({super.key});
+class OrganizationPickerView extends StatelessWidget {
+  const OrganizationPickerView({super.key, required this.controller});
+
+  final AuthGoogleController controller;
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -23,81 +24,85 @@ class OrganizationPickerView extends GetView<AuthGoogleController> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-          child: Obx(() {
-            final busy = controller.isLoading.value;
-            final entering = controller.enteringOrganizationName.value;
-            final choices = controller.organizationChoices;
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                MonAmieAccountHeader(
-                  email: controller.signedInEmail.value,
-                  onSwitch: busy
-                      ? null
-                      : () => runReportingErrors(context, controller.logout),
-                ),
-                const SizedBox(height: 28),
-                const Text(
-                  'Em qual organização você quer entrar?',
-                  style: TextStyle(
-                    fontSize: 30,
-                    height: 1.1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.9,
-                    color: MonAmieBrand.navy,
+          child: ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) {
+              final state = controller.state;
+              final busy = state.isLoading;
+              final entering = state.enteringOrganizationName;
+              final choices = state.organizationChoices;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  MonAmieAccountHeader(
+                    email: state.signedInEmail,
+                    onSwitch: busy
+                        ? null
+                        : () => runReportingErrors(context, controller.logout),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  choices.length == 1
-                      ? 'Você participa de 1 organização.'
-                      : 'Você participa de ${choices.length}. Dá para trocar '
-                            'depois pelo menu.',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: MonAmieBrand.mutedInk,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: ListView(
-                    children: [
-                      // Someone already in an organization can be invited to
-                      // another one (or another group): the invites come first.
-                      for (final invite in controller.pendingInvites) ...[
-                        InviteCard(invite: invite, controller: controller),
-                        const SizedBox(height: 12),
-                      ],
-                      for (final (index, binding) in choices.indexed) ...[
-                        if (index > 0) const SizedBox(height: 10),
-                        _choice(
-                          context,
-                          binding,
-                          busy: busy,
-                          entering: entering,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: busy || controller.acceptingInvite.value != null
-                      ? null
-                      : controller.startCreatingOrganization,
-                  style: TextButton.styleFrom(
-                    foregroundColor: MonAmieBrand.navy,
-                    minimumSize: const Size.fromHeight(52),
-                    textStyle: const TextStyle(
-                      fontSize: 15,
+                  const SizedBox(height: 28),
+                  const Text(
+                    'Em qual organização você quer entrar?',
+                    style: TextStyle(
+                      fontSize: 30,
+                      height: 1.1,
                       fontWeight: FontWeight.w800,
+                      letterSpacing: -0.9,
+                      color: MonAmieBrand.navy,
                     ),
                   ),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Criar nova organização'),
-                ),
-              ],
-            );
-          }),
+                  const SizedBox(height: 10),
+                  Text(
+                    choices.length == 1
+                        ? 'Você participa de 1 organização.'
+                        : 'Você participa de ${choices.length}. Dá para trocar '
+                              'depois pelo menu.',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: MonAmieBrand.mutedInk,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        // Someone already in an organization can be invited to
+                        // another one (or another group): the invites come first.
+                        for (final invite in state.pendingInvites) ...[
+                          InviteCard(invite: invite, controller: controller),
+                          const SizedBox(height: 12),
+                        ],
+                        for (final (index, binding) in choices.indexed) ...[
+                          if (index > 0) const SizedBox(height: 10),
+                          _choice(
+                            context,
+                            binding,
+                            busy: busy,
+                            entering: entering,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: busy || state.acceptingInvite != null
+                        ? null
+                        : controller.startCreatingOrganization,
+                    style: TextButton.styleFrom(
+                      foregroundColor: MonAmieBrand.navy,
+                      minimumSize: const Size.fromHeight(52),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Criar nova organização'),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     ),
@@ -111,7 +116,7 @@ class OrganizationPickerView extends GetView<AuthGoogleController> {
   }) {
     final isEntering = busy && entering == binding.organization.name;
     // Accepting an invite enters its organization: no other choice meanwhile.
-    final locked = busy || controller.acceptingInvite.value != null;
+    final locked = busy || controller.state.acceptingInvite != null;
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),

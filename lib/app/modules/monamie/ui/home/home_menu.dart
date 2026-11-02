@@ -81,16 +81,20 @@ class HomeMenu extends StatelessWidget {
               // Disabled while signing out and while tracking starts or
               // stops: leaving in the middle of the start could turn the
               // service on after the sign-out.
-              Obx(
-                () => _MenuItem(
-                  icon: Icons.logout,
-                  label: 'Sair',
-                  onTap:
-                      _auth.isLoggingOut.value ||
-                          _tracking.isTrackingLoading.value
-                      ? null
-                      : () => _closeAndRun(context, _auth.logout),
-                ),
+              ListenableBuilder(
+                listenable: _auth,
+                builder: (context, _) => Obx(() {
+                  // Both read every time: Obx needs to see the Rx.
+                  final trackingBusy = _tracking.isTrackingLoading.value;
+                  final loggingOut = _auth.state.isLoggingOut;
+                  return _MenuItem(
+                    icon: Icons.logout,
+                    label: 'Sair',
+                    onTap: loggingOut || trackingBusy
+                        ? null
+                        : () => _closeAndRun(context, _auth.logout),
+                  );
+                }),
               ),
             ],
           ),
@@ -279,8 +283,10 @@ class HomeMenu extends StatelessWidget {
             label: 'Grupos',
             onTap: () => _open(context, Routes.GROUPS),
           ),
-          Obx(
-            () => _auth.ownership[organizationId] == true
+          ListenableBuilder(
+            listenable: _auth,
+            builder: (context, _) =>
+                _auth.state.ownership[organizationId] == true
                 ? _MenuItem(
                     icon: Icons.admin_panel_settings_outlined,
                     label: 'Administradores',

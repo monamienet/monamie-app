@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:monamie_app/app/modules/login/controllers/login_state.dart';
 import 'package:monamie_app/app/modules/login/controllers/sign_in_actions.dart';
 import 'package:monamie_app/app/modules/login/services/google_bond_check.dart';
 import 'package:monamie_app/app/modules/login/services/stored_google_bond_check.dart';
@@ -5,7 +7,11 @@ import 'package:monamie_app/app/routes/app_pages.dart';
 import 'package:get/get.dart';
 import 'package:monamie_app/app/utils/result.dart';
 
-class LoginController extends GetxController {
+export 'login_state.dart';
+
+/// State of *Login*: restores a remembered session when the screen opens
+/// ([restoreSession]) and starts the sign-in through [SignInActions].
+class LoginController extends ChangeNotifier {
   /// [signIn] runs the sign-in and sign-out (the `AuthGoogleController`);
   /// [bondCheck] tells whether a sign-in survives from a previous run,
   /// [StoredGoogleBondCheck] by default.
@@ -19,21 +25,41 @@ class LoginController extends GetxController {
   late final GoogleBondCheck _bondCheck =
       _injectedBondCheck ?? StoredGoogleBondCheck();
 
-  /// `true` enquanto verifica se há uma sessão válida para restaurar.
-  final isRestoringSession = true.obs;
+  LoginState _state = const LoginState();
+  bool _disposed = false;
+  bool _restoreStarted = false;
 
-  /// Restaura a sessão quando o app é recriado do zero — por exemplo, depois
-  /// que o Android encerra o processo enquanto o usuário está nas
-  /// configurações do sistema. Sem isso o usuário precisaria logar de novo.
+  /// What the screen shows; replaced whole, never changed in place.
+  LoginState get state => _state;
+
+  /// Replaces the state, notifying only when it differs.
+  void _emit(LoginState next) {
+    final changed = next != _state;
+    _state = next;
+    if (changed && !_disposed) notifyListeners();
+  }
+
   @override
-  Future<void> onReady() async {
-    super.onReady();
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  /// Restores the session when the app is recreated from scratch, for
+  /// example after Android kills the process while the person is in the
+  /// system settings. Without it they would have to sign in again.
+  ///
+  /// Called by *Login* after its first frame; runs once per controller.
+  Future<void> restoreSession() async {
+    if (_restoreStarted) return;
+    _restoreStarted = true;
     try {
       if (await hasActiveGoogleBond()) {
+        _signIn.sessionRestored();
         Get.offNamed(Routes.MONAMIE);
       }
     } finally {
-      isRestoringSession.value = false;
+      _emit(_state.copyWith(isRestoringSession: false));
     }
   }
 
