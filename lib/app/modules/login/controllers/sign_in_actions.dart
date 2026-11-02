@@ -1,3 +1,5 @@
+// check_layers: state_contract
+
 import 'package:monamie_app/app/utils/result.dart';
 
 /// The sign-in and sign-out the login screen starts, implemented by

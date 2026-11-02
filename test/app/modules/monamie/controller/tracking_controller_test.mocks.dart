@@ -8,8 +8,6 @@ import 'dart:async' as _i11;
 import 'dart:ui' as _i9;
 
 import 'package:cloud_firestore/cloud_firestore.dart' as _i4;
-import 'package:flutter/material.dart' as _i26;
-import 'package:flutter/services.dart' as _i25;
 import 'package:flutter_background_service/flutter_background_service.dart'
     as _i16;
 import 'package:flutter_background_service_platform_interface/flutter_background_service_platform_interface.dart'
@@ -29,7 +27,7 @@ import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart'
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart'
     as _i24;
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart'
-    as _i27;
+    as _i25;
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart'
     as _i12;
 import 'package:monamie_app/app/modules/monamie/history/history_month.dart'
@@ -1206,130 +1204,12 @@ class MockPermissionsController extends _i1.Mock
     Invocation.method(#disposeId, [id]),
     returnValueForMissingStub: null,
   );
-
-  @override
-  _i11.Future<bool> didPopRoute() =>
-      (super.noSuchMethod(
-            Invocation.method(#didPopRoute, []),
-            returnValue: _i11.Future<bool>.value(false),
-            returnValueForMissingStub: _i11.Future<bool>.value(false),
-          )
-          as _i11.Future<bool>);
-
-  @override
-  bool handleStartBackGesture(_i25.PredictiveBackEvent? backEvent) =>
-      (super.noSuchMethod(
-            Invocation.method(#handleStartBackGesture, [backEvent]),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  void handleUpdateBackGestureProgress(_i25.PredictiveBackEvent? backEvent) =>
-      super.noSuchMethod(
-        Invocation.method(#handleUpdateBackGestureProgress, [backEvent]),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  void handleCommitBackGesture() => super.noSuchMethod(
-    Invocation.method(#handleCommitBackGesture, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void handleCancelBackGesture() => super.noSuchMethod(
-    Invocation.method(#handleCancelBackGesture, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void handleStatusBarTap() => super.noSuchMethod(
-    Invocation.method(#handleStatusBarTap, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  _i11.Future<bool> didPushRoute(String? route) =>
-      (super.noSuchMethod(
-            Invocation.method(#didPushRoute, [route]),
-            returnValue: _i11.Future<bool>.value(false),
-            returnValueForMissingStub: _i11.Future<bool>.value(false),
-          )
-          as _i11.Future<bool>);
-
-  @override
-  _i11.Future<bool> didPushRouteInformation(
-    _i26.RouteInformation? routeInformation,
-  ) =>
-      (super.noSuchMethod(
-            Invocation.method(#didPushRouteInformation, [routeInformation]),
-            returnValue: _i11.Future<bool>.value(false),
-            returnValueForMissingStub: _i11.Future<bool>.value(false),
-          )
-          as _i11.Future<bool>);
-
-  @override
-  void didChangeMetrics() => super.noSuchMethod(
-    Invocation.method(#didChangeMetrics, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void didChangeTextScaleFactor() => super.noSuchMethod(
-    Invocation.method(#didChangeTextScaleFactor, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void didChangePlatformBrightness() => super.noSuchMethod(
-    Invocation.method(#didChangePlatformBrightness, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void didChangeLocales(List<_i9.Locale>? locales) => super.noSuchMethod(
-    Invocation.method(#didChangeLocales, [locales]),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void didChangeViewFocus(_i9.ViewFocusEvent? event) => super.noSuchMethod(
-    Invocation.method(#didChangeViewFocus, [event]),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  _i11.Future<_i9.AppExitResponse> didRequestAppExit() =>
-      (super.noSuchMethod(
-            Invocation.method(#didRequestAppExit, []),
-            returnValue: _i11.Future<_i9.AppExitResponse>.value(
-              _i9.AppExitResponse.exit,
-            ),
-            returnValueForMissingStub: _i11.Future<_i9.AppExitResponse>.value(
-              _i9.AppExitResponse.exit,
-            ),
-          )
-          as _i11.Future<_i9.AppExitResponse>);
-
-  @override
-  void didHaveMemoryPressure() => super.noSuchMethod(
-    Invocation.method(#didHaveMemoryPressure, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void didChangeAccessibilityFeatures() => super.noSuchMethod(
-    Invocation.method(#didChangeAccessibilityFeatures, []),
-    returnValueForMissingStub: null,
-  );
 }
 
 /// A class which mocks [UserController].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockUserController extends _i1.Mock implements _i27.UserController {
+class MockUserController extends _i1.Mock implements _i25.UserController {
   @override
   _i2.RxBool get isLoading =>
       (super.noSuchMethod(

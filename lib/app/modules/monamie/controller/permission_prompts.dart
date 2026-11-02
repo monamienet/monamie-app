@@ -1,3 +1,5 @@
+// check_layers: state_contract
+
 /// The questions `PermissionsController` asks in the middle of a permission
 /// flow. The widget layer implements them with dialogs
 /// (`DialogPermissionPrompts`); tests replace them with mocks.

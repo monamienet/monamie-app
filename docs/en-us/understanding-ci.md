@@ -123,7 +123,12 @@ opened against `main` (the `pull_request` event), with no path filter:
    Fix it by running `dart format lib test tool` and committing.
 3. `flutter analyze`: the Dart analyzer. It also fails on *info*-level findings, because `--fatal-infos`
    is on by default.
-4. `flutter test -j 2`: every Dart test under `test/`, as in the deploy.
+4. `dart run tool/check_layers.dart`: the layer rule. It fails if a controller (`*_controller.dart`) or a
+   state contract (a file with the line `// check_layers: state_contract`) in `lib/` imports a Flutter UI
+   library (`material.dart`, `widgets.dart`, `cupertino.dart` and similar). `foundation.dart`,
+   `services.dart` and `dart:ui` are allowed. Fix it by switching the import to one of those or by moving
+   the UI piece to the screen.
+5. `flutter test -j 2`: every Dart test under `test/`, as in the deploy.
 
 It uses no secrets and no write permission (`permissions: contents: read`), so it is safe to run on any
 PR. `concurrency` with `cancel-in-progress: true` cancels the previous run when a new commit reaches the

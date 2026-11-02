@@ -1,7 +1,8 @@
 # Checks every pull request to main before it is merged: generated files up
 # to date, formatting, the analyzer (infos included, flutter analyze's
-# default) and the tests. The deploy workflow runs the tests again after the
-# merge; this one catches problems while the PR can still be fixed.
+# default), the layer rule and the tests. The deploy workflow runs the tests
+# again after the merge; this one catches problems while the PR can still be
+# fixed.
 #
 # Line-by-line walkthrough: docs/pt-br/entendendo-o-ci.md
 name: PR checks
@@ -48,6 +49,13 @@ jobs:
 
       - name: Analyzer
         run: flutter analyze
+
+      # Controllers and state contracts never import Flutter's UI libraries
+      # (tool/src/state_layer_imports.dart). A script rather than an analyzer
+      # plugin: on Dart 3.13, flutter analyze exits before a plugin has
+      # checked every file, so a violation could pass unseen.
+      - name: Layer rule
+        run: dart run tool/check_layers.dart
 
       # Runs every *_test.dart under test/. The security-rules tests in
       # test/rules/ are a Node project with no Dart test files, so they are

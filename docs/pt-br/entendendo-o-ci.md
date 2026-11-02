@@ -123,7 +123,12 @@ todo PR aberto para a `main` (evento `pull_request`), sem filtro de caminhos:
    formatado. Corrija rodando `dart format lib test tool` e faça um commit.
 3. `flutter analyze`: o analisador do Dart. Ele falha também com avisos de nível *info*, porque o
    `--fatal-infos` vem ligado por padrão.
-4. `flutter test -j 2`: todos os testes Dart de `test/`, como no deploy.
+4. `dart run tool/check_layers.dart`: a regra de camadas. Falha se um controller (`*_controller.dart`)
+   ou um contrato de estado (arquivo com a linha `// check_layers: state_contract`) em `lib/` importar
+   uma biblioteca de interface do Flutter (`material.dart`, `widgets.dart`, `cupertino.dart` e
+   parecidas). `foundation.dart`, `services.dart` e `dart:ui` são permitidos. Corrija trocando o import
+   por um desses ou levando a parte de interface para a tela.
+5. `flutter test -j 2`: todos os testes Dart de `test/`, como no deploy.
 
 Ele não usa nenhum secret nem permissão de escrita (`permissions: contents: read`), então é seguro rodar
 em qualquer PR. O `concurrency` com `cancel-in-progress: true` cancela a execução anterior quando chega

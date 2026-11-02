@@ -1,3 +1,5 @@
+// check_layers: state_contract
+
 import 'package:get/get.dart';
 import 'package:monamie_app/app/data/services/capabilities.dart';
 import 'package:monamie_app/app/modules/monamie/models/group_member.dart';

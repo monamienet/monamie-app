@@ -1,3 +1,5 @@
+// check_layers: state_contract
+
 import 'package:geolocator/geolocator.dart';
 
 /// Reads this device's location hardware, so the code that decides what to

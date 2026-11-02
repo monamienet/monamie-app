@@ -1,3 +1,5 @@
+// check_layers: state_contract
+
 /// Tells whether this device still holds a usable Google sign-in, so the
 /// login screen can skip straight to the map when the app is recreated.
 abstract interface class GoogleBondCheck {

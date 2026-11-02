@@ -1,3 +1,5 @@
+// check_layers: state_contract
+
 import 'organization_binding.dart';
 
 /// Binds and forgets the organization in the current isolate: what the

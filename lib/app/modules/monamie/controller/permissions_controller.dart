@@ -1,24 +1,31 @@
-import 'package:flutter/material.dart';
+import 'dart:ui' show AppLifecycleState;
+
+import 'package:monamie_app/app/data/services/app_lifecycle_events.dart';
 import 'package:monamie_app/app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/app/data/services/method_channel_background_restriction_checker.dart';
 import 'package:monamie_app/app/data/services/method_channel_background_usage_settings_launcher.dart';
+import 'package:monamie_app/app/data/services/widgets_binding_app_lifecycle_events.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permission_prompts.dart';
 import 'package:monamie_app/app/utils/notice_presenter.dart';
 import 'package:monamie_app/app/utils/user_notice.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-class PermissionsController extends GetxController with WidgetsBindingObserver {
+class PermissionsController extends GetxController {
   /// [prompts] asks the questions in the middle of the permission flows;
   /// [notices] shows the warning given on returning from the battery
-  /// settings, when no screen is waiting for it.
+  /// settings, when no screen is waiting for it; [lifecycle] tells when the
+  /// app comes back to the foreground ([WidgetsBindingAppLifecycleEvents] by
+  /// default).
   PermissionsController({
     required this._prompts,
     required this._notices,
     BackgroundRestrictionChecker? backgroundRestrictionChecker,
     BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
-  }) : _backgroundRestrictionChecker =
+    AppLifecycleEvents? lifecycle,
+  }) : _lifecycle = lifecycle ?? WidgetsBindingAppLifecycleEvents(),
+       _backgroundRestrictionChecker =
            backgroundRestrictionChecker ??
            MethodChannelBackgroundRestrictionChecker(),
        _backgroundUsageSettingsLauncher =
@@ -26,6 +33,7 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
            MethodChannelBackgroundUsageSettingsLauncher();
 
   final PermissionPrompts _prompts;
+  final AppLifecycleEvents _lifecycle;
   final NoticePresenter _notices;
   final BackgroundRestrictionChecker _backgroundRestrictionChecker;
   final BackgroundUsageSettingsLauncher _backgroundUsageSettingsLauncher;
@@ -41,13 +49,12 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
   @override
   Future<void> onInit() async {
     super.onInit();
-    WidgetsBinding.instance.addObserver(this);
+    _lifecycle.start(didChangeAppLifecycleState);
     await _refreshStatuses();
   }
 
   /// Esta função realiza trabalho quando o usuário volta para o aplicativo
   /// após ter saído do mesmo (neste caso, quando ele volta das configurações).
-  @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed) {
       await _refreshStatuses();
@@ -183,7 +190,7 @@ class PermissionsController extends GetxController with WidgetsBindingObserver {
 
   @override
   void onClose() {
-    WidgetsBinding.instance.removeObserver(this);
+    _lifecycle.stop();
     super.onClose();
   }
 }

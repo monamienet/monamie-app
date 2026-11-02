@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 //import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -27,7 +26,6 @@ import 'package:monamie_app/app/utils/result.dart';
 import 'package:monamie_app/app/utils/user_notice.dart';
 
 class TrackingController extends GetxController
-    with WidgetsBindingObserver
     implements TrackingToggleController {
   /// [notices] shows the warnings raised by background changes, which no
   /// screen is waiting for. [userCtrl], [permissionsCtrl], [calendar] and
@@ -536,17 +534,6 @@ class TrackingController extends GetxController
       );
       animatedMarkerPositions[entry.key] = renderedPosition;
     }
-  }
-
-  /// Método utilizado para escolher a cor dos pins, determinando uma cor
-  /// especial para o pin correspondente à localização do próprio usuário
-  /// e outra para os demais.
-  Color setMarkerColor(UserModel someUser) {
-    final currentUserEmail = userCtrl.user?.email;
-
-    return someUser.email == currentUserEmail
-        ? Colors.indigo
-        : Colors.lightBlue;
   }
 
   /// Starts or stops sharing. Completes with [Ok] (holding a [UserNotice]

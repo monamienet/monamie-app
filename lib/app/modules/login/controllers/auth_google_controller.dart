@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:monamie_app/app/data/groups/firestore_organization_membership_check.dart';
 import 'package:monamie_app/app/data/groups/organization_membership_check.dart';
 import 'package:monamie_app/app/data/organization/central_organization_directory.dart';

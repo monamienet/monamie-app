@@ -476,6 +476,10 @@ class MonamiePage extends StatelessWidget {
             .map((user) {
               final isCurrentUser =
                   user.email == trackingCtrl.userCtrl.user?.email;
+              // The signed-in person's pin has a colour of its own.
+              final markerColor = isCurrentUser
+                  ? Colors.indigo
+                  : Colors.lightBlue;
               // Usa a posição animada se disponível, caso contrário usa a posição atual
               final animatedPos =
                   trackingCtrl.animatedMarkerPositions[user.email];
@@ -518,10 +522,8 @@ class MonamiePage extends StatelessWidget {
                                           user.capturedAt!,
                                         ) >=
                                         validity
-                                ? trackingCtrl
-                                      .setMarkerColor(user)
-                                      .withAlpha(100)
-                                : trackingCtrl.setMarkerColor(user),
+                                ? markerColor.withAlpha(100)
+                                : markerColor,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 3),
                             boxShadow: const [

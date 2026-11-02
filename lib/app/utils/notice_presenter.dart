@@ -1,3 +1,5 @@
+// check_layers: state_contract
+
 import 'package:monamie_app/app/utils/user_notice.dart';
 
 /// Shows a [UserNotice] that no screen is waiting for (a warning raised by a
