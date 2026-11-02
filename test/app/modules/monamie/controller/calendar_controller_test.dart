@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
@@ -27,7 +28,7 @@ DateTime _today() {
 /// map, whose history has [_kBia], and trail days answered by [trailDays].
 class _Harness {
   _Harness({MapGroup? group = _kGroup}) {
-    when(groupMap.selectedGroup).thenReturn(Rxn<MapGroup>(group));
+    when(groupMap.selectedGroup).thenReturn(ValueNotifier<MapGroup?>(group));
     when(groupMap.loadHistoryMembers()).thenAnswer((_) async => const [_kBia]);
     when(
       positions.trailDays(any, any, any),
@@ -248,6 +249,99 @@ void main() {
 
       // 3. Assert
       expect(label, '07/03/2025');
+    });
+  });
+
+  group('CalendarController - avisos e descarte', () {
+    test('Happy Path: Deve avisar uma vez quando outro dia é observado', () {
+      // 1. Arrange
+      final harness = _Harness();
+      var notified = 0;
+      harness.controller.observedDay.addListener(() => notified++);
+
+      // 2. Act
+      harness.controller.selectDay(DateTime(2025, 3, 7, 9));
+
+      // 3. Assert
+      expect(notified, 1);
+    });
+
+    test(
+      'Edge Case: Não deve avisar quando o mesmo dia é escolhido em outra hora',
+      () {
+        // 1. Arrange
+        final harness = _Harness();
+        harness.controller.selectDay(DateTime(2025, 3, 7, 9));
+        var notified = 0;
+        harness.controller.observedDay.addListener(() => notified++);
+
+        // 2. Act
+        harness.controller.selectDay(DateTime(2025, 3, 7, 18, 45));
+
+        // 3. Assert
+        expect(notified, 0);
+      },
+    );
+
+    test(
+      'Edge Case: Não deve avisar ao voltar para hoje já observando hoje',
+      () {
+        // 1. Arrange
+        final harness = _Harness();
+        var notified = 0;
+        harness.controller.observedDay.addListener(() => notified++);
+
+        // 2. Act
+        harness.controller.goToToday();
+
+        // 3. Assert
+        expect(notified, 0);
+      },
+    );
+
+    test(
+      'Sad Path: Deve ignorar sem erro os dias com trilha que chegam depois do descarte',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final pending = Completer<Set<String>>();
+        when(
+          harness.positions.trailDays(any, any, any),
+        ).thenAnswer((_) => pending.future);
+        harness.controller.showObservedMonth();
+        await pumpEventQueue();
+        harness.controller.dispose();
+
+        // 2. Act
+        pending.complete({'2026-11-01'});
+
+        // 3. Assert
+        await expectLater(pumpEventQueue(), completes);
+      },
+    );
+
+    test('Sad Path: Não deve lançar ao escolher um dia depois do descarte', () {
+      // 1. Arrange
+      final harness = _Harness();
+      harness.controller.dispose();
+
+      // 2. Act
+      void act() => harness.controller.selectDay(DateTime(2026, 10, 30));
+
+      // 3. Assert
+      expect(act, returnsNormally);
+    });
+
+    test('Edge Case: Deve aceitar um segundo descarte sem lançar', () {
+      // 1. Arrange
+      final harness = _Harness();
+      harness.controller.dispose();
+
+      // 2. Act
+      void act() => harness.controller.dispose();
+
+      // 3. Assert
+      expect(act, returnsNormally);
     });
   });
 }

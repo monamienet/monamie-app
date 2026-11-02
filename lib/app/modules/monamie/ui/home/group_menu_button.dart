@@ -174,7 +174,14 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
                   ),
                 );
               },
-              child: Obx(_card),
+              child: ListenableBuilder(
+                listenable: Listenable.merge([
+                  _groups.mapGroups,
+                  _groups.selectedGroup,
+                  _groups.groupSizes,
+                ]),
+                builder: (context, _) => _card(),
+              ),
             ),
           ),
         ),
@@ -183,11 +190,11 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
   }
 
   Widget _card() {
-    final groups = _groups.mapGroups.toList();
+    final groups = _groups.mapGroups.value;
     final selected = _groups.selectedGroup.value?.id;
-    // Copied here, not read in the item builder: ListView.builder builds rows
-    // after Obx stops listening, so a count arriving later would not redraw.
-    final sizes = Map.of(_groups.groupSizes);
+    // Read here, not in the item builder, so every row of one build shows
+    // the same counts.
+    final sizes = _groups.groupSizes.value;
     return Container(
       width: 272,
       clipBehavior: Clip.antiAlias,

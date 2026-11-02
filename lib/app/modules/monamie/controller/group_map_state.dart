@@ -1,20 +1,25 @@
 // check_layers: state_contract
 
-import 'package:get/get.dart';
+import 'package:flutter/foundation.dart';
 import 'package:monamie_app/app/data/services/capabilities.dart';
 import 'package:monamie_app/app/modules/monamie/models/group_member.dart';
 import 'package:monamie_app/app/modules/monamie/models/map_group.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 
 /// What the home screen reads about the person's groups and the group on
-/// the map. Registered with GetX under this type, so screens and the other
+/// the map. Registered under this type, so screens and the other
 /// controllers depend on it and not on the Firestore-backed
 /// `GroupMapController`.
+///
+/// Each value is its own [ValueListenable], so a reader follows only what
+/// it uses (a screen merges several with `Listenable.merge`). A value only
+/// notifies when it changes: lists and maps are replaced whole, never
+/// changed in place, and compared by content (their items are `freezed`).
 abstract interface class GroupMapState {
   /// What the person may do in the bound organization, from their
   /// membership documents; updates by itself when an administrator changes
   /// them.
-  Rx<Capabilities> get capabilities;
+  ValueListenable<Capabilities> get capabilities;
 
   /// Whether the person administers the bound organization.
   bool get isAdmin;
@@ -26,42 +31,42 @@ abstract interface class GroupMapState {
   bool get canPublish;
 
   /// Until the person's memberships are first known.
-  RxBool get isLoading;
+  ValueListenable<bool> get isLoading;
 
   /// Why the memberships could not be read, or empty.
-  RxString get loadError;
+  ValueListenable<String> get loadError;
 
   /// The groups whose map the person sees, by name.
-  RxList<MapGroup> get mapGroups;
+  ValueListenable<List<MapGroup>> get mapGroups;
 
   /// The groups where the person shares their location, by name.
-  RxList<MapGroup> get publishGroups;
+  ValueListenable<List<MapGroup>> get publishGroups;
 
   /// The group on the map, or `null` when the person sees none.
-  Rxn<MapGroup> get selectedGroup;
+  ValueListenable<MapGroup?> get selectedGroup;
 
   /// Whether the map is loading a group the person just picked.
-  RxBool get switchingGroup;
+  ValueListenable<bool> get switchingGroup;
 
   /// The positions of the observed group's people who publish there now.
-  RxList<UserModel> get groupPositions;
+  ValueListenable<List<UserModel>> get groupPositions;
 
   /// The people of [groupPositions], by name.
-  RxList<GroupMember> get observedMembers;
+  ValueListenable<List<GroupMember>> get observedMembers;
 
   /// Everyone who ever published in the observed group, as last read by
   /// [loadHistoryMembers].
-  RxList<GroupMember> get historyMembers;
+  ValueListenable<List<GroupMember>> get historyMembers;
 
   /// People publishing in each group of [mapGroups], by group id, once
   /// counted by [loadGroupSizes].
-  RxMap<String, int> get groupSizes;
+  ValueListenable<Map<String, int>> get groupSizes;
 
   /// The people whose trail is drawn on the map.
-  RxList<GroupMember> get highlightedObservedUsers;
+  ValueListenable<List<GroupMember>> get highlightedObservedUsers;
 
   /// E-mail of the person whose map marker was pressed, or `null`.
-  RxnString get selectedMemberEmail;
+  ValueListenable<String?> get selectedMemberEmail;
 
   /// Switches the map to [group]. Picking the observed group again does
   /// nothing.

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,13 +9,16 @@ import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:monamie_app/app/data/groups/membership_source.dart';
 import 'package:monamie_app/app/data/services/capabilities.dart';
 import 'package:monamie_app/app/data/services/device_location.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/group_map_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart';
+import 'package:monamie_app/app/modules/monamie/data/group_positions_source.dart';
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart';
 import 'package:monamie_app/app/modules/monamie/models/group_member.dart';
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
@@ -30,6 +34,8 @@ import 'package:monamie_app/app/utils/user_notice.dart';
   MockSpec<FirebaseProvider>(),
   MockSpec<FlutterBackgroundService>(),
   MockSpec<GroupMapState>(),
+  MockSpec<GroupPositionsSource>(),
+  MockSpec<MembershipSource>(),
   MockSpec<NoticePresenter>(),
   MockSpec<PermissionsController>(),
   MockSpec<UserController>(),
@@ -71,8 +77,10 @@ Matcher _okWithNoticeTitled(String title) => isA<Ok<UserNotice?>>().having(
 
 /// The collaborators of a [TrackingController], stubbed as a person who can
 /// publish, with the GPS on, the service stopped and a fix at hand.
+/// [state] replaces the mocked [GroupMapState] (e.g. by a real
+/// `GroupMapController`).
 class _Harness {
-  _Harness() {
+  _Harness({GroupMapState? state}) {
     when(permissions.isBackgroundRestricted).thenReturn(isBackgroundRestricted);
     when(
       permissions.hasWhenInUseLocationPermission,
@@ -128,7 +136,7 @@ class _Harness {
       userCtrl: user,
       permissionsCtrl: permissions,
       calendar: calendar,
-      groupMap: groupMap,
+      groupMap: state ?? groupMap,
       service: service,
       location: location,
       positions: positions,
@@ -146,12 +154,12 @@ class _Harness {
 
   final isBackgroundRestricted = false.obs;
   final hasWhenInUsePermission = false.obs;
-  final observedDay = Rx<DateTime>(_kToday);
-  final capabilities = Rx<Capabilities>(const Capabilities());
-  final groupPositions = <UserModel>[].obs;
-  final observedMembers = <GroupMember>[].obs;
-  final highlighted = <GroupMember>[].obs;
-  final selectedGroup = Rxn<MapGroup>(_kGroup);
+  final observedDay = ValueNotifier<DateTime>(_kToday);
+  final capabilities = ValueNotifier<Capabilities>(const Capabilities());
+  final groupPositions = ValueNotifier<List<UserModel>>([]);
+  final observedMembers = ValueNotifier<List<GroupMember>>([]);
+  final highlighted = ValueNotifier<List<GroupMember>>([]);
+  final selectedGroup = ValueNotifier<MapGroup?>(_kGroup);
 
   late final TrackingController controller;
 }
@@ -884,5 +892,252 @@ void main() {
         expect(async.periodicTimerCount, 0);
       });
     });
+  });
+
+  group('TrackingController.onClose - ouvintes removidos', () {
+    test(
+      'Happy Path: Não deve reagir a novas posições do grupo depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        await harness.controller.onInit();
+        harness.controller.onClose();
+
+        // 2. Act
+        harness.groupPositions.value = [
+          UserModel(
+            email: _kBia.email,
+            isPublishing: true,
+            capturedAt: DateTime.now(),
+          ),
+        ];
+
+        // 3. Assert
+        expect(harness.controller.groupUsers, isEmpty);
+      },
+    );
+
+    test(
+      'Happy Path: Não deve reagir a novas pessoas observadas depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        await harness.controller.onInit();
+        harness.controller.onClose();
+
+        // 2. Act
+        harness.observedMembers.value = [_kBia];
+        await pumpEventQueue();
+
+        // 3. Assert
+        verifyNever(harness.positions.hasPointsOnDate(any, any, any));
+      },
+    );
+
+    test(
+      'Happy Path: Não deve reagir a novas capacidades depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        await harness.controller.onInit();
+        harness.controller.onClose();
+        clearInteractions(harness.user);
+
+        // 2. Act
+        harness.capabilities.value = const Capabilities(isMember: true);
+        await pumpEventQueue();
+
+        // 3. Assert
+        verifyNever(harness.user.isTrackable());
+      },
+    );
+
+    test(
+      'Happy Path: Não deve reagir a outro dia observado depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        harness.highlighted.value = [_kBia];
+        harness.observedMembers.value = [_kBia];
+        await harness.controller.onInit();
+        harness.controller.onClose();
+
+        // 2. Act
+        harness.observedDay.value = _kPastDay;
+        await pumpEventQueue();
+
+        // 3. Assert
+        verifyNever(
+          harness.positions.getTrajectoryForDate(
+            any,
+            any,
+            day: anyNamed('day'),
+          ),
+        );
+        verifyNever(harness.positions.hasPointsOnDate(any, any, any));
+      },
+    );
+
+    test(
+      'Happy Path: Não deve ler a trilha de quem é destacado depois de fechar',
+      () {
+        fakeAsync((async) {
+          // 1. Arrange
+          final harness = _Harness();
+          harness.controller.onInit();
+          async.flushMicrotasks();
+          harness.controller.onClose();
+
+          // 2. Act
+          harness.highlighted.value = [_kBia];
+          async.elapse(const Duration(milliseconds: 150));
+
+          // 3. Assert
+          verifyNever(
+            harness.positions.getTrajectoryForDate(
+              any,
+              any,
+              day: anyNamed('day'),
+            ),
+          );
+        });
+      },
+    );
+  });
+
+  group('TrackingController - reações com o GroupMapController real', () {
+    late StreamController<Map<String, Object?>?> organization;
+    late StreamController<Map<String, Object?>> roles;
+    late StreamController<String?> groupName;
+    late StreamController<List<UserModel>> live;
+    late GroupMapController groupMap;
+
+    /// Ana subscribes to and publishes in [_kGroup], where Bia publishes.
+    /// The tracking controller follows a real [GroupMapController] over
+    /// mocked Firestore sources.
+    Future<_Harness> following() async {
+      organization = StreamController<Map<String, Object?>?>();
+      roles = StreamController<Map<String, Object?>>();
+      groupName = StreamController<String?>();
+      live = StreamController<List<UserModel>>();
+      final memberships = MockMembershipSource();
+      when(
+        memberships.organizationMembership(any, any),
+      ).thenAnswer((_) => organization.stream);
+      when(memberships.groupRoles(any, any)).thenAnswer((_) => roles.stream);
+      when(
+        memberships.groupName(any, _kGroup.id),
+      ).thenAnswer((_) => groupName.stream);
+      final sources = MockGroupPositionsSource();
+      when(
+        sources.streamGroupPositions(_kGroup.id),
+      ).thenAnswer((_) => live.stream);
+      groupMap = GroupMapController(
+        onAccessLost: () async {},
+        memberships: memberships,
+        positions: sources,
+        organizationId: () => 'rotasul',
+        email: () => _kEmail,
+      );
+      organization.add({'email': _kEmail, 'role': 'member'});
+      roles.add({
+        _kGroup.id: ['publisher', 'subscriber'],
+      });
+      groupName.add(_kGroup.name);
+      live.add([UserModel(email: _kBia.email, name: _kBia.name)]);
+      groupMap.start();
+      await pumpEventQueue();
+      final harness = _Harness(state: groupMap);
+      await harness.controller.onInit();
+      await pumpEventQueue();
+      clearInteractions(harness.positions);
+      clearInteractions(harness.user);
+      return harness;
+    }
+
+    tearDown(() => groupMap.dispose());
+
+    test(
+      'Happy Path: Deve reagir uma vez a um retrato com uma pessoa nova',
+      () async {
+        // 1. Arrange
+        final harness = await following();
+        var groupUsersChanged = 0;
+        ever(harness.controller.groupUsers, (_) => groupUsersChanged++);
+
+        // 2. Act
+        live.add([
+          UserModel(email: _kBia.email, name: _kBia.name),
+          UserModel(email: 'caio@example.com', name: 'Caio'),
+        ]);
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(groupUsersChanged, 1);
+        verify(
+          harness.positions.hasPointsOnDate(
+            _kGroup.id,
+            'caio@example.com',
+            any,
+          ),
+        ).called(1);
+        harness.controller.onClose();
+      },
+    );
+
+    test(
+      'Edge Case: Não deve reagir a um retrato novo com as mesmas posições',
+      () async {
+        // 1. Arrange
+        final harness = await following();
+        var groupUsersChanged = 0;
+        ever(harness.controller.groupUsers, (_) => groupUsersChanged++);
+
+        // 2. Act
+        live.add([UserModel(email: _kBia.email, name: _kBia.name)]);
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(groupUsersChanged, 0);
+        verifyNever(harness.positions.hasPointsOnDate(any, any, any));
+        harness.controller.onClose();
+      },
+    );
+
+    test(
+      'Edge Case: Não deve procurar o aparelho de novo com os mesmos papéis',
+      () async {
+        // 1. Arrange
+        final harness = await following();
+
+        // 2. Act
+        roles.add({
+          _kGroup.id: ['publisher', 'subscriber'],
+        });
+        await pumpEventQueue();
+
+        // 3. Assert
+        verifyNever(harness.user.isTrackable());
+        harness.controller.onClose();
+      },
+    );
+
+    test(
+      'Happy Path: Deve procurar o aparelho de novo quando os papéis mudam',
+      () async {
+        // 1. Arrange
+        final harness = await following();
+
+        // 2. Act
+        roles.add({
+          _kGroup.id: ['maintainer', 'publisher', 'subscriber'],
+        });
+        await pumpEventQueue();
+
+        // 3. Assert
+        verify(harness.user.isTrackable()).called(1);
+        harness.controller.onClose();
+      },
+    );
   });
 }

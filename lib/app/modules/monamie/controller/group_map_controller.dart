@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/app/data/groups/firestore_membership_source.dart';
@@ -22,7 +21,10 @@ import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 ///
 /// A missing organization membership means the person was removed: the app
 /// forgets the organization ([onAccessLost]).
-class GroupMapController extends GetxController implements GroupMapState {
+///
+/// Whoever creates it calls [start] once, to begin listening, and [dispose]
+/// once, which cancels every Firestore subscription.
+class GroupMapController implements GroupMapState {
   GroupMapController({
     required this._onAccessLost,
     MembershipSource? memberships,
@@ -44,39 +46,77 @@ class GroupMapController extends GetxController implements GroupMapState {
   final String? Function() _organizationId;
   final String? Function() _email;
 
-  @override
-  final Rx<Capabilities> capabilities = const Capabilities().obs;
-  @override
-  final RxBool isLoading = true.obs;
-  @override
-  final RxString loadError = ''.obs;
-  @override
-  final RxList<MapGroup> mapGroups = <MapGroup>[].obs;
-  @override
-  final RxList<MapGroup> publishGroups = <MapGroup>[].obs;
-  @override
-  final Rxn<MapGroup> selectedGroup = Rxn<MapGroup>();
-  @override
-  final RxBool switchingGroup = false.obs;
-  @override
-  final RxList<UserModel> groupPositions = <UserModel>[].obs;
-  @override
-  final RxList<GroupMember> observedMembers = <GroupMember>[].obs;
-  @override
-  final RxList<GroupMember> historyMembers = <GroupMember>[].obs;
-  @override
-  final RxMap<String, int> groupSizes = <String, int>{}.obs;
-  @override
-  final RxList<GroupMember> highlightedObservedUsers = <GroupMember>[].obs;
-  @override
-  final RxnString selectedMemberEmail = RxnString();
+  final _capabilities = ValueNotifier<Capabilities>(const Capabilities());
+  final _isLoading = ValueNotifier<bool>(true);
+  final _loadError = ValueNotifier<String>('');
+  final _mapGroups = ValueNotifier<List<MapGroup>>(const []);
+  final _publishGroups = ValueNotifier<List<MapGroup>>(const []);
+  final _selectedGroup = ValueNotifier<MapGroup?>(null);
+  final _switchingGroup = ValueNotifier<bool>(false);
+  final _groupPositions = ValueNotifier<List<UserModel>>(const []);
+  final _observedMembers = ValueNotifier<List<GroupMember>>(const []);
+  final _historyMembers = ValueNotifier<List<GroupMember>>(const []);
+  final _groupSizes = ValueNotifier<Map<String, int>>(const {});
+  final _highlightedObservedUsers = ValueNotifier<List<GroupMember>>(const []);
+  final _selectedMemberEmail = ValueNotifier<String?>(null);
 
   @override
-  bool get isAdmin => capabilities.value.isAdmin;
+  ValueListenable<Capabilities> get capabilities => _capabilities;
   @override
-  bool get canWatch => capabilities.value.canWatch;
+  ValueListenable<bool> get isLoading => _isLoading;
   @override
-  bool get canPublish => capabilities.value.canPublish;
+  ValueListenable<String> get loadError => _loadError;
+  @override
+  ValueListenable<List<MapGroup>> get mapGroups => _mapGroups;
+  @override
+  ValueListenable<List<MapGroup>> get publishGroups => _publishGroups;
+  @override
+  ValueListenable<MapGroup?> get selectedGroup => _selectedGroup;
+  @override
+  ValueListenable<bool> get switchingGroup => _switchingGroup;
+  @override
+  ValueListenable<List<UserModel>> get groupPositions => _groupPositions;
+  @override
+  ValueListenable<List<GroupMember>> get observedMembers => _observedMembers;
+  @override
+  ValueListenable<List<GroupMember>> get historyMembers => _historyMembers;
+  @override
+  ValueListenable<Map<String, int>> get groupSizes => _groupSizes;
+  @override
+  ValueListenable<List<GroupMember>> get highlightedObservedUsers =>
+      _highlightedObservedUsers;
+  @override
+  ValueListenable<String?> get selectedMemberEmail => _selectedMemberEmail;
+
+  @override
+  bool get isAdmin => _capabilities.value.isAdmin;
+  @override
+  bool get canWatch => _capabilities.value.canWatch;
+  @override
+  bool get canPublish => _capabilities.value.canPublish;
+
+  bool _started = false;
+  bool _disposed = false;
+
+  /// Sets [notifier] (which notifies only when the value differs), unless
+  /// disposed: a Firestore answer or a timeout may land after [dispose].
+  void _set<T>(ValueNotifier<T> notifier, T value) {
+    if (!_disposed) notifier.value = value;
+  }
+
+  /// Replaces [notifier]'s list with an unmodifiable copy of [value] when
+  /// their content differs (the items compare by content).
+  void _setList<T>(ValueNotifier<List<T>> notifier, List<T> value) {
+    if (_disposed || listEquals(notifier.value, value)) return;
+    notifier.value = List.unmodifiable(value);
+  }
+
+  /// Replaces [notifier]'s map with an unmodifiable copy of [value] when
+  /// their content differs.
+  void _setMap<K, V>(ValueNotifier<Map<K, V>> notifier, Map<K, V> value) {
+    if (_disposed || mapEquals(notifier.value, value)) return;
+    notifier.value = Map.unmodifiable(value);
+  }
 
   String? _organization;
   StreamSubscription<Map<String, Object?>?>? _organizationSubscription;
@@ -95,19 +135,17 @@ class GroupMapController extends GetxController implements GroupMapState {
   bool _accessLost = false;
   bool _countingSizes = false;
 
-  @override
-  void onInit() {
-    super.onInit();
-    _start();
-  }
-
-  void _start() {
+  /// Starts listening to the person's memberships. Only the first call
+  /// does anything.
+  void start() {
+    if (_started || _disposed) return;
+    _started = true;
     final organizationId = _organizationId();
     final email = _email();
     if (organizationId == null || email == null) {
       debugPrint('[GroupMap] No organization or no signed-in person.');
-      loadError.value = 'not_authenticated';
-      isLoading.value = false;
+      _set(_loadError, 'not_authenticated');
+      _set(_isLoading, false);
       return;
     }
     _organization = organizationId;
@@ -132,8 +170,8 @@ class GroupMapController extends GetxController implements GroupMapState {
 
   void _onLoadError(Object e) {
     debugPrint('[GroupMap] Could not read the memberships: $e');
-    loadError.value = '$e';
-    isLoading.value = false;
+    _set(_loadError, '$e');
+    _set(_isLoading, false);
   }
 
   Future<void> _onOrganizationMembership(Map<String, Object?>? data) async {
@@ -157,8 +195,8 @@ class GroupMapController extends GetxController implements GroupMapState {
       organizationMembership: membership,
       groupRoles: roles,
     );
-    if (next != capabilities.value) capabilities.value = next;
-    isLoading.value = false;
+    _set(_capabilities, next);
+    _set(_isLoading, false);
     _followNames(next);
     _refreshGroups();
   }
@@ -222,23 +260,20 @@ class GroupMapController extends GetxController implements GroupMapState {
   }
 
   void _refreshGroups() {
-    final caps = capabilities.value;
+    final caps = _capabilities.value;
     final visible = mapGroupsFor(
       caps,
       names: _names,
       allGroupIds: caps.isAdmin ? _names.keys : const [],
     );
-    if (!listEquals(visible, mapGroups)) mapGroups.assignAll(visible);
-    final publishing = namedGroups(caps.publisherGroupIds, _names);
-    if (!listEquals(publishing, publishGroups)) {
-      publishGroups.assignAll(publishing);
-    }
+    _setList(_mapGroups, visible);
+    _setList(_publishGroups, namedGroups(caps.publisherGroupIds, _names));
 
-    final current = selectedGroup.value;
+    final current = _selectedGroup.value;
     if (visible.isEmpty) {
       if (current != null) _observe(null);
     } else if (renamedSelection(visible, current) case final renamed?) {
-      selectedGroup.value = renamed;
+      _set(_selectedGroup, renamed);
     } else if (groupToObserve(visible, current) case final next?) {
       // Someone who watches opens straight onto a group, not an empty panel.
       _observe(next);
@@ -250,28 +285,31 @@ class GroupMapController extends GetxController implements GroupMapState {
   Future<void> _observe(MapGroup? group) {
     _positionsSubscription?.cancel();
     _positionsSubscription = null;
-    selectedGroup.value = group;
-    groupPositions.clear();
-    observedMembers.clear();
-    historyMembers.clear();
-    highlightedObservedUsers.clear();
-    selectedMemberEmail.value = null;
-    if (group == null) return Future.value();
+    _set(_selectedGroup, group);
+    _setList(_groupPositions, const <UserModel>[]);
+    _setList(_observedMembers, const <GroupMember>[]);
+    _setList(_historyMembers, const <GroupMember>[]);
+    _setList(_highlightedObservedUsers, const <GroupMember>[]);
+    _set(_selectedMemberEmail, null);
+    if (group == null || _disposed) return Future.value();
 
     final first = Completer<void>();
     _positionsSubscription = _positions
         .streamGroupPositions(group.id)
         .listen(
           (users) {
-            groupPositions.assignAll(users);
-            observedMembers.assignAll(membersOf(users));
-            groupSizes[group.id] = users.length;
+            _setList(_groupPositions, users);
+            _setList(_observedMembers, membersOf(users));
+            _setMap(_groupSizes, {
+              ..._groupSizes.value,
+              group.id: users.length,
+            });
             if (!first.isCompleted) first.complete();
           },
           onError: (Object e) {
             debugPrint('[GroupMap] Could not read group ${group.id}: $e');
-            groupPositions.clear();
-            observedMembers.clear();
+            _setList(_groupPositions, const <UserModel>[]);
+            _setList(_observedMembers, const <GroupMember>[]);
             if (!first.isCompleted) first.complete();
           },
         );
@@ -280,14 +318,18 @@ class GroupMapController extends GetxController implements GroupMapState {
 
   @override
   Future<void> pickGroup(MapGroup group) async {
-    if (switchingGroup.value || group.id == selectedGroup.value?.id) return;
-    switchingGroup.value = true;
+    if (_disposed ||
+        _switchingGroup.value ||
+        group.id == _selectedGroup.value?.id) {
+      return;
+    }
+    _set(_switchingGroup, true);
     try {
       await _observe(
         group,
       ).timeout(const Duration(seconds: 15), onTimeout: () {});
     } finally {
-      switchingGroup.value = false;
+      _set(_switchingGroup, false);
     }
   }
 
@@ -297,10 +339,13 @@ class GroupMapController extends GetxController implements GroupMapState {
     _countingSizes = true;
     try {
       await Future.wait([
-        for (final group in mapGroups.toList())
+        for (final group in _mapGroups.value)
           _positions
               .countPublishers(group.id)
-              .then((count) => groupSizes[group.id] = count)
+              .then((count) {
+                _setMap(_groupSizes, {..._groupSizes.value, group.id: count});
+                return count;
+              })
               .catchError((Object e) {
                 // The menu then shows only the group's name.
                 debugPrint('[GroupMap] Could not count ${group.id}: $e');
@@ -314,43 +359,50 @@ class GroupMapController extends GetxController implements GroupMapState {
 
   @override
   Future<List<GroupMember>> loadHistoryMembers() async {
-    final group = selectedGroup.value;
+    final group = _selectedGroup.value;
     if (group == null) return const [];
     try {
       final members = membersOf(await _positions.groupHistoryPeople(group.id));
       // The person may have switched groups while it loaded.
-      if (selectedGroup.value?.id == group.id) {
-        historyMembers.assignAll(members);
+      if (_selectedGroup.value?.id == group.id) {
+        _setList(_historyMembers, members);
       }
       return members;
     } catch (e) {
       debugPrint('[GroupMap] Could not read the history of ${group.id}: $e');
-      return historyMembers.isEmpty ? observedMembers.toList() : historyMembers;
+      final history = _historyMembers.value;
+      return history.isEmpty ? _observedMembers.value : history;
     }
   }
 
   @override
   void toggleHighlight(GroupMember member) {
-    if (isHighlighted(member)) {
-      highlightedObservedUsers.removeWhere((m) => m.email == member.email);
-    } else {
-      highlightedObservedUsers.add(member);
-    }
+    final current = _highlightedObservedUsers.value;
+    _setList(
+      _highlightedObservedUsers,
+      isHighlighted(member)
+          ? [
+              for (final m in current)
+                if (m.email != member.email) m,
+            ]
+          : [...current, member],
+    );
   }
 
   @override
   bool isHighlighted(GroupMember member) =>
-      highlightedObservedUsers.any((m) => m.email == member.email);
+      _highlightedObservedUsers.value.any((m) => m.email == member.email);
 
   @override
   void toggleSelected(String email) {
-    selectedMemberEmail.value = selectedMemberEmail.value == email
-        ? null
-        : email;
+    _set(
+      _selectedMemberEmail,
+      _selectedMemberEmail.value == email ? null : email,
+    );
   }
 
   @override
-  void clearSelected() => selectedMemberEmail.value = null;
+  void clearSelected() => _set(_selectedMemberEmail, null);
 
   Future<void> _cancelAll() async {
     await _organizationSubscription?.cancel();
@@ -364,9 +416,28 @@ class GroupMapController extends GetxController implements GroupMapState {
     _cancelNameSubscriptions();
   }
 
-  @override
-  void onClose() {
+  /// Cancels every Firestore subscription and releases the values. Only
+  /// the first call does anything.
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     _cancelAll();
-    super.onClose();
+    for (final notifier in <ChangeNotifier>[
+      _capabilities,
+      _isLoading,
+      _loadError,
+      _mapGroups,
+      _publishGroups,
+      _selectedGroup,
+      _switchingGroup,
+      _groupPositions,
+      _observedMembers,
+      _historyMembers,
+      _groupSizes,
+      _highlightedObservedUsers,
+      _selectedMemberEmail,
+    ]) {
+      notifier.dispose();
+    }
   }
 }

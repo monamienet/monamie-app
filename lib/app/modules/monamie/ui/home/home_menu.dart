@@ -67,14 +67,17 @@ class HomeMenu extends StatelessWidget {
                 label: 'Trocar de organização',
                 onTap: () => _closeAndRun(context, _auth.switchOrganization),
               ),
-              Obx(() {
-                if (_groups.isAdmin) return _admin(context);
-                // A group's maintainer manages only their groups.
-                if (_groups.capabilities.value.canManageGroups) {
-                  return _maintainer(context);
-                }
-                return const SizedBox.shrink();
-              }),
+              ListenableBuilder(
+                listenable: _groups.capabilities,
+                builder: (context, _) {
+                  if (_groups.isAdmin) return _admin(context);
+                  // A group's maintainer manages only their groups.
+                  if (_groups.capabilities.value.canManageGroups) {
+                    return _maintainer(context);
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
               const Spacer(),
               const Divider(color: HomeColors.divider, height: 1),
               const SizedBox(height: 8),
@@ -126,14 +129,19 @@ class HomeMenu extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Obx(
-                  () => Text(
+                ListenableBuilder(
+                  listenable: Listenable.merge([
+                    _groups.capabilities,
+                    _groups.publishGroups,
+                  ]),
+                  builder: (context, _) => Text(
                     menuSubtitle(
                       isAdmin: _groups.isAdmin,
                       canWatch: _groups.canWatch,
                       canShare: _groups.canPublish,
                       publishGroups: [
-                        for (final group in _groups.publishGroups) group.name,
+                        for (final group in _groups.publishGroups.value)
+                          group.name,
                       ],
                     ),
                     maxLines: 1,
@@ -154,84 +162,87 @@ class HomeMenu extends StatelessWidget {
   }
 
   Widget _account(BuildContext context) {
-    return Obx(() {
-      final user = _user.googleUser;
-      final name = user?.name ?? '';
-      final email = user?.email ?? '';
-      final avatar = user?.avatarBase64;
-      return Semantics(
-        button: true,
-        label: 'Minha conta',
-        excludeSemantics: true,
-        child: Material(
-          color: HomeColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
+    return ListenableBuilder(
+      listenable: _user,
+      builder: (context, _) {
+        final user = _user.googleUser;
+        final name = user?.name ?? '';
+        final email = user?.email ?? '';
+        final avatar = user?.avatarBase64;
+        return Semantics(
+          button: true,
+          label: 'Minha conta',
+          excludeSemantics: true,
+          child: Material(
+            color: HomeColors.surface,
             borderRadius: BorderRadius.circular(16),
-            onTap: () => _open(context, Routes.MY_ACCOUNT),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  if (avatar != null && avatar.isNotEmpty)
-                    ClipOval(
-                      child: Image.memory(
-                        base64Decode(avatar),
-                        width: 36,
-                        height: 36,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  else
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppColors.lightBlue(),
-                      child: Text(
-                        initialsOf(name.isEmpty ? email : name),
-                        style: TextStyle(
-                          color: AppColors.darkBlue(),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _open(context, Routes.MY_ACCOUNT),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    if (avatar != null && avatar.isNotEmpty)
+                      ClipOval(
+                        child: Image.memory(
+                          base64Decode(avatar),
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
                         ),
-                      ),
-                    ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name.isEmpty ? email : name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: HomeColors.ink,
-                            fontSize: 15,
+                      )
+                    else
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.lightBlue(),
+                        child: Text(
+                          initialsOf(name.isEmpty ? email : name),
+                          style: TextStyle(
+                            color: AppColors.darkBlue(),
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        if (name.isNotEmpty)
+                      ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            email,
+                            name.isEmpty ? email : name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: HomeColors.muted,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                              color: HomeColors.ink,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                      ],
+                          if (name.isNotEmpty)
+                            Text(
+                              email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: HomeColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const Icon(Icons.chevron_right, color: HomeColors.muted),
-                ],
+                    const Icon(Icons.chevron_right, color: HomeColors.muted),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   Widget _sectionTitle(String title) => Padding(

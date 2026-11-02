@@ -7,7 +7,7 @@
 import 'dart:async' as _i5;
 
 import 'package:cloud_firestore/cloud_firestore.dart' as _i2;
-import 'package:get/get.dart' as _i3;
+import 'package:flutter/foundation.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:monamie_app/app/data/services/capabilities.dart' as _i11;
 import 'package:monamie_app/app/data/tracking/group_publisher.dart' as _i7;
@@ -46,38 +46,9 @@ class _FakeCollectionReference_0<T extends Object?> extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
-class _FakeRx_1<T> extends _i1.SmartFake implements _i3.Rx<T> {
-  _FakeRx_1(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeRxBool_2 extends _i1.SmartFake implements _i3.RxBool {
-  _FakeRxBool_2(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeRxString_3 extends _i1.SmartFake implements _i3.RxString {
-  _FakeRxString_3(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeRxList_4<E> extends _i1.SmartFake implements _i3.RxList<E> {
-  _FakeRxList_4(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeRxn_5<T> extends _i1.SmartFake implements _i3.Rxn<T> {
-  _FakeRxn_5(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeRxMap_6<K, V> extends _i1.SmartFake implements _i3.RxMap<K, V> {
-  _FakeRxMap_6(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeRxnString_7 extends _i1.SmartFake implements _i3.RxnString {
-  _FakeRxnString_7(Object parent, Invocation parentInvocation)
+class _FakeValueListenable_1<T> extends _i1.SmartFake
+    implements _i3.ValueListenable<T> {
+  _FakeValueListenable_1(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -253,19 +224,20 @@ class MockFirebaseProvider extends _i1.Mock implements _i4.FirebaseProvider {
 /// See the documentation for Mockito's code generation for more information.
 class MockGroupMapState extends _i1.Mock implements _i10.GroupMapState {
   @override
-  _i3.Rx<_i11.Capabilities> get capabilities =>
+  _i3.ValueListenable<_i11.Capabilities> get capabilities =>
       (super.noSuchMethod(
             Invocation.getter(#capabilities),
-            returnValue: _FakeRx_1<_i11.Capabilities>(
+            returnValue: _FakeValueListenable_1<_i11.Capabilities>(
               this,
               Invocation.getter(#capabilities),
             ),
-            returnValueForMissingStub: _FakeRx_1<_i11.Capabilities>(
-              this,
-              Invocation.getter(#capabilities),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_1<_i11.Capabilities>(
+                  this,
+                  Invocation.getter(#capabilities),
+                ),
           )
-          as _i3.Rx<_i11.Capabilities>);
+          as _i3.ValueListenable<_i11.Capabilities>);
 
   @override
   bool get isAdmin =>
@@ -295,178 +267,190 @@ class MockGroupMapState extends _i1.Mock implements _i10.GroupMapState {
           as bool);
 
   @override
-  _i3.RxBool get isLoading =>
+  _i3.ValueListenable<bool> get isLoading =>
       (super.noSuchMethod(
             Invocation.getter(#isLoading),
-            returnValue: _FakeRxBool_2(this, Invocation.getter(#isLoading)),
-            returnValueForMissingStub: _FakeRxBool_2(
+            returnValue: _FakeValueListenable_1<bool>(
+              this,
+              Invocation.getter(#isLoading),
+            ),
+            returnValueForMissingStub: _FakeValueListenable_1<bool>(
               this,
               Invocation.getter(#isLoading),
             ),
           )
-          as _i3.RxBool);
+          as _i3.ValueListenable<bool>);
 
   @override
-  _i3.RxString get loadError =>
+  _i3.ValueListenable<String> get loadError =>
       (super.noSuchMethod(
             Invocation.getter(#loadError),
-            returnValue: _FakeRxString_3(this, Invocation.getter(#loadError)),
-            returnValueForMissingStub: _FakeRxString_3(
+            returnValue: _FakeValueListenable_1<String>(
+              this,
+              Invocation.getter(#loadError),
+            ),
+            returnValueForMissingStub: _FakeValueListenable_1<String>(
               this,
               Invocation.getter(#loadError),
             ),
           )
-          as _i3.RxString);
+          as _i3.ValueListenable<String>);
 
   @override
-  _i3.RxList<_i12.MapGroup> get mapGroups =>
+  _i3.ValueListenable<List<_i12.MapGroup>> get mapGroups =>
       (super.noSuchMethod(
             Invocation.getter(#mapGroups),
-            returnValue: _FakeRxList_4<_i12.MapGroup>(
+            returnValue: _FakeValueListenable_1<List<_i12.MapGroup>>(
               this,
               Invocation.getter(#mapGroups),
             ),
-            returnValueForMissingStub: _FakeRxList_4<_i12.MapGroup>(
-              this,
-              Invocation.getter(#mapGroups),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_1<List<_i12.MapGroup>>(
+                  this,
+                  Invocation.getter(#mapGroups),
+                ),
           )
-          as _i3.RxList<_i12.MapGroup>);
+          as _i3.ValueListenable<List<_i12.MapGroup>>);
 
   @override
-  _i3.RxList<_i12.MapGroup> get publishGroups =>
+  _i3.ValueListenable<List<_i12.MapGroup>> get publishGroups =>
       (super.noSuchMethod(
             Invocation.getter(#publishGroups),
-            returnValue: _FakeRxList_4<_i12.MapGroup>(
+            returnValue: _FakeValueListenable_1<List<_i12.MapGroup>>(
               this,
               Invocation.getter(#publishGroups),
             ),
-            returnValueForMissingStub: _FakeRxList_4<_i12.MapGroup>(
-              this,
-              Invocation.getter(#publishGroups),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_1<List<_i12.MapGroup>>(
+                  this,
+                  Invocation.getter(#publishGroups),
+                ),
           )
-          as _i3.RxList<_i12.MapGroup>);
+          as _i3.ValueListenable<List<_i12.MapGroup>>);
 
   @override
-  _i3.Rxn<_i12.MapGroup> get selectedGroup =>
+  _i3.ValueListenable<_i12.MapGroup?> get selectedGroup =>
       (super.noSuchMethod(
             Invocation.getter(#selectedGroup),
-            returnValue: _FakeRxn_5<_i12.MapGroup>(
+            returnValue: _FakeValueListenable_1<_i12.MapGroup?>(
               this,
               Invocation.getter(#selectedGroup),
             ),
-            returnValueForMissingStub: _FakeRxn_5<_i12.MapGroup>(
+            returnValueForMissingStub: _FakeValueListenable_1<_i12.MapGroup?>(
               this,
               Invocation.getter(#selectedGroup),
             ),
           )
-          as _i3.Rxn<_i12.MapGroup>);
+          as _i3.ValueListenable<_i12.MapGroup?>);
 
   @override
-  _i3.RxBool get switchingGroup =>
+  _i3.ValueListenable<bool> get switchingGroup =>
       (super.noSuchMethod(
             Invocation.getter(#switchingGroup),
-            returnValue: _FakeRxBool_2(
+            returnValue: _FakeValueListenable_1<bool>(
               this,
               Invocation.getter(#switchingGroup),
             ),
-            returnValueForMissingStub: _FakeRxBool_2(
+            returnValueForMissingStub: _FakeValueListenable_1<bool>(
               this,
               Invocation.getter(#switchingGroup),
             ),
           )
-          as _i3.RxBool);
+          as _i3.ValueListenable<bool>);
 
   @override
-  _i3.RxList<_i6.UserModel> get groupPositions =>
+  _i3.ValueListenable<List<_i6.UserModel>> get groupPositions =>
       (super.noSuchMethod(
             Invocation.getter(#groupPositions),
-            returnValue: _FakeRxList_4<_i6.UserModel>(
+            returnValue: _FakeValueListenable_1<List<_i6.UserModel>>(
               this,
               Invocation.getter(#groupPositions),
             ),
-            returnValueForMissingStub: _FakeRxList_4<_i6.UserModel>(
-              this,
-              Invocation.getter(#groupPositions),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_1<List<_i6.UserModel>>(
+                  this,
+                  Invocation.getter(#groupPositions),
+                ),
           )
-          as _i3.RxList<_i6.UserModel>);
+          as _i3.ValueListenable<List<_i6.UserModel>>);
 
   @override
-  _i3.RxList<_i13.GroupMember> get observedMembers =>
+  _i3.ValueListenable<List<_i13.GroupMember>> get observedMembers =>
       (super.noSuchMethod(
             Invocation.getter(#observedMembers),
-            returnValue: _FakeRxList_4<_i13.GroupMember>(
+            returnValue: _FakeValueListenable_1<List<_i13.GroupMember>>(
               this,
               Invocation.getter(#observedMembers),
             ),
-            returnValueForMissingStub: _FakeRxList_4<_i13.GroupMember>(
-              this,
-              Invocation.getter(#observedMembers),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_1<List<_i13.GroupMember>>(
+                  this,
+                  Invocation.getter(#observedMembers),
+                ),
           )
-          as _i3.RxList<_i13.GroupMember>);
+          as _i3.ValueListenable<List<_i13.GroupMember>>);
 
   @override
-  _i3.RxList<_i13.GroupMember> get historyMembers =>
+  _i3.ValueListenable<List<_i13.GroupMember>> get historyMembers =>
       (super.noSuchMethod(
             Invocation.getter(#historyMembers),
-            returnValue: _FakeRxList_4<_i13.GroupMember>(
+            returnValue: _FakeValueListenable_1<List<_i13.GroupMember>>(
               this,
               Invocation.getter(#historyMembers),
             ),
-            returnValueForMissingStub: _FakeRxList_4<_i13.GroupMember>(
-              this,
-              Invocation.getter(#historyMembers),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_1<List<_i13.GroupMember>>(
+                  this,
+                  Invocation.getter(#historyMembers),
+                ),
           )
-          as _i3.RxList<_i13.GroupMember>);
+          as _i3.ValueListenable<List<_i13.GroupMember>>);
 
   @override
-  _i3.RxMap<String, int> get groupSizes =>
+  _i3.ValueListenable<Map<String, int>> get groupSizes =>
       (super.noSuchMethod(
             Invocation.getter(#groupSizes),
-            returnValue: _FakeRxMap_6<String, int>(
+            returnValue: _FakeValueListenable_1<Map<String, int>>(
               this,
               Invocation.getter(#groupSizes),
             ),
-            returnValueForMissingStub: _FakeRxMap_6<String, int>(
+            returnValueForMissingStub: _FakeValueListenable_1<Map<String, int>>(
               this,
               Invocation.getter(#groupSizes),
             ),
           )
-          as _i3.RxMap<String, int>);
+          as _i3.ValueListenable<Map<String, int>>);
 
   @override
-  _i3.RxList<_i13.GroupMember> get highlightedObservedUsers =>
+  _i3.ValueListenable<List<_i13.GroupMember>> get highlightedObservedUsers =>
       (super.noSuchMethod(
             Invocation.getter(#highlightedObservedUsers),
-            returnValue: _FakeRxList_4<_i13.GroupMember>(
+            returnValue: _FakeValueListenable_1<List<_i13.GroupMember>>(
               this,
               Invocation.getter(#highlightedObservedUsers),
             ),
-            returnValueForMissingStub: _FakeRxList_4<_i13.GroupMember>(
-              this,
-              Invocation.getter(#highlightedObservedUsers),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_1<List<_i13.GroupMember>>(
+                  this,
+                  Invocation.getter(#highlightedObservedUsers),
+                ),
           )
-          as _i3.RxList<_i13.GroupMember>);
+          as _i3.ValueListenable<List<_i13.GroupMember>>);
 
   @override
-  _i3.RxnString get selectedMemberEmail =>
+  _i3.ValueListenable<String?> get selectedMemberEmail =>
       (super.noSuchMethod(
             Invocation.getter(#selectedMemberEmail),
-            returnValue: _FakeRxnString_7(
+            returnValue: _FakeValueListenable_1<String?>(
               this,
               Invocation.getter(#selectedMemberEmail),
             ),
-            returnValueForMissingStub: _FakeRxnString_7(
+            returnValueForMissingStub: _FakeValueListenable_1<String?>(
               this,
               Invocation.getter(#selectedMemberEmail),
             ),
           )
-          as _i3.RxnString);
+          as _i3.ValueListenable<String?>);
 
   @override
   _i5.Future<void> pickGroup(_i12.MapGroup? group) =>

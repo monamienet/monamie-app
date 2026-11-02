@@ -17,9 +17,9 @@ List<GroupRow> observedGroupRows() {
   final tracking = Get.find<TrackingController>();
   final today = Get.find<CalendarController>().isObservingToday;
   return groupRows(
-    members: today || groups.historyMembers.isEmpty
-        ? groups.observedMembers.toList()
-        : groups.historyMembers.toList(),
+    members: today || groups.historyMembers.value.isEmpty
+        ? groups.observedMembers.value
+        : groups.historyMembers.value,
     users: tracking.groupUsers.toList(),
     usersWithPoints: tracking.usersWithPointsOnObservedDay.toSet(),
     observingToday: today,
@@ -38,22 +38,33 @@ class PeopleList extends StatelessWidget {
     final groups = Get.find<GroupMapState>();
     final calls = Get.find<CallController>();
     final me = Get.find<UserController>().googleUser?.email;
-    return Obx(() {
-      final rows = observedGroupRows();
-      return Column(
-        children: [
-          for (final row in rows)
-            PersonRowTile(
-              row: row,
-              highlighted: groups.isHighlighted(row.member),
-              selected: groups.selectedMemberEmail.value == row.member.email,
-              onToggleTrail: () => groups.toggleHighlight(row.member),
-              onCall: row.member.email == me
-                  ? null
-                  : () => calls.launchGoogleMeet(row.member.email),
-            ),
-        ],
-      );
-    });
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        groups.observedMembers,
+        groups.historyMembers,
+        groups.highlightedObservedUsers,
+        groups.selectedMemberEmail,
+        Get.find<CalendarController>().observedDay,
+      ]),
+      // The tracking controller's lists are still Rx, read by
+      // [observedGroupRows] on every build.
+      builder: (context, _) => Obx(() {
+        final rows = observedGroupRows();
+        return Column(
+          children: [
+            for (final row in rows)
+              PersonRowTile(
+                row: row,
+                highlighted: groups.isHighlighted(row.member),
+                selected: groups.selectedMemberEmail.value == row.member.email,
+                onToggleTrail: () => groups.toggleHighlight(row.member),
+                onCall: row.member.email == me
+                    ? null
+                    : () => calls.launchGoogleMeet(row.member.email),
+              ),
+          ],
+        );
+      }),
+    );
   }
 }

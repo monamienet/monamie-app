@@ -1,15 +1,14 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'map_group.freezed.dart';
+
 /// A group the person may watch on the map: its Firestore id and its name.
-class MapGroup {
-  const MapGroup({required this.id, required this.name});
-
-  /// `organizations/{organizationId}/groups/{id}` (an auto id).
-  final String id;
-  final String name;
-
-  @override
-  bool operator ==(Object other) =>
-      other is MapGroup && other.id == id && other.name == name;
-
-  @override
-  int get hashCode => Object.hash(id, name);
+/// Compared by content.
+@freezed
+abstract class MapGroup with _$MapGroup {
+  const factory MapGroup({
+    /// `organizations/{organizationId}/groups/{id}` (an auto id).
+    required String id,
+    required String name,
+  }) = _MapGroup;
 }

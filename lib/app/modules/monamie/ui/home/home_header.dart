@@ -71,14 +71,23 @@ class HomeHeader extends StatelessWidget {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
-                    child: Obx(() => _avatar()),
+                    child: ListenableBuilder(
+                      listenable: _user,
+                      builder: (context, _) => _avatar(),
+                    ),
                   ),
                 ],
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
-                child: Obx(
-                  () => Wrap(
+                child: ListenableBuilder(
+                  listenable: Listenable.merge([
+                    _groups.capabilities,
+                    _groups.selectedGroup,
+                    _groups.publishGroups,
+                    _calendar.observedDay,
+                  ]),
+                  builder: (context, _) => Wrap(
                     spacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
@@ -100,7 +109,9 @@ class HomeHeader extends StatelessWidget {
     final label = groupChipLabel(
       canWatch: canWatch,
       observedGroup: _groups.selectedGroup.value?.name,
-      publishGroups: [for (final group in _groups.publishGroups) group.name],
+      publishGroups: [
+        for (final group in _groups.publishGroups.value) group.name,
+      ],
     );
     if (canWatch) return GroupMenuButton(label: label);
     return HomeChip(label: label, semanticsLabel: 'Grupo: $label');

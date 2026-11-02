@@ -15,10 +15,18 @@ import 'package:monamie_app/app/data/tracking/tracking_settings_controller.dart'
 class MonamieBindings implements Bindings {
   @override
   void dependencies() {
+    // GetX never starts nor disposes what is not a GetxController: the
+    // factories below start each one once, and this scope disposes them
+    // when GetX deletes the home route's instances (as it called their
+    // onClose before).
+    final scope = Get.put(_HomeScope());
     // The factories run on first use, so each one can find the others no
     // matter the order they are registered in.
     Get.lazyPut<UserController>(
-      () => UserController(groupMap: Get.find<GroupMapState>()),
+      () => scope.own(
+        UserController(groupMap: Get.find<GroupMapState>()),
+        (c) => c.dispose(),
+      )..start(),
     );
     Get.lazyPut<TrackingController>(
       () => TrackingController(
@@ -39,17 +47,49 @@ class MonamieBindings implements Bindings {
     // Registered under its contract: screens and controllers find
     // [GroupMapState], never the Firestore-backed class.
     Get.lazyPut<GroupMapState>(
-      () => GroupMapController(
-        onAccessLost: () =>
-            Get.find<AuthGoogleController>().forgetRemovedOrganization(),
+      () => scope.own<GroupMapController>(
+        GroupMapController(
+          onAccessLost: () =>
+              Get.find<AuthGoogleController>().forgetRemovedOrganization(),
+        ),
+        (c) => c.dispose(),
+      )..start(),
+    );
+    Get.lazyPut(
+      () => scope.own(
+        CalendarController(groupMap: Get.find<GroupMapState>()),
+        (c) => c.dispose(),
       ),
     );
-    Get.lazyPut(() => CalendarController(groupMap: Get.find<GroupMapState>()));
     Get.lazyPut(() => CallController());
     // Created with the home screen, not on first use: it must already hold
     // the saved settings when *Ajustes de acompanhamento* opens, and a lazy
     // instance first built inside that route would be deleted, factory and
     // all, when the route closes.
     Get.put(TrackingSettingsController());
+  }
+}
+
+/// Disposes the home controllers that are not GetxControllers when GetX
+/// deletes the home route's instances (on sign-out or organization switch),
+/// the moment it used to call their onClose. Until the organization scope
+/// of phase 8 owns them.
+class _HomeScope extends GetxController {
+  final List<void Function()> _disposers = [];
+
+  /// Records [disposer] for [controller] and returns [controller].
+  T own<T>(T controller, void Function(T) disposer) {
+    _disposers.add(() => disposer(controller));
+    return controller;
+  }
+
+  @override
+  void onClose() {
+    // Latest first, so a controller goes before the ones it listens to.
+    for (final dispose in _disposers.reversed) {
+      dispose();
+    }
+    _disposers.clear();
+    super.onClose();
   }
 }

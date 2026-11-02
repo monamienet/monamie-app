@@ -5,41 +5,47 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
 import 'dart:async' as _i11;
-import 'dart:ui' as _i9;
+import 'dart:ui' as _i27;
 
 import 'package:cloud_firestore/cloud_firestore.dart' as _i4;
+import 'package:flutter/foundation.dart' as _i2;
 import 'package:flutter_background_service/flutter_background_service.dart'
     as _i16;
 import 'package:flutter_background_service_platform_interface/flutter_background_service_platform_interface.dart'
     as _i17;
 import 'package:geolocator/geolocator.dart' as _i3;
-import 'package:get/get.dart' as _i2;
-import 'package:get/get_state_manager/src/simple/list_notifier.dart' as _i8;
+import 'package:get/get.dart' as _i5;
+import 'package:get/get_state_manager/src/simple/list_notifier.dart' as _i28;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i6;
+import 'package:mockito/src/dummies.dart' as _i9;
+import 'package:monamie_app/app/data/groups/membership_source.dart' as _i23;
 import 'package:monamie_app/app/data/services/capabilities.dart' as _i19;
 import 'package:monamie_app/app/data/services/device_location.dart' as _i10;
 import 'package:monamie_app/app/data/tracking/group_publisher.dart' as _i14;
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart'
-    as _i5;
+    as _i7;
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart'
     as _i18;
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart'
-    as _i24;
+    as _i26;
 import 'package:monamie_app/app/modules/monamie/controller/user_controller.dart'
-    as _i25;
+    as _i29;
+import 'package:monamie_app/app/modules/monamie/controller/user_state.dart'
+    as _i6;
+import 'package:monamie_app/app/modules/monamie/data/group_positions_source.dart'
+    as _i22;
 import 'package:monamie_app/app/modules/monamie/data/provider/firebase_provider.dart'
     as _i12;
 import 'package:monamie_app/app/modules/monamie/history/history_month.dart'
-    as _i7;
+    as _i8;
 import 'package:monamie_app/app/modules/monamie/models/group_member.dart'
     as _i21;
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart'
     as _i15;
 import 'package:monamie_app/app/modules/monamie/models/map_group.dart' as _i20;
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart' as _i13;
-import 'package:monamie_app/app/utils/notice_presenter.dart' as _i22;
-import 'package:monamie_app/app/utils/user_notice.dart' as _i23;
+import 'package:monamie_app/app/utils/notice_presenter.dart' as _i24;
+import 'package:monamie_app/app/utils/user_notice.dart' as _i25;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -57,55 +63,36 @@ import 'package:monamie_app/app/utils/user_notice.dart' as _i23;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeRx_0<T> extends _i1.SmartFake implements _i2.Rx<T> {
-  _FakeRx_0(Object parent, Invocation parentInvocation)
+class _FakeValueListenable_0<T> extends _i1.SmartFake
+    implements _i2.ValueListenable<T> {
+  _FakeValueListenable_0(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeRxBool_1 extends _i1.SmartFake implements _i2.RxBool {
-  _FakeRxBool_1(Object parent, Invocation parentInvocation)
+class _FakePosition_1 extends _i1.SmartFake implements _i3.Position {
+  _FakePosition_1(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeInternalFinalCallback_2<T> extends _i1.SmartFake
-    implements _i2.InternalFinalCallback<T> {
-  _FakeInternalFinalCallback_2(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakePosition_3 extends _i1.SmartFake implements _i3.Position {
-  _FakePosition_3(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeCollectionReference_4<T extends Object?> extends _i1.SmartFake
+class _FakeCollectionReference_2<T extends Object?> extends _i1.SmartFake
     implements _i4.CollectionReference<T> {
-  _FakeCollectionReference_4(Object parent, Invocation parentInvocation)
+  _FakeCollectionReference_2(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeRxString_5 extends _i1.SmartFake implements _i2.RxString {
-  _FakeRxString_5(Object parent, Invocation parentInvocation)
+class _FakeRxBool_3 extends _i1.SmartFake implements _i5.RxBool {
+  _FakeRxBool_3(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeRxList_6<E> extends _i1.SmartFake implements _i2.RxList<E> {
-  _FakeRxList_6(Object parent, Invocation parentInvocation)
+class _FakeInternalFinalCallback_4<T> extends _i1.SmartFake
+    implements _i5.InternalFinalCallback<T> {
+  _FakeInternalFinalCallback_4(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeRxn_7<T> extends _i1.SmartFake implements _i2.Rxn<T> {
-  _FakeRxn_7(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeRxMap_8<K, V> extends _i1.SmartFake implements _i2.RxMap<K, V> {
-  _FakeRxMap_8(Object parent, Invocation parentInvocation)
-    : super(parent, parentInvocation);
-}
-
-class _FakeRxnString_9 extends _i1.SmartFake implements _i2.RxnString {
-  _FakeRxnString_9(Object parent, Invocation parentInvocation)
+class _FakeUserState_5 extends _i1.SmartFake implements _i6.UserState {
+  _FakeUserState_5(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -113,21 +100,51 @@ class _FakeRxnString_9 extends _i1.SmartFake implements _i2.RxnString {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockCalendarController extends _i1.Mock
-    implements _i5.CalendarController {
+    implements _i7.CalendarController {
   @override
-  _i2.Rx<DateTime> get observedDay =>
+  _i2.ValueListenable<DateTime> get observedDay =>
       (super.noSuchMethod(
             Invocation.getter(#observedDay),
-            returnValue: _FakeRx_0<DateTime>(
+            returnValue: _FakeValueListenable_0<DateTime>(
               this,
               Invocation.getter(#observedDay),
             ),
-            returnValueForMissingStub: _FakeRx_0<DateTime>(
+            returnValueForMissingStub: _FakeValueListenable_0<DateTime>(
               this,
               Invocation.getter(#observedDay),
             ),
           )
-          as _i2.Rx<DateTime>);
+          as _i2.ValueListenable<DateTime>);
+
+  @override
+  _i2.ValueListenable<_i8.HistoryMonth> get viewMonth =>
+      (super.noSuchMethod(
+            Invocation.getter(#viewMonth),
+            returnValue: _FakeValueListenable_0<_i8.HistoryMonth>(
+              this,
+              Invocation.getter(#viewMonth),
+            ),
+            returnValueForMissingStub: _FakeValueListenable_0<_i8.HistoryMonth>(
+              this,
+              Invocation.getter(#viewMonth),
+            ),
+          )
+          as _i2.ValueListenable<_i8.HistoryMonth>);
+
+  @override
+  _i2.ValueListenable<bool> get isLoadingMonth =>
+      (super.noSuchMethod(
+            Invocation.getter(#isLoadingMonth),
+            returnValue: _FakeValueListenable_0<bool>(
+              this,
+              Invocation.getter(#isLoadingMonth),
+            ),
+            returnValueForMissingStub: _FakeValueListenable_0<bool>(
+              this,
+              Invocation.getter(#isLoadingMonth),
+            ),
+          )
+          as _i2.ValueListenable<bool>);
 
   @override
   bool get isObservingToday =>
@@ -142,112 +159,16 @@ class MockCalendarController extends _i1.Mock
   String get observedDayFormatted =>
       (super.noSuchMethod(
             Invocation.getter(#observedDayFormatted),
-            returnValue: _i6.dummyValue<String>(
+            returnValue: _i9.dummyValue<String>(
               this,
               Invocation.getter(#observedDayFormatted),
             ),
-            returnValueForMissingStub: _i6.dummyValue<String>(
+            returnValueForMissingStub: _i9.dummyValue<String>(
               this,
               Invocation.getter(#observedDayFormatted),
             ),
           )
           as String);
-
-  @override
-  _i2.Rx<_i7.HistoryMonth> get viewMonth =>
-      (super.noSuchMethod(
-            Invocation.getter(#viewMonth),
-            returnValue: _FakeRx_0<_i7.HistoryMonth>(
-              this,
-              Invocation.getter(#viewMonth),
-            ),
-            returnValueForMissingStub: _FakeRx_0<_i7.HistoryMonth>(
-              this,
-              Invocation.getter(#viewMonth),
-            ),
-          )
-          as _i2.Rx<_i7.HistoryMonth>);
-
-  @override
-  _i2.RxBool get isLoadingMonth =>
-      (super.noSuchMethod(
-            Invocation.getter(#isLoadingMonth),
-            returnValue: _FakeRxBool_1(
-              this,
-              Invocation.getter(#isLoadingMonth),
-            ),
-            returnValueForMissingStub: _FakeRxBool_1(
-              this,
-              Invocation.getter(#isLoadingMonth),
-            ),
-          )
-          as _i2.RxBool);
-
-  @override
-  _i2.InternalFinalCallback<void> get onStart =>
-      (super.noSuchMethod(
-            Invocation.getter(#onStart),
-            returnValue: _FakeInternalFinalCallback_2<void>(
-              this,
-              Invocation.getter(#onStart),
-            ),
-            returnValueForMissingStub: _FakeInternalFinalCallback_2<void>(
-              this,
-              Invocation.getter(#onStart),
-            ),
-          )
-          as _i2.InternalFinalCallback<void>);
-
-  @override
-  _i2.InternalFinalCallback<void> get onDelete =>
-      (super.noSuchMethod(
-            Invocation.getter(#onDelete),
-            returnValue: _FakeInternalFinalCallback_2<void>(
-              this,
-              Invocation.getter(#onDelete),
-            ),
-            returnValueForMissingStub: _FakeInternalFinalCallback_2<void>(
-              this,
-              Invocation.getter(#onDelete),
-            ),
-          )
-          as _i2.InternalFinalCallback<void>);
-
-  @override
-  bool get initialized =>
-      (super.noSuchMethod(
-            Invocation.getter(#initialized),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  bool get isClosed =>
-      (super.noSuchMethod(
-            Invocation.getter(#isClosed),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  bool get hasListeners =>
-      (super.noSuchMethod(
-            Invocation.getter(#hasListeners),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  int get listeners =>
-      (super.noSuchMethod(
-            Invocation.getter(#listeners),
-            returnValue: 0,
-            returnValueForMissingStub: 0,
-          )
-          as int);
 
   @override
   void goToToday() => super.noSuchMethod(
@@ -274,94 +195,8 @@ class MockCalendarController extends _i1.Mock
   );
 
   @override
-  void update([List<Object>? ids, bool? condition = true]) =>
-      super.noSuchMethod(
-        Invocation.method(#update, [ids, condition]),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  void onInit() => super.noSuchMethod(
-    Invocation.method(#onInit, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void onReady() => super.noSuchMethod(
-    Invocation.method(#onReady, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void onClose() => super.noSuchMethod(
-    Invocation.method(#onClose, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void $configureLifeCycle() => super.noSuchMethod(
-    Invocation.method(#$configureLifeCycle, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  _i8.Disposer addListener(_i8.GetStateUpdate? listener) =>
-      (super.noSuchMethod(
-            Invocation.method(#addListener, [listener]),
-            returnValue: () {},
-            returnValueForMissingStub: () {},
-          )
-          as _i8.Disposer);
-
-  @override
-  void removeListener(_i9.VoidCallback? listener) => super.noSuchMethod(
-    Invocation.method(#removeListener, [listener]),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void refresh() => super.noSuchMethod(
-    Invocation.method(#refresh, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void refreshGroup(Object? id) => super.noSuchMethod(
-    Invocation.method(#refreshGroup, [id]),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void notifyChildrens() => super.noSuchMethod(
-    Invocation.method(#notifyChildrens, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void removeListenerId(Object? id, _i9.VoidCallback? listener) =>
-      super.noSuchMethod(
-        Invocation.method(#removeListenerId, [id, listener]),
-        returnValueForMissingStub: null,
-      );
-
-  @override
   void dispose() => super.noSuchMethod(
     Invocation.method(#dispose, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  _i8.Disposer addListenerId(Object? key, _i8.GetStateUpdate? listener) =>
-      (super.noSuchMethod(
-            Invocation.method(#addListenerId, [key, listener]),
-            returnValue: () {},
-            returnValueForMissingStub: () {},
-          )
-          as _i8.Disposer);
-
-  @override
-  void disposeId(Object? id) => super.noSuchMethod(
-    Invocation.method(#disposeId, [id]),
     returnValueForMissingStub: null,
   );
 }
@@ -384,10 +219,10 @@ class MockDeviceLocation extends _i1.Mock implements _i10.DeviceLocation {
       (super.noSuchMethod(
             Invocation.method(#currentPosition, []),
             returnValue: _i11.Future<_i3.Position>.value(
-              _FakePosition_3(this, Invocation.method(#currentPosition, [])),
+              _FakePosition_1(this, Invocation.method(#currentPosition, [])),
             ),
             returnValueForMissingStub: _i11.Future<_i3.Position>.value(
-              _FakePosition_3(this, Invocation.method(#currentPosition, [])),
+              _FakePosition_1(this, Invocation.method(#currentPosition, [])),
             ),
           )
           as _i11.Future<_i3.Position>);
@@ -401,12 +236,12 @@ class MockFirebaseProvider extends _i1.Mock implements _i12.FirebaseProvider {
   _i4.CollectionReference<Map<String, dynamic>> positionsOf(String? groupId) =>
       (super.noSuchMethod(
             Invocation.method(#positionsOf, [groupId]),
-            returnValue: _FakeCollectionReference_4<Map<String, dynamic>>(
+            returnValue: _FakeCollectionReference_2<Map<String, dynamic>>(
               this,
               Invocation.method(#positionsOf, [groupId]),
             ),
             returnValueForMissingStub:
-                _FakeCollectionReference_4<Map<String, dynamic>>(
+                _FakeCollectionReference_2<Map<String, dynamic>>(
                   this,
                   Invocation.method(#positionsOf, [groupId]),
                 ),
@@ -503,7 +338,7 @@ class MockFirebaseProvider extends _i1.Mock implements _i12.FirebaseProvider {
   _i11.Future<Set<String>> trailDays(
     String? groupId,
     Iterable<String>? emails,
-    _i7.HistoryMonth? month,
+    _i8.HistoryMonth? month,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#trailDays, [groupId, emails, month]),
@@ -625,19 +460,20 @@ class MockFlutterBackgroundService extends _i1.Mock
 /// See the documentation for Mockito's code generation for more information.
 class MockGroupMapState extends _i1.Mock implements _i18.GroupMapState {
   @override
-  _i2.Rx<_i19.Capabilities> get capabilities =>
+  _i2.ValueListenable<_i19.Capabilities> get capabilities =>
       (super.noSuchMethod(
             Invocation.getter(#capabilities),
-            returnValue: _FakeRx_0<_i19.Capabilities>(
+            returnValue: _FakeValueListenable_0<_i19.Capabilities>(
               this,
               Invocation.getter(#capabilities),
             ),
-            returnValueForMissingStub: _FakeRx_0<_i19.Capabilities>(
-              this,
-              Invocation.getter(#capabilities),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_0<_i19.Capabilities>(
+                  this,
+                  Invocation.getter(#capabilities),
+                ),
           )
-          as _i2.Rx<_i19.Capabilities>);
+          as _i2.ValueListenable<_i19.Capabilities>);
 
   @override
   bool get isAdmin =>
@@ -667,178 +503,190 @@ class MockGroupMapState extends _i1.Mock implements _i18.GroupMapState {
           as bool);
 
   @override
-  _i2.RxBool get isLoading =>
+  _i2.ValueListenable<bool> get isLoading =>
       (super.noSuchMethod(
             Invocation.getter(#isLoading),
-            returnValue: _FakeRxBool_1(this, Invocation.getter(#isLoading)),
-            returnValueForMissingStub: _FakeRxBool_1(
+            returnValue: _FakeValueListenable_0<bool>(
+              this,
+              Invocation.getter(#isLoading),
+            ),
+            returnValueForMissingStub: _FakeValueListenable_0<bool>(
               this,
               Invocation.getter(#isLoading),
             ),
           )
-          as _i2.RxBool);
+          as _i2.ValueListenable<bool>);
 
   @override
-  _i2.RxString get loadError =>
+  _i2.ValueListenable<String> get loadError =>
       (super.noSuchMethod(
             Invocation.getter(#loadError),
-            returnValue: _FakeRxString_5(this, Invocation.getter(#loadError)),
-            returnValueForMissingStub: _FakeRxString_5(
+            returnValue: _FakeValueListenable_0<String>(
+              this,
+              Invocation.getter(#loadError),
+            ),
+            returnValueForMissingStub: _FakeValueListenable_0<String>(
               this,
               Invocation.getter(#loadError),
             ),
           )
-          as _i2.RxString);
+          as _i2.ValueListenable<String>);
 
   @override
-  _i2.RxList<_i20.MapGroup> get mapGroups =>
+  _i2.ValueListenable<List<_i20.MapGroup>> get mapGroups =>
       (super.noSuchMethod(
             Invocation.getter(#mapGroups),
-            returnValue: _FakeRxList_6<_i20.MapGroup>(
+            returnValue: _FakeValueListenable_0<List<_i20.MapGroup>>(
               this,
               Invocation.getter(#mapGroups),
             ),
-            returnValueForMissingStub: _FakeRxList_6<_i20.MapGroup>(
-              this,
-              Invocation.getter(#mapGroups),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_0<List<_i20.MapGroup>>(
+                  this,
+                  Invocation.getter(#mapGroups),
+                ),
           )
-          as _i2.RxList<_i20.MapGroup>);
+          as _i2.ValueListenable<List<_i20.MapGroup>>);
 
   @override
-  _i2.RxList<_i20.MapGroup> get publishGroups =>
+  _i2.ValueListenable<List<_i20.MapGroup>> get publishGroups =>
       (super.noSuchMethod(
             Invocation.getter(#publishGroups),
-            returnValue: _FakeRxList_6<_i20.MapGroup>(
+            returnValue: _FakeValueListenable_0<List<_i20.MapGroup>>(
               this,
               Invocation.getter(#publishGroups),
             ),
-            returnValueForMissingStub: _FakeRxList_6<_i20.MapGroup>(
-              this,
-              Invocation.getter(#publishGroups),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_0<List<_i20.MapGroup>>(
+                  this,
+                  Invocation.getter(#publishGroups),
+                ),
           )
-          as _i2.RxList<_i20.MapGroup>);
+          as _i2.ValueListenable<List<_i20.MapGroup>>);
 
   @override
-  _i2.Rxn<_i20.MapGroup> get selectedGroup =>
+  _i2.ValueListenable<_i20.MapGroup?> get selectedGroup =>
       (super.noSuchMethod(
             Invocation.getter(#selectedGroup),
-            returnValue: _FakeRxn_7<_i20.MapGroup>(
+            returnValue: _FakeValueListenable_0<_i20.MapGroup?>(
               this,
               Invocation.getter(#selectedGroup),
             ),
-            returnValueForMissingStub: _FakeRxn_7<_i20.MapGroup>(
+            returnValueForMissingStub: _FakeValueListenable_0<_i20.MapGroup?>(
               this,
               Invocation.getter(#selectedGroup),
             ),
           )
-          as _i2.Rxn<_i20.MapGroup>);
+          as _i2.ValueListenable<_i20.MapGroup?>);
 
   @override
-  _i2.RxBool get switchingGroup =>
+  _i2.ValueListenable<bool> get switchingGroup =>
       (super.noSuchMethod(
             Invocation.getter(#switchingGroup),
-            returnValue: _FakeRxBool_1(
+            returnValue: _FakeValueListenable_0<bool>(
               this,
               Invocation.getter(#switchingGroup),
             ),
-            returnValueForMissingStub: _FakeRxBool_1(
+            returnValueForMissingStub: _FakeValueListenable_0<bool>(
               this,
               Invocation.getter(#switchingGroup),
             ),
           )
-          as _i2.RxBool);
+          as _i2.ValueListenable<bool>);
 
   @override
-  _i2.RxList<_i13.UserModel> get groupPositions =>
+  _i2.ValueListenable<List<_i13.UserModel>> get groupPositions =>
       (super.noSuchMethod(
             Invocation.getter(#groupPositions),
-            returnValue: _FakeRxList_6<_i13.UserModel>(
+            returnValue: _FakeValueListenable_0<List<_i13.UserModel>>(
               this,
               Invocation.getter(#groupPositions),
             ),
-            returnValueForMissingStub: _FakeRxList_6<_i13.UserModel>(
-              this,
-              Invocation.getter(#groupPositions),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_0<List<_i13.UserModel>>(
+                  this,
+                  Invocation.getter(#groupPositions),
+                ),
           )
-          as _i2.RxList<_i13.UserModel>);
+          as _i2.ValueListenable<List<_i13.UserModel>>);
 
   @override
-  _i2.RxList<_i21.GroupMember> get observedMembers =>
+  _i2.ValueListenable<List<_i21.GroupMember>> get observedMembers =>
       (super.noSuchMethod(
             Invocation.getter(#observedMembers),
-            returnValue: _FakeRxList_6<_i21.GroupMember>(
+            returnValue: _FakeValueListenable_0<List<_i21.GroupMember>>(
               this,
               Invocation.getter(#observedMembers),
             ),
-            returnValueForMissingStub: _FakeRxList_6<_i21.GroupMember>(
-              this,
-              Invocation.getter(#observedMembers),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_0<List<_i21.GroupMember>>(
+                  this,
+                  Invocation.getter(#observedMembers),
+                ),
           )
-          as _i2.RxList<_i21.GroupMember>);
+          as _i2.ValueListenable<List<_i21.GroupMember>>);
 
   @override
-  _i2.RxList<_i21.GroupMember> get historyMembers =>
+  _i2.ValueListenable<List<_i21.GroupMember>> get historyMembers =>
       (super.noSuchMethod(
             Invocation.getter(#historyMembers),
-            returnValue: _FakeRxList_6<_i21.GroupMember>(
+            returnValue: _FakeValueListenable_0<List<_i21.GroupMember>>(
               this,
               Invocation.getter(#historyMembers),
             ),
-            returnValueForMissingStub: _FakeRxList_6<_i21.GroupMember>(
-              this,
-              Invocation.getter(#historyMembers),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_0<List<_i21.GroupMember>>(
+                  this,
+                  Invocation.getter(#historyMembers),
+                ),
           )
-          as _i2.RxList<_i21.GroupMember>);
+          as _i2.ValueListenable<List<_i21.GroupMember>>);
 
   @override
-  _i2.RxMap<String, int> get groupSizes =>
+  _i2.ValueListenable<Map<String, int>> get groupSizes =>
       (super.noSuchMethod(
             Invocation.getter(#groupSizes),
-            returnValue: _FakeRxMap_8<String, int>(
+            returnValue: _FakeValueListenable_0<Map<String, int>>(
               this,
               Invocation.getter(#groupSizes),
             ),
-            returnValueForMissingStub: _FakeRxMap_8<String, int>(
+            returnValueForMissingStub: _FakeValueListenable_0<Map<String, int>>(
               this,
               Invocation.getter(#groupSizes),
             ),
           )
-          as _i2.RxMap<String, int>);
+          as _i2.ValueListenable<Map<String, int>>);
 
   @override
-  _i2.RxList<_i21.GroupMember> get highlightedObservedUsers =>
+  _i2.ValueListenable<List<_i21.GroupMember>> get highlightedObservedUsers =>
       (super.noSuchMethod(
             Invocation.getter(#highlightedObservedUsers),
-            returnValue: _FakeRxList_6<_i21.GroupMember>(
+            returnValue: _FakeValueListenable_0<List<_i21.GroupMember>>(
               this,
               Invocation.getter(#highlightedObservedUsers),
             ),
-            returnValueForMissingStub: _FakeRxList_6<_i21.GroupMember>(
-              this,
-              Invocation.getter(#highlightedObservedUsers),
-            ),
+            returnValueForMissingStub:
+                _FakeValueListenable_0<List<_i21.GroupMember>>(
+                  this,
+                  Invocation.getter(#highlightedObservedUsers),
+                ),
           )
-          as _i2.RxList<_i21.GroupMember>);
+          as _i2.ValueListenable<List<_i21.GroupMember>>);
 
   @override
-  _i2.RxnString get selectedMemberEmail =>
+  _i2.ValueListenable<String?> get selectedMemberEmail =>
       (super.noSuchMethod(
             Invocation.getter(#selectedMemberEmail),
-            returnValue: _FakeRxnString_9(
+            returnValue: _FakeValueListenable_0<String?>(
               this,
               Invocation.getter(#selectedMemberEmail),
             ),
-            returnValueForMissingStub: _FakeRxnString_9(
+            returnValueForMissingStub: _FakeValueListenable_0<String?>(
               this,
               Invocation.getter(#selectedMemberEmail),
             ),
           )
-          as _i2.RxnString);
+          as _i2.ValueListenable<String?>);
 
   @override
   _i11.Future<void> pickGroup(_i20.MapGroup? group) =>
@@ -898,12 +746,99 @@ class MockGroupMapState extends _i1.Mock implements _i18.GroupMapState {
   );
 }
 
+/// A class which mocks [GroupPositionsSource].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockGroupPositionsSource extends _i1.Mock
+    implements _i22.GroupPositionsSource {
+  @override
+  _i11.Stream<List<_i13.UserModel>> streamGroupPositions(String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#streamGroupPositions, [groupId]),
+            returnValue: _i11.Stream<List<_i13.UserModel>>.empty(),
+            returnValueForMissingStub:
+                _i11.Stream<List<_i13.UserModel>>.empty(),
+          )
+          as _i11.Stream<List<_i13.UserModel>>);
+
+  @override
+  _i11.Future<List<_i13.UserModel>> groupHistoryPeople(String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#groupHistoryPeople, [groupId]),
+            returnValue: _i11.Future<List<_i13.UserModel>>.value(
+              <_i13.UserModel>[],
+            ),
+            returnValueForMissingStub: _i11.Future<List<_i13.UserModel>>.value(
+              <_i13.UserModel>[],
+            ),
+          )
+          as _i11.Future<List<_i13.UserModel>>);
+
+  @override
+  _i11.Future<int> countPublishers(String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#countPublishers, [groupId]),
+            returnValue: _i11.Future<int>.value(0),
+            returnValueForMissingStub: _i11.Future<int>.value(0),
+          )
+          as _i11.Future<int>);
+}
+
+/// A class which mocks [MembershipSource].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockMembershipSource extends _i1.Mock implements _i23.MembershipSource {
+  @override
+  _i11.Stream<Map<String, Object?>?> organizationMembership(
+    String? organizationId,
+    String? email,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#organizationMembership, [organizationId, email]),
+            returnValue: _i11.Stream<Map<String, Object?>?>.empty(),
+            returnValueForMissingStub:
+                _i11.Stream<Map<String, Object?>?>.empty(),
+          )
+          as _i11.Stream<Map<String, Object?>?>);
+
+  @override
+  _i11.Stream<Map<String, Object?>> groupRoles(
+    String? organizationId,
+    String? email,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#groupRoles, [organizationId, email]),
+            returnValue: _i11.Stream<Map<String, Object?>>.empty(),
+            returnValueForMissingStub:
+                _i11.Stream<Map<String, Object?>>.empty(),
+          )
+          as _i11.Stream<Map<String, Object?>>);
+
+  @override
+  _i11.Stream<Map<String, String>> allGroupNames(String? organizationId) =>
+      (super.noSuchMethod(
+            Invocation.method(#allGroupNames, [organizationId]),
+            returnValue: _i11.Stream<Map<String, String>>.empty(),
+            returnValueForMissingStub: _i11.Stream<Map<String, String>>.empty(),
+          )
+          as _i11.Stream<Map<String, String>>);
+
+  @override
+  _i11.Stream<String?> groupName(String? organizationId, String? groupId) =>
+      (super.noSuchMethod(
+            Invocation.method(#groupName, [organizationId, groupId]),
+            returnValue: _i11.Stream<String?>.empty(),
+            returnValueForMissingStub: _i11.Stream<String?>.empty(),
+          )
+          as _i11.Stream<String?>);
+}
+
 /// A class which mocks [NoticePresenter].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockNoticePresenter extends _i1.Mock implements _i22.NoticePresenter {
+class MockNoticePresenter extends _i1.Mock implements _i24.NoticePresenter {
   @override
-  void show(_i23.UserNotice? notice) => super.noSuchMethod(
+  void show(_i25.UserNotice? notice) => super.noSuchMethod(
     Invocation.method(#show, [notice]),
     returnValueForMissingStub: null,
   );
@@ -913,96 +848,96 @@ class MockNoticePresenter extends _i1.Mock implements _i22.NoticePresenter {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockPermissionsController extends _i1.Mock
-    implements _i24.PermissionsController {
+    implements _i26.PermissionsController {
   @override
-  _i2.RxBool get hasWhenInUseLocationPermission =>
+  _i5.RxBool get hasWhenInUseLocationPermission =>
       (super.noSuchMethod(
             Invocation.getter(#hasWhenInUseLocationPermission),
-            returnValue: _FakeRxBool_1(
+            returnValue: _FakeRxBool_3(
               this,
               Invocation.getter(#hasWhenInUseLocationPermission),
             ),
-            returnValueForMissingStub: _FakeRxBool_1(
+            returnValueForMissingStub: _FakeRxBool_3(
               this,
               Invocation.getter(#hasWhenInUseLocationPermission),
             ),
           )
-          as _i2.RxBool);
+          as _i5.RxBool);
 
   @override
-  _i2.RxBool get hasAlwaysLocationPermission =>
+  _i5.RxBool get hasAlwaysLocationPermission =>
       (super.noSuchMethod(
             Invocation.getter(#hasAlwaysLocationPermission),
-            returnValue: _FakeRxBool_1(
+            returnValue: _FakeRxBool_3(
               this,
               Invocation.getter(#hasAlwaysLocationPermission),
             ),
-            returnValueForMissingStub: _FakeRxBool_1(
+            returnValueForMissingStub: _FakeRxBool_3(
               this,
               Invocation.getter(#hasAlwaysLocationPermission),
             ),
           )
-          as _i2.RxBool);
+          as _i5.RxBool);
 
   @override
-  _i2.RxBool get hasNotificationPermission =>
+  _i5.RxBool get hasNotificationPermission =>
       (super.noSuchMethod(
             Invocation.getter(#hasNotificationPermission),
-            returnValue: _FakeRxBool_1(
+            returnValue: _FakeRxBool_3(
               this,
               Invocation.getter(#hasNotificationPermission),
             ),
-            returnValueForMissingStub: _FakeRxBool_1(
+            returnValueForMissingStub: _FakeRxBool_3(
               this,
               Invocation.getter(#hasNotificationPermission),
             ),
           )
-          as _i2.RxBool);
+          as _i5.RxBool);
 
   @override
-  _i2.RxBool get isBackgroundRestricted =>
+  _i5.RxBool get isBackgroundRestricted =>
       (super.noSuchMethod(
             Invocation.getter(#isBackgroundRestricted),
-            returnValue: _FakeRxBool_1(
+            returnValue: _FakeRxBool_3(
               this,
               Invocation.getter(#isBackgroundRestricted),
             ),
-            returnValueForMissingStub: _FakeRxBool_1(
+            returnValueForMissingStub: _FakeRxBool_3(
               this,
               Invocation.getter(#isBackgroundRestricted),
             ),
           )
-          as _i2.RxBool);
+          as _i5.RxBool);
 
   @override
-  _i2.InternalFinalCallback<void> get onStart =>
+  _i5.InternalFinalCallback<void> get onStart =>
       (super.noSuchMethod(
             Invocation.getter(#onStart),
-            returnValue: _FakeInternalFinalCallback_2<void>(
+            returnValue: _FakeInternalFinalCallback_4<void>(
               this,
               Invocation.getter(#onStart),
             ),
-            returnValueForMissingStub: _FakeInternalFinalCallback_2<void>(
+            returnValueForMissingStub: _FakeInternalFinalCallback_4<void>(
               this,
               Invocation.getter(#onStart),
             ),
           )
-          as _i2.InternalFinalCallback<void>);
+          as _i5.InternalFinalCallback<void>);
 
   @override
-  _i2.InternalFinalCallback<void> get onDelete =>
+  _i5.InternalFinalCallback<void> get onDelete =>
       (super.noSuchMethod(
             Invocation.getter(#onDelete),
-            returnValue: _FakeInternalFinalCallback_2<void>(
+            returnValue: _FakeInternalFinalCallback_4<void>(
               this,
               Invocation.getter(#onDelete),
             ),
-            returnValueForMissingStub: _FakeInternalFinalCallback_2<void>(
+            returnValueForMissingStub: _FakeInternalFinalCallback_4<void>(
               this,
               Invocation.getter(#onDelete),
             ),
           )
-          as _i2.InternalFinalCallback<void>);
+          as _i5.InternalFinalCallback<void>);
 
   @override
   bool get initialized =>
@@ -1050,7 +985,7 @@ class MockPermissionsController extends _i1.Mock
           as _i11.Future<void>);
 
   @override
-  void didChangeAppLifecycleState(_i9.AppLifecycleState? state) =>
+  void didChangeAppLifecycleState(_i27.AppLifecycleState? state) =>
       super.noSuchMethod(
         Invocation.method(#didChangeAppLifecycleState, [state]),
         returnValueForMissingStub: null,
@@ -1145,16 +1080,16 @@ class MockPermissionsController extends _i1.Mock
   );
 
   @override
-  _i8.Disposer addListener(_i8.GetStateUpdate? listener) =>
+  _i28.Disposer addListener(_i28.GetStateUpdate? listener) =>
       (super.noSuchMethod(
             Invocation.method(#addListener, [listener]),
             returnValue: () {},
             returnValueForMissingStub: () {},
           )
-          as _i8.Disposer);
+          as _i28.Disposer);
 
   @override
-  void removeListener(_i9.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i27.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#removeListener, [listener]),
     returnValueForMissingStub: null,
   );
@@ -1178,7 +1113,7 @@ class MockPermissionsController extends _i1.Mock
   );
 
   @override
-  void removeListenerId(Object? id, _i9.VoidCallback? listener) =>
+  void removeListenerId(Object? id, _i27.VoidCallback? listener) =>
       super.noSuchMethod(
         Invocation.method(#removeListenerId, [id, listener]),
         returnValueForMissingStub: null,
@@ -1191,13 +1126,13 @@ class MockPermissionsController extends _i1.Mock
   );
 
   @override
-  _i8.Disposer addListenerId(Object? key, _i8.GetStateUpdate? listener) =>
+  _i28.Disposer addListenerId(Object? key, _i28.GetStateUpdate? listener) =>
       (super.noSuchMethod(
             Invocation.method(#addListenerId, [key, listener]),
             returnValue: () {},
             returnValueForMissingStub: () {},
           )
-          as _i8.Disposer);
+          as _i28.Disposer);
 
   @override
   void disposeId(Object? id) => super.noSuchMethod(
@@ -1209,62 +1144,23 @@ class MockPermissionsController extends _i1.Mock
 /// A class which mocks [UserController].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockUserController extends _i1.Mock implements _i25.UserController {
+class MockUserController extends _i1.Mock implements _i29.UserController {
   @override
-  _i2.RxBool get isLoading =>
+  _i6.UserState get state =>
+      (super.noSuchMethod(
+            Invocation.getter(#state),
+            returnValue: _FakeUserState_5(this, Invocation.getter(#state)),
+            returnValueForMissingStub: _FakeUserState_5(
+              this,
+              Invocation.getter(#state),
+            ),
+          )
+          as _i6.UserState);
+
+  @override
+  bool get isLoading =>
       (super.noSuchMethod(
             Invocation.getter(#isLoading),
-            returnValue: _FakeRxBool_1(this, Invocation.getter(#isLoading)),
-            returnValueForMissingStub: _FakeRxBool_1(
-              this,
-              Invocation.getter(#isLoading),
-            ),
-          )
-          as _i2.RxBool);
-
-  @override
-  _i2.InternalFinalCallback<void> get onStart =>
-      (super.noSuchMethod(
-            Invocation.getter(#onStart),
-            returnValue: _FakeInternalFinalCallback_2<void>(
-              this,
-              Invocation.getter(#onStart),
-            ),
-            returnValueForMissingStub: _FakeInternalFinalCallback_2<void>(
-              this,
-              Invocation.getter(#onStart),
-            ),
-          )
-          as _i2.InternalFinalCallback<void>);
-
-  @override
-  _i2.InternalFinalCallback<void> get onDelete =>
-      (super.noSuchMethod(
-            Invocation.getter(#onDelete),
-            returnValue: _FakeInternalFinalCallback_2<void>(
-              this,
-              Invocation.getter(#onDelete),
-            ),
-            returnValueForMissingStub: _FakeInternalFinalCallback_2<void>(
-              this,
-              Invocation.getter(#onDelete),
-            ),
-          )
-          as _i2.InternalFinalCallback<void>);
-
-  @override
-  bool get initialized =>
-      (super.noSuchMethod(
-            Invocation.getter(#initialized),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  bool get isClosed =>
-      (super.noSuchMethod(
-            Invocation.getter(#isClosed),
             returnValue: false,
             returnValueForMissingStub: false,
           )
@@ -1280,18 +1176,9 @@ class MockUserController extends _i1.Mock implements _i25.UserController {
           as bool);
 
   @override
-  int get listeners =>
+  _i11.Future<void> start() =>
       (super.noSuchMethod(
-            Invocation.getter(#listeners),
-            returnValue: 0,
-            returnValueForMissingStub: 0,
-          )
-          as int);
-
-  @override
-  _i11.Future<void> onInit() =>
-      (super.noSuchMethod(
-            Invocation.method(#onInit, []),
+            Invocation.method(#start, []),
             returnValue: _i11.Future<void>.value(),
             returnValueForMissingStub: _i11.Future<void>.value(),
           )
@@ -1319,81 +1206,16 @@ class MockUserController extends _i1.Mock implements _i25.UserController {
   String getUserName() =>
       (super.noSuchMethod(
             Invocation.method(#getUserName, []),
-            returnValue: _i6.dummyValue<String>(
+            returnValue: _i9.dummyValue<String>(
               this,
               Invocation.method(#getUserName, []),
             ),
-            returnValueForMissingStub: _i6.dummyValue<String>(
+            returnValueForMissingStub: _i9.dummyValue<String>(
               this,
               Invocation.method(#getUserName, []),
             ),
           )
           as String);
-
-  @override
-  void update([List<Object>? ids, bool? condition = true]) =>
-      super.noSuchMethod(
-        Invocation.method(#update, [ids, condition]),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  void onReady() => super.noSuchMethod(
-    Invocation.method(#onReady, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void onClose() => super.noSuchMethod(
-    Invocation.method(#onClose, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void $configureLifeCycle() => super.noSuchMethod(
-    Invocation.method(#$configureLifeCycle, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  _i8.Disposer addListener(_i8.GetStateUpdate? listener) =>
-      (super.noSuchMethod(
-            Invocation.method(#addListener, [listener]),
-            returnValue: () {},
-            returnValueForMissingStub: () {},
-          )
-          as _i8.Disposer);
-
-  @override
-  void removeListener(_i9.VoidCallback? listener) => super.noSuchMethod(
-    Invocation.method(#removeListener, [listener]),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void refresh() => super.noSuchMethod(
-    Invocation.method(#refresh, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void refreshGroup(Object? id) => super.noSuchMethod(
-    Invocation.method(#refreshGroup, [id]),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void notifyChildrens() => super.noSuchMethod(
-    Invocation.method(#notifyChildrens, []),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void removeListenerId(Object? id, _i9.VoidCallback? listener) =>
-      super.noSuchMethod(
-        Invocation.method(#removeListenerId, [id, listener]),
-        returnValueForMissingStub: null,
-      );
 
   @override
   void dispose() => super.noSuchMethod(
@@ -1402,17 +1224,20 @@ class MockUserController extends _i1.Mock implements _i25.UserController {
   );
 
   @override
-  _i8.Disposer addListenerId(Object? key, _i8.GetStateUpdate? listener) =>
-      (super.noSuchMethod(
-            Invocation.method(#addListenerId, [key, listener]),
-            returnValue: () {},
-            returnValueForMissingStub: () {},
-          )
-          as _i8.Disposer);
+  void addListener(_i27.VoidCallback? listener) => super.noSuchMethod(
+    Invocation.method(#addListener, [listener]),
+    returnValueForMissingStub: null,
+  );
 
   @override
-  void disposeId(Object? id) => super.noSuchMethod(
-    Invocation.method(#disposeId, [id]),
+  void removeListener(_i27.VoidCallback? listener) => super.noSuchMethod(
+    Invocation.method(#removeListener, [listener]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void notifyListeners() => super.noSuchMethod(
+    Invocation.method(#notifyListeners, []),
     returnValueForMissingStub: null,
   );
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_palette.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
@@ -58,134 +57,141 @@ class HistoryCalendarSheet extends StatelessWidget {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-        child: Obx(() {
-          final month = controller.viewMonth.value;
-          final selected = controller.observedDay.value;
-          final title =
-              '${_months[month.first.month - 1]} de ${month.first.year}';
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFC9C3D6),
-                    borderRadius: BorderRadius.circular(2),
+        child: ListenableBuilder(
+          listenable: Listenable.merge([
+            controller.viewMonth,
+            controller.observedDay,
+            controller.isLoadingMonth,
+          ]),
+          builder: (context, _) {
+            final month = controller.viewMonth.value;
+            final selected = controller.observedDay.value;
+            final title =
+                '${_months[month.first.month - 1]} de ${month.first.year}';
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFC9C3D6),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title[0].toUpperCase() + title.substring(1),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: _ink,
-                      ),
-                    ),
-                  ),
-                  if (controller.isLoadingMonth.value)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 8),
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2.2),
-                      ),
-                    ),
-                  _Arrow(
-                    icon: Icons.chevron_left,
-                    label: 'Mês anterior',
-                    onTap: month.canGoBack
-                        ? () => controller.showMonth(-1)
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  _Arrow(
-                    icon: Icons.chevron_right,
-                    label: 'Próximo mês',
-                    onTap: month.canGoForward
-                        ? () => controller.showMonth(1)
-                        : null,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  for (final letter in const [
-                    'D',
-                    'S',
-                    'T',
-                    'Q',
-                    'Q',
-                    'S',
-                    'S',
-                  ])
+                Row(
+                  children: [
                     Expanded(
-                      child: Center(
-                        child: Text(
-                          letter,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: _muted,
-                          ),
+                      child: Text(
+                        title[0].toUpperCase() + title.substring(1),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: _ink,
                         ),
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              GridView.count(
-                crossAxisCount: 7,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  for (var i = 0; i < month.leadingBlanks; i++)
-                    const SizedBox.shrink(),
-                  for (final day in month.days)
-                    _DayCell(
-                      day: day,
-                      selected: day.date == selected,
-                      color: palette.primary,
-                      onColor: palette.onPrimary,
-                      onTap: day.isFuture
-                          ? null
-                          : () {
-                              controller.selectDay(day.date);
-                              Navigator.pop(context);
-                            },
+                    if (controller.isLoadingMonth.value)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2.2),
+                        ),
+                      ),
+                    _Arrow(
+                      icon: Icons.chevron_left,
+                      label: 'Mês anterior',
+                      onTap: month.canGoBack
+                          ? () => controller.showMonth(-1)
+                          : null,
                     ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: palette.primary,
-                      shape: BoxShape.circle,
+                    const SizedBox(width: 8),
+                    _Arrow(
+                      icon: Icons.chevron_right,
+                      label: 'Próximo mês',
+                      onTap: month.canGoForward
+                          ? () => controller.showMonth(1)
+                          : null,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Dias com trajetos',
-                    style: TextStyle(fontSize: 13, color: _muted),
-                  ),
-                ],
-              ),
-            ],
-          );
-        }),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    for (final letter in const [
+                      'D',
+                      'S',
+                      'T',
+                      'Q',
+                      'Q',
+                      'S',
+                      'S',
+                    ])
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            letter,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: _muted,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                GridView.count(
+                  crossAxisCount: 7,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    for (var i = 0; i < month.leadingBlanks; i++)
+                      const SizedBox.shrink(),
+                    for (final day in month.days)
+                      _DayCell(
+                        day: day,
+                        selected: day.date == selected,
+                        color: palette.primary,
+                        onColor: palette.onPrimary,
+                        onTap: day.isFuture
+                            ? null
+                            : () {
+                                controller.selectDay(day.date);
+                                Navigator.pop(context);
+                              },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: palette.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Dias com trajetos',
+                      style: TextStyle(fontSize: 13, color: _muted),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

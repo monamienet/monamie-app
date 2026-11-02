@@ -44,55 +44,62 @@ class _HomeSheetState extends State<HomeSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.45;
-    return Obx(() {
-      final layout = HomeLayout.of(
-        canShare: _groups.canPublish,
-        canWatch: _groups.canWatch,
-        isWeb: kIsWeb,
-      );
-      if (!layout.showShareCard && !layout.showGroup) {
-        return const SizedBox.shrink();
-      }
-      return Material(
-        color: SheetColors.background,
-        elevation: 12,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (layout.showGroup)
-                  _grabber()
-                else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: _grabberBar(),
-                  ),
-                if (layout.showShareCard) ...[
-                  const SizedBox(height: 4),
-                  const ShareCard(),
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        _groups.capabilities,
+        _groups.selectedGroup,
+        _groups.observedMembers,
+      ]),
+      builder: (context, _) {
+        final layout = HomeLayout.of(
+          canShare: _groups.canPublish,
+          canWatch: _groups.canWatch,
+          isWeb: kIsWeb,
+        );
+        if (!layout.showShareCard && !layout.showGroup) {
+          return const SizedBox.shrink();
+        }
+        return Material(
+          color: SheetColors.background,
+          elevation: 12,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + bottomInset),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (layout.showGroup)
+                    _grabber()
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: _grabberBar(),
+                    ),
+                  if (layout.showShareCard) ...[
+                    const SizedBox(height: 4),
+                    const ShareCard(),
+                  ],
+                  if (layout.showGroup)
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _collapsed
+                          ? const SizedBox(width: double.infinity)
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: _group(afterCard: layout.showShareCard),
+                            ),
+                    ),
                 ],
-                if (layout.showGroup)
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    alignment: Alignment.topCenter,
-                    child: _collapsed
-                        ? const SizedBox(width: double.infinity)
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: _group(afterCard: layout.showShareCard),
-                          ),
-                  ),
-              ],
+              ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   /// The bar drawn at the top of the sheet.
@@ -127,7 +134,7 @@ class _HomeSheetState extends State<HomeSheet> {
   /// 12 px under the share card; right under the grabber it needs only 4.
   List<Widget> _group({required bool afterCard}) {
     final group = _groups.selectedGroup.value;
-    final count = _groups.observedMembers.length;
+    final count = _groups.observedMembers.value.length;
     return [
       SizedBox(height: afterCard ? 12 : 4),
       Padding(

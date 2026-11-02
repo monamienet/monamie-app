@@ -125,24 +125,38 @@ class TrackingController extends GetxController
   /// Timer para debounce do listener de highlightedObservedUsers.
   Timer? _highlightedUsersDebounce;
 
-  /// Inicia o worker que observa mudanças em highlightedObservedUsers.
-  void _setupHighlightedUsersListener() {
-    ever(_groupMap.highlightedObservedUsers, (_) {
-      // Debounce para evitar múltiplas reações quando toggleHighlight
-      // é chamado rapidamente (adiciona/remove um item por vez)
-      _highlightedUsersDebounce?.cancel();
-      _highlightedUsersDebounce = Timer(
-        const Duration(milliseconds: 100),
-        _syncHighlightedTrajectories,
-      );
-    });
+  /// Reacts to a change of highlightedObservedUsers.
+  void _onHighlightedUsersChanged() {
+    // Debounce para evitar múltiplas reações quando toggleHighlight
+    // é chamado rapidamente (adiciona/remove um item por vez)
+    _highlightedUsersDebounce?.cancel();
+    _highlightedUsersDebounce = Timer(
+      const Duration(milliseconds: 100),
+      _syncHighlightedTrajectories,
+    );
   }
+
+  /// Reacts to a new observed group's positions.
+  void _onGroupPositionsChanged() =>
+      _onGroupPositions(_groupMap.groupPositions.value);
+
+  /// Recarrega trajetórias destacadas quando o dia observado muda.
+  void _onObservedDayChanged() =>
+      onObservedDayChanged(_calendar.observedDay.value);
+
+  /// Atualiza marcadores ao trocar de grupo (membros observados mudaram).
+  void _onObservedMembersChanged() =>
+      _refreshMarkersForObservedDay(_calendar.observedDay.value);
+
+  /// The person's capabilities arrive after this controller starts: look
+  /// for the device again when they do.
+  void _onCapabilitiesChanged() => _initPosition();
 
   /// Sincroniza as subscriptions de trajetórias com a lista atual de
   /// highlightedObservedUsers.
   void _syncHighlightedTrajectories() {
     final day = _calendar.observedDay.value;
-    final members = _groupMap.highlightedObservedUsers;
+    final members = _groupMap.highlightedObservedUsers.value;
 
     final currentEmails = members.map((m) => m.email).toSet();
 
@@ -186,7 +200,7 @@ class TrackingController extends GetxController
     _highlightedTrajectorySubscriptions.clear();
     highlightedTrajectories.clear();
 
-    for (final member in _groupMap.highlightedObservedUsers) {
+    for (final member in _groupMap.highlightedObservedUsers.value) {
       _subscribeToHighlightedTrajectory(member.email, day);
     }
 
@@ -204,7 +218,7 @@ class TrackingController extends GetxController
     if (groupId == null) return;
 
     if (isObservingToday) {
-      final observedEmails = _groupMap.observedMembers
+      final observedEmails = _groupMap.observedMembers.value
           .map((m) => m.email)
           .toSet();
       // Verifica, no histórico do dia, quais usuários observados possuem pelo
@@ -362,8 +376,10 @@ class TrackingController extends GetxController
     super.onInit();
     mapController = MapController();
 
-    // The observed group's positions drive the markers and the list.
-    ever(_groupMap.groupPositions, _onGroupPositions);
+    // The observed group's positions drive the markers and the list. The
+    // home contracts are ValueListenables: each listener added here is
+    // removed in onClose.
+    _groupMap.groupPositions.addListener(_onGroupPositionsChanged);
 
     // Avisa se o app passou a ser restrito em segundo plano durante uma
     // jornada ativa: o rastreamento vai parar quando o app sair da tela.
@@ -379,7 +395,7 @@ class TrackingController extends GetxController
       }
     });
 
-    _onGroupPositions(_groupMap.groupPositions);
+    _onGroupPositions(_groupMap.groupPositions.value);
 
     // Escuta mudanças na lista de usuários para atualizar as animações
     ever(firebaseUsers, _onFirebaseUsersUpdated);
@@ -398,25 +414,18 @@ class TrackingController extends GetxController
     //}
 
     // Configura listener para highlightedObservedUsers
-    _setupHighlightedUsersListener();
+    _groupMap.highlightedObservedUsers.addListener(_onHighlightedUsersChanged);
 
     // Observa mudanças no observedDay para recarregar trajetórias destacadas
-    ever(_calendar.observedDay, (DateTime day) {
-      onObservedDayChanged(day);
-    });
+    _calendar.observedDay.addListener(_onObservedDayChanged);
 
     // Observa mudanças nos membros observados para atualizar marcadores ao trocar de grupo
-    ever(_groupMap.observedMembers, (_) {
-      final day = _calendar.observedDay.value;
-      _refreshMarkersForObservedDay(day);
-    });
+    _groupMap.observedMembers.addListener(_onObservedMembersChanged);
 
     _initPosition();
     // The person's capabilities and the location permission arrive after this
     // controller starts: look for the device again when they do.
-    ever(_groupMap.capabilities, (_) {
-      _initPosition();
-    });
+    _groupMap.capabilities.addListener(_onCapabilitiesChanged);
     ever(permissionsCtrl.hasWhenInUseLocationPermission, (granted) {
       if (granted) _initPosition();
     });
@@ -685,6 +694,13 @@ class TrackingController extends GetxController
 
   @override
   void onClose() {
+    _groupMap.groupPositions.removeListener(_onGroupPositionsChanged);
+    _groupMap.highlightedObservedUsers.removeListener(
+      _onHighlightedUsersChanged,
+    );
+    _calendar.observedDay.removeListener(_onObservedDayChanged);
+    _groupMap.observedMembers.removeListener(_onObservedMembersChanged);
+    _groupMap.capabilities.removeListener(_onCapabilitiesChanged);
     //_compassSubscription?.cancel();
     _readySubscription?.cancel();
     _locationSubscription?.cancel();

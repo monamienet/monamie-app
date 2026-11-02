@@ -219,4 +219,46 @@ void main() {
       },
     );
   });
+
+  group('UserModel - igualdade por conteúdo', () {
+    // The map compares each Firestore snapshot with the last one by content
+    // (`GroupMapController`): two reads of the same document must be equal.
+    Map<String, dynamic> document() => {
+      'email': 'bia@example.com',
+      'name': 'Bia',
+      'lat': -22.9,
+      'lng': -43.1,
+      'capturedAt': Timestamp.fromDate(DateTime(2026, 11, 2, 9, 30)),
+      'isPublishing': true,
+    };
+
+    test('Happy Path: Deve igualar duas leituras do mesmo documento', () {
+      // 1. Arrange
+      final first = UserModel.fromMap(document());
+
+      // 2. Act
+      final second = UserModel.fromMap(document());
+
+      // 3. Assert
+      expect(second, first);
+      expect(second.hashCode, first.hashCode);
+    });
+
+    test(
+      'Sad Path: Deve diferenciar leituras com outro momento de captura',
+      () {
+        // 1. Arrange
+        final first = UserModel.fromMap(document());
+
+        // 2. Act
+        final moved = UserModel.fromMap({
+          ...document(),
+          'capturedAt': Timestamp.fromDate(DateTime(2026, 11, 2, 9, 45)),
+        });
+
+        // 3. Assert
+        expect(moved, isNot(first));
+      },
+    );
+  });
 }

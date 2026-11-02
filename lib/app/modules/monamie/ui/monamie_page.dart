@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:monamie_app/app/modules/login/controllers/auth_google_controller.dart';
+import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/group_map_state.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_controller.dart';
@@ -27,6 +28,7 @@ class MonamiePage extends StatelessWidget {
       Get.find<PermissionsController>();
   TrackingController get trackingCtrl => Get.find<TrackingController>();
   GroupMapState get groupMap => Get.find<GroupMapState>();
+  CalendarController get calendar => Get.find<CalendarController>();
   AuthGoogleController get authCtrl => Get.find<AuthGoogleController>();
 
   @override
@@ -61,42 +63,55 @@ class MonamiePage extends StatelessWidget {
     );
   }
 
+  /// What [UserController.isTrackable] reads: the profile and the
+  /// capabilities.
+  Listenable get _trackable =>
+      Listenable.merge([userCtrl, groupMap.capabilities]);
+
   Widget _centralizeButton() {
-    return Obx(
-      () => permissionsCtrl.arePermissionsGranted() && userCtrl.isTrackable()
-          ? Positioned(
-              bottom: 16,
-              right: 16,
-              child: FloatingActionButton(
-                heroTag: "btnCentralizeMap",
-                backgroundColor: AppColors.lightBlue(),
-                onPressed: trackingCtrl.centerMapOnCurrentLocation,
-                child: Icon(Icons.my_location, color: AppColors.darkBlue()),
-              ),
-            )
-          : const SizedBox.shrink(),
+    return ListenableBuilder(
+      listenable: _trackable,
+      // The permissions are still Rx; arePermissionsGranted always reads
+      // one, as Obx needs.
+      builder: (context, _) => Obx(
+        () => permissionsCtrl.arePermissionsGranted() && userCtrl.isTrackable()
+            ? Positioned(
+                bottom: 16,
+                right: 16,
+                child: FloatingActionButton(
+                  heroTag: "btnCentralizeMap",
+                  backgroundColor: AppColors.lightBlue(),
+                  onPressed: trackingCtrl.centerMapOnCurrentLocation,
+                  child: Icon(Icons.my_location, color: AppColors.darkBlue()),
+                ),
+              )
+            : const SizedBox.shrink(),
+      ),
     );
   }
 
   Widget _body(BuildContext context) {
-    return Obx(() {
-      if (userCtrl.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
-      }
+    return ListenableBuilder(
+      listenable: _trackable,
+      builder: (context, _) => Obx(() {
+        // Read every time: Obx needs to see the Rx.
+        final granted = permissionsCtrl.arePermissionsGranted();
+        if (userCtrl.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-      if (userCtrl.isTrackable() &
-          !kIsWeb &
-          !permissionsCtrl.arePermissionsGranted()) {
-        return _permissionScreen();
-      }
+        if (userCtrl.isTrackable() & !kIsWeb & !granted) {
+          return _permissionScreen();
+        }
 
-      return Column(
-        children: [
-          Expanded(child: mapa(context)),
-          const HomeSheet(),
-        ],
-      );
-    });
+        return Column(
+          children: [
+            Expanded(child: mapa(context)),
+            const HomeSheet(),
+          ],
+        );
+      }),
+    );
   }
 
   /// Usuário verá essa tela apenas se todas as permissões necessárias já tiverem
@@ -142,76 +157,82 @@ class MonamiePage extends StatelessWidget {
   /// "Carregando `grupo`…" over the map while a group picked in the group
   /// menu loads, as on the design canvas.
   Widget _switchingGroupPill() {
-    return Obx(() {
-      if (!groupMap.switchingGroup.value) {
-        return const SizedBox.shrink();
-      }
-      final group = groupMap.selectedGroup.value?.name ?? '';
-      return Positioned(
-        top: 14,
-        left: 0,
-        right: 0,
-        child: Center(
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 220),
-            curve: const Cubic(0.2, 0.8, 0.2, 1),
-            builder: (context, t, child) => Opacity(
-              opacity: t,
-              child: Transform.translate(
-                offset: Offset(0, -10 * (1 - t)),
-                child: child,
-              ),
-            ),
-            child: Semantics(
-              liveRegion: true,
-              child: Container(
-                width: 220,
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryDark,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x47091416),
-                      blurRadius: 14,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        groupMap.switchingGroup,
+        groupMap.selectedGroup,
+      ]),
+      builder: (context, _) {
+        if (!groupMap.switchingGroup.value) {
+          return const SizedBox.shrink();
+        }
+        final group = groupMap.selectedGroup.value?.name ?? '';
+        return Positioned(
+          top: 14,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 220),
+              curve: const Cubic(0.2, 0.8, 0.2, 1),
+              builder: (context, t, child) => Opacity(
+                opacity: t,
+                child: Transform.translate(
+                  offset: Offset(0, -10 * (1 - t)),
+                  child: child,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.8,
-                        color: AppColors.onPrimaryDark,
-                        backgroundColor: Colors.white.withAlpha(77),
+              ),
+              child: Semantics(
+                liveRegion: true,
+                child: Container(
+                  width: 220,
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryDark,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x47091416),
+                        blurRadius: 14,
+                        offset: Offset(0, 4),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        'Carregando $group…',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.8,
+                          color: AppColors.onPrimaryDark,
+                          backgroundColor: Colors.white.withAlpha(77),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          'Carregando $group…',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
   /// Desenha as trajetórias dos usuários destacados (highlightedObservedUsers).
@@ -407,143 +428,154 @@ class MonamiePage extends StatelessWidget {
   /// someone it does not.
   Widget _ownMarker() {
     const markerSize = 50.0;
-    return Obx(() {
-      final point = trackingCtrl.ownPosition.value;
-      final me = userCtrl.user?.email;
-      if (point == null ||
-          me == null ||
-          !userCtrl.isTrackable() ||
-          !trackingCtrl.isTrackingEnabled.value) {
-        return const SizedBox.shrink();
-      }
-      final drawnWithTheGroup =
-          groupMap.observedMembers.any((m) => m.email == me) &&
-          trackingCtrl.firebaseUsers.any((u) => u.email == me);
-      if (drawnWithTheGroup) return const SizedBox.shrink();
-      return MarkerLayer(
-        markers: [
-          Marker(
-            point: point,
-            width: markerSize,
-            height: markerSize,
-            child: Container(
-              margin: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.indigo,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+    return ListenableBuilder(
+      listenable: Listenable.merge([_trackable, groupMap.observedMembers]),
+      // ownPosition (Rx) is read first, every time, as Obx needs.
+      builder: (context, _) => Obx(() {
+        final point = trackingCtrl.ownPosition.value;
+        final me = userCtrl.user?.email;
+        if (point == null ||
+            me == null ||
+            !userCtrl.isTrackable() ||
+            !trackingCtrl.isTrackingEnabled.value) {
+          return const SizedBox.shrink();
+        }
+        final drawnWithTheGroup =
+            groupMap.observedMembers.value.any((m) => m.email == me) &&
+            trackingCtrl.firebaseUsers.any((u) => u.email == me);
+        if (drawnWithTheGroup) return const SizedBox.shrink();
+        return MarkerLayer(
+          markers: [
+            Marker(
+              point: point,
+              width: markerSize,
+              height: markerSize,
+              child: Container(
+                margin: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.indigo,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
-      );
-    });
+          ],
+        );
+      }),
+    );
   }
 
   Widget _firebaseMarkers() {
     const double markerSize = 50.0;
 
-    return Obx(
-      () => MarkerLayer(
-        markers: trackingCtrl.firebaseUsers
-            .where((user) {
-              final isObservingToday = trackingCtrl.isObservingToday;
-              final observedMembersEmails = groupMap.observedMembers.map(
-                (member) => member.email,
-              );
-              final isObservedMember = observedMembersEmails.contains(
-                user.email,
-              );
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        groupMap.observedMembers,
+        calendar.observedDay,
+        userCtrl,
+      ]),
+      // firebaseUsers (Rx) is read on every build, as Obx needs.
+      builder: (context, _) => Obx(
+        () => MarkerLayer(
+          markers: trackingCtrl.firebaseUsers
+              .where((user) {
+                final isObservingToday = trackingCtrl.isObservingToday;
+                final observedMembersEmails = groupMap.observedMembers.value
+                    .map((member) => member.email);
+                final isObservedMember = observedMembersEmails.contains(
+                  user.email,
+                );
 
-              if (!isObservingToday) {
-                // Em dia passado, mantém o comportamento atual: exibe apenas quem
-                // tem posição histórica carregada em `animatedMarkerPositions`.
-                final hasHistoricalPosition = trackingCtrl
-                    .animatedMarkerPositions
-                    .containsKey(user.email);
-                return isObservedMember && hasHistoricalPosition;
-              }
+                if (!isObservingToday) {
+                  // Em dia passado, mantém o comportamento atual: exibe apenas quem
+                  // tem posição histórica carregada em `animatedMarkerPositions`.
+                  final hasHistoricalPosition = trackingCtrl
+                      .animatedMarkerPositions
+                      .containsKey(user.email);
+                  return isObservedMember && hasHistoricalPosition;
+                }
 
-              // Hoje: exibe usuários observados transmitindo ativamente no grupo
-              return isObservedMember;
-            })
-            .map((user) {
-              final isCurrentUser =
-                  user.email == trackingCtrl.userCtrl.user?.email;
-              // The signed-in person's pin has a colour of its own.
-              final markerColor = isCurrentUser
-                  ? Colors.indigo
-                  : Colors.lightBlue;
-              // Usa a posição animada se disponível, caso contrário usa a posição atual
-              final animatedPos =
-                  trackingCtrl.animatedMarkerPositions[user.email];
-              final position =
-                  animatedPos ?? LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
+                // Hoje: exibe usuários observados transmitindo ativamente no grupo
+                return isObservedMember;
+              })
+              .map((user) {
+                final isCurrentUser =
+                    user.email == trackingCtrl.userCtrl.user?.email;
+                // The signed-in person's pin has a colour of its own.
+                final markerColor = isCurrentUser
+                    ? Colors.indigo
+                    : Colors.lightBlue;
+                // Usa a posição animada se disponível, caso contrário usa a posição atual
+                final animatedPos =
+                    trackingCtrl.animatedMarkerPositions[user.email];
+                final position =
+                    animatedPos ?? LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
 
-              return Marker(
-                point: position,
-                width: isCurrentUser ? markerSize * 3 : markerSize,
-                height: isCurrentUser ? markerSize * 3 : markerSize,
-                alignment: Alignment.center,
-                child: GestureDetector(
-                  onTap: () => groupMap.toggleSelected(user.email),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: Clip.none,
-                    children: [
-                      if (isCurrentUser)
-                        Obx(() {
-                          final heading = trackingCtrl.heading.value;
-                          if (heading == null) return const SizedBox.shrink();
+                return Marker(
+                  point: position,
+                  width: isCurrentUser ? markerSize * 3 : markerSize,
+                  height: isCurrentUser ? markerSize * 3 : markerSize,
+                  alignment: Alignment.center,
+                  child: GestureDetector(
+                    onTap: () => groupMap.toggleSelected(user.email),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        if (isCurrentUser)
+                          Obx(() {
+                            final heading = trackingCtrl.heading.value;
+                            if (heading == null) return const SizedBox.shrink();
 
-                          return Transform.rotate(
-                            angle: heading * (math.pi / 180),
-                            child: SizedBox(
-                              width: markerSize * 3,
-                              height: markerSize * 3,
-                              child: CustomPaint(painter: _BeamPainter()),
-                            ),
-                          );
-                        }),
-                      SizedBox(
-                        width: markerSize,
-                        height: markerSize,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color:
-                                user.isPublishing == false ||
-                                    DateTime.now().difference(
-                                          user.capturedAt!,
-                                        ) >=
-                                        validity
-                                ? markerColor.withAlpha(100)
-                                : markerColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
+                            return Transform.rotate(
+                              angle: heading * (math.pi / 180),
+                              child: SizedBox(
+                                width: markerSize * 3,
+                                height: markerSize * 3,
+                                child: CustomPaint(painter: _BeamPainter()),
                               ),
-                            ],
+                            );
+                          }),
+                        SizedBox(
+                          width: markerSize,
+                          height: markerSize,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color:
+                                  user.isPublishing == false ||
+                                      DateTime.now().difference(
+                                            user.capturedAt!,
+                                          ) >=
+                                          validity
+                                  ? markerColor.withAlpha(100)
+                                  : markerColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            margin: const EdgeInsets.all(10),
                           ),
-                          margin: const EdgeInsets.all(10),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            })
-            .toList(),
+                );
+              })
+              .toList(),
+        ),
       ),
     );
   }

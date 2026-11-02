@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
@@ -51,7 +53,7 @@ void main() {
         expect(controller.user?.email, 'ana@example.com');
         expect(controller.user?.name, 'Ana');
         expect(controller.googleUser?.email, 'ana@example.com');
-        expect(controller.isLoading.value, isFalse);
+        expect(controller.isLoading, isFalse);
       },
     );
 
@@ -66,7 +68,7 @@ void main() {
 
         // 3. Assert
         expect(controller.user, isNull);
-        expect(controller.isLoading.value, isFalse);
+        expect(controller.isLoading, isFalse);
       },
     );
 
@@ -95,7 +97,7 @@ void main() {
 
         // 3. Assert
         await expectLater(load, throwsStateError);
-        expect(controller.isLoading.value, isFalse);
+        expect(controller.isLoading, isFalse);
       },
     );
   });
@@ -179,5 +181,85 @@ void main() {
         expect(name, 'Nome não informado');
       },
     );
+  });
+
+  group('UserController - avisos, start e dispose', () {
+    test('Happy Path: Deve avisar com a pessoa carregada ao começar', () async {
+      // 1. Arrange
+      final controller = _controller(
+        stored: UserGoogleModel(email: 'ana@example.com', name: 'Ana'),
+      );
+      final notified = <UserState>[];
+      controller.addListener(() => notified.add(controller.state));
+
+      // 2. Act
+      await controller.start();
+
+      // 3. Assert
+      expect(notified, isNotEmpty);
+      expect(notified.last.user?.email, 'ana@example.com');
+      expect(notified.last.isLoading, isFalse);
+    });
+
+    test(
+      'Edge Case: Deve avisar só o carregando ao reler o mesmo perfil',
+      () async {
+        // 1. Arrange
+        final controller = _controller(
+          stored: UserGoogleModel(email: 'ana@example.com', name: 'Ana'),
+        );
+        await controller.loadCurrentUser();
+        final notified = <UserState>[];
+        controller.addListener(() => notified.add(controller.state));
+
+        // 2. Act
+        await controller.loadCurrentUser();
+
+        // 3. Assert
+        // The person read again equals the one shown (a new UserModel with
+        // the same content): only isLoading turns on and off.
+        expect(notified.map((s) => s.isLoading), [true, false]);
+      },
+    );
+
+    test('Edge Case: Deve ler o perfil uma vez só quando start() é chamado '
+        'duas vezes', () async {
+      // 1. Arrange
+      final groupMap = MockGroupMapState();
+      final repository = MockUserGoogleRepository();
+      when(repository.getUserGoogleModel()).thenAnswer((_) async => null);
+      final controller = UserController(
+        groupMap: groupMap,
+        repository: repository,
+      );
+      await controller.start();
+
+      // 2. Act
+      await controller.start();
+
+      // 3. Assert
+      verify(repository.getUserGoogleModel()).called(1);
+    });
+
+    test('Sad Path: Deve terminar sem erro a leitura que acaba depois do '
+        'dispose', () async {
+      // 1. Arrange
+      final groupMap = MockGroupMapState();
+      final repository = MockUserGoogleRepository();
+      final stored = Completer<UserGoogleModel?>();
+      when(repository.getUserGoogleModel()).thenAnswer((_) => stored.future);
+      final controller = UserController(
+        groupMap: groupMap,
+        repository: repository,
+      );
+      final pending = controller.start();
+      controller.dispose();
+
+      // 2. Act
+      stored.complete(UserGoogleModel(email: 'ana@example.com'));
+
+      // 3. Assert
+      await expectLater(pending, completes);
+    });
   });
 }
