@@ -79,8 +79,10 @@ class UserController extends ChangeNotifier {
     return name == null || name.isEmpty ? 'Nome não informado' : name;
   }
 
+  /// Only the first call does anything.
   @override
   void dispose() {
+    if (_disposed) return;
     _disposed = true;
     super.dispose();
   }

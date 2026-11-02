@@ -68,33 +68,36 @@ class MonamiePage extends StatelessWidget {
   Listenable get _trackable =>
       Listenable.merge([userCtrl, groupMap.capabilities]);
 
+  /// What [PermissionsController.arePermissionsGranted] reads.
+  Listenable get _granted => Listenable.merge([
+    permissionsCtrl.hasAlwaysLocationPermission,
+    permissionsCtrl.hasNotificationPermission,
+    permissionsCtrl.isBackgroundRestricted,
+  ]);
+
   Widget _centralizeButton() {
     return ListenableBuilder(
-      listenable: _trackable,
-      // The permissions are still Rx; arePermissionsGranted always reads
-      // one, as Obx needs.
-      builder: (context, _) => Obx(
-        () => permissionsCtrl.arePermissionsGranted() && userCtrl.isTrackable()
-            ? Positioned(
-                bottom: 16,
-                right: 16,
-                child: FloatingActionButton(
-                  heroTag: "btnCentralizeMap",
-                  backgroundColor: AppColors.lightBlue(),
-                  onPressed: trackingCtrl.centerMapOnCurrentLocation,
-                  child: Icon(Icons.my_location, color: AppColors.darkBlue()),
-                ),
-              )
-            : const SizedBox.shrink(),
-      ),
+      listenable: Listenable.merge([_trackable, _granted]),
+      builder: (context, _) =>
+          permissionsCtrl.arePermissionsGranted() && userCtrl.isTrackable()
+          ? Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton(
+                heroTag: "btnCentralizeMap",
+                backgroundColor: AppColors.lightBlue(),
+                onPressed: trackingCtrl.centerMapOnCurrentLocation,
+                child: Icon(Icons.my_location, color: AppColors.darkBlue()),
+              ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 
   Widget _body(BuildContext context) {
     return ListenableBuilder(
-      listenable: _trackable,
-      builder: (context, _) => Obx(() {
-        // Read every time: Obx needs to see the Rx.
+      listenable: Listenable.merge([_trackable, _granted]),
+      builder: (context, _) {
         final granted = permissionsCtrl.arePermissionsGranted();
         if (userCtrl.isLoading) {
           return const Center(child: CircularProgressIndicator());
@@ -110,7 +113,7 @@ class MonamiePage extends StatelessWidget {
             const HomeSheet(),
           ],
         );
-      }),
+      },
     );
   }
 
@@ -237,45 +240,46 @@ class MonamiePage extends StatelessWidget {
 
   /// Desenha as trajetórias dos usuários destacados (highlightedObservedUsers).
   Widget _highlightedTrajectories() {
-    return Obx(() {
-      final trajectories = trackingCtrl.highlightedTrajectories;
+    return ValueListenableBuilder(
+      valueListenable: trackingCtrl.highlightedTrajectories,
+      builder: (context, trajectories, _) {
+        if (trajectories.isEmpty) {
+          return PolylineLayer<Object>(polylines: []);
+        }
 
-      if (trajectories.isEmpty) {
-        return PolylineLayer<Object>(polylines: []);
-      }
+        final polylines = <Polyline<Object>>[];
+        for (final entry in trajectories.entries) {
+          final points = entry.value;
+          if (points.length < 2) continue;
 
-      final polylines = <Polyline<Object>>[];
-      for (final entry in trajectories.entries) {
-        final points = entry.value;
-        if (points.length < 2) continue;
+          final latLngPoints = points.map((p) => LatLng(p.lat, p.lng)).toList();
 
-        final latLngPoints = points.map((p) => LatLng(p.lat, p.lng)).toList();
+          // Cor baseada no email para consistência
+          final hash = entry.key.hashCode;
+          final hue = (hash % 360).toDouble();
+          final baseColor = HSLColor.fromAHSL(1.0, hue, 0.7, 0.5).toColor();
 
-        // Cor baseada no email para consistência
-        final hash = entry.key.hashCode;
-        final hue = (hash % 360).toDouble();
-        final baseColor = HSLColor.fromAHSL(1.0, hue, 0.7, 0.5).toColor();
+          final darkerBorderColor = Color.fromARGB(
+            (baseColor.a * 255.0).round().clamp(0, 255),
+            (baseColor.r * 255.0 * 0.5).round().clamp(0, 255),
+            (baseColor.g * 255.0 * 0.5).round().clamp(0, 255),
+            (baseColor.b * 255.0 * 0.5).round().clamp(0, 255),
+          );
 
-        final darkerBorderColor = Color.fromARGB(
-          (baseColor.a * 255.0).round().clamp(0, 255),
-          (baseColor.r * 255.0 * 0.5).round().clamp(0, 255),
-          (baseColor.g * 255.0 * 0.5).round().clamp(0, 255),
-          (baseColor.b * 255.0 * 0.5).round().clamp(0, 255),
-        );
+          polylines.add(
+            Polyline<Object>(
+              points: latLngPoints,
+              strokeWidth: 4.0,
+              color: baseColor,
+              borderStrokeWidth: 1.5,
+              borderColor: darkerBorderColor,
+            ),
+          );
+        }
 
-        polylines.add(
-          Polyline<Object>(
-            points: latLngPoints,
-            strokeWidth: 4.0,
-            color: baseColor,
-            borderStrokeWidth: 1.5,
-            borderColor: darkerBorderColor,
-          ),
-        );
-      }
-
-      return PolylineLayer<Object>(polylines: polylines);
-    });
+        return PolylineLayer<Object>(polylines: polylines);
+      },
+    );
   }
 
   /// Usuário verá essa tela apenas se algumas das permissões necessárias
@@ -283,8 +287,14 @@ class MonamiePage extends StatelessWidget {
   Widget _permissionScreen() {
     return Container(
       decoration: BoxDecoration(gradient: AppColors.appBarBottomGradient()),
-      child: Obx(
-        () => Align(
+      child: ListenableBuilder(
+        listenable: Listenable.merge([
+          permissionsCtrl.hasNotificationPermission,
+          permissionsCtrl.hasWhenInUseLocationPermission,
+          permissionsCtrl.hasAlwaysLocationPermission,
+          permissionsCtrl.isBackgroundRestricted,
+        ]),
+        builder: (context, _) => Align(
           alignment: Alignment.center,
           child: IntrinsicWidth(
             child: Column(
@@ -429,9 +439,14 @@ class MonamiePage extends StatelessWidget {
   Widget _ownMarker() {
     const markerSize = 50.0;
     return ListenableBuilder(
-      listenable: Listenable.merge([_trackable, groupMap.observedMembers]),
-      // ownPosition (Rx) is read first, every time, as Obx needs.
-      builder: (context, _) => Obx(() {
+      listenable: Listenable.merge([
+        _trackable,
+        groupMap.observedMembers,
+        trackingCtrl.ownPosition,
+        trackingCtrl.isTrackingEnabled,
+        trackingCtrl.firebaseUsers,
+      ]),
+      builder: (context, _) {
         final point = trackingCtrl.ownPosition.value;
         final me = userCtrl.user?.email;
         if (point == null ||
@@ -442,7 +457,7 @@ class MonamiePage extends StatelessWidget {
         }
         final drawnWithTheGroup =
             groupMap.observedMembers.value.any((m) => m.email == me) &&
-            trackingCtrl.firebaseUsers.any((u) => u.email == me);
+            trackingCtrl.firebaseUsers.value.any((u) => u.email == me);
         if (drawnWithTheGroup) return const SizedBox.shrink();
         return MarkerLayer(
           markers: [
@@ -468,7 +483,7 @@ class MonamiePage extends StatelessWidget {
             ),
           ],
         );
-      }),
+      },
     );
   }
 
@@ -480,58 +495,61 @@ class MonamiePage extends StatelessWidget {
         groupMap.observedMembers,
         calendar.observedDay,
         userCtrl,
+        trackingCtrl.firebaseUsers,
+        trackingCtrl.animatedMarkerPositions,
       ]),
-      // firebaseUsers (Rx) is read on every build, as Obx needs.
-      builder: (context, _) => Obx(
-        () => MarkerLayer(
-          markers: trackingCtrl.firebaseUsers
-              .where((user) {
-                final isObservingToday = trackingCtrl.isObservingToday;
-                final observedMembersEmails = groupMap.observedMembers.value
-                    .map((member) => member.email);
-                final isObservedMember = observedMembersEmails.contains(
-                  user.email,
-                );
+      builder: (context, _) => MarkerLayer(
+        markers: trackingCtrl.firebaseUsers.value
+            .where((user) {
+              final isObservingToday = trackingCtrl.isObservingToday;
+              final observedMembersEmails = groupMap.observedMembers.value.map(
+                (member) => member.email,
+              );
+              final isObservedMember = observedMembersEmails.contains(
+                user.email,
+              );
 
-                if (!isObservingToday) {
-                  // Em dia passado, mantém o comportamento atual: exibe apenas quem
-                  // tem posição histórica carregada em `animatedMarkerPositions`.
-                  final hasHistoricalPosition = trackingCtrl
-                      .animatedMarkerPositions
-                      .containsKey(user.email);
-                  return isObservedMember && hasHistoricalPosition;
-                }
+              if (!isObservingToday) {
+                // Em dia passado, mantém o comportamento atual: exibe apenas quem
+                // tem posição histórica carregada em `animatedMarkerPositions`.
+                final hasHistoricalPosition = trackingCtrl
+                    .animatedMarkerPositions
+                    .value
+                    .containsKey(user.email);
+                return isObservedMember && hasHistoricalPosition;
+              }
 
-                // Hoje: exibe usuários observados transmitindo ativamente no grupo
-                return isObservedMember;
-              })
-              .map((user) {
-                final isCurrentUser =
-                    user.email == trackingCtrl.userCtrl.user?.email;
-                // The signed-in person's pin has a colour of its own.
-                final markerColor = isCurrentUser
-                    ? Colors.indigo
-                    : Colors.lightBlue;
-                // Usa a posição animada se disponível, caso contrário usa a posição atual
-                final animatedPos =
-                    trackingCtrl.animatedMarkerPositions[user.email];
-                final position =
-                    animatedPos ?? LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
+              // Hoje: exibe usuários observados transmitindo ativamente no grupo
+              return isObservedMember;
+            })
+            .map((user) {
+              final isCurrentUser =
+                  user.email == trackingCtrl.userCtrl.user?.email;
+              // The signed-in person's pin has a colour of its own.
+              final markerColor = isCurrentUser
+                  ? Colors.indigo
+                  : Colors.lightBlue;
+              // Usa a posição animada se disponível, caso contrário usa a posição atual
+              final animatedPos =
+                  trackingCtrl.animatedMarkerPositions.value[user.email];
+              final position =
+                  animatedPos ?? LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
 
-                return Marker(
-                  point: position,
-                  width: isCurrentUser ? markerSize * 3 : markerSize,
-                  height: isCurrentUser ? markerSize * 3 : markerSize,
-                  alignment: Alignment.center,
-                  child: GestureDetector(
-                    onTap: () => groupMap.toggleSelected(user.email),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      clipBehavior: Clip.none,
-                      children: [
-                        if (isCurrentUser)
-                          Obx(() {
-                            final heading = trackingCtrl.heading.value;
+              return Marker(
+                point: position,
+                width: isCurrentUser ? markerSize * 3 : markerSize,
+                height: isCurrentUser ? markerSize * 3 : markerSize,
+                alignment: Alignment.center,
+                child: GestureDetector(
+                  onTap: () => groupMap.toggleSelected(user.email),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      if (isCurrentUser)
+                        ValueListenableBuilder(
+                          valueListenable: trackingCtrl.heading,
+                          builder: (context, heading, _) {
                             if (heading == null) return const SizedBox.shrink();
 
                             return Transform.rotate(
@@ -542,40 +560,40 @@ class MonamiePage extends StatelessWidget {
                                 child: CustomPaint(painter: _BeamPainter()),
                               ),
                             );
-                          }),
-                        SizedBox(
-                          width: markerSize,
-                          height: markerSize,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color:
-                                  user.isPublishing == false ||
-                                      DateTime.now().difference(
-                                            user.capturedAt!,
-                                          ) >=
-                                          validity
-                                  ? markerColor.withAlpha(100)
-                                  : markerColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            margin: const EdgeInsets.all(10),
-                          ),
+                          },
                         ),
-                      ],
-                    ),
+                      SizedBox(
+                        width: markerSize,
+                        height: markerSize,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color:
+                                user.isPublishing == false ||
+                                    DateTime.now().difference(
+                                          user.capturedAt!,
+                                        ) >=
+                                        validity
+                                ? markerColor.withAlpha(100)
+                                : markerColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          margin: const EdgeInsets.all(10),
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              })
-              .toList(),
-        ),
+                ),
+              );
+            })
+            .toList(),
       ),
     );
   }

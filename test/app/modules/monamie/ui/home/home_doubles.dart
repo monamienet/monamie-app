@@ -23,7 +23,7 @@ import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'home_doubles.mocks.dart';
 
 /// The home controllers as mocks, registered in GetX by [register]. The
-/// [GroupMapState] and calendar values are plain [ValueNotifier]s the test
+/// [GroupMapState], calendar and tracking values are plain [ValueNotifier]s the test
 /// changes to drive the widgets; the capability getters follow
 /// [capabilities].
 class HomeDoubles {
@@ -55,9 +55,6 @@ class HomeDoubles {
 
     when(tracking.groupUsers).thenReturn(groupUsers);
     when(tracking.usersWithPointsOnObservedDay).thenReturn(usersWithPoints);
-    // GetX starts what it registers.
-    when(tracking.onStart).thenReturn(InternalFinalCallback(callback: () {}));
-    when(calls.onStart).thenReturn(InternalFinalCallback(callback: () {}));
   }
 
   final groups = MockGroupMapState();
@@ -76,8 +73,8 @@ class HomeDoubles {
   final highlighted = ValueNotifier<List<GroupMember>>(const []);
   final selectedMemberEmail = ValueNotifier<String?>(null);
   final observedDay = ValueNotifier<DateTime>(DateTime(2026, 11, 2));
-  final groupUsers = <UserModel>[].obs;
-  final usersWithPoints = <String>{}.obs;
+  final groupUsers = ValueNotifier<List<UserModel>>(const []);
+  final usersWithPoints = ValueNotifier<Set<String>>(const {});
 
   /// Registers the mocks where the widgets look for them.
   void register() {

@@ -4,17 +4,19 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i3;
+import 'dart:async' as _i5;
+import 'dart:ui' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
+import 'package:monamie_app/app/data/services/app_lifecycle_events.dart' as _i2;
 import 'package:monamie_app/app/data/services/background_restriction_checker.dart'
-    as _i2;
-import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart'
     as _i4;
+import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart'
+    as _i6;
 import 'package:monamie_app/app/modules/monamie/controller/permission_prompts.dart'
-    as _i5;
-import 'package:monamie_app/app/utils/notice_presenter.dart' as _i6;
-import 'package:monamie_app/app/utils/user_notice.dart' as _i7;
+    as _i7;
+import 'package:monamie_app/app/utils/notice_presenter.dart' as _i8;
+import 'package:monamie_app/app/utils/user_notice.dart' as _i9;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -32,74 +34,93 @@ import 'package:monamie_app/app/utils/user_notice.dart' as _i7;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
+/// A class which mocks [AppLifecycleEvents].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockAppLifecycleEvents extends _i1.Mock
+    implements _i2.AppLifecycleEvents {
+  @override
+  void start(void Function(_i3.AppLifecycleState)? onChange) =>
+      super.noSuchMethod(
+        Invocation.method(#start, [onChange]),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void stop() => super.noSuchMethod(
+    Invocation.method(#stop, []),
+    returnValueForMissingStub: null,
+  );
+}
+
 /// A class which mocks [BackgroundRestrictionChecker].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockBackgroundRestrictionChecker extends _i1.Mock
-    implements _i2.BackgroundRestrictionChecker {
+    implements _i4.BackgroundRestrictionChecker {
   @override
-  _i3.Future<bool> isRestricted() =>
+  _i5.Future<bool> isRestricted() =>
       (super.noSuchMethod(
             Invocation.method(#isRestricted, []),
-            returnValue: _i3.Future<bool>.value(false),
-            returnValueForMissingStub: _i3.Future<bool>.value(false),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
           )
-          as _i3.Future<bool>);
+          as _i5.Future<bool>);
 }
 
 /// A class which mocks [BackgroundUsageSettingsLauncher].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockBackgroundUsageSettingsLauncher extends _i1.Mock
-    implements _i4.BackgroundUsageSettingsLauncher {
+    implements _i6.BackgroundUsageSettingsLauncher {
   @override
-  _i3.Future<bool> open() =>
+  _i5.Future<bool> open() =>
       (super.noSuchMethod(
             Invocation.method(#open, []),
-            returnValue: _i3.Future<bool>.value(false),
-            returnValueForMissingStub: _i3.Future<bool>.value(false),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
           )
-          as _i3.Future<bool>);
+          as _i5.Future<bool>);
 }
 
 /// A class which mocks [PermissionPrompts].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockPermissionPrompts extends _i1.Mock implements _i5.PermissionPrompts {
+class MockPermissionPrompts extends _i1.Mock implements _i7.PermissionPrompts {
   @override
-  _i3.Future<bool> confirmBackgroundLocation() =>
+  _i5.Future<bool> confirmBackgroundLocation() =>
       (super.noSuchMethod(
             Invocation.method(#confirmBackgroundLocation, []),
-            returnValue: _i3.Future<bool>.value(false),
-            returnValueForMissingStub: _i3.Future<bool>.value(false),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
           )
-          as _i3.Future<bool>);
+          as _i5.Future<bool>);
 
   @override
-  _i3.Future<bool> confirmBackgroundUsageSettings() =>
+  _i5.Future<bool> confirmBackgroundUsageSettings() =>
       (super.noSuchMethod(
             Invocation.method(#confirmBackgroundUsageSettings, []),
-            returnValue: _i3.Future<bool>.value(false),
-            returnValueForMissingStub: _i3.Future<bool>.value(false),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
           )
-          as _i3.Future<bool>);
+          as _i5.Future<bool>);
 
   @override
-  _i3.Future<void> notifyGpsDisabled() =>
+  _i5.Future<void> notifyGpsDisabled() =>
       (super.noSuchMethod(
             Invocation.method(#notifyGpsDisabled, []),
-            returnValue: _i3.Future<void>.value(),
-            returnValueForMissingStub: _i3.Future<void>.value(),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
           )
-          as _i3.Future<void>);
+          as _i5.Future<void>);
 }
 
 /// A class which mocks [NoticePresenter].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockNoticePresenter extends _i1.Mock implements _i6.NoticePresenter {
+class MockNoticePresenter extends _i1.Mock implements _i8.NoticePresenter {
   @override
-  void show(_i7.UserNotice? notice) => super.noSuchMethod(
+  void show(_i9.UserNotice? notice) => super.noSuchMethod(
     Invocation.method(#show, [notice]),
     returnValueForMissingStub: null,
   );

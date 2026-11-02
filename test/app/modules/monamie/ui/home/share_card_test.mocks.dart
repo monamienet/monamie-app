@@ -6,7 +6,7 @@
 
 import 'dart:async' as _i4;
 
-import 'package:get/get.dart' as _i2;
+import 'package:flutter/foundation.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i7;
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart'
@@ -30,8 +30,9 @@ import 'package:monamie_app/app/utils/user_notice.dart' as _i6;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeRxBool_0 extends _i1.SmartFake implements _i2.RxBool {
-  _FakeRxBool_0(Object parent, Invocation parentInvocation)
+class _FakeValueListenable_0<T> extends _i1.SmartFake
+    implements _i2.ValueListenable<T> {
+  _FakeValueListenable_0(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -41,34 +42,34 @@ class _FakeRxBool_0 extends _i1.SmartFake implements _i2.RxBool {
 class MockTrackingToggleController extends _i1.Mock
     implements _i3.TrackingToggleController {
   @override
-  _i2.RxBool get isTrackingEnabled =>
+  _i2.ValueListenable<bool> get isTrackingEnabled =>
       (super.noSuchMethod(
             Invocation.getter(#isTrackingEnabled),
-            returnValue: _FakeRxBool_0(
+            returnValue: _FakeValueListenable_0<bool>(
               this,
               Invocation.getter(#isTrackingEnabled),
             ),
-            returnValueForMissingStub: _FakeRxBool_0(
+            returnValueForMissingStub: _FakeValueListenable_0<bool>(
               this,
               Invocation.getter(#isTrackingEnabled),
             ),
           )
-          as _i2.RxBool);
+          as _i2.ValueListenable<bool>);
 
   @override
-  _i2.RxBool get isTrackingLoading =>
+  _i2.ValueListenable<bool> get isTrackingLoading =>
       (super.noSuchMethod(
             Invocation.getter(#isTrackingLoading),
-            returnValue: _FakeRxBool_0(
+            returnValue: _FakeValueListenable_0<bool>(
               this,
               Invocation.getter(#isTrackingLoading),
             ),
-            returnValueForMissingStub: _FakeRxBool_0(
+            returnValueForMissingStub: _FakeValueListenable_0<bool>(
               this,
               Invocation.getter(#isTrackingLoading),
             ),
           )
-          as _i2.RxBool);
+          as _i2.ValueListenable<bool>);
 
   @override
   _i4.Future<_i5.Result<_i6.UserNotice?>> toggleService() =>

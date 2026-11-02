@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -64,6 +63,16 @@ Position _position(double latitude, double longitude) => Position(
 LocationPoint _point(double lat, double lng) =>
     LocationPoint(lat: lat, lng: lng, receivedAt: DateTime(2026, 10, 30, 9));
 
+/// [email]'s position at ([lat], [lng]), shared at [seen]: live on the map.
+UserModel _live(String email, double lat, double lng, DateTime seen) =>
+    UserModel(
+      email: email,
+      lat: lat,
+      lng: lng,
+      isPublishing: true,
+      capturedAt: seen,
+    );
+
 /// An [Err] titled [title].
 Matcher _errTitled(String title) =>
     isA<Err<Object?>>().having((err) => err.title, 'title', title);
@@ -74,6 +83,10 @@ Matcher _okWithNoticeTitled(String title) => isA<Ok<UserNotice?>>().having(
   'notice title',
   title,
 );
+
+/// Puts [value] in one of the controller's values (exposed read-only).
+void _seed(ValueListenable<bool> listenable, bool value) =>
+    (listenable as ValueNotifier<bool>).value = value;
 
 /// The collaborators of a [TrackingController], stubbed as a person who can
 /// publish, with the GPS on, the service stopped and a fix at hand.
@@ -152,8 +165,8 @@ class _Harness {
   final location = MockDeviceLocation();
   final positions = MockFirebaseProvider();
 
-  final isBackgroundRestricted = false.obs;
-  final hasWhenInUsePermission = false.obs;
+  final isBackgroundRestricted = ValueNotifier<bool>(false);
+  final hasWhenInUsePermission = ValueNotifier<bool>(false);
   final observedDay = ValueNotifier<DateTime>(_kToday);
   final capabilities = ValueNotifier<Capabilities>(const Capabilities());
   final groupPositions = ValueNotifier<List<UserModel>>([]);
@@ -165,10 +178,6 @@ class _Harness {
 }
 
 void main() {
-  setUp(() {
-    Get.testMode = true;
-  });
-
   group('TrackingController.toggleService', () {
     test(
       'Edge Case: Deve devolver Ok(null) sem consultar o serviço de novo quando outro toggle está em andamento',
@@ -217,7 +226,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         when(harness.service.isRunning()).thenAnswer((_) async => true);
-        harness.controller.isTrackingEnabled.value = true;
+        _seed(harness.controller.isTrackingEnabled, true);
 
         // 2. Act
         final result = await harness.controller.toggleService();
@@ -241,7 +250,7 @@ void main() {
         when(
           harness.positions.markNotPublishing(any),
         ).thenAnswer((_) async => throw StateError('sem rede'));
-        harness.controller.isTrackingEnabled.value = true;
+        _seed(harness.controller.isTrackingEnabled, true);
 
         // 2. Act
         final result = await harness.controller.toggleService();
@@ -273,7 +282,7 @@ void main() {
           const LatLng(-22.9, -43.1),
         );
         expect(
-          harness.controller.usersWithPointsOnObservedDay,
+          harness.controller.usersWithPointsOnObservedDay.value,
           contains(_kEmail),
         );
         expect(harness.controller.isTrackingLoading.value, isFalse);
@@ -421,7 +430,7 @@ void main() {
     );
   });
 
-  group('TrackingController.onInit', () {
+  group('TrackingController.start', () {
     test(
       'Happy Path: Deve começar com isTrackingEnabled true quando o serviço já está rodando',
       () async {
@@ -430,11 +439,11 @@ void main() {
         when(harness.service.isRunning()).thenAnswer((_) async => true);
 
         // 2. Act
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 3. Assert
         expect(harness.controller.isTrackingEnabled.value, isTrue);
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -445,11 +454,11 @@ void main() {
         final harness = _Harness();
 
         // 2. Act
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 3. Assert
         expect(harness.controller.isTrackingEnabled.value, isFalse);
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -478,14 +487,14 @@ void main() {
         ];
 
         // 2. Act
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 3. Assert
-        expect(harness.controller.firebaseUsers.map((u) => u.email), [
+        expect(harness.controller.firebaseUsers.value.map((u) => u.email), [
           'bia@example.com',
         ]);
-        expect(harness.controller.groupUsers, hasLength(3));
-        harness.controller.onClose();
+        expect(harness.controller.groupUsers.value, hasLength(3));
+        harness.controller.dispose();
       },
     );
 
@@ -497,7 +506,7 @@ void main() {
         when(harness.user.isTrackable()).thenReturn(true);
 
         // 2. Act
-        await harness.controller.onInit();
+        await harness.controller.start();
         await pumpEventQueue();
 
         // 3. Assert
@@ -505,7 +514,7 @@ void main() {
           harness.controller.ownPosition.value,
           const LatLng(-22.9, -43.1),
         );
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -516,11 +525,11 @@ void main() {
         final harness = _Harness();
 
         // 2. Act
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 3. Assert
         verifyNever(harness.location.currentPosition());
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
   });
@@ -532,7 +541,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         when(harness.service.isRunning()).thenAnswer((_) async => true);
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 2. Act
         harness.isBackgroundRestricted.value = true;
@@ -542,7 +551,7 @@ void main() {
             verify(harness.notices.show(captureAny)).captured.single
                 as UserNotice;
         expect(notice.title, 'Rastreamento em risco');
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -551,14 +560,14 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 2. Act
         harness.isBackgroundRestricted.value = true;
 
         // 3. Assert
         verifyNever(harness.notices.show(any));
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -569,14 +578,14 @@ void main() {
         final harness = _Harness();
         harness.isBackgroundRestricted.value = true;
         when(harness.service.isRunning()).thenAnswer((_) async => true);
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 2. Act
         harness.isBackgroundRestricted.value = false;
 
         // 3. Assert
         verifyNever(harness.notices.show(any));
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -585,7 +594,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        await harness.controller.onInit();
+        await harness.controller.start();
         when(harness.user.isTrackable()).thenReturn(true);
 
         // 2. Act
@@ -598,7 +607,7 @@ void main() {
           harness.controller.ownPosition.value,
           const LatLng(-22.9, -43.1),
         );
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -607,7 +616,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        await harness.controller.onInit();
+        await harness.controller.start();
         when(harness.user.isTrackable()).thenReturn(true);
 
         // 2. Act
@@ -616,7 +625,7 @@ void main() {
 
         // 3. Assert
         verify(harness.location.currentPosition()).called(1);
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -626,7 +635,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         harness.hasWhenInUsePermission.value = true;
-        await harness.controller.onInit();
+        await harness.controller.start();
         when(harness.user.isTrackable()).thenReturn(true);
 
         // 2. Act
@@ -635,7 +644,7 @@ void main() {
 
         // 3. Assert
         verifyNever(harness.location.currentPosition());
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -644,7 +653,7 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        await harness.controller.onInit();
+        await harness.controller.start();
         when(harness.user.isTrackable()).thenReturn(true);
         when(harness.location.currentPosition()).thenAnswer(
           (_) async => throw const LocationServiceDisabledException(),
@@ -656,7 +665,7 @@ void main() {
 
         // 3. Assert
         expect(harness.controller.ownPosition.value, isNull);
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -674,7 +683,7 @@ void main() {
           ),
         ).thenAnswer((_) => Stream.value([_point(-22.8, -43.0)]));
         when(harness.calendar.isObservingToday).thenReturn(false);
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 2. Act
         harness.observedDay.value = _kPastDay;
@@ -682,10 +691,15 @@ void main() {
 
         // 3. Assert
         expect(
-          harness.controller.highlightedTrajectories[_kBia.email]?.single.lat,
+          harness
+              .controller
+              .highlightedTrajectories
+              .value[_kBia.email]
+              ?.single
+              .lat,
           -22.8,
         );
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -696,7 +710,7 @@ void main() {
         final harness = _Harness();
         harness.selectedGroup.value = null;
         harness.highlighted.value = [_kBia];
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 2. Act
         harness.observedDay.value = _kPastDay;
@@ -717,7 +731,7 @@ void main() {
             day: anyNamed('day'),
           ),
         );
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -737,7 +751,7 @@ void main() {
             day: _kPastDay,
           ),
         ).thenAnswer((_) async => _point(-22.8, -43.0));
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 2. Act
         harness.observedDay.value = _kPastDay;
@@ -745,14 +759,14 @@ void main() {
 
         // 3. Assert
         expect(
-          harness.controller.animatedMarkerPositions[_kBia.email],
+          harness.controller.animatedMarkerPositions.value[_kBia.email],
           const LatLng(-22.8, -43.0),
         );
         expect(
-          harness.controller.usersWithPointsOnObservedDay,
+          harness.controller.usersWithPointsOnObservedDay.value,
           contains(_kBia.email),
         );
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -765,16 +779,16 @@ void main() {
         when(
           harness.groupMap.loadHistoryMembers(),
         ).thenAnswer((_) async => const [_kBia]);
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 2. Act
         harness.observedDay.value = _kPastDay;
         await pumpEventQueue();
 
         // 3. Assert
-        expect(harness.controller.animatedMarkerPositions, isEmpty);
-        expect(harness.controller.usersWithPointsOnObservedDay, isEmpty);
-        harness.controller.onClose();
+        expect(harness.controller.animatedMarkerPositions.value, isEmpty);
+        expect(harness.controller.usersWithPointsOnObservedDay.value, isEmpty);
+        harness.controller.dispose();
       },
     );
 
@@ -786,15 +800,17 @@ void main() {
         when(
           harness.positions.hasPointsOnDate(_kGroup.id, _kBia.email, _kToday),
         ).thenAnswer((_) async => true);
-        await harness.controller.onInit();
+        await harness.controller.start();
 
         // 2. Act
         harness.observedMembers.value = [_kBia];
         await pumpEventQueue();
 
         // 3. Assert
-        expect(harness.controller.usersWithPointsOnObservedDay, {_kBia.email});
-        harness.controller.onClose();
+        expect(harness.controller.usersWithPointsOnObservedDay.value, {
+          _kBia.email,
+        });
+        harness.controller.dispose();
       },
     );
 
@@ -804,7 +820,7 @@ void main() {
         fakeAsync((async) {
           // 1. Arrange
           final harness = _Harness();
-          harness.controller.onInit();
+          harness.controller.start();
           async.flushMicrotasks();
 
           // 2. Act
@@ -819,8 +835,10 @@ void main() {
               day: anyNamed('day'),
             ),
           );
-          harness.controller.onClose();
-          async.elapse(const Duration(milliseconds: 100));
+          // The pending highlight is cancelled with the controller (#195):
+          // no timer is left to fire after the test.
+          harness.controller.dispose();
+          expect(async.pendingTimers, isEmpty);
         });
       },
     );
@@ -831,7 +849,7 @@ void main() {
         fakeAsync((async) {
           // 1. Arrange
           final harness = _Harness();
-          harness.controller.onInit();
+          harness.controller.start();
           async.flushMicrotasks();
 
           // 2. Act
@@ -846,7 +864,7 @@ void main() {
               day: _kToday,
             ),
           ).called(1);
-          harness.controller.onClose();
+          harness.controller.dispose();
         });
       },
     );
@@ -862,7 +880,7 @@ void main() {
             day: anyNamed('day'),
           ),
         ).thenAnswer((_) => Stream.value([_point(-22.8, -43.0)]));
-        harness.controller.onInit();
+        harness.controller.start();
         harness.highlighted.value = [_kBia];
         async.elapse(const Duration(milliseconds: 150));
 
@@ -871,22 +889,22 @@ void main() {
         async.elapse(const Duration(milliseconds: 150));
 
         // 3. Assert
-        expect(harness.controller.highlightedTrajectories, isEmpty);
-        harness.controller.onClose();
+        expect(harness.controller.highlightedTrajectories.value, isEmpty);
+        harness.controller.dispose();
       });
     });
   });
 
-  group('TrackingController.onClose', () {
+  group('TrackingController.dispose', () {
     test('Happy Path: Deve parar o relógio que reaplica a validade', () {
       fakeAsync((async) {
         // 1. Arrange
         final harness = _Harness();
-        harness.controller.onInit();
+        harness.controller.start();
         async.flushMicrotasks();
 
         // 2. Act
-        harness.controller.onClose();
+        harness.controller.dispose();
 
         // 3. Assert
         expect(async.periodicTimerCount, 0);
@@ -894,14 +912,14 @@ void main() {
     });
   });
 
-  group('TrackingController.onClose - ouvintes removidos', () {
+  group('TrackingController.dispose - ouvintes removidos', () {
     test(
       'Happy Path: Não deve reagir a novas posições do grupo depois de fechar',
       () async {
         // 1. Arrange
         final harness = _Harness();
-        await harness.controller.onInit();
-        harness.controller.onClose();
+        await harness.controller.start();
+        harness.controller.dispose();
 
         // 2. Act
         harness.groupPositions.value = [
@@ -913,7 +931,7 @@ void main() {
         ];
 
         // 3. Assert
-        expect(harness.controller.groupUsers, isEmpty);
+        expect(harness.controller.groupUsers.value, isEmpty);
       },
     );
 
@@ -922,8 +940,8 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        await harness.controller.onInit();
-        harness.controller.onClose();
+        await harness.controller.start();
+        harness.controller.dispose();
 
         // 2. Act
         harness.observedMembers.value = [_kBia];
@@ -939,8 +957,8 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness();
-        await harness.controller.onInit();
-        harness.controller.onClose();
+        await harness.controller.start();
+        harness.controller.dispose();
         clearInteractions(harness.user);
 
         // 2. Act
@@ -959,8 +977,8 @@ void main() {
         final harness = _Harness();
         harness.highlighted.value = [_kBia];
         harness.observedMembers.value = [_kBia];
-        await harness.controller.onInit();
-        harness.controller.onClose();
+        await harness.controller.start();
+        harness.controller.dispose();
 
         // 2. Act
         harness.observedDay.value = _kPastDay;
@@ -984,9 +1002,9 @@ void main() {
         fakeAsync((async) {
           // 1. Arrange
           final harness = _Harness();
-          harness.controller.onInit();
+          harness.controller.start();
           async.flushMicrotasks();
-          harness.controller.onClose();
+          harness.controller.dispose();
 
           // 2. Act
           harness.highlighted.value = [_kBia];
@@ -1048,7 +1066,7 @@ void main() {
       groupMap.start();
       await pumpEventQueue();
       final harness = _Harness(state: groupMap);
-      await harness.controller.onInit();
+      await harness.controller.start();
       await pumpEventQueue();
       clearInteractions(harness.positions);
       clearInteractions(harness.user);
@@ -1063,7 +1081,7 @@ void main() {
         // 1. Arrange
         final harness = await following();
         var groupUsersChanged = 0;
-        ever(harness.controller.groupUsers, (_) => groupUsersChanged++);
+        harness.controller.groupUsers.addListener(() => groupUsersChanged++);
 
         // 2. Act
         live.add([
@@ -1081,7 +1099,7 @@ void main() {
             any,
           ),
         ).called(1);
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -1091,7 +1109,7 @@ void main() {
         // 1. Arrange
         final harness = await following();
         var groupUsersChanged = 0;
-        ever(harness.controller.groupUsers, (_) => groupUsersChanged++);
+        harness.controller.groupUsers.addListener(() => groupUsersChanged++);
 
         // 2. Act
         live.add([UserModel(email: _kBia.email, name: _kBia.name)]);
@@ -1100,7 +1118,7 @@ void main() {
         // 3. Assert
         expect(groupUsersChanged, 0);
         verifyNever(harness.positions.hasPointsOnDate(any, any, any));
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -1118,7 +1136,7 @@ void main() {
 
         // 3. Assert
         verifyNever(harness.user.isTrackable());
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
 
@@ -1136,8 +1154,634 @@ void main() {
 
         // 3. Assert
         verify(harness.user.isTrackable()).called(1);
-        harness.controller.onClose();
+        harness.controller.dispose();
       },
     );
+  });
+
+  group('TrackingController.dispose - vazamentos (#195)', () {
+    test(
+      'Happy Path: Não deve avisar sobre a restrição em segundo plano depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        when(harness.service.isRunning()).thenAnswer((_) async => true);
+        await harness.controller.start();
+        harness.controller.dispose();
+
+        // 2. Act
+        harness.isBackgroundRestricted.value = true;
+
+        // 3. Assert
+        verifyNever(harness.notices.show(any));
+      },
+    );
+
+    test(
+      'Happy Path: Não deve procurar o aparelho quando a permissão chega depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        await harness.controller.start();
+        harness.controller.dispose();
+        when(harness.user.isTrackable()).thenReturn(true);
+
+        // 2. Act
+        harness.hasWhenInUsePermission.value = true;
+        await pumpEventQueue();
+
+        // 3. Assert
+        verifyNever(harness.location.currentPosition());
+      },
+    );
+
+    test(
+      'Edge Case: Não deve abrir a trilha de quem foi destacado logo antes de fechar',
+      () {
+        fakeAsync((async) {
+          // 1. Arrange
+          final harness = _Harness();
+          final trail = StreamController<List<LocationPoint>>();
+          when(
+            harness.positions.getTrajectoryForDate(
+              any,
+              any,
+              day: anyNamed('day'),
+            ),
+          ).thenAnswer((_) => trail.stream);
+          harness.controller.start();
+          async.flushMicrotasks();
+          harness.highlighted.value = [_kBia];
+          async.elapse(const Duration(milliseconds: 50));
+
+          // 2. Act
+          harness.controller.dispose();
+          async.elapse(const Duration(milliseconds: 150));
+
+          // 3. Assert
+          verifyNever(
+            harness.positions.getTrajectoryForDate(
+              any,
+              any,
+              day: anyNamed('day'),
+            ),
+          );
+          expect(trail.hasListener, isFalse);
+        });
+      },
+    );
+
+    test('Happy Path: Deve cancelar as trilhas abertas ao fechar', () {
+      fakeAsync((async) {
+        // 1. Arrange
+        final harness = _Harness();
+        final trail = StreamController<List<LocationPoint>>();
+        when(
+          harness.positions.getTrajectoryForDate(
+            any,
+            any,
+            day: anyNamed('day'),
+          ),
+        ).thenAnswer((_) => trail.stream);
+        harness.controller.start();
+        async.flushMicrotasks();
+        harness.highlighted.value = [_kBia];
+        async.elapse(const Duration(milliseconds: 150));
+
+        // 2. Act
+        harness.controller.dispose();
+        async.flushMicrotasks();
+
+        // 3. Assert
+        expect(trail.hasListener, isFalse);
+      });
+    });
+
+    test(
+      'Happy Path: Deve parar de ouvir o serviço de rastreamento ao fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final ready = StreamController<Map<String, dynamic>?>();
+        final located = StreamController<Map<String, dynamic>?>();
+        when(harness.service.on('ready')).thenAnswer((_) => ready.stream);
+        when(
+          harness.service.on('updateLocationLocally'),
+        ).thenAnswer((_) => located.stream);
+        await harness.controller.toggleService();
+
+        // 2. Act
+        harness.controller.dispose();
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(ready.hasListener, isFalse);
+        expect(located.hasListener, isFalse);
+      },
+    );
+
+    test(
+      'Happy Path: Deve parar o relógio da validade e a animação dos marcadores ao fechar',
+      () {
+        fakeAsync((async) {
+          // 1. Arrange
+          final harness = _Harness();
+          final seen = DateTime.now();
+          harness.controller.start();
+          async.flushMicrotasks();
+          harness.groupPositions.value = [
+            _live(_kBia.email, -22.9, -43.1, seen),
+          ];
+          harness.groupPositions.value = [
+            _live(_kBia.email, -22.8, -43.0, seen),
+          ];
+
+          // 2. Act
+          harness.controller.dispose();
+
+          // 3. Assert
+          expect(async.periodicTimerCount, 0);
+        });
+      },
+    );
+
+    test(
+      'Sad Path: Deve ignorar sem erro uma posição do GPS que chega depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final fix = Completer<Position>();
+        when(harness.user.isTrackable()).thenReturn(true);
+        when(harness.location.currentPosition()).thenAnswer((_) => fix.future);
+        await harness.controller.start();
+        harness.controller.dispose();
+
+        // 2. Act
+        fix.complete(_position(-22.8, -43.0));
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(harness.controller.ownPosition.value, isNull);
+      },
+    );
+
+    test(
+      'Sad Path: Deve ignorar sem erro os pontos de hoje que chegam depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final hasPoints = Completer<bool>();
+        when(
+          harness.positions.hasPointsOnDate(any, any, any),
+        ).thenAnswer((_) => hasPoints.future);
+        await harness.controller.start();
+        harness.observedMembers.value = [_kBia];
+        harness.controller.dispose();
+
+        // 2. Act
+        hasPoints.complete(true);
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(harness.controller.usersWithPointsOnObservedDay.value, isEmpty);
+      },
+    );
+
+    test(
+      'Sad Path: Deve ignorar sem erro a última posição de um dia passado que chega depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final last = Completer<LocationPoint?>();
+        when(harness.calendar.isObservingToday).thenReturn(false);
+        when(
+          harness.groupMap.loadHistoryMembers(),
+        ).thenAnswer((_) async => const [_kBia]);
+        when(
+          harness.positions.getLastKnownPositionForDate(
+            any,
+            any,
+            day: anyNamed('day'),
+          ),
+        ).thenAnswer((_) => last.future);
+        await harness.controller.start();
+        harness.observedDay.value = _kPastDay;
+        await pumpEventQueue();
+        harness.controller.dispose();
+
+        // 2. Act
+        last.complete(_point(-22.8, -43.0));
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(harness.controller.animatedMarkerPositions.value, isEmpty);
+        expect(harness.controller.usersWithPointsOnObservedDay.value, isEmpty);
+      },
+    );
+
+    test(
+      'Sad Path: Deve terminar sem erro a partida cujo estado do serviço chega depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final running = Completer<bool>();
+        when(harness.service.isRunning()).thenAnswer((_) => running.future);
+        final starting = harness.controller.start();
+        harness.controller.dispose();
+
+        // 2. Act
+        running.complete(true);
+
+        // 3. Assert
+        await expectLater(starting, completes);
+        expect(harness.controller.isTrackingEnabled.value, isFalse);
+      },
+    );
+
+    test(
+      'Sad Path: Deve terminar sem erro o desligamento cujo estado do serviço chega depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final running = Completer<bool>();
+        when(harness.service.isRunning()).thenAnswer((_) => running.future);
+        final toggling = harness.controller.toggleService();
+        harness.controller.dispose();
+
+        // 2. Act
+        running.complete(true);
+
+        // 3. Assert
+        await expectLater(toggling, completion(isA<Ok<UserNotice?>>()));
+      },
+    );
+
+    test(
+      'Sad Path: Não deve ligar o compartilhamento cujo estado do serviço chega depois de fechar',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final running = Completer<bool>();
+        final ready = StreamController<Map<String, dynamic>?>();
+        final located = StreamController<Map<String, dynamic>?>();
+        when(harness.service.isRunning()).thenAnswer((_) => running.future);
+        when(harness.service.on('ready')).thenAnswer((_) => ready.stream);
+        when(
+          harness.service.on('updateLocationLocally'),
+        ).thenAnswer((_) => located.stream);
+        final toggling = harness.controller.toggleService();
+        harness.controller.dispose();
+
+        // 2. Act
+        running.complete(false);
+
+        // 3. Assert
+        await expectLater(
+          toggling,
+          completion(
+            isA<Ok<UserNotice?>>().having((ok) => ok.value, 'value', isNull),
+          ),
+        );
+        await pumpEventQueue();
+        verifyNever(harness.service.startService());
+        verifyNever(
+          harness.service.configure(
+            iosConfiguration: anyNamed('iosConfiguration'),
+            androidConfiguration: anyNamed('androidConfiguration'),
+          ),
+        );
+        expect(ready.hasListener, isFalse);
+        expect(located.hasListener, isFalse);
+        expect(
+          () => harness.controller.isTrackingLoading.value,
+          returnsNormally,
+        );
+      },
+    );
+  });
+
+  group('TrackingController.start e dispose - idempotência', () {
+    test(
+      'Edge Case: Deve consultar o serviço uma vez só quando start() é chamado duas vezes',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        await harness.controller.start();
+
+        // 2. Act
+        await harness.controller.start();
+
+        // 3. Assert
+        verify(harness.service.isRunning()).called(1);
+        harness.controller.dispose();
+      },
+    );
+
+    test(
+      'Edge Case: Deve criar um só relógio da validade quando start() é chamado duas vezes',
+      () {
+        fakeAsync((async) {
+          // 1. Arrange
+          final harness = _Harness();
+          harness.controller.start();
+          async.flushMicrotasks();
+
+          // 2. Act
+          harness.controller.start();
+          async.flushMicrotasks();
+
+          // 3. Assert
+          expect(async.periodicTimerCount, 1);
+          harness.controller.dispose();
+        });
+      },
+    );
+
+    test('Edge Case: Deve aceitar um segundo dispose() sem lançar', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      await harness.controller.start();
+      harness.controller.dispose();
+
+      // 2. Act
+      void act() => harness.controller.dispose();
+
+      // 3. Assert
+      expect(act, returnsNormally);
+    });
+
+    test('Edge Case: Deve aceitar dispose() sem start() sem lançar', () {
+      // 1. Arrange
+      final harness = _Harness();
+
+      // 2. Act
+      void act() => harness.controller.dispose();
+
+      // 3. Assert
+      expect(act, returnsNormally);
+    });
+
+    test(
+      'Sad Path: Não deve começar a ouvir nem consultar o serviço com start() depois de dispose()',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        harness.controller.dispose();
+
+        // 2. Act
+        await harness.controller.start();
+
+        // 3. Assert
+        verifyNever(harness.service.isRunning());
+        verifyNever(harness.user.isTrackable());
+      },
+    );
+  });
+
+  group('TrackingController - avisa só quando o valor muda', () {
+    test(
+      'Edge Case: Não deve avisar quando o grupo manda outra lista com as mesmas posições',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final seen = DateTime.now();
+        harness.groupPositions.value = [_live(_kBia.email, -22.9, -43.1, seen)];
+        await harness.controller.start();
+        var notified = 0;
+        harness.controller.firebaseUsers.addListener(() => notified++);
+        harness.controller.groupUsers.addListener(() => notified++);
+
+        // 2. Act
+        harness.groupPositions.value = [_live(_kBia.email, -22.9, -43.1, seen)];
+
+        // 3. Assert
+        expect(notified, 0);
+        harness.controller.dispose();
+      },
+    );
+
+    test(
+      'Happy Path: Deve avisar os marcadores uma vez por quadro mesmo com duas pessoas se movendo',
+      () {
+        fakeAsync((async) {
+          // 1. Arrange
+          final harness = _Harness();
+          final seen = DateTime.now();
+          harness.controller.start();
+          async.flushMicrotasks();
+          harness.groupPositions.value = [
+            _live(_kBia.email, -22.9, -43.1, seen),
+            _live('caio@example.com', -22.7, -43.2, seen),
+          ];
+          var notified = 0;
+          harness.controller.animatedMarkerPositions.addListener(
+            () => notified++,
+          );
+          harness.groupPositions.value = [
+            _live(_kBia.email, -22.8, -43.0, seen),
+            _live('caio@example.com', -22.6, -43.3, seen),
+          ];
+
+          // 2. Act
+          async.elapse(const Duration(milliseconds: 16));
+
+          // 3. Assert
+          expect(notified, 1);
+          harness.controller.dispose();
+        });
+      },
+    );
+
+    test(
+      'Edge Case: Não deve avisar a trilha quando ela chega de novo com os mesmos pontos',
+      () {
+        fakeAsync((async) {
+          // 1. Arrange
+          final harness = _Harness();
+          final trail = StreamController<List<LocationPoint>>();
+          when(
+            harness.positions.getTrajectoryForDate(
+              any,
+              any,
+              day: anyNamed('day'),
+            ),
+          ).thenAnswer((_) => trail.stream);
+          harness.controller.start();
+          harness.highlighted.value = [_kBia];
+          async.elapse(const Duration(milliseconds: 150));
+          trail.add([_point(-22.8, -43.0)]);
+          async.flushMicrotasks();
+          var notified = 0;
+          harness.controller.highlightedTrajectories.addListener(
+            () => notified++,
+          );
+
+          // 2. Act
+          trail.add([_point(-22.8, -43.0)]);
+          async.flushMicrotasks();
+
+          // 3. Assert
+          expect(notified, 0);
+          harness.controller.dispose();
+        });
+      },
+    );
+
+    test(
+      'Edge Case: Não deve avisar a posição própria quando o GPS repete a mesma posição',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        when(harness.user.isTrackable()).thenReturn(true);
+        await harness.controller.start();
+        await pumpEventQueue();
+        var notified = 0;
+        harness.controller.ownPosition.addListener(() => notified++);
+
+        // 2. Act
+        harness.capabilities.value = const Capabilities(isMember: true);
+        await pumpEventQueue();
+
+        // 3. Assert
+        verify(harness.location.currentPosition()).called(2);
+        expect(notified, 0);
+        harness.controller.dispose();
+      },
+    );
+
+    test(
+      'Edge Case: Não deve avisar isTrackingEnabled quando o serviço confirma que está parado',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        var notified = 0;
+        harness.controller.isTrackingEnabled.addListener(() => notified++);
+
+        // 2. Act
+        await harness.controller.start();
+
+        // 3. Assert
+        expect(notified, 0);
+        harness.controller.dispose();
+      },
+    );
+  });
+
+  group('TrackingController - coleções expostas não mudam no lugar', () {
+    test('Sad Path: Deve recusar mudar a lista de quem está no mapa', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      harness.groupPositions.value = [
+        _live(_kBia.email, -22.9, -43.1, DateTime.now()),
+      ];
+      await harness.controller.start();
+
+      // 2. Act
+      void act() => harness.controller.firebaseUsers.value.clear();
+
+      // 3. Assert
+      expect(act, throwsUnsupportedError);
+      harness.controller.dispose();
+    });
+
+    test('Sad Path: Deve recusar mudar a lista do grupo', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      harness.groupPositions.value = [
+        _live(_kBia.email, -22.9, -43.1, DateTime.now()),
+      ];
+      await harness.controller.start();
+
+      // 2. Act
+      void act() => harness.controller.groupUsers.value.clear();
+
+      // 3. Assert
+      expect(act, throwsUnsupportedError);
+      harness.controller.dispose();
+    });
+
+    test(
+      'Sad Path: Deve recusar mudar o conjunto de quem tem pontos no dia',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        await harness.controller.toggleService();
+
+        // 2. Act
+        void act() =>
+            harness.controller.usersWithPointsOnObservedDay.value.clear();
+
+        // 3. Assert
+        expect(act, throwsUnsupportedError);
+      },
+    );
+
+    test('Sad Path: Deve recusar mudar as posições dos marcadores', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      harness.groupPositions.value = [
+        _live(_kBia.email, -22.9, -43.1, DateTime.now()),
+      ];
+      await harness.controller.start();
+
+      // 2. Act
+      void act() => harness.controller.animatedMarkerPositions.value.clear();
+
+      // 3. Assert
+      expect(act, throwsUnsupportedError);
+      harness.controller.dispose();
+    });
+
+    test('Sad Path: Deve recusar mudar a trilha de uma pessoa destacada', () {
+      fakeAsync((async) {
+        // 1. Arrange
+        final harness = _Harness();
+        when(
+          harness.positions.getTrajectoryForDate(
+            any,
+            any,
+            day: anyNamed('day'),
+          ),
+        ).thenAnswer((_) => Stream.value([_point(-22.8, -43.0)]));
+        harness.controller.start();
+        harness.highlighted.value = [_kBia];
+        async.elapse(const Duration(milliseconds: 150));
+
+        // 2. Act
+        void act() => harness
+            .controller
+            .highlightedTrajectories
+            .value[_kBia.email]!
+            .clear();
+
+        // 3. Assert
+        expect(act, throwsUnsupportedError);
+        harness.controller.dispose();
+      });
+    });
+
+    test('Sad Path: Deve recusar mudar o mapa das trilhas destacadas', () {
+      fakeAsync((async) {
+        // 1. Arrange
+        final harness = _Harness();
+        when(
+          harness.positions.getTrajectoryForDate(
+            any,
+            any,
+            day: anyNamed('day'),
+          ),
+        ).thenAnswer((_) => Stream.value([_point(-22.8, -43.0)]));
+        harness.controller.start();
+        harness.highlighted.value = [_kBia];
+        async.elapse(const Duration(milliseconds: 150));
+
+        // 2. Act
+        void act() => harness.controller.highlightedTrajectories.value.clear();
+
+        // 3. Assert
+        expect(act, throwsUnsupportedError);
+        harness.controller.dispose();
+      });
+    });
   });
 }

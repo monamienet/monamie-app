@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:monamie_app/app/data/services/app_lifecycle_events.dart';
 import 'package:monamie_app/app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permission_prompts.dart';
@@ -13,6 +15,7 @@ import 'package:monamie_app/app/utils/notice_presenter.dart';
 import 'package:monamie_app/app/utils/user_notice.dart';
 
 @GenerateNiceMocks([
+  MockSpec<AppLifecycleEvents>(),
   MockSpec<BackgroundRestrictionChecker>(),
   MockSpec<BackgroundUsageSettingsLauncher>(),
   MockSpec<PermissionPrompts>(),
@@ -63,13 +66,20 @@ PermissionsController _build({
   BackgroundUsageSettingsLauncher? backgroundUsageSettingsLauncher,
   PermissionPrompts? prompts,
   NoticePresenter? notices,
+  AppLifecycleEvents? lifecycle,
 }) => PermissionsController(
   prompts: prompts ?? mockPrompts(),
   notices: notices ?? MockNoticePresenter(),
+  lifecycle: lifecycle,
   backgroundRestrictionChecker: backgroundRestrictionChecker,
   backgroundUsageSettingsLauncher:
       backgroundUsageSettingsLauncher ?? mockLauncher(),
 );
+
+/// Puts [value] in one of the controller's values, as if the system had
+/// answered it (the controller exposes them read-only).
+void _seed(ValueListenable<bool> listenable, bool value) =>
+    (listenable as ValueNotifier<bool>).value = value;
 
 /// Canal de métodos usado pelo permission_handler. O controller não deve
 /// acionar `openAppSettings` para a restrição de bateria: abrir as
@@ -162,7 +172,7 @@ void main() {
           // 1. Arrange
           final checker = mockChecker(result: false);
           final controller = _build(backgroundRestrictionChecker: checker);
-          controller.isBackgroundRestricted.value = true;
+          _seed(controller.isBackgroundRestricted, true);
 
           // 2. Act
           final resultado = await controller.refreshBackgroundRestriction();
@@ -179,7 +189,7 @@ void main() {
           // 1. Arrange
           final checker = mockChecker(error: StateError('falha nativa'));
           final controller = _build(backgroundRestrictionChecker: checker);
-          controller.isBackgroundRestricted.value = true;
+          _seed(controller.isBackgroundRestricted, true);
 
           // 2. Act
           final future = controller.refreshBackgroundRestriction();
@@ -198,9 +208,9 @@ void main() {
         required bool restricted,
       }) {
         final controller = _build(backgroundRestrictionChecker: mockChecker());
-        controller.hasAlwaysLocationPermission.value = always;
-        controller.hasNotificationPermission.value = notification;
-        controller.isBackgroundRestricted.value = restricted;
+        _seed(controller.hasAlwaysLocationPermission, always);
+        _seed(controller.hasNotificationPermission, notification);
+        _seed(controller.isBackgroundRestricted, restricted);
         return controller;
       }
 
@@ -247,7 +257,7 @@ void main() {
             notification: true,
             restricted: false,
           );
-          controller.hasWhenInUseLocationPermission.value = false;
+          _seed(controller.hasWhenInUseLocationPermission, false);
 
           // 2. Act
           final concedidas = controller.arePermissionsGranted();
@@ -318,8 +328,8 @@ void main() {
           final controller = _build(
             backgroundRestrictionChecker: mockChecker(result: true),
           );
-          controller.hasAlwaysLocationPermission.value = true;
-          controller.hasNotificationPermission.value = true;
+          _seed(controller.hasAlwaysLocationPermission, true);
+          _seed(controller.hasNotificationPermission, true);
           await controller.refreshBackgroundRestriction();
 
           // 2. Act
@@ -388,7 +398,7 @@ void main() {
             backgroundUsageSettingsLauncher: launcher,
             prompts: prompts,
           );
-          controller.isBackgroundRestricted.value = true;
+          _seed(controller.isBackgroundRestricted, true);
 
           // 2. Act
           await controller.openBackgroundUsageSettings();
@@ -906,6 +916,197 @@ void main() {
 
         // 3. Assert
         verify(prompts.notifyGpsDisabled()).called(1);
+      },
+    );
+  });
+
+  group('PermissionsController - start e dispose', () {
+    /// The status the permission_handler channel answers for every
+    /// permission; tests change it to simulate the person's choice.
+    late int status;
+
+    setUp(() {
+      status = _denied;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_permissionChannel, (call) async {
+            if (call.method == 'checkPermissionStatus') return status;
+            return null;
+          });
+    });
+
+    tearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_permissionChannel, null);
+    });
+
+    test(
+      'Happy Path: Deve passar a seguir o ciclo de vida do app ao começar',
+      () async {
+        // 1. Arrange
+        final lifecycle = MockAppLifecycleEvents();
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          lifecycle: lifecycle,
+        );
+
+        // 2. Act
+        await controller.start();
+
+        // 3. Assert
+        verify(lifecycle.start(any)).called(1);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'Edge Case: Deve seguir o ciclo de vida uma vez só quando start() é chamado duas vezes',
+      () async {
+        // 1. Arrange
+        final lifecycle = MockAppLifecycleEvents();
+        final checker = mockChecker();
+        final controller = _build(
+          backgroundRestrictionChecker: checker,
+          lifecycle: lifecycle,
+        );
+        await controller.start();
+
+        // 2. Act
+        await controller.start();
+
+        // 3. Assert
+        verify(lifecycle.start(any)).called(1);
+        verify(checker.isRestricted()).called(1);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'Happy Path: Deve deixar de seguir o ciclo de vida ao fechar',
+      () async {
+        // 1. Arrange
+        final lifecycle = MockAppLifecycleEvents();
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          lifecycle: lifecycle,
+        );
+        await controller.start();
+
+        // 2. Act
+        controller.dispose();
+
+        // 3. Assert
+        verify(lifecycle.stop()).called(1);
+      },
+    );
+
+    test(
+      'Edge Case: Deve aceitar um segundo dispose() sem repetir o fim',
+      () async {
+        // 1. Arrange
+        final lifecycle = MockAppLifecycleEvents();
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          lifecycle: lifecycle,
+        );
+        await controller.start();
+        controller.dispose();
+
+        // 2. Act
+        controller.dispose();
+
+        // 3. Assert
+        verify(lifecycle.stop()).called(1);
+      },
+    );
+
+    test(
+      'Sad Path: Não deve seguir o ciclo de vida com start() depois de dispose()',
+      () async {
+        // 1. Arrange
+        final lifecycle = MockAppLifecycleEvents();
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          lifecycle: lifecycle,
+        );
+        controller.dispose();
+
+        // 2. Act
+        await controller.start();
+
+        // 3. Assert
+        verifyNever(lifecycle.start(any));
+      },
+    );
+
+    test(
+      'Happy Path: Deve avisar a permissão de localização quando ela é concedida',
+      () async {
+        // 1. Arrange
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(),
+          lifecycle: MockAppLifecycleEvents(),
+        );
+        await controller.start();
+        var notified = 0;
+        controller.hasWhenInUseLocationPermission.addListener(() => notified++);
+        status = _granted;
+
+        // 2. Act
+        await _returnToApp(controller);
+
+        // 3. Assert
+        expect(notified, 1);
+        expect(controller.hasWhenInUseLocationPermission.value, isTrue);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'Edge Case: Não deve avisar nenhuma permissão quando o sistema responde o mesmo ao voltar ao app',
+      () async {
+        // 1. Arrange
+        status = _granted;
+        final controller = _build(
+          backgroundRestrictionChecker: mockChecker(result: true),
+          lifecycle: MockAppLifecycleEvents(),
+        );
+        await controller.start();
+        var notified = 0;
+        void count() => notified++;
+        controller.hasWhenInUseLocationPermission.addListener(count);
+        controller.hasAlwaysLocationPermission.addListener(count);
+        controller.hasNotificationPermission.addListener(count);
+        controller.isBackgroundRestricted.addListener(count);
+
+        // 2. Act
+        await _returnToApp(controller);
+
+        // 3. Assert
+        expect(notified, 0);
+        controller.dispose();
+      },
+    );
+
+    test(
+      'Sad Path: Deve ignorar sem erro a restrição que o sistema responde depois de fechar',
+      () async {
+        // 1. Arrange
+        final answer = Completer<bool>();
+        final checker = MockBackgroundRestrictionChecker();
+        when(checker.isRestricted()).thenAnswer((_) => answer.future);
+        final controller = _build(
+          backgroundRestrictionChecker: checker,
+          lifecycle: MockAppLifecycleEvents(),
+        );
+        final pending = controller.refreshBackgroundRestriction();
+        controller.dispose();
+
+        // 2. Act
+        answer.complete(true);
+
+        // 3. Assert
+        await expectLater(pending, completion(isTrue));
+        expect(controller.isBackgroundRestricted.value, isFalse);
       },
     );
   });

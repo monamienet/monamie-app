@@ -85,9 +85,11 @@ class HomeMenu extends StatelessWidget {
               // stops: leaving in the middle of the start could turn the
               // service on after the sign-out.
               ListenableBuilder(
-                listenable: _auth,
-                builder: (context, _) => Obx(() {
-                  // Both read every time: Obx needs to see the Rx.
+                listenable: Listenable.merge([
+                  _auth,
+                  _tracking.isTrackingLoading,
+                ]),
+                builder: (context, _) {
                   final trackingBusy = _tracking.isTrackingLoading.value;
                   final loggingOut = _auth.state.isLoggingOut;
                   return _MenuItem(
@@ -97,7 +99,7 @@ class HomeMenu extends StatelessWidget {
                         ? null
                         : () => _closeAndRun(context, _auth.logout),
                   );
-                }),
+                },
               ),
             ],
           ),

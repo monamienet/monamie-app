@@ -1,6 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
@@ -12,7 +12,7 @@ import 'package:monamie_app/app/utils/user_notice.dart';
 import 'share_card_test.mocks.dart';
 
 /// A [MockTrackingToggleController] whose flags start at [enabled] and
-/// [loading]; the test flips them through the returned `RxBool`s.
+/// [loading]; the test flips them with [flip].
 /// [toggleService] answers [result] (by default `Ok(null)`).
 MockTrackingToggleController mockToggle({
   bool enabled = false,
@@ -20,13 +20,17 @@ MockTrackingToggleController mockToggle({
   Result<UserNotice?> result = const Ok(null),
 }) {
   final toggle = MockTrackingToggleController();
-  final isEnabled = enabled.obs;
-  final isLoading = loading.obs;
+  final isEnabled = ValueNotifier<bool>(enabled);
+  final isLoading = ValueNotifier<bool>(loading);
   when(toggle.isTrackingEnabled).thenReturn(isEnabled);
   when(toggle.isTrackingLoading).thenReturn(isLoading);
   when(toggle.toggleService()).thenAnswer((_) async => result);
   return toggle;
 }
+
+/// Sets one of [mockToggle]'s flags, which are [ValueNotifier]s.
+void flip(ValueListenable<bool> flag, bool value) =>
+    (flag as ValueNotifier<bool>).value = value;
 
 Widget buildApp(TrackingToggleController controller) => MaterialApp(
   home: Scaffold(body: ShareCard(controller: controller)),
@@ -169,7 +173,7 @@ void main() {
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
-      fake.isTrackingLoading.value = true;
+      flip(fake.isTrackingLoading, true);
       await tester.pump();
 
       // 3. Assert
@@ -184,12 +188,26 @@ void main() {
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
-      fake.isTrackingLoading.value = false;
-      fake.isTrackingEnabled.value = true;
+      flip(fake.isTrackingLoading, false);
+      flip(fake.isTrackingEnabled, true);
       await tester.pump();
 
       // 3. Assert
       expect(find.byKey(busyKey), findsNothing);
+      expect(find.text('Compartilhando sua localização'), findsOneWidget);
+    });
+
+    testWidgets('Edge Case: the card reads on when sharing turns on with no '
+        'loading change', (tester) async {
+      // 1. Arrange
+      final fake = mockToggle();
+      await tester.pumpWidget(buildApp(fake));
+
+      // 2. Act
+      flip(fake.isTrackingEnabled, true);
+      await tester.pump();
+
+      // 3. Assert
       expect(find.text('Compartilhando sua localização'), findsOneWidget);
     });
 

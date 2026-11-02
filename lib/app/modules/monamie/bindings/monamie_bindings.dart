@@ -29,19 +29,25 @@ class MonamieBindings implements Bindings {
       )..start(),
     );
     Get.lazyPut<TrackingController>(
-      () => TrackingController(
-        notices: const ScaffoldNoticePresenter(),
-        userCtrl: Get.find<UserController>(),
-        permissionsCtrl: Get.find<PermissionsController>(),
-        calendar: Get.find<CalendarController>(),
-        groupMap: Get.find<GroupMapState>(),
-      ),
+      () => scope.own(
+        TrackingController(
+          notices: const ScaffoldNoticePresenter(),
+          userCtrl: Get.find<UserController>(),
+          permissionsCtrl: Get.find<PermissionsController>(),
+          calendar: Get.find<CalendarController>(),
+          groupMap: Get.find<GroupMapState>(),
+        ),
+        (c) => c.dispose(),
+      )..start(),
     );
     Get.lazyPut<PermissionsController>(
-      () => PermissionsController(
-        prompts: const DialogPermissionPrompts(),
-        notices: const ScaffoldNoticePresenter(),
-      ),
+      () => scope.own(
+        PermissionsController(
+          prompts: const DialogPermissionPrompts(),
+          notices: const ScaffoldNoticePresenter(),
+        ),
+        (c) => c.dispose(),
+      )..start(),
     );
     ensureAuthGoogleController();
     // Registered under its contract: screens and controllers find
@@ -61,16 +67,23 @@ class MonamieBindings implements Bindings {
         (c) => c.dispose(),
       ),
     );
+    // Holds no state: nothing to start or dispose.
     Get.lazyPut(() => CallController());
     // Created with the home screen, not on first use: it must already hold
     // the saved settings when *Ajustes de acompanhamento* opens, and a lazy
     // instance first built inside that route would be deleted, factory and
     // all, when the route closes.
-    Get.put(TrackingSettingsController());
+    // An instance already registered is kept, as Get.put does (and it was
+    // started when it was registered).
+    if (!Get.isRegistered<TrackingSettingsController>()) {
+      Get.put(
+        scope.own(TrackingSettingsController(), (c) => c.dispose())..start(),
+      );
+    }
   }
 }
 
-/// Disposes the home controllers that are not GetxControllers when GetX
+/// Disposes the home controllers (none of them a GetxController) when GetX
 /// deletes the home route's instances (on sign-out or organization switch),
 /// the moment it used to call their onClose. Until the organization scope
 /// of phase 8 owns them.

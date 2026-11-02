@@ -261,5 +261,17 @@ void main() {
       // 3. Assert
       await expectLater(pending, completes);
     });
+
+    test('Edge Case: Deve aceitar um segundo dispose() sem lançar', () {
+      // 1. Arrange
+      final controller = _controller();
+      controller.dispose();
+
+      // 2. Act
+      void act() => controller.dispose();
+
+      // 3. Assert
+      expect(act, returnsNormally);
+    });
   });
 }

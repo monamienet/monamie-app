@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show setEquals;
+
 /// How many months back the history calendar goes (history is kept
 /// indefinitely, so the calendar bounds what is offered, not what exists).
 const historyMonthsBack = 12;
@@ -84,6 +86,19 @@ class HistoryMonth {
         today: _today,
         trailDays: trailDays,
       );
+
+  /// Same month, same today and same days with trails: the calendar's
+  /// `viewMonth` then does not notify.
+  @override
+  bool operator ==(Object other) =>
+      other is HistoryMonth &&
+      other.first == first &&
+      other._today == _today &&
+      setEquals(other.trailDays, trailDays);
+
+  @override
+  int get hashCode =>
+      Object.hash(first, _today, Object.hashAllUnordered(trailDays));
 
   /// `yyyy-mm-dd` bounds of this month, for a document-id range query.
   (String, String) get keyRange =>

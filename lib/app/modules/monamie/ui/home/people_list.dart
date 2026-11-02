@@ -20,8 +20,8 @@ List<GroupRow> observedGroupRows() {
     members: today || groups.historyMembers.value.isEmpty
         ? groups.observedMembers.value
         : groups.historyMembers.value,
-    users: tracking.groupUsers.toList(),
-    usersWithPoints: tracking.usersWithPointsOnObservedDay.toSet(),
+    users: tracking.groupUsers.value,
+    usersWithPoints: tracking.usersWithPointsOnObservedDay.value,
     observingToday: today,
     now: DateTime.now(),
     validity: validity,
@@ -37,6 +37,7 @@ class PeopleList extends StatelessWidget {
   Widget build(BuildContext context) {
     final groups = Get.find<GroupMapState>();
     final calls = Get.find<CallController>();
+    final tracking = Get.find<TrackingController>();
     final me = Get.find<UserController>().googleUser?.email;
     return ListenableBuilder(
       listenable: Listenable.merge([
@@ -45,10 +46,10 @@ class PeopleList extends StatelessWidget {
         groups.highlightedObservedUsers,
         groups.selectedMemberEmail,
         Get.find<CalendarController>().observedDay,
+        tracking.groupUsers,
+        tracking.usersWithPointsOnObservedDay,
       ]),
-      // The tracking controller's lists are still Rx, read by
-      // [observedGroupRows] on every build.
-      builder: (context, _) => Obx(() {
+      builder: (context, _) {
         final rows = observedGroupRows();
         return Column(
           children: [
@@ -64,7 +65,7 @@ class PeopleList extends StatelessWidget {
               ),
           ],
         );
-      }),
+      },
     );
   }
 }

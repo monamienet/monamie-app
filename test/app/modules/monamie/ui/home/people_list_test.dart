@@ -3,8 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/monamie/models/group_member.dart';
+import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/people_list.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/person_row_tile.dart';
+import 'package:monamie_app/app/modules/monamie/ui/home/presence.dart';
 
 import 'home_doubles.dart';
 
@@ -72,6 +74,57 @@ void main() {
 
       // 3. Assert
       expect(find.text('Caio'), findsOneWidget);
+    });
+
+    testWidgets('Happy Path: a person who starts sharing shows up as live', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final doubles = HomeDoubles()..observedMembers.value = const [_bia];
+      await pumpList(tester, doubles);
+
+      // 2. Act
+      doubles.groupUsers.value = [
+        UserModel(
+          email: _bia.email,
+          name: _bia.name,
+          isPublishing: true,
+          capturedAt: DateTime.now(),
+        ),
+      ];
+      await tester.pump();
+
+      // 3. Assert
+      expect(
+        tester
+            .widget<PersonRowTile>(find.byType(PersonRowTile))
+            .row
+            .presence
+            .kind,
+        PresenceKind.live,
+      );
+    });
+
+    testWidgets('Edge Case: on a past day, positions found later mark the '
+        'person as having positions that day', (tester) async {
+      // 1. Arrange
+      final doubles = HomeDoubles()..observedMembers.value = const [_bia];
+      when(doubles.calendar.isObservingToday).thenReturn(false);
+      await pumpList(tester, doubles);
+
+      // 2. Act
+      doubles.usersWithPoints.value = {_bia.email};
+      await tester.pump();
+
+      // 3. Assert
+      expect(
+        tester
+            .widget<PersonRowTile>(find.byType(PersonRowTile))
+            .row
+            .presence
+            .kind,
+        PresenceKind.live,
+      );
     });
   });
 }

@@ -25,76 +25,82 @@ class ShareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final state = shareCardState(
-        enabled: _tracking.isTrackingEnabled.value,
-        loading: _tracking.isTrackingLoading.value,
-      );
-      final tinted = state.isOn && !state.busy;
-      final background = tinted ? SheetColors.accent : SheetColors.surface;
-      final titleColor = tinted ? AppColors.darkBlue() : SheetColors.ink;
-      final subtitleColor = tinted ? AppColors.darkBlue() : SheetColors.muted;
+    final tracking = _tracking;
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        tracking.isTrackingEnabled,
+        tracking.isTrackingLoading,
+      ]),
+      builder: (context, _) => _card(context, tracking),
+    );
+  }
 
-      return Semantics(
-        toggled: state.isOn,
-        enabled: !state.busy,
-        label: '${state.title}. ${state.subtitle}',
-        excludeSemantics: true,
-        child: Material(
-          color: background,
+  Widget _card(BuildContext context, TrackingToggleController tracking) {
+    final state = shareCardState(
+      enabled: tracking.isTrackingEnabled.value,
+      loading: tracking.isTrackingLoading.value,
+    );
+    final tinted = state.isOn && !state.busy;
+    final background = tinted ? SheetColors.accent : SheetColors.surface;
+    final titleColor = tinted ? AppColors.darkBlue() : SheetColors.ink;
+    final subtitleColor = tinted ? AppColors.darkBlue() : SheetColors.muted;
+
+    return Semantics(
+      toggled: state.isOn,
+      enabled: !state.busy,
+      label: '${state.title}. ${state.subtitle}',
+      excludeSemantics: true,
+      child: Material(
+        color: background,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: state.busy ? null : () => _toggle(context),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 64),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: Center(child: _icon(state)),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            state.title,
-                            style: TextStyle(
-                              color: titleColor,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                            ),
+          onTap: state.busy ? null : () => _toggle(context),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 64),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: Center(child: _icon(state)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          state.title,
+                          style: TextStyle(
+                            color: titleColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            state.subtitle,
-                            style: TextStyle(
-                              color: subtitleColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          state.subtitle,
+                          style: TextStyle(
+                            color: subtitleColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    _Switch(on: state.isOn, busy: state.busy),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  _Switch(on: state.isOn, busy: state.busy),
+                ],
               ),
             ),
           ),
         ),
-      );
-    });
+      ),
+    );
   }
 
   /// Toggles sharing and shows what the controller says: why it did not

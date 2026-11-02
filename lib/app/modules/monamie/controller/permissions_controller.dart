@@ -1,5 +1,7 @@
 import 'dart:ui' show AppLifecycleState;
 
+import 'package:flutter/foundation.dart';
+
 import 'package:monamie_app/app/data/services/app_lifecycle_events.dart';
 import 'package:monamie_app/app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
@@ -9,10 +11,15 @@ import 'package:monamie_app/app/data/services/widgets_binding_app_lifecycle_even
 import 'package:monamie_app/app/modules/monamie/controller/permission_prompts.dart';
 import 'package:monamie_app/app/utils/notice_presenter.dart';
 import 'package:monamie_app/app/utils/user_notice.dart';
-import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-class PermissionsController extends GetxController {
+/// The permissions the tracking needs and the battery restriction, read
+/// from the system. Each one is its own [ValueListenable], so the tracking
+/// controller reacts to the one it needs.
+///
+/// Whoever creates it calls [start] once, which follows the app's return to
+/// the foreground and reads the statuses, and [dispose] once.
+class PermissionsController {
   /// [prompts] asks the questions in the middle of the permission flows;
   /// [notices] shows the warning given on returning from the battery
   /// settings, when no screen is waiting for it; [lifecycle] tells when the
@@ -38,17 +45,36 @@ class PermissionsController extends GetxController {
   final BackgroundRestrictionChecker _backgroundRestrictionChecker;
   final BackgroundUsageSettingsLauncher _backgroundUsageSettingsLauncher;
 
-  final hasWhenInUseLocationPermission = false.obs;
-  final hasAlwaysLocationPermission = false.obs;
-  final hasNotificationPermission = false.obs;
+  final _hasWhenInUseLocationPermission = ValueNotifier<bool>(false);
+  final _hasAlwaysLocationPermission = ValueNotifier<bool>(false);
+  final _hasNotificationPermission = ValueNotifier<bool>(false);
+  final _isBackgroundRestricted = ValueNotifier<bool>(false);
+
+  bool _started = false;
+  bool _disposed = false;
+
+  ValueListenable<bool> get hasWhenInUseLocationPermission =>
+      _hasWhenInUseLocationPermission;
+  ValueListenable<bool> get hasAlwaysLocationPermission =>
+      _hasAlwaysLocationPermission;
+  ValueListenable<bool> get hasNotificationPermission =>
+      _hasNotificationPermission;
 
   /// `true` quando o app está no modo de bateria "Restrito". Nesse modo o
   /// Android derruba o serviço de rastreamento assim que o app sai da tela.
-  final isBackgroundRestricted = false.obs;
+  ValueListenable<bool> get isBackgroundRestricted => _isBackgroundRestricted;
 
-  @override
-  Future<void> onInit() async {
-    super.onInit();
+  /// Sets [notifier] (which notifies only when the value differs), unless
+  /// disposed: a system answer may land after [dispose].
+  void _set(ValueNotifier<bool> notifier, bool value) {
+    if (!_disposed) notifier.value = value;
+  }
+
+  /// Follows the app's return to the foreground and reads the statuses.
+  /// Only the first call does anything.
+  Future<void> start() async {
+    if (_started || _disposed) return;
+    _started = true;
     _lifecycle.start(didChangeAppLifecycleState);
     await _refreshStatuses();
   }
@@ -70,7 +96,7 @@ class PermissionsController extends GetxController {
   void _warnIfStillRestrictedAfterSettings() {
     if (!_awaitingBackgroundUsageReturn) return;
     _awaitingBackgroundUsageReturn = false;
-    if (!isBackgroundRestricted.value) return;
+    if (!_isBackgroundRestricted.value) return;
 
     _notices.show(
       const UserNotice(
@@ -83,19 +109,23 @@ class PermissionsController extends GetxController {
   }
 
   Future<void> _refreshStatuses() async {
-    hasWhenInUseLocationPermission.value =
-        await Permission.locationWhenInUse.isGranted;
-    hasAlwaysLocationPermission.value =
-        await Permission.locationAlways.isGranted;
-    hasNotificationPermission.value = await Permission.notification.isGranted;
+    _set(
+      _hasWhenInUseLocationPermission,
+      await Permission.locationWhenInUse.isGranted,
+    );
+    _set(
+      _hasAlwaysLocationPermission,
+      await Permission.locationAlways.isGranted,
+    );
+    _set(_hasNotificationPermission, await Permission.notification.isGranted);
     await refreshBackgroundRestriction();
   }
 
   /// Reconsulta o sistema e atualiza [isBackgroundRestricted].
   Future<bool> refreshBackgroundRestriction() async {
-    isBackgroundRestricted.value = await _backgroundRestrictionChecker
-        .isRestricted();
-    return isBackgroundRestricted.value;
+    final restricted = await _backgroundRestrictionChecker.isRestricted();
+    _set(_isBackgroundRestricted, restricted);
+    return restricted;
   }
 
   Future<void> requestWhenInUsePermission() async {
@@ -105,8 +135,10 @@ class PermissionsController extends GetxController {
       await Permission.locationWhenInUse.request();
     }
 
-    hasWhenInUseLocationPermission.value =
-        await Permission.locationWhenInUse.isGranted;
+    _set(
+      _hasWhenInUseLocationPermission,
+      await Permission.locationWhenInUse.isGranted,
+    );
   }
 
   Future<void> requestAlwaysPermission() async {
@@ -127,8 +159,10 @@ class PermissionsController extends GetxController {
       await openAppSettings();
     }
 
-    hasAlwaysLocationPermission.value =
-        await Permission.locationAlways.isGranted;
+    _set(
+      _hasAlwaysLocationPermission,
+      await Permission.locationAlways.isGranted,
+    );
   }
 
   /// Precisamos de permissão para exibibir notificações pois serviços de
@@ -142,15 +176,15 @@ class PermissionsController extends GetxController {
       await Permission.notification.request();
     }
 
-    hasNotificationPermission.value = await Permission.notification.isGranted;
+    _set(_hasNotificationPermission, await Permission.notification.isGranted);
   }
 
   /// Verifica se todas as permissões necessárias para o MonAmie funcionar
   /// adequadamente já foram concedidas ao aplicativo pelo usuário.
   bool arePermissionsGranted() {
-    return hasAlwaysLocationPermission.value &&
-        hasNotificationPermission.value &&
-        !isBackgroundRestricted.value;
+    return _hasAlwaysLocationPermission.value &&
+        _hasNotificationPermission.value &&
+        !_isBackgroundRestricted.value;
   }
 
   /// Explica a restrição de bateria e abre a tela de bateria do app, onde o
@@ -188,9 +222,19 @@ class PermissionsController extends GetxController {
   /// Says the GPS is off (see [PermissionPrompts.notifyGpsDisabled]).
   Future<void> notifyGpsDisabled() => _prompts.notifyGpsDisabled();
 
-  @override
-  void onClose() {
+  /// Stops following the app's lifecycle and releases the values. Only the
+  /// first call does anything.
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     _lifecycle.stop();
-    super.onClose();
+    for (final notifier in [
+      _hasWhenInUseLocationPermission,
+      _hasAlwaysLocationPermission,
+      _hasNotificationPermission,
+      _isBackgroundRestricted,
+    ]) {
+      notifier.dispose();
+    }
   }
 }

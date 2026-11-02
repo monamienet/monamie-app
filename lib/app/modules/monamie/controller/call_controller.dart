@@ -3,10 +3,11 @@ import 'dart:io';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class CallController extends GetxController {
+/// Opens Google Meet to call a person of the group. It holds no state, so
+/// it needs no start nor dispose.
+class CallController {
   Future<void> launchGoogleMeet(String email) async {
     await Clipboard.setData(ClipboardData(text: email));
 

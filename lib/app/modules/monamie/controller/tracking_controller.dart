@@ -17,7 +17,6 @@ import 'package:monamie_app/app/modules/monamie/models/animated_user_marker.dart
 import 'package:monamie_app/app/modules/monamie/models/location_point.dart';
 import 'package:monamie_app/app/modules/monamie/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:get/get.dart';
 import 'package:monamie_app/app/data/tracking/sharing_times.dart';
 import 'package:monamie_app/app/data/services/foreground_service.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
@@ -25,8 +24,15 @@ import 'package:monamie_app/app/utils/notice_presenter.dart';
 import 'package:monamie_app/app/utils/result.dart';
 import 'package:monamie_app/app/utils/user_notice.dart';
 
-class TrackingController extends GetxController
-    implements TrackingToggleController {
+/// The map of the home screen: the markers of the observed group, the
+/// person's own position, the highlighted trails and the sharing switch.
+///
+/// Each value is its own [ValueListenable] and notifies only when it
+/// changes: lists, sets and maps are replaced whole, never changed in
+/// place. Whoever creates it calls [start] once, which begins listening to
+/// the other home controllers, and [dispose] once, which removes every
+/// listener and cancels every timer and trail subscription.
+class TrackingController implements TrackingToggleController {
   /// [notices] shows the warnings raised by background changes, which no
   /// screen is waiting for. [userCtrl], [permissionsCtrl], [calendar] and
   /// [groupMap] are the other home controllers this one reacts to. The
@@ -65,24 +71,99 @@ class TrackingController extends GetxController
     speed: 0,
     speedAccuracy: 0,
   );
-  RxList<UserModel> firebaseUsers = <UserModel>[].obs;
+  final _firebaseUsers = ValueNotifier<List<UserModel>>(const []);
+  final _groupUsers = ValueNotifier<List<UserModel>>(const []);
+  final _isTrackingEnabled = ValueNotifier<bool>(false);
+  final _isTrackingLoading = ValueNotifier<bool>(false);
+  final _heading = ValueNotifier<double?>(null);
+  final _ownPosition = ValueNotifier<LatLng?>(null);
+  final _animatedMarkerPositions = ValueNotifier<Map<String, LatLng>>(const {});
+  final _usersWithPointsOnObservedDay = ValueNotifier<Set<String>>(const {});
+  final _highlightedTrajectories =
+      ValueNotifier<Map<String, List<LocationPoint>>>(const {});
+
+  /// The live positions of the observed group: those of [groupUsers] still
+  /// within the validity.
+  ValueListenable<List<UserModel>> get firebaseUsers => _firebaseUsers;
 
   /// Every position of the observed group, sharing or not: the group list's
   /// source. [firebaseUsers] is the live part of it.
-  final RxList<UserModel> groupUsers = <UserModel>[].obs;
-  late final MapController mapController;
+  ValueListenable<List<UserModel>> get groupUsers => _groupUsers;
+
+  final MapController mapController = MapController();
   @override
-  final isTrackingEnabled = false.obs;
+  ValueListenable<bool> get isTrackingEnabled => _isTrackingEnabled;
   @override
-  final isTrackingLoading = false.obs;
+  ValueListenable<bool> get isTrackingLoading => _isTrackingLoading;
   final UserController userCtrl;
   final PermissionsController permissionsCtrl;
-  final Rx<double?> heading = Rx<double?>(null);
+
+  /// The compass heading, in degrees, or `null` (the compass is off).
+  ValueListenable<double?> get heading => _heading;
 
   /// Where this device is, once a fix is known. It is the person's own
   /// marker on the map, which a person who only shares cannot get from the
   /// group's documents (they observe no group).
-  final Rxn<LatLng> ownPosition = Rxn<LatLng>();
+  ValueListenable<LatLng?> get ownPosition => _ownPosition;
+
+  bool _started = false;
+  bool _disposed = false;
+
+  /// Sets [notifier] (which notifies only when the value differs), unless
+  /// disposed: a Firestore answer or a GPS fix may land after [dispose].
+  void _set<T>(ValueNotifier<T> notifier, T value) {
+    if (!_disposed) notifier.value = value;
+  }
+
+  /// Replaces [notifier]'s list with an unmodifiable copy of [value] when
+  /// their content differs (the items compare by content).
+  void _setList<T>(ValueNotifier<List<T>> notifier, List<T> value) {
+    if (_disposed || listEquals(notifier.value, value)) return;
+    notifier.value = List.unmodifiable(value);
+  }
+
+  /// Replaces the set of [usersWithPointsOnObservedDay] when it differs.
+  void _setUsersWithPoints(Set<String> value) {
+    if (_disposed || setEquals(_usersWithPointsOnObservedDay.value, value)) {
+      return;
+    }
+    _usersWithPointsOnObservedDay.value = Set.unmodifiable(value);
+  }
+
+  void _addUserWithPoints(String email) =>
+      _setUsersWithPoints({..._usersWithPointsOnObservedDay.value, email});
+
+  /// Replaces the map of [animatedMarkerPositions] when it differs.
+  void _setMarkerPositions(Map<String, LatLng> value) {
+    if (_disposed || mapEquals(_animatedMarkerPositions.value, value)) return;
+    _animatedMarkerPositions.value = Map.unmodifiable(value);
+  }
+
+  void _putMarkerPosition(String email, LatLng position) =>
+      _setMarkerPositions({..._animatedMarkerPositions.value, email: position});
+
+  void _removeMarkerPosition(String email) {
+    if (!_animatedMarkerPositions.value.containsKey(email)) return;
+    _setMarkerPositions({..._animatedMarkerPositions.value}..remove(email));
+  }
+
+  /// Replaces the map of [highlightedTrajectories] when its content
+  /// differs (the trails compare point by point).
+  void _setTrajectories(Map<String, List<LocationPoint>> value) {
+    final current = _highlightedTrajectories.value;
+    final same =
+        current.length == value.length &&
+        value.entries.every(
+          (e) =>
+              current.containsKey(e.key) && listEquals(current[e.key], e.value),
+        );
+    if (_disposed || same) return;
+    _highlightedTrajectories.value =
+        Map.unmodifiable(<String, List<LocationPoint>>{
+          for (final e in value.entries)
+            e.key: List<LocationPoint>.unmodifiable(e.value),
+        });
+  }
   //StreamSubscription<CompassEvent>? _compassSubscription;
 
   /// Indica se o dia observado no calendário é o dia atual.
@@ -92,11 +173,14 @@ class TrackingController extends GetxController
   final Map<String, AnimatedUserMarker> _animatedMarkers =
       <String, AnimatedUserMarker>{};
 
-  /// RxMap reativo dos marcadores animados para trigger rebuilds na UI.
-  final RxMap<String, LatLng> animatedMarkerPositions = <String, LatLng>{}.obs;
+  /// The rendered position of each marker, by e-mail (animated between
+  /// two positions).
+  ValueListenable<Map<String, LatLng>> get animatedMarkerPositions =>
+      _animatedMarkerPositions;
 
   /// Emails dos usuários que possuem pelo menos um ponto registrado no dia observado.
-  final RxSet<String> usersWithPointsOnObservedDay = <String>{}.obs;
+  ValueListenable<Set<String>> get usersWithPointsOnObservedDay =>
+      _usersWithPointsOnObservedDay;
 
   /// Timer para animar a transição dos marcadores.
   Timer? _markerAnimationTimer;
@@ -112,8 +196,8 @@ class TrackingController extends GetxController
 
   /// Trajetórias dos usuários destacados (highlightedObservedUsers).
   /// Chave = email do usuário, valor = lista de pontos da trajetória.
-  final RxMap<String, List<LocationPoint>> highlightedTrajectories =
-      <String, List<LocationPoint>>{}.obs;
+  ValueListenable<Map<String, List<LocationPoint>>>
+  get highlightedTrajectories => _highlightedTrajectories;
 
   /// Subscriptions para as trajetórias dos usuários destacados.
   final Map<String, StreamSubscription<List<LocationPoint>>>
@@ -152,9 +236,35 @@ class TrackingController extends GetxController
   /// for the device again when they do.
   void _onCapabilitiesChanged() => _initPosition();
 
+  /// The location permission arrives after this controller starts: look
+  /// for the device again when it is granted.
+  void _onWhenInUsePermissionChanged() {
+    if (permissionsCtrl.hasWhenInUseLocationPermission.value) _initPosition();
+  }
+
+  /// Avisa se o app passou a ser restrito em segundo plano durante uma
+  /// jornada ativa: o rastreamento vai parar quando o app sair da tela.
+  void _onBackgroundRestrictedChanged() {
+    if (permissionsCtrl.isBackgroundRestricted.value &&
+        _isTrackingEnabled.value) {
+      _notices.show(
+        const UserNotice(
+          'O aparelho está restringindo o MonAmie em segundo plano. '
+          'O rastreamento vai parar quando você sair do aplicativo.',
+          title: 'Rastreamento em risco',
+        ),
+      );
+    }
+  }
+
+  /// Animates the markers when the live positions change.
+  void _onFirebaseUsersChanged() =>
+      _onFirebaseUsersUpdated(_firebaseUsers.value);
+
   /// Sincroniza as subscriptions de trajetórias com a lista atual de
   /// highlightedObservedUsers.
   void _syncHighlightedTrajectories() {
+    if (_disposed) return;
     final day = _calendar.observedDay.value;
     final members = _groupMap.highlightedObservedUsers.value;
 
@@ -165,7 +275,9 @@ class TrackingController extends GetxController
       if (!currentEmails.contains(email)) {
         _highlightedTrajectorySubscriptions[email]?.cancel();
         _highlightedTrajectorySubscriptions.remove(email);
-        highlightedTrajectories.remove(email);
+        if (_highlightedTrajectories.value.containsKey(email)) {
+          _setTrajectories({..._highlightedTrajectories.value}..remove(email));
+        }
       }
     }
 
@@ -179,12 +291,13 @@ class TrackingController extends GetxController
 
   /// Inscreve-se na trajetória de um usuário destacado, no grupo observado.
   void _subscribeToHighlightedTrajectory(String email, DateTime day) {
+    if (_disposed) return;
     final groupId = _groupMap.selectedGroup.value?.id;
     if (groupId == null) return;
     final stream = _positions.getTrajectoryForDate(groupId, email, day: day);
 
     final subscription = stream.listen((points) {
-      highlightedTrajectories[email] = points;
+      _setTrajectories({..._highlightedTrajectories.value, email: points});
     });
 
     _highlightedTrajectorySubscriptions[email] = subscription;
@@ -198,7 +311,7 @@ class TrackingController extends GetxController
       sub.cancel();
     }
     _highlightedTrajectorySubscriptions.clear();
-    highlightedTrajectories.clear();
+    _setTrajectories(const {});
 
     for (final member in _groupMap.highlightedObservedUsers.value) {
       _subscribeToHighlightedTrajectory(member.email, day);
@@ -214,6 +327,7 @@ class TrackingController extends GetxController
   /// vindas do stream de `firebaseUsers`. Quando é um dia passado, busca a
   /// última localização conhecida de cada usuário observado no histórico.
   Future<void> _refreshMarkersForObservedDay(DateTime day) async {
+    if (_disposed) return;
     final groupId = _groupMap.selectedGroup.value?.id;
     if (groupId == null) return;
 
@@ -223,7 +337,7 @@ class TrackingController extends GetxController
           .toSet();
       // Verifica, no histórico do dia, quais usuários observados possuem pelo
       // menos um ponto registrado hoje. Apenas estes devem aparecer no mapa.
-      usersWithPointsOnObservedDay.clear();
+      _setUsersWithPoints(const {});
       final futures = <Future<void>>[];
       for (final email in observedEmails) {
         futures.add(() async {
@@ -233,29 +347,31 @@ class TrackingController extends GetxController
             day,
           );
           if (hasPoints) {
-            usersWithPointsOnObservedDay.add(email);
+            _addUserWithPoints(email);
           }
         }());
       }
       await Future.wait(futures);
 
       // Usuários atualmente ativos no stream também possuem pontos hoje.
-      for (final user in firebaseUsers) {
-        usersWithPointsOnObservedDay.add(user.email);
+      for (final user in _firebaseUsers.value) {
+        _addUserWithPoints(user.email);
       }
 
       // Remove marcadores de usuários que não possuem pontos hoje.
       final toRemoveToday = _animatedMarkers.keys
-          .where((email) => !usersWithPointsOnObservedDay.contains(email))
+          .where(
+            (email) => !_usersWithPointsOnObservedDay.value.contains(email),
+          )
           .toList();
       for (final email in toRemoveToday) {
         _animatedMarkers.remove(email);
-        animatedMarkerPositions.remove(email);
+        _removeMarkerPosition(email);
       }
 
       // Atualiza posições IMEDIATAMENTE sem animação para troca de dia
-      for (final user in firebaseUsers) {
-        if (usersWithPointsOnObservedDay.contains(user.email)) {
+      for (final user in _firebaseUsers.value) {
+        if (_usersWithPointsOnObservedDay.value.contains(user.email)) {
           if (_animatedMarkers.containsKey(user.email)) {
             _animatedMarkers[user.email]!.setPositionImmediate(
               user.lat ?? 0.0,
@@ -264,9 +380,9 @@ class TrackingController extends GetxController
           } else {
             _animatedMarkers[user.email] = AnimatedUserMarker(user: user);
           }
-          animatedMarkerPositions[user.email] = LatLng(
-            user.lat ?? 0.0,
-            user.lng ?? 0.0,
+          _putMarkerPosition(
+            user.email,
+            LatLng(user.lat ?? 0.0, user.lng ?? 0.0),
           );
         }
       }
@@ -278,7 +394,7 @@ class TrackingController extends GetxController
     final observedEmails = {
       for (final member in await _groupMap.loadHistoryMembers()) member.email,
     };
-    usersWithPointsOnObservedDay.clear();
+    _setUsersWithPoints(const {});
     final futures = <Future<void>>[];
     for (final email in observedEmails) {
       futures.add(() async {
@@ -289,18 +405,20 @@ class TrackingController extends GetxController
         );
 
         if (point != null) {
-          usersWithPointsOnObservedDay.add(email);
-          final user = firebaseUsers.firstWhereOrNull((u) => u.email == email);
+          _addUserWithPoints(email);
+          final user = _firebaseUsers.value
+              .where((u) => u.email == email)
+              .firstOrNull;
           if (_animatedMarkers.containsKey(email)) {
             _animatedMarkers[email]!.updateTargetPosition(point.lat, point.lng);
           } else if (user != null) {
             _animatedMarkers[email] = AnimatedUserMarker(user: user);
           }
-          animatedMarkerPositions[email] = LatLng(point.lat, point.lng);
+          _putMarkerPosition(email, LatLng(point.lat, point.lng));
         } else {
           // Sem registro para o dia: remove o marcador.
           _animatedMarkers.remove(email);
-          animatedMarkerPositions.remove(email);
+          _removeMarkerPosition(email);
         }
       }());
     }
@@ -313,14 +431,14 @@ class TrackingController extends GetxController
         .toList();
     for (final email in toRemove) {
       _animatedMarkers.remove(email);
-      animatedMarkerPositions.remove(email);
+      _removeMarkerPosition(email);
     }
 
     // Atualiza posições IMEDIATAMENTE sem animação para troca de dia
     for (final email in observedEmails) {
       final marker = _animatedMarkers[email];
-      if (marker != null && animatedMarkerPositions.containsKey(email)) {
-        final pos = animatedMarkerPositions[email]!;
+      final pos = _animatedMarkerPositions.value[email];
+      if (marker != null && pos != null) {
         marker.setPositionImmediate(pos.latitude, pos.longitude);
       }
     }
@@ -332,10 +450,11 @@ class TrackingController extends GetxController
       sub.cancel();
     }
     _highlightedTrajectorySubscriptions.clear();
-    highlightedTrajectories.clear();
+    _setTrajectories(const {});
   }
 
   Future<void> centerMapOnCurrentLocation() async {
+    if (_disposed) return;
     try {
       if (!position.latitude.isFinite || !position.longitude.isFinite) {
         return;
@@ -351,54 +470,46 @@ class TrackingController extends GetxController
   /// position went stale leaves the map even when no document changed.
   void _dropUsersNoLongerLive() {
     final stillLive = liveUsers(
-      groupUsers.toList(),
+      _groupUsers.value,
       now: DateTime.now(),
       validity: validity,
     );
-    // Assigning always notifies; do it only when someone actually left.
-    if (stillLive.length != firebaseUsers.length) {
-      firebaseUsers.value = stillLive;
+    // Only when someone actually left.
+    if (stillLive.length != _firebaseUsers.value.length) {
+      _setList(_firebaseUsers, stillLive);
     }
   }
 
   /// Takes the observed group's positions (read by [GroupMapState]).
   void _onGroupPositions(List<UserModel> users) {
-    groupUsers.value = users.toList();
-    firebaseUsers.value = liveUsers(
-      users,
-      now: DateTime.now(),
-      validity: validity,
+    _setList(_groupUsers, users);
+    _setList(
+      _firebaseUsers,
+      liveUsers(users, now: DateTime.now(), validity: validity),
     );
   }
 
-  @override
-  Future<void> onInit() async {
-    super.onInit();
-    mapController = MapController();
+  /// Starts listening to the other home controllers, reads the observed
+  /// group's positions, looks for the device and asks whether the tracking
+  /// service is running. Only the first call does anything; every listener
+  /// added here is removed in [dispose].
+  Future<void> start() async {
+    if (_started || _disposed) return;
+    _started = true;
 
-    // The observed group's positions drive the markers and the list. The
-    // home contracts are ValueListenables: each listener added here is
-    // removed in onClose.
+    // The observed group's positions drive the markers and the list.
     _groupMap.groupPositions.addListener(_onGroupPositionsChanged);
 
     // Avisa se o app passou a ser restrito em segundo plano durante uma
     // jornada ativa: o rastreamento vai parar quando o app sair da tela.
-    ever(permissionsCtrl.isBackgroundRestricted, (bool restricted) {
-      if (restricted && isTrackingEnabled.value) {
-        _notices.show(
-          const UserNotice(
-            'O aparelho está restringindo o MonAmie em segundo plano. '
-            'O rastreamento vai parar quando você sair do aplicativo.',
-            title: 'Rastreamento em risco',
-          ),
-        );
-      }
-    });
+    permissionsCtrl.isBackgroundRestricted.addListener(
+      _onBackgroundRestrictedChanged,
+    );
 
     _onGroupPositions(_groupMap.groupPositions.value);
 
     // Escuta mudanças na lista de usuários para atualizar as animações
-    ever(firebaseUsers, _onFirebaseUsersUpdated);
+    _firebaseUsers.addListener(_onFirebaseUsersChanged);
 
     // O stream só emite quando um documento muda. Quem parou sem conseguir
     // gravar `isPublishing = false` (sem rede, app encerrado) não gera emissão:
@@ -426,23 +537,24 @@ class TrackingController extends GetxController
     // The person's capabilities and the location permission arrive after this
     // controller starts: look for the device again when they do.
     _groupMap.capabilities.addListener(_onCapabilitiesChanged);
-    ever(permissionsCtrl.hasWhenInUseLocationPermission, (granted) {
-      if (granted) _initPosition();
-    });
+    permissionsCtrl.hasWhenInUseLocationPermission.addListener(
+      _onWhenInUsePermissionChanged,
+    );
 
-    isTrackingEnabled.value = await _service.isRunning();
+    final running = await _service.isRunning();
+    _set(_isTrackingEnabled, running);
   }
 
   void _setPosition(Position value) {
     position = value;
-    ownPosition.value = LatLng(value.latitude, value.longitude);
+    _set(_ownPosition, LatLng(value.latitude, value.longitude));
   }
 
   bool _locating = false;
 
   Future<void> _initPosition() async {
     // One look at a time; only for people who can share.
-    if (_locating || !userCtrl.isTrackable()) return;
+    if (_disposed || _locating || !userCtrl.isTrackable()) return;
     _locating = true;
     try {
       _setPosition(
@@ -467,13 +579,13 @@ class TrackingController extends GetxController
   void _onFirebaseUsersUpdated(List<UserModel> users) {
     // Mantém o cache de usuários sempre atualizado, mas só reposiciona os
     // marcadores quando observamos o dia atual.
-    if (!isObservingToday) return;
+    if (_disposed || !isObservingToday) return;
 
     bool shouldAnimateMarkers = false;
 
     for (final user in users) {
       // Usuários presentes em firebaseUsers estão ativamente transmitindo hoje
-      usersWithPointsOnObservedDay.add(user.email);
+      _addUserWithPoints(user.email);
       final exists = _animatedMarkers.containsKey(user.email);
 
       if (exists) {
@@ -488,9 +600,9 @@ class TrackingController extends GetxController
       } else {
         // Cria novo marcador animado
         _animatedMarkers[user.email] = AnimatedUserMarker(user: user);
-        animatedMarkerPositions[user.email] = LatLng(
-          user.lat ?? 0.0,
-          user.lng ?? 0.0,
+        _putMarkerPosition(
+          user.email,
+          LatLng(user.lat ?? 0.0, user.lng ?? 0.0),
         );
       }
     }
@@ -504,7 +616,7 @@ class TrackingController extends GetxController
     }
     for (final email in emailsToRemove) {
       _animatedMarkers.remove(email);
-      animatedMarkerPositions.remove(email);
+      _removeMarkerPosition(email);
     }
 
     // Inicia a animação se necessário
@@ -536,13 +648,13 @@ class TrackingController extends GetxController
   }
 
   /// Atualiza as posições animadas dos marcadores com base no progresso da animação.
+  /// One frame: every marker moves, then the map is notified once.
   void _updateAnimatedMarkerPositions() {
+    final next = {..._animatedMarkerPositions.value};
     for (final entry in _animatedMarkers.entries) {
-      final renderedPosition = entry.value.updateAnimationProgress(
-        _animationProgress,
-      );
-      animatedMarkerPositions[entry.key] = renderedPosition;
+      next[entry.key] = entry.value.updateAnimationProgress(_animationProgress);
     }
+    _setMarkerPositions(next);
   }
 
   /// Starts or stops sharing. Completes with [Ok] (holding a [UserNotice]
@@ -550,9 +662,9 @@ class TrackingController extends GetxController
   /// not start; [Ok] with `null` while another toggle is running.
   @override
   Future<Result<UserNotice?>> toggleService() async {
-    if (isTrackingLoading.value) return const Ok(null);
+    if (_isTrackingLoading.value) return const Ok(null);
 
-    isTrackingLoading.value = true;
+    _set(_isTrackingLoading, true);
     try {
       final isRunning = await _service.isRunning();
 
@@ -560,6 +672,9 @@ class TrackingController extends GetxController
         await _stopService();
         return const Ok(null);
       }
+      // The home closed (sign-out, leaving the organization) while asking:
+      // nothing may start publishing for an organization that is gone.
+      if (_disposed) return const Ok(null);
       return await _startService();
     } catch (e, stackTrace) {
       debugPrint(
@@ -572,7 +687,7 @@ class TrackingController extends GetxController
         stackTrace: stackTrace,
       );
     } finally {
-      isTrackingLoading.value = false;
+      _set(_isTrackingLoading, false);
     }
   }
 
@@ -668,10 +783,10 @@ class TrackingController extends GetxController
     });
 
     // Atualiza UI (botão).
-    isTrackingEnabled.value = true;
+    _set(_isTrackingEnabled, true);
 
     // Registra imediatamente que o usuário atual possui ponto no dia de hoje
-    usersWithPointsOnObservedDay.add(userCtrl.user!.email);
+    _addUserWithPoints(userCtrl.user!.email);
 
     // The service turns `isPublishing` on in every group and publishes the
     // positions: this screen writes nothing while sharing.
@@ -684,7 +799,7 @@ class TrackingController extends GetxController
     await _locationSubscription?.cancel();
     _locationSubscription = null;
     _service.invoke("stopService");
-    isTrackingEnabled.value = false;
+    _set(_isTrackingEnabled, false);
     try {
       await _positions.markNotPublishing(userCtrl.user!.email);
     } catch (e) {
@@ -692,8 +807,13 @@ class TrackingController extends GetxController
     }
   }
 
-  @override
-  void onClose() {
+  /// Removes every listener added by [start], cancels the timers (marker
+  /// animation, highlight debounce, validity recheck) and the trail and
+  /// service subscriptions, and releases the values. Only the first call
+  /// does anything.
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     _groupMap.groupPositions.removeListener(_onGroupPositionsChanged);
     _groupMap.highlightedObservedUsers.removeListener(
       _onHighlightedUsersChanged,
@@ -701,12 +821,36 @@ class TrackingController extends GetxController
     _calendar.observedDay.removeListener(_onObservedDayChanged);
     _groupMap.observedMembers.removeListener(_onObservedMembersChanged);
     _groupMap.capabilities.removeListener(_onCapabilitiesChanged);
+    permissionsCtrl.isBackgroundRestricted.removeListener(
+      _onBackgroundRestrictedChanged,
+    );
+    permissionsCtrl.hasWhenInUseLocationPermission.removeListener(
+      _onWhenInUsePermissionChanged,
+    );
+    _firebaseUsers.removeListener(_onFirebaseUsersChanged);
     //_compassSubscription?.cancel();
     _readySubscription?.cancel();
     _locationSubscription?.cancel();
+    for (final subscription in _highlightedTrajectorySubscriptions.values) {
+      subscription.cancel();
+    }
+    _highlightedTrajectorySubscriptions.clear();
+    _highlightedUsersDebounce?.cancel();
     _markerAnimationTimer?.cancel();
     _recheckTimer?.cancel();
     mapController.dispose();
-    super.onClose();
+    for (final notifier in <ChangeNotifier>[
+      _firebaseUsers,
+      _groupUsers,
+      _isTrackingEnabled,
+      _isTrackingLoading,
+      _heading,
+      _ownPosition,
+      _animatedMarkerPositions,
+      _usersWithPointsOnObservedDay,
+      _highlightedTrajectories,
+    ]) {
+      notifier.dispose();
+    }
   }
 }

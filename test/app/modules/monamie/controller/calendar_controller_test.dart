@@ -179,6 +179,48 @@ void main() {
     );
   });
 
+  group('CalendarController - avisos do mês à vista', () {
+    test(
+      'Edge Case: Não deve avisar viewMonth ao mostrar de novo o mês à vista sem dias com trilha',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        var notified = 0;
+        harness.controller.viewMonth.addListener(() => notified++);
+
+        // 2. Act
+        harness.controller.showObservedMonth();
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(notified, 0);
+      },
+    );
+
+    test(
+      'Happy Path: Deve avisar viewMonth uma vez quando os dias com trilha chegam',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final dayKey =
+            '${_today().year.toString().padLeft(4, '0')}-'
+            '${_today().month.toString().padLeft(2, '0')}-01';
+        when(
+          harness.positions.trailDays(any, any, any),
+        ).thenAnswer((_) async => {dayKey});
+        var notified = 0;
+        harness.controller.viewMonth.addListener(() => notified++);
+
+        // 2. Act
+        harness.controller.showObservedMonth();
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(notified, 1);
+      },
+    );
+  });
+
   group('CalendarController - dia observado', () {
     test('Happy Path: Deve observar o dia escolhido, sem a hora', () {
       // 1. Arrange
