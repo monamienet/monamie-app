@@ -2,10 +2,14 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
-import 'package:monamie_app/app/modules/invites/invite.dart';
 import 'package:monamie_app/app/modules/invites/invite_controller.dart';
 import 'package:monamie_app/app/modules/invites/invites_backend.dart';
+
+@GenerateNiceMocks([MockSpec<InvitesBackend>()])
+import 'invite_controller_test.mocks.dart';
 
 const norte = Group(id: '01', name: 'Equipe Norte', people: []);
 const leste = Group(id: '03', name: 'Equipe Leste', people: []);
@@ -18,7 +22,7 @@ const _result = InviteSendResult(
   skipped: {},
 );
 
-/// One `send` call as the fake recorded it.
+/// One `send` call as the mock received it.
 typedef SendCall = ({
   String organizationId,
   String organizationName,
@@ -27,53 +31,45 @@ typedef SendCall = ({
   List<({String email, Set<GroupRole> roles})> invites,
 });
 
-/// [InvitesBackend] that records `send`, optionally waits on [gate] and
-/// fails with [failure].
-class FakeInvitesBackend implements InvitesBackend {
-  final sends = <SendCall>[];
-  Completer<void>? gate;
-  Object? failure;
+/// The `send` stub of [backend], with any arguments.
+Future<InviteSendResult> anySend() => backend.send(
+  any,
+  organizationName: anyNamed('organizationName'),
+  groupId: anyNamed('groupId'),
+  firstGroupName: anyNamed('firstGroupName'),
+  invites: anyNamed('invites'),
+);
 
-  @override
-  Future<InviteSendResult> send(
-    String organizationId, {
-    required String organizationName,
-    String? groupId,
-    String? firstGroupName,
-    required List<({String email, Set<GroupRole> roles})> invites,
-  }) async {
-    sends.add((
-      organizationId: organizationId,
-      organizationName: organizationName,
-      groupId: groupId,
-      firstGroupName: firstGroupName,
-      invites: invites,
-    ));
-    await gate?.future;
-    if (failure case final failure?) throw failure;
+/// Makes `send` run [answer] before returning [_result].
+void stubSend(Future<void> Function() answer) {
+  when(anySend()).thenAnswer((_) async {
+    await answer();
     return _result;
-  }
-
-  @override
-  Future<List<Invite>> listForGroup(String organizationId, String groupId) =>
-      throw UnimplementedError();
-
-  @override
-  Future<void> resend(String organizationId, String inviteId) =>
-      throw UnimplementedError();
-
-  @override
-  Future<void> cancel(String organizationId, String inviteId) =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<Invite>> mine() => throw UnimplementedError();
-
-  @override
-  Future<Invite> accept(Invite invite) => throw UnimplementedError();
+  });
 }
 
-late FakeInvitesBackend backend;
+/// Verifies `send` was called exactly once and returns its arguments.
+SendCall sentCall() {
+  final captured = verify(
+    backend.send(
+      captureAny,
+      organizationName: captureAnyNamed('organizationName'),
+      groupId: captureAnyNamed('groupId'),
+      firstGroupName: captureAnyNamed('firstGroupName'),
+      invites: captureAnyNamed('invites'),
+    ),
+  ).captured;
+  expect(captured, hasLength(5), reason: 'send called once');
+  return (
+    organizationId: captured[0] as String,
+    organizationName: captured[1] as String,
+    groupId: captured[2] as String?,
+    firstGroupName: captured[3] as String?,
+    invites: captured[4] as List<({String email, Set<GroupRole> roles})>,
+  );
+}
+
+late MockInvitesBackend backend;
 
 InviteController controllerWith({
   List<Group> groups = const [norte, leste],
@@ -98,7 +94,8 @@ InviteController readyController() {
 void main() {
   setUp(() {
     Get.testMode = true;
-    backend = FakeInvitesBackend();
+    backend = MockInvitesBackend();
+    stubSend(() async {});
   });
 
   group('InviteController (team) - Unit Test Suite', () {
@@ -174,10 +171,8 @@ void main() {
 
       // 3. Assert
       expect(ok, isTrue);
-      expect(
-        [backend.sends.single.groupId, backend.sends.single.firstGroupName],
-        ['03', isNull],
-      );
+      final call = sentCall();
+      expect([call.groupId, call.firstGroupName], ['03', isNull]);
     });
 
     test(
@@ -212,7 +207,7 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      expect(backend.sends, isEmpty);
+      verifyNever(anySend());
     });
   });
 
@@ -320,7 +315,7 @@ void main() {
 
       // 3. Assert
       expect(sent, isTrue);
-      final call = backend.sends.single;
+      final call = sentCall();
       expect(call.organizationId, 'rotasul');
       expect(call.groupId, '01');
       expect(call.firstGroupName, isNull);
@@ -343,8 +338,9 @@ void main() {
 
         // 3. Assert
         expect(sent, isTrue);
-        expect(backend.sends.single.groupId, isNull);
-        expect(backend.sends.single.firstGroupName, 'Equipe Serra');
+        final call = sentCall();
+        expect(call.groupId, isNull);
+        expect(call.firstGroupName, 'Equipe Serra');
       },
     );
 
@@ -353,7 +349,8 @@ void main() {
       () async {
         // 1. Arrange
         final controller = readyController();
-        backend.gate = Completer<void>();
+        final gate = Completer<void>();
+        stubSend(() => gate.future);
         final first = controller.send();
 
         // 2. Act
@@ -361,9 +358,9 @@ void main() {
 
         // 3. Assert
         expect(second, isFalse);
-        expect(backend.sends, hasLength(1));
+        verify(anySend()).called(1);
         expect(controller.isSending.value, isTrue);
-        backend.gate!.complete();
+        gate.complete();
         await first;
       },
     );
@@ -373,7 +370,9 @@ void main() {
       () async {
         // 1. Arrange
         final controller = readyController();
-        backend.failure = const InvitesException('Escolha uma equipe.');
+        stubSend(
+          () async => throw const InvitesException('Escolha uma equipe.'),
+        );
 
         // 2. Act
         final sent = await controller.send();
@@ -395,7 +394,7 @@ void main() {
 
       // 3. Assert
       expect(sent, isFalse);
-      expect(backend.sends, isEmpty);
+      verifyNever(anySend());
     });
   });
 

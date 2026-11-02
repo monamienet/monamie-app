@@ -2,63 +2,45 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/app/modules/monamie/controller/permissions_controller.dart';
 
-/// Implementação falsa do contrato, controlando a resposta de forma
-/// determinística e contabilizando as consultas recebidas.
-class FakeBackgroundRestrictionCheckerRestriction
-    implements BackgroundRestrictionChecker {
-  FakeBackgroundRestrictionCheckerRestriction({
-    this.result = false,
-    this.error,
-  });
+@GenerateNiceMocks([
+  MockSpec<BackgroundRestrictionChecker>(),
+  MockSpec<BackgroundUsageSettingsLauncher>(),
+])
+import 'permissions_controller_test.mocks.dart';
 
-  final bool result;
-  final Object? error;
-  int calls = 0;
-
-  @override
-  Future<bool> isRestricted() async {
-    calls++;
-    if (error != null) throw error!;
-    return result;
+/// Um [MockBackgroundRestrictionChecker] que responde [result] (ou lança
+/// [error]) a cada consulta.
+MockBackgroundRestrictionChecker mockChecker({
+  bool result = false,
+  Object? error,
+}) {
+  final checker = MockBackgroundRestrictionChecker();
+  if (error != null) {
+    when(checker.isRestricted()).thenAnswer((_) async => throw error);
+  } else {
+    setRestricted(checker, result);
   }
+  return checker;
 }
 
-/// Implementação falsa do contrato, com resposta determinística e contagem
-/// das consultas recebidas.
-class FakeBackgroundRestrictionCheckerOpen
-    implements BackgroundRestrictionChecker {
-  FakeBackgroundRestrictionCheckerOpen({this.result = false, this.error});
-
-  final bool result;
-  final Object? error;
-  int calls = 0;
-
-  @override
-  Future<bool> isRestricted() async {
-    calls++;
-    if (error != null) throw error!;
-    return result;
-  }
+/// Passa a responder [restricted] às consultas de [checker], como depois de
+/// o usuário mudar a restrição nas configurações.
+void setRestricted(MockBackgroundRestrictionChecker checker, bool restricted) {
+  when(checker.isRestricted()).thenAnswer((_) async => restricted);
 }
 
-/// Implementação falsa do launcher: não acessa nenhum canal nativo e
-/// contabiliza quantas vezes a tela de configurações foi solicitada.
-class FakeBackgroundUsageSettingsLauncher
-    implements BackgroundUsageSettingsLauncher {
-  FakeBackgroundUsageSettingsLauncher({this.result = true});
-
-  final bool result;
-  int calls = 0;
-
-  @override
-  Future<bool> open() async {
-    calls++;
-    return result;
-  }
+/// Um [MockBackgroundUsageSettingsLauncher] que não acessa nenhum canal
+/// nativo e responde [result] ao abrir as configurações.
+MockBackgroundUsageSettingsLauncher mockLauncher({bool result = true}) {
+  final launcher = MockBackgroundUsageSettingsLauncher();
+  when(launcher.open()).thenAnswer((_) async => result);
+  return launcher;
 }
 
 /// Canal de métodos usado pelo permission_handler (`openAppSettings`). O
@@ -73,23 +55,6 @@ const String _dialogMessageSnippet =
 
 Widget _buildTestApp() {
   return const GetMaterialApp(home: Scaffold(body: SizedBox.shrink()));
-}
-
-/// Checker falso com resposta mutável: o cenário começa restrito (para o
-/// diálogo aparecer) e passa a responder conforme o que o usuário fez nas
-/// configurações antes de voltar ao app.
-class FakeBackgroundRestrictionCheckerReturn
-    implements BackgroundRestrictionChecker {
-  FakeBackgroundRestrictionCheckerReturn({this.result = false});
-
-  bool result;
-  int calls = 0;
-
-  @override
-  Future<bool> isRestricted() async {
-    calls++;
-    return result;
-  }
 }
 
 /// Valor de `PermissionStatus.granted` no protocolo do permission_handler.
@@ -146,9 +111,7 @@ void main() {
     group('PermissionsController - Restrição de Segundo Plano', () {
       test('Happy Path: Deve iniciar isBackgroundRestricted como false', () {
         // 1. Arrange
-        final checker = FakeBackgroundRestrictionCheckerRestriction(
-          result: true,
-        );
+        final checker = mockChecker(result: true);
 
         // 2. Act
         final controller = PermissionsController(
@@ -163,9 +126,7 @@ void main() {
         'Happy Path: Deve retornar true e atualizar o estado quando o checker confirma a restrição',
         () async {
           // 1. Arrange
-          final checker = FakeBackgroundRestrictionCheckerRestriction(
-            result: true,
-          );
+          final checker = mockChecker(result: true);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
           );
@@ -176,7 +137,7 @@ void main() {
           // 3. Assert
           expect(resultado, isTrue);
           expect(controller.isBackgroundRestricted.value, isTrue);
-          expect(checker.calls, 1);
+          verify(checker.isRestricted()).called(1);
         },
       );
 
@@ -184,9 +145,7 @@ void main() {
         'Happy Path: Deve retornar false e manter o estado quando o checker não detecta restrição',
         () async {
           // 1. Arrange
-          final checker = FakeBackgroundRestrictionCheckerRestriction(
-            result: false,
-          );
+          final checker = mockChecker(result: false);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
           );
@@ -204,9 +163,7 @@ void main() {
         'Edge Case: Deve limpar a restrição previamente registrada quando o usuário a remove nas configurações',
         () async {
           // 1. Arrange
-          final checker = FakeBackgroundRestrictionCheckerRestriction(
-            result: false,
-          );
+          final checker = mockChecker(result: false);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
           );
@@ -225,9 +182,7 @@ void main() {
         'Sad Path: Deve propagar a exceção do checker e preservar o estado anterior',
         () async {
           // 1. Arrange
-          final checker = FakeBackgroundRestrictionCheckerRestriction(
-            error: StateError('falha nativa'),
-          );
+          final checker = mockChecker(error: StateError('falha nativa'));
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
           );
@@ -250,8 +205,7 @@ void main() {
         required bool restricted,
       }) {
         final controller = PermissionsController(
-          backgroundRestrictionChecker:
-              FakeBackgroundRestrictionCheckerRestriction(),
+          backgroundRestrictionChecker: mockChecker(),
         );
         controller.hasAlwaysLocationPermission.value = always;
         controller.hasNotificationPermission.value = notification;
@@ -282,8 +236,7 @@ void main() {
         () {
           // 1. Arrange
           final controller = PermissionsController(
-            backgroundRestrictionChecker:
-                FakeBackgroundRestrictionCheckerRestriction(),
+            backgroundRestrictionChecker: mockChecker(),
           );
 
           // 2. Act
@@ -372,8 +325,7 @@ void main() {
         () async {
           // 1. Arrange
           final controller = PermissionsController(
-            backgroundRestrictionChecker:
-                FakeBackgroundRestrictionCheckerRestriction(result: true),
+            backgroundRestrictionChecker: mockChecker(result: true),
           );
           controller.hasAlwaysLocationPermission.value = true;
           controller.hasNotificationPermission.value = true;
@@ -414,8 +366,8 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerOpen(result: false);
-          final launcher = FakeBackgroundUsageSettingsLauncher();
+          final checker = mockChecker(result: false);
+          final launcher = mockLauncher();
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: launcher,
@@ -429,8 +381,8 @@ void main() {
           expect(find.byType(AlertDialog), findsNothing);
           expect(Get.isDialogOpen, isFalse);
           expect(controller.isBackgroundRestricted.value, isFalse);
-          expect(checker.calls, 1);
-          expect(launcher.calls, 0);
+          verify(checker.isRestricted()).called(1);
+          verifyNever(launcher.open());
           expect(permissionCalls, isEmpty);
         },
       );
@@ -440,8 +392,8 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerOpen(result: false);
-          final launcher = FakeBackgroundUsageSettingsLauncher();
+          final checker = mockChecker(result: false);
+          final launcher = mockLauncher();
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: launcher,
@@ -455,8 +407,8 @@ void main() {
           // 3. Assert
           expect(find.byType(AlertDialog), findsNothing);
           expect(controller.isBackgroundRestricted.value, isFalse);
-          expect(checker.calls, 1);
-          expect(launcher.calls, 0);
+          verify(checker.isRestricted()).called(1);
+          verifyNever(launcher.open());
           expect(permissionCalls, isEmpty);
         },
       );
@@ -466,8 +418,8 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerOpen(result: true);
-          final launcher = FakeBackgroundUsageSettingsLauncher();
+          final checker = mockChecker(result: true);
+          final launcher = mockLauncher();
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: launcher,
@@ -483,8 +435,8 @@ void main() {
           expect(find.text('AGORA NÃO'), findsOneWidget);
           expect(find.text('PROSSEGUIR'), findsOneWidget);
           expect(controller.isBackgroundRestricted.value, isTrue);
-          expect(checker.calls, 1);
-          expect(launcher.calls, 0);
+          verify(checker.isRestricted()).called(1);
+          verifyNever(launcher.open());
           expect(permissionCalls, isEmpty);
         },
       );
@@ -494,11 +446,9 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final launcher = FakeBackgroundUsageSettingsLauncher();
+          final launcher = mockLauncher();
           final controller = PermissionsController(
-            backgroundRestrictionChecker: FakeBackgroundRestrictionCheckerOpen(
-              result: true,
-            ),
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
           );
           final future = controller.openBackgroundUsageSettings();
@@ -511,7 +461,7 @@ void main() {
           // 3. Assert
           await expectLater(future, completes);
           expect(find.byType(AlertDialog), findsNothing);
-          expect(launcher.calls, 0);
+          verifyNever(launcher.open());
           expect(permissionCalls, isEmpty);
           expect(controller.isBackgroundRestricted.value, isTrue);
         },
@@ -522,11 +472,9 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final launcher = FakeBackgroundUsageSettingsLauncher(result: true);
+          final launcher = mockLauncher(result: true);
           final controller = PermissionsController(
-            backgroundRestrictionChecker: FakeBackgroundRestrictionCheckerOpen(
-              result: true,
-            ),
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
           );
           final future = controller.openBackgroundUsageSettings();
@@ -539,7 +487,7 @@ void main() {
           // 3. Assert
           await expectLater(future, completes);
           expect(find.byType(AlertDialog), findsNothing);
-          expect(launcher.calls, 1);
+          verify(launcher.open()).called(1);
           expect(permissionCalls, isEmpty);
         },
       );
@@ -549,11 +497,9 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final launcher = FakeBackgroundUsageSettingsLauncher(result: false);
+          final launcher = mockLauncher(result: false);
           final controller = PermissionsController(
-            backgroundRestrictionChecker: FakeBackgroundRestrictionCheckerOpen(
-              result: true,
-            ),
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
           );
           final future = controller.openBackgroundUsageSettings();
@@ -566,7 +512,7 @@ void main() {
           // 3. Assert
           await expectLater(future, completes);
           expect(find.byType(AlertDialog), findsNothing);
-          expect(launcher.calls, 1);
+          verify(launcher.open()).called(1);
           expect(permissionCalls, isEmpty);
         },
       );
@@ -576,11 +522,9 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final launcher = FakeBackgroundUsageSettingsLauncher();
+          final launcher = mockLauncher();
           final controller = PermissionsController(
-            backgroundRestrictionChecker: FakeBackgroundRestrictionCheckerOpen(
-              result: true,
-            ),
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
           );
           controller.openBackgroundUsageSettings();
@@ -592,7 +536,7 @@ void main() {
 
           // 3. Assert
           expect(find.byType(AlertDialog), findsOneWidget);
-          expect(launcher.calls, 0);
+          verifyNever(launcher.open());
           expect(permissionCalls, isEmpty);
         },
       );
@@ -602,11 +546,9 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final launcher = FakeBackgroundUsageSettingsLauncher();
+          final launcher = mockLauncher();
           final controller = PermissionsController(
-            backgroundRestrictionChecker: FakeBackgroundRestrictionCheckerOpen(
-              result: true,
-            ),
+            backgroundRestrictionChecker: mockChecker(result: true),
             backgroundUsageSettingsLauncher: launcher,
           );
           // Toques rápidos repetidos no botão antes de o diálogo aparecer.
@@ -620,7 +562,7 @@ void main() {
 
           // 3. Assert
           expect(find.byType(AlertDialog), findsNothing);
-          expect(launcher.calls, 1);
+          verify(launcher.open()).called(1);
         },
       );
 
@@ -629,10 +571,8 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerOpen(
-            error: StateError('falha nativa'),
-          );
-          final launcher = FakeBackgroundUsageSettingsLauncher();
+          final checker = mockChecker(error: StateError('falha nativa'));
+          final launcher = mockLauncher();
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: launcher,
@@ -645,7 +585,7 @@ void main() {
           await expectLater(future, throwsA(isA<StateError>()));
           await tester.pumpAndSettle();
           expect(find.byType(AlertDialog), findsNothing);
-          expect(launcher.calls, 0);
+          verifyNever(launcher.open());
           expect(permissionCalls, isEmpty);
         },
       );
@@ -676,11 +616,10 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerReturn(result: true);
+          final checker = mockChecker(result: true);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
-            backgroundUsageSettingsLauncher:
-                FakeBackgroundUsageSettingsLauncher(result: true),
+            backgroundUsageSettingsLauncher: mockLauncher(result: true),
           );
           await _goToSettingsThroughDialog(tester, controller);
 
@@ -700,14 +639,13 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerReturn(result: true);
+          final checker = mockChecker(result: true);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
-            backgroundUsageSettingsLauncher:
-                FakeBackgroundUsageSettingsLauncher(result: true),
+            backgroundUsageSettingsLauncher: mockLauncher(result: true),
           );
           await _goToSettingsThroughDialog(tester, controller);
-          checker.result = false; // O usuário removeu a restrição.
+          setRestricted(checker, false); // O usuário removeu a restrição.
 
           // 2. Act
           controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
@@ -725,11 +663,10 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerReturn(result: true);
+          final checker = mockChecker(result: true);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
-            backgroundUsageSettingsLauncher:
-                FakeBackgroundUsageSettingsLauncher(result: true),
+            backgroundUsageSettingsLauncher: mockLauncher(result: true),
           );
           await _goToSettingsThroughDialog(tester, controller);
           // Primeiro retorno: o aviso é exibido e some sozinho após 8 s.
@@ -751,11 +688,10 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerReturn(result: true);
+          final checker = mockChecker(result: true);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
-            backgroundUsageSettingsLauncher:
-                FakeBackgroundUsageSettingsLauncher(result: true),
+            backgroundUsageSettingsLauncher: mockLauncher(result: true),
           );
           await _goToSettingsThroughDialog(tester, controller);
           // Primeira ida: o aviso é exibido e some sozinho após 8 s.
@@ -778,18 +714,22 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerReturn(result: true);
+          final checker = mockChecker(result: true);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
-            backgroundUsageSettingsLauncher:
-                FakeBackgroundUsageSettingsLauncher(result: true),
+            backgroundUsageSettingsLauncher: mockLauncher(result: true),
           );
           await _goToSettingsThroughDialog(tester, controller);
-          checker.result =
-              false; // Retorno da ida às configurações sem restrição.
+          setRestricted(
+            checker,
+            false,
+          ); // Retorno da ida às configurações sem restrição.
           controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
           await tester.pumpAndSettle();
-          checker.result = true; // A restrição reaparece depois, fora da ida.
+          setRestricted(
+            checker,
+            true,
+          ); // A restrição reaparece depois, fora da ida.
 
           // 2. Act
           controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
@@ -807,8 +747,8 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerReturn(result: true);
-          final launcher = FakeBackgroundUsageSettingsLauncher(result: true);
+          final checker = mockChecker(result: true);
+          final launcher = mockLauncher(result: true);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
             backgroundUsageSettingsLauncher: launcher,
@@ -822,7 +762,7 @@ void main() {
           expect(find.text(_snackbarTitle), findsNothing);
           expect(Get.isSnackbarOpen, isFalse);
           expect(controller.isBackgroundRestricted.value, isTrue);
-          expect(launcher.calls, 0);
+          verifyNever(launcher.open());
         },
       );
 
@@ -831,11 +771,10 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerReturn(result: true);
+          final checker = mockChecker(result: true);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
-            backgroundUsageSettingsLauncher:
-                FakeBackgroundUsageSettingsLauncher(result: true),
+            backgroundUsageSettingsLauncher: mockLauncher(result: true),
           );
           final future = controller.openBackgroundUsageSettings();
           await tester.pumpAndSettle();
@@ -858,11 +797,10 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           await tester.pumpWidget(_buildTestApp());
-          final checker = FakeBackgroundRestrictionCheckerReturn(result: true);
+          final checker = mockChecker(result: true);
           final controller = PermissionsController(
             backgroundRestrictionChecker: checker,
-            backgroundUsageSettingsLauncher:
-                FakeBackgroundUsageSettingsLauncher(result: false),
+            backgroundUsageSettingsLauncher: mockLauncher(result: false),
           );
           await _goToSettingsThroughDialog(tester, controller);
 

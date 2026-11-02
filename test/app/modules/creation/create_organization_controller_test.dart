@@ -3,10 +3,15 @@ import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/data/theme/theme_catalog.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
 import 'package:monamie_app/app/modules/creation/creation_backend.dart';
+
+@GenerateNiceMocks([MockSpec<CreationBackend>(), MockSpec<ThemeCatalog>()])
+import 'create_organization_controller_test.mocks.dart';
 
 const _white = Color(0xFFFFFFFF);
 
@@ -27,70 +32,45 @@ final sol = _theme('sol', 0);
 final lava = _theme('lava', 1, active: false);
 final oceano = _theme('oceano', 2);
 
-/// One `create` call as the fake recorded it.
-typedef CreateCall = ({String id, String name, String themeId, String plan});
+/// The `create` stub of [backend], with any arguments.
+Future<String> anyCreate() => backend.create(
+  id: anyNamed('id'),
+  name: anyNamed('name'),
+  themeId: anyNamed('themeId'),
+  plan: anyNamed('plan'),
+);
 
-/// [CreationBackend] answering `idProblem` from [problems] (or waiting on
-/// a per-id completer in [pendingChecks]) and recording `create`, which
-/// optionally waits on [gate] and fails with [failure].
-class FakeCreationBackend implements CreationBackend {
-  final checks = <String>[];
-  final problems = <String, String>{};
-  final pendingChecks = <String, Completer<String?>>{};
-  final creates = <CreateCall>[];
-  String status = 'active';
-  Completer<void>? gate;
-  Object? failure;
-
-  @override
-  Future<String?> idProblem(String id) async {
-    checks.add(id);
-    if (pendingChecks[id] case final pending?) return pending.future;
-    return problems[id];
-  }
-
-  @override
-  Future<String> create({
-    required String id,
-    required String name,
-    required String themeId,
-    required String plan,
-  }) async {
-    creates.add((id: id, name: name, themeId: themeId, plan: plan));
-    await gate?.future;
-    if (failure case final failure?) throw failure;
+/// Makes `create` run [answer] before returning [status].
+void stubCreate(Future<void> Function() answer, {String status = 'active'}) {
+  when(anyCreate()).thenAnswer((_) async {
+    await answer();
     return status;
-  }
-
-  @override
-  Future<List<Creation>> mine() => throw UnimplementedError();
+  });
 }
 
-/// [ThemeCatalog] returning [catalog], or throwing when [failing].
-class FakeThemeCatalog implements ThemeCatalog {
-  FakeThemeCatalog({this.failing = false});
-
-  final bool failing;
-
-  @override
-  Future<Map<String, OrganizationTheme>> themes() async {
+/// A [MockThemeCatalog] returning four themes (one retired), or failing
+/// when [failing].
+MockThemeCatalog mockCatalog({bool failing = false}) {
+  final catalog = MockThemeCatalog();
+  when(catalog.themes()).thenAnswer((_) async {
     if (failing) throw Exception('catalog unavailable');
     return {
       for (final t in [oceano, lava, defaultOrganizationTheme, sol]) t.id: t,
     };
-  }
+  });
+  return catalog;
 }
 
-late FakeCreationBackend backend;
+late MockCreationBackend backend;
 
 CreateOrganizationController startedController({ThemeCatalog? themes}) =>
     CreateOrganizationController(
       backend: backend,
-      themes: themes ?? FakeThemeCatalog(),
+      themes: themes ?? mockCatalog(),
       debounce: Duration.zero,
     )..onStart();
 
-/// Lets the debounce timer fire and the fake answers resolve.
+/// Lets the debounce timer fire and the mock answers resolve.
 Future<void> settle() async {
   await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
@@ -107,7 +87,9 @@ Future<CreateOrganizationController> readyController() async {
 void main() {
   setUp(() {
     Get.testMode = true;
-    backend = FakeCreationBackend();
+    backend = MockCreationBackend();
+    when(backend.idProblem(any)).thenAnswer((_) async => null);
+    stubCreate(() async {});
   });
 
   group('suggestOrganizationId - Unit Test Suite', () {
@@ -246,7 +228,7 @@ void main() {
 
         // 3. Assert
         expect(controller.idCheck.value, IdCheck.available);
-        expect(backend.checks, ['rotasul']);
+        expect(verify(backend.idProblem(captureAny)).captured, ['rotasul']);
       },
     );
 
@@ -254,7 +236,9 @@ void main() {
       'Sad Path: a taken id becomes unavailable with the backend problem',
       () async {
         // 1. Arrange
-        backend.problems['rotasul'] = 'Esse identificador já está em uso.';
+        when(
+          backend.idProblem('rotasul'),
+        ).thenAnswer((_) async => 'Esse identificador já está em uso.');
         final controller = startedController()..setId('rotasul');
 
         // 2. Act
@@ -282,7 +266,7 @@ void main() {
         // 3. Assert
         expect(controller.idCheck.value, IdCheck.unavailable);
         expect(controller.idProblem.value, isNotEmpty);
-        expect(backend.checks, isEmpty);
+        verifyNever(backend.idProblem(any));
       },
     );
 
@@ -290,15 +274,21 @@ void main() {
       'Edge Case: an answer for an id changed meanwhile is ignored',
       () async {
         // 1. Arrange
-        backend.pendingChecks['rotasul'] = Completer<String?>();
-        backend.pendingChecks['rotanorte'] = Completer<String?>();
+        final rotasulCheck = Completer<String?>();
+        final rotanorteCheck = Completer<String?>();
+        when(
+          backend.idProblem('rotasul'),
+        ).thenAnswer((_) => rotasulCheck.future);
+        when(
+          backend.idProblem('rotanorte'),
+        ).thenAnswer((_) => rotanorteCheck.future);
         final controller = startedController()..setId('rotasul');
         await settle();
         controller.setId('rotanorte');
         await settle();
 
         // 2. Act
-        backend.pendingChecks['rotasul']!.complete(null);
+        rotasulCheck.complete(null);
         await settle();
 
         // 3. Assert
@@ -354,7 +344,9 @@ void main() {
         'Sad Path: a valid name with an unavailable id cannot continue',
         () async {
           // 1. Arrange
-          backend.problems['rotasul'] = 'Esse identificador já está em uso.';
+          when(
+            backend.idProblem('rotasul'),
+          ).thenAnswer((_) async => 'Esse identificador já está em uso.');
           final controller = startedController()..setName('Rota Sul');
           await settle();
 
@@ -380,14 +372,20 @@ void main() {
       await controller.create();
 
       // 3. Assert
-      expect(backend.creates, [
-        (id: 'rotasul', name: 'Rota Sul', themeId: 'oceano', plan: 'standard'),
-      ]);
+      final sent = verify(
+        backend.create(
+          id: captureAnyNamed('id'),
+          name: captureAnyNamed('name'),
+          themeId: captureAnyNamed('themeId'),
+          plan: captureAnyNamed('plan'),
+        ),
+      ).captured;
+      expect(sent, ['rotasul', 'Rota Sul', 'oceano', 'standard']);
     });
 
     test('Happy Path: returns true and keeps the returned status', () async {
       // 1. Arrange
-      backend.status = 'awaiting_billing';
+      stubCreate(() async {}, status: 'awaiting_billing');
       final controller = await readyController();
 
       // 2. Act
@@ -411,7 +409,8 @@ void main() {
 
     test('Edge Case: isCreating is true while the call is in flight', () async {
       // 1. Arrange
-      backend.gate = Completer<void>();
+      final gate = Completer<void>();
+      stubCreate(() => gate.future);
       final controller = await readyController();
 
       // 2. Act
@@ -419,7 +418,7 @@ void main() {
 
       // 3. Assert
       expect(controller.isCreating.value, isTrue);
-      backend.gate!.complete();
+      gate.complete();
       await pending;
     });
 
@@ -427,7 +426,8 @@ void main() {
       'Edge Case: a second create while one is in flight is refused',
       () async {
         // 1. Arrange
-        backend.gate = Completer<void>();
+        final gate = Completer<void>();
+        stubCreate(() => gate.future);
         final controller = await readyController();
         final first = controller.create();
 
@@ -436,8 +436,8 @@ void main() {
 
         // 3. Assert
         expect(second, isFalse);
-        expect(backend.creates, hasLength(1));
-        backend.gate!.complete();
+        verify(anyCreate()).called(1);
+        gate.complete();
         await first;
       },
     );
@@ -446,8 +446,10 @@ void main() {
       'Sad Path: a CreationException returns false with its message',
       () async {
         // 1. Arrange
-        backend.failure = const CreationException(
-          'Esse identificador já está em uso.',
+        stubCreate(
+          () async => throw const CreationException(
+            'Esse identificador já está em uso.',
+          ),
         );
         final controller = await readyController();
 
@@ -465,7 +467,7 @@ void main() {
 
     test('Sad Path: isCreating resets after a failure', () async {
       // 1. Arrange
-      backend.failure = const CreationException('Falhou.');
+      stubCreate(() async => throw const CreationException('Falhou.'));
       final controller = await readyController();
 
       // 2. Act
@@ -487,7 +489,7 @@ void main() {
 
         // 3. Assert
         expect(ok, isFalse);
-        expect(backend.creates, isEmpty);
+        verifyNever(anyCreate());
       },
     );
   });
@@ -542,7 +544,8 @@ void main() {
 
     test('Edge Case: nothing is picked while creating', () async {
       // 1. Arrange
-      backend.gate = Completer<void>();
+      final gate = Completer<void>();
+      stubCreate(() => gate.future);
       final controller = await readyController();
       controller.plan.value = 'standard';
       final pending = controller.create();
@@ -552,7 +555,7 @@ void main() {
 
       // 3. Assert
       expect(controller.plan.value, 'standard');
-      backend.gate!.complete();
+      gate.complete();
       await pending;
     });
   });
@@ -575,9 +578,7 @@ void main() {
 
     test('Sad Path: a failing catalog leaves only the default theme', () async {
       // 1. Arrange
-      final controller = startedController(
-        themes: FakeThemeCatalog(failing: true),
-      );
+      final controller = startedController(themes: mockCatalog(failing: true));
 
       // 2. Act
       await settle();

@@ -2,40 +2,34 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings.dart';
 import 'package:monamie_app/app/data/tracking/tracking_settings_repository.dart';
 import 'package:monamie_app/app/modules/admin/tracking_settings_edit_controller.dart';
+
+@GenerateNiceMocks([MockSpec<TrackingSettingsRepository>()])
+import 'tracking_settings_edit_controller_test.mocks.dart';
 
 const equilibrio = TrackingSettings(periodMinutes: 5, radiusMeters: 10);
 const economia = TrackingSettings(periodMinutes: 15, radiusMeters: 100);
 const custom = TrackingSettings(periodMinutes: 10, radiusMeters: 20);
 
-/// [TrackingSettingsRepository] that records every save, with the plan's
-/// minimum [minimum], optionally waiting on [gate] or failing with
-/// [failure] in `save`.
-class FakeTrackingSettingsRepository implements TrackingSettingsRepository {
-  FakeTrackingSettingsRepository({this.minimum = 0});
-
-  final int minimum;
-  final saved = <TrackingSettings>[];
-  Completer<void>? gate;
-  Object? failure;
-
-  @override
-  Future<int> minPeriodMinutes() async => minimum;
-
-  @override
-  Stream<TrackingSettings> watch() => const Stream.empty();
-
-  @override
-  Future<void> save(TrackingSettings settings) async {
-    saved.add(settings);
-    await gate?.future;
-    if (failure case final failure?) throw failure;
-  }
+/// A [MockTrackingSettingsRepository] with the plan's minimum [minimum]
+/// and no settings stream.
+MockTrackingSettingsRepository mockRepository({int minimum = 0}) {
+  final repository = MockTrackingSettingsRepository();
+  when(repository.minPeriodMinutes()).thenAnswer((_) async => minimum);
+  when(repository.watch()).thenAnswer((_) => const Stream.empty());
+  return repository;
 }
 
-late FakeTrackingSettingsRepository repository;
+/// Makes [repository]'s `save` wait on [gate].
+void saveWaitsOn(Completer<void> gate) {
+  when(repository.save(any)).thenAnswer((_) => gate.future);
+}
+
+late MockTrackingSettingsRepository repository;
 
 /// A controller started over [repository] with [saved] as the saved
 /// settings, once the plan's minimum has loaded.
@@ -69,7 +63,7 @@ const notOffered = [
 void main() {
   setUp(() {
     Get.testMode = true;
-    repository = FakeTrackingSettingsRepository();
+    repository = mockRepository();
   });
 
   group('TrackingSettingsEditController initial state - Unit Test Suite', () {
@@ -120,7 +114,7 @@ void main() {
 
     test('Edge Case: the plan minimum is loaded on start', () async {
       // 1. Arrange
-      repository = FakeTrackingSettingsRepository(minimum: 15);
+      repository = mockRepository(minimum: 15);
       final controller = TrackingSettingsEditController(
         repository: repository,
         saved: economia,
@@ -150,7 +144,7 @@ void main() {
     test('Edge Case: with the plan minimum 15, Economia (15 min) is '
         'allowed', () async {
       // 1. Arrange
-      repository = FakeTrackingSettingsRepository(minimum: 15);
+      repository = mockRepository(minimum: 15);
       final controller = await controllerFor(economia);
 
       // 2. Act
@@ -163,7 +157,7 @@ void main() {
     test('Sad Path: with the plan minimum 20, Economia (15 min) is not '
         'allowed', () async {
       // 1. Arrange
-      repository = FakeTrackingSettingsRepository(minimum: 20);
+      repository = mockRepository(minimum: 20);
       final controller = await controllerFor(economia);
 
       // 2. Act
@@ -209,7 +203,7 @@ void main() {
 
     test('Edge Case: with the plan minimum 15, Economia is picked', () async {
       // 1. Arrange
-      repository = FakeTrackingSettingsRepository(minimum: 15);
+      repository = mockRepository(minimum: 15);
       final controller = await controllerFor(
         const TrackingSettings(periodMinutes: 30, radiusMeters: 100),
       );
@@ -315,7 +309,7 @@ void main() {
       await controller.save();
 
       // 3. Assert
-      expect(repository.saved, [economia]);
+      verify(repository.save(economia)).called(1);
     });
 
     test('Happy Path: after a save the draft is the saved settings, '
@@ -352,14 +346,17 @@ void main() {
       final ok = await controller.save();
 
       // 3. Assert
-      expect([ok, repository.saved], [false, isEmpty]);
+      expect(ok, isFalse);
+      verifyNever(repository.save(any));
     });
 
     test('Sad Path: a failing repository sets errorMessage and save '
         'returns false', () async {
       // 1. Arrange
       final controller = await changedController();
-      repository.failure = Exception('offline');
+      when(
+        repository.save(any),
+      ).thenAnswer((_) async => throw Exception('offline'));
 
       // 2. Act
       final ok = await controller.save();
@@ -374,7 +371,9 @@ void main() {
     test('Sad Path: isSaving is false after the repository throws', () async {
       // 1. Arrange
       final controller = await changedController();
-      repository.failure = Exception('offline');
+      when(
+        repository.save(any),
+      ).thenAnswer((_) async => throw Exception('offline'));
 
       // 2. Act
       await controller.save();
@@ -388,14 +387,15 @@ void main() {
     test('Happy Path: isSaving is true while the save is in flight', () async {
       // 1. Arrange
       final controller = await changedController();
-      repository.gate = Completer<void>();
+      final gate = Completer<void>();
+      saveWaitsOn(gate);
 
       // 2. Act
       final pending = controller.save();
 
       // 3. Assert
       expect(controller.isSaving.value, isTrue);
-      repository.gate!.complete();
+      gate.complete();
       await pending;
     });
 
@@ -403,7 +403,8 @@ void main() {
         'false and does not call the repository again', () async {
       // 1. Arrange
       final controller = await changedController();
-      repository.gate = Completer<void>();
+      final gate = Completer<void>();
+      saveWaitsOn(gate);
       final first = controller.save();
       await pumpEventQueue();
 
@@ -411,9 +412,10 @@ void main() {
       final second = await controller.save();
 
       // 3. Assert
-      repository.gate!.complete();
+      gate.complete();
       await first;
-      expect([second, repository.saved.length], [false, 1]);
+      expect(second, isFalse);
+      verify(repository.save(any)).called(1);
     });
 
     test('Sad Path: picking Economia does nothing while saving', () async {
@@ -422,7 +424,8 @@ void main() {
       // A draft only Economia would change, set directly since no other
       // preset can be picked.
       controller.draft.value = custom;
-      repository.gate = Completer<void>();
+      final gate = Completer<void>();
+      saveWaitsOn(gate);
       final pending = controller.save();
 
       // 2. Act
@@ -430,7 +433,7 @@ void main() {
 
       // 3. Assert
       expect(controller.draft.value, custom);
-      repository.gate!.complete();
+      gate.complete();
       await pending;
     });
   });

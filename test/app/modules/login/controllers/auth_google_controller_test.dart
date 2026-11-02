@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
@@ -29,6 +27,21 @@ import 'package:monamie_app/app/modules/login/controllers/auth_google_controller
 import 'package:monamie_app/app/modules/login/services/auth_google_service.dart';
 import 'package:monamie_app/app/routes/app_pages.dart';
 import '../../../../support/test_organization.dart';
+
+@GenerateNiceMocks([
+  MockSpec<AuthGoogleService>(),
+  MockSpec<BackgroundTrackingStopper>(),
+  MockSpec<InvitesBackend>(),
+  MockSpec<NavigatorObserver>(),
+  MockSpec<OrganizationBindingStore>(),
+  MockSpec<OrganizationBrandingLoader>(),
+  MockSpec<OrganizationDirectory>(),
+  MockSpec<OrganizationFirebase>(),
+  MockSpec<OrganizationLocalData>(),
+  MockSpec<OrganizationMembershipCheck>(),
+  MockSpec<UserGoogleRepository>(),
+])
+import 'auth_google_controller_test.mocks.dart';
 
 const String _kHomeRoute = '/home-test';
 
@@ -60,139 +73,136 @@ const _kVerdeMarSignIn = OrganizationCandidate(
 );
 
 // ---------------------------------------------------------------------------
-// Fakes
+// Mocks
 // ---------------------------------------------------------------------------
 
-class _FakeAuthGoogleServiceSignIn implements AuthGoogleService {
-  _FakeAuthGoogleServiceSignIn(
-    this.log, {
-    this.idToken = _kIdToken,
-    this.refreshedToken = _kIdToken,
-    this.signInError,
-    this.logoutError,
-    this.chooser,
-  });
+/// The `onAccountChosen` callback passed to `signInGoogle`.
+void Function()? _onAccountChosen(Invocation invocation) =>
+    invocation.namedArguments[#onAccountChosen] as void Function()?;
 
-  final List<String> log;
-  final String? idToken;
-  final String? refreshedToken;
-  final Object? signInError;
-  final Object? logoutError;
-
-  /// Holds the fake at Google's account chooser until the test completes it
-  /// (with an error to mimic a cancelled chooser). Null: the choice is instant.
-  final Completer<void>? chooser;
-
-  int signInCalls = 0;
-  int logoutCalls = 0;
-  int signOutOfOrganizationCalls = 0;
-
-  @override
-  Future<String?> signInGoogle({void Function()? onAccountChosen}) async {
-    signInCalls++;
+/// A [MockAuthGoogleService] for the sign-in: each call is written to [log];
+/// `signInGoogle` waits on [chooser] (Google's account chooser; completing it
+/// with an error mimics a cancelled chooser), then answers [idToken] or fails
+/// with [signInError]; `logoutGoogle` fails with [logoutError].
+MockAuthGoogleService _authServiceSignIn(
+  List<String> log, {
+  String? idToken = _kIdToken,
+  String? refreshedToken = _kIdToken,
+  Object? signInError,
+  Object? logoutError,
+  Completer<void>? chooser,
+}) {
+  final service = MockAuthGoogleService();
+  when(
+    service.signInGoogle(onAccountChosen: anyNamed('onAccountChosen')),
+  ).thenAnswer((invocation) async {
     log.add('signInGoogle');
     await chooser?.future;
-    onAccountChosen?.call();
-    final failure = signInError;
-    if (failure != null) throw failure;
+    _onAccountChosen(invocation)?.call();
+    if (signInError != null) throw signInError;
     return idToken;
-  }
-
-  @override
-  Future<String?> refreshGoogleIdToken() async {
+  });
+  when(service.refreshGoogleIdToken()).thenAnswer((_) async {
     log.add('refreshGoogleIdToken');
     return refreshedToken;
-  }
-
-  @override
-  Future<String?> centralEmail() async => _kCentralEmail;
-
-  @override
-  Future<void> signInToOrganization(String idToken) async {
-    log.add('signInToOrganization');
-  }
-
-  @override
-  Future<void> signOutOfOrganization() async {
-    signOutOfOrganizationCalls++;
-    log.add('signOutOfOrganization');
-  }
-
-  @override
-  Future<void> logoutGoogle() async {
-    logoutCalls++;
-    log.add('logoutGoogle');
-    final failure = logoutError;
-    if (failure != null) throw failure;
-  }
-
-  @override
-  Future<UserGoogleModel?> saveOrganizationProfile() async =>
-      UserGoogleModel(id: 'uid-123', name: 'Ana Souza', email: _kCentralEmail);
-
-  @override
-  Stream<String?> get onWebSignIn => const Stream<String?>.empty();
-
-  @override
-  Future<void> ensureInitialized() async {}
-
-  @override
-  void dispose() {}
-}
-
-class _FakeOrganizationDirectory implements OrganizationDirectory {
-  _FakeOrganizationDirectory({
-    this.organizations = const [],
-    this.error,
-    this.log,
   });
+  when(service.centralEmail()).thenAnswer((_) async => _kCentralEmail);
+  when(service.signInToOrganization(any)).thenAnswer((_) async {
+    log.add('signInToOrganization');
+  });
+  when(service.signOutOfOrganization()).thenAnswer((_) async {
+    log.add('signOutOfOrganization');
+  });
+  when(service.logoutGoogle()).thenAnswer((_) async {
+    log.add('logoutGoogle');
+    if (logoutError != null) throw logoutError;
+  });
+  when(service.saveOrganizationProfile()).thenAnswer(
+    (_) async => UserGoogleModel(
+      id: 'uid-123',
+      name: 'Ana Souza',
+      email: _kCentralEmail,
+    ),
+  );
+  when(service.onWebSignIn).thenAnswer((_) => const Stream<String?>.empty());
+  return service;
+}
 
-  final List<OrganizationCandidate> organizations;
-  final Object? error;
-  final List<String>? log;
-  int calls = 0;
-
-  @override
-  Future<List<OrganizationCandidate>> organizationsOfSignedInUser() async {
-    calls++;
-    log?.add('directory');
-    final failure = error;
-    if (failure != null) throw failure;
+/// A [MockOrganizationDirectory] that writes `directory` to [log] and
+/// answers [organizations] or fails with [error].
+MockOrganizationDirectory _directorySignIn(
+  List<String> log, {
+  List<OrganizationCandidate> organizations = const [],
+  Object? error,
+}) {
+  final directory = MockOrganizationDirectory();
+  when(directory.organizationsOfSignedInUser()).thenAnswer((_) async {
+    log.add('directory');
+    if (error != null) throw error;
     return organizations;
-  }
+  });
+  return directory;
 }
 
-class _FakeBrandingLoaderSignIn implements OrganizationBrandingLoader {
-  @override
-  Future<OrganizationBinding> load(OrganizationCandidate candidate) async =>
-      OrganizationBinding(
-        organization: OrganizationConfig(id: candidate.id, name: _kRotaSulName),
-        options: candidate.options,
-      );
-
-  @override
-  Future<OrganizationConfig> readBranding(OrganizationBinding binding) =>
-      throw UnimplementedError('readBranding is not used by the sign-in');
+/// A [MockOrganizationBrandingLoader] whose `load` names each organization
+/// with [nameOf].
+MockOrganizationBrandingLoader _brandingLoader(
+  String Function(OrganizationCandidate candidate) nameOf,
+) {
+  final loader = MockOrganizationBrandingLoader();
+  when(loader.load(any)).thenAnswer((invocation) async {
+    final candidate =
+        invocation.positionalArguments.single as OrganizationCandidate;
+    return OrganizationBinding(
+      organization: OrganizationConfig(
+        id: candidate.id,
+        name: nameOf(candidate),
+      ),
+      options: candidate.options,
+    );
+  });
+  return loader;
 }
 
-class _MemoryBindingStore implements OrganizationBindingStore {
-  OrganizationBinding? binding;
+/// A [MockOrganizationMembershipCheck] that answers [member] for every
+/// organization: `true` belongs, `false` was removed, `null` could not be
+/// read.
+MockOrganizationMembershipCheck _membershipCheck(bool? member) {
+  final check = MockOrganizationMembershipCheck();
+  when(check.isMemberOf(any)).thenAnswer((_) async => member);
+  return check;
+}
 
-  @override
-  Future<OrganizationBinding?> read() async => binding;
+/// A [MockBackgroundTrackingStopper] that writes [entry] to [log] and
+/// answers [result], or waits on [pending] when given.
+MockBackgroundTrackingStopper _trackingStopper(
+  List<String> log, {
+  String entry = 'stop',
+  bool result = true,
+  Completer<bool>? pending,
+}) {
+  final stopper = MockBackgroundTrackingStopper();
+  when(stopper.stop(email: anyNamed('email'))).thenAnswer((_) {
+    log.add(entry);
+    return pending?.future ?? Future<bool>.value(result);
+  });
+  return stopper;
+}
 
-  @override
-  Future<void> write(OrganizationBinding value) async => binding = value;
-
-  @override
-  Future<void> clear() async => binding = null;
+/// A [MockUserGoogleRepository] with no saved user, whose writes succeed.
+MockUserGoogleRepository _userRepository() {
+  final repository = MockUserGoogleRepository();
+  when(repository.getUserGoogleModel()).thenAnswer((_) async => null);
+  when(repository.deleteUserGoogleModel()).thenAnswer((_) async => 'ok');
+  when(repository.saveUserGoogleModel(any)).thenAnswer((_) async => 'ok');
+  return repository;
 }
 
 /// [OrganizationSession] that binds without creating a real [FirebaseApp]: it
-/// sets [Organization.current] and a fake [OrganizationFirebase].
+/// sets [Organization.current] and a mock [OrganizationFirebase].
 class _FakeOrganizationSessionSignIn extends OrganizationSession {
   _FakeOrganizationSessionSignIn(this.log)
-    : super(store: _MemoryBindingStore());
+    : super(store: MockOrganizationBindingStore());
 
   final List<String> log;
   int forgetCalls = 0;
@@ -201,7 +211,7 @@ class _FakeOrganizationSessionSignIn extends OrganizationSession {
   Future<void> bind(OrganizationBinding binding, {bool remember = true}) async {
     log.add('bind');
     Organization.bind(binding.organization);
-    CurrentOrganizationFirebase.set(_FakeOrganizationFirebase());
+    CurrentOrganizationFirebase.set(MockOrganizationFirebase());
   }
 
   @override
@@ -210,78 +220,6 @@ class _FakeOrganizationSessionSignIn extends OrganizationSession {
     log.add('forget');
     await super.forget();
   }
-}
-
-class _FakeOrganizationFirebase implements OrganizationFirebase {
-  @override
-  FirebaseAuth get auth => throw UnimplementedError();
-
-  @override
-  FirebaseFunctions get functions => throw UnimplementedError();
-
-  @override
-  FirebaseFirestore get firestore => throw UnimplementedError();
-
-  @override
-  FirebaseStorage get storage => throw UnimplementedError();
-
-  @override
-  DocumentReference<Map<String, dynamic>> get organizationData =>
-      throw UnimplementedError();
-}
-
-/// Answers [member] for every organization: `true` belongs, `false` was
-/// removed, `null` could not be read.
-class _FakeMembershipCheck implements OrganizationMembershipCheck {
-  _FakeMembershipCheck(this.member);
-
-  final bool? member;
-
-  @override
-  Future<bool?> isMemberOf(String organizationId) async => member;
-}
-
-class _FakeTrackingStopperSignIn implements BackgroundTrackingStopper {
-  _FakeTrackingStopperSignIn(this.log);
-
-  final List<String> log;
-
-  @override
-  Future<bool> stop({String? email}) async {
-    log.add('stop');
-    return true;
-  }
-}
-
-class _FakeOrganizationLocalData implements OrganizationLocalData {
-  @override
-  Future<void> clear() async {}
-}
-
-class _FakeUserGoogleRepositorySignIn implements UserGoogleRepository {
-  @override
-  Future<UserGoogleModel?> getUserGoogleModel() async => null;
-
-  @override
-  Future<String> deleteUserGoogleModel() async => 'ok';
-
-  @override
-  Future<String> saveUserGoogleModel(UserGoogleModel user) async => 'ok';
-
-  @override
-  Future<UserGoogleModel> saveGoogleProfile(
-    String email,
-    String name,
-    String uid,
-    String urlImage, {
-    String? avatarBase64,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<String> clearAllUserGoogle() => throw UnimplementedError();
-
-  @override
-  Future<bool> hasUserGoogle() => throw UnimplementedError();
 }
 
 // ---------------------------------------------------------------------------
@@ -299,7 +237,7 @@ class _HarnessSignIn {
     Object? logoutError,
     Completer<void>? chooser,
   }) {
-    authService = _FakeAuthGoogleServiceSignIn(
+    authService = _authServiceSignIn(
       log,
       idToken: idToken,
       refreshedToken: refreshedToken,
@@ -307,30 +245,30 @@ class _HarnessSignIn {
       logoutError: logoutError,
       chooser: chooser,
     );
-    directory = _FakeOrganizationDirectory(
+    directory = _directorySignIn(
+      log,
       organizations: organizations,
       error: directoryError,
-      log: log,
     );
     session = _FakeOrganizationSessionSignIn(log);
-    membershipCheck = _FakeMembershipCheck(member);
+    membershipCheck = _membershipCheck(member);
     controller = AuthGoogleController(
       authGoogleService: authService,
-      userRepository: _FakeUserGoogleRepositorySignIn(),
-      trackingStopper: _FakeTrackingStopperSignIn(log),
+      userRepository: _userRepository(),
+      trackingStopper: _trackingStopper(log),
       organizationDirectory: directory,
-      brandingLoader: _FakeBrandingLoaderSignIn(),
+      brandingLoader: _brandingLoader((_) => _kRotaSulName),
       organizationSession: session,
-      organizationLocalData: _FakeOrganizationLocalData(),
+      organizationLocalData: MockOrganizationLocalData(),
       membershipCheck: membershipCheck,
       refreshTheme: () => log.add('refreshTheme'),
     );
   }
 
   final List<String> log = <String>[];
-  late final _FakeMembershipCheck membershipCheck;
-  late final _FakeAuthGoogleServiceSignIn authService;
-  late final _FakeOrganizationDirectory directory;
+  late final MockOrganizationMembershipCheck membershipCheck;
+  late final MockAuthGoogleService authService;
+  late final MockOrganizationDirectory directory;
   late final _FakeOrganizationSessionSignIn session;
   late final AuthGoogleController controller;
 }
@@ -418,91 +356,14 @@ const Map<String, String> _kOrganizationNames = {
 };
 
 // ---------------------------------------------------------------------------
-// Fakes
+// Mocks
 // ---------------------------------------------------------------------------
 
-class _FakeAuthGoogleServiceInvites implements AuthGoogleService {
-  _FakeAuthGoogleServiceInvites(this.log);
-
-  final List<String> log;
-  final String? idToken = _kIdToken;
-  final Object? signInError = null;
-  final Object? logoutError = null;
-
-  int signInCalls = 0;
-  int logoutCalls = 0;
-  int signOutOfOrganizationCalls = 0;
-
-  @override
-  Future<String?> signInGoogle({void Function()? onAccountChosen}) async {
-    signInCalls++;
-    log.add('signInGoogle');
-    onAccountChosen?.call();
-    final failure = signInError;
-    if (failure != null) throw failure;
-    return idToken;
-  }
-
-  @override
-  Future<String?> refreshGoogleIdToken() async => null;
-
-  @override
-  Future<String?> centralEmail() async => _kCentralEmail;
-
-  @override
-  Future<void> signInToOrganization(String idToken) async {
-    log.add('signInToOrganization');
-  }
-
-  @override
-  Future<void> signOutOfOrganization() async {
-    signOutOfOrganizationCalls++;
-    log.add('signOutOfOrganization');
-  }
-
-  @override
-  Future<void> logoutGoogle() async {
-    logoutCalls++;
-    log.add('logoutGoogle');
-    final failure = logoutError;
-    if (failure != null) throw failure;
-  }
-
-  @override
-  Future<UserGoogleModel?> saveOrganizationProfile() async =>
-      UserGoogleModel(id: 'uid-123', name: 'Ana Souza', email: _kCentralEmail);
-
-  @override
-  Stream<String?> get onWebSignIn => const Stream<String?>.empty();
-
-  @override
-  Future<void> ensureInitialized() async {}
-
-  @override
-  void dispose() {}
-}
-
-class _FakeBrandingLoaderInvites implements OrganizationBrandingLoader {
-  @override
-  Future<OrganizationBinding> load(OrganizationCandidate candidate) async =>
-      OrganizationBinding(
-        organization: OrganizationConfig(
-          id: candidate.id,
-          name: _kOrganizationNames[candidate.id] ?? candidate.id,
-        ),
-        options: candidate.options,
-      );
-
-  @override
-  Future<OrganizationConfig> readBranding(OrganizationBinding binding) =>
-      throw UnimplementedError('readBranding is not used by the sign-in');
-}
-
 /// [OrganizationSession] that binds without creating a real [FirebaseApp]: it
-/// sets [Organization.current] and a fake [OrganizationFirebase].
+/// sets [Organization.current] and a mock [OrganizationFirebase].
 class _FakeOrganizationSessionInvites extends OrganizationSession {
   _FakeOrganizationSessionInvites(this.log)
-    : super(store: _MemoryBindingStore());
+    : super(store: MockOrganizationBindingStore());
 
   final List<String> log;
   int forgetCalls = 0;
@@ -515,7 +376,7 @@ class _FakeOrganizationSessionInvites extends OrganizationSession {
     log.add('bind');
     boundIds.add(binding.organization.id);
     Organization.bind(binding.organization);
-    CurrentOrganizationFirebase.set(_FakeOrganizationFirebase());
+    CurrentOrganizationFirebase.set(MockOrganizationFirebase());
   }
 
   @override
@@ -526,109 +387,29 @@ class _FakeOrganizationSessionInvites extends OrganizationSession {
   }
 }
 
-/// The person still belongs to every organization entered.
-class _MemberEverywhere implements OrganizationMembershipCheck {
-  @override
-  Future<bool?> isMemberOf(String organizationId) async => true;
-}
-
-class _FakeTrackingStopperInvites implements BackgroundTrackingStopper {
-  _FakeTrackingStopperInvites(this.log);
-
-  final List<String> log;
-
-  @override
-  Future<bool> stop({String? email}) async {
-    log.add('stop');
-    return true;
-  }
-}
-
-class _FakeUserGoogleRepositoryInvites implements UserGoogleRepository {
-  @override
-  Future<UserGoogleModel?> getUserGoogleModel() async => null;
-
-  @override
-  Future<String> deleteUserGoogleModel() async => 'ok';
-
-  @override
-  Future<String> saveUserGoogleModel(UserGoogleModel user) async => 'ok';
-
-  @override
-  Future<UserGoogleModel> saveGoogleProfile(
-    String email,
-    String name,
-    String uid,
-    String urlImage, {
-    String? avatarBase64,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<String> clearAllUserGoogle() => throw UnimplementedError();
-
-  @override
-  Future<bool> hasUserGoogle() => throw UnimplementedError();
-}
-
-/// [OrganizationDirectory] that answers the n-th call with `answers[n]` (the last
-/// answer repeats) and counts the calls.
-class _SequencedOrganizationDirectory implements OrganizationDirectory {
-  _SequencedOrganizationDirectory(this.answers);
-
-  final List<List<OrganizationCandidate>> answers;
-  int calls = 0;
-
-  @override
-  Future<List<OrganizationCandidate>> organizationsOfSignedInUser() async {
+/// A [MockOrganizationDirectory] that answers the n-th call with
+/// `answers[n]` (the last answer repeats).
+MockOrganizationDirectory _sequencedDirectory(
+  List<List<OrganizationCandidate>> answers,
+) {
+  final directory = MockOrganizationDirectory();
+  var calls = 0;
+  when(directory.organizationsOfSignedInUser()).thenAnswer((_) async {
     final index = calls++;
     return answers[index < answers.length ? index : answers.length - 1];
-  }
+  });
+  return directory;
 }
 
-/// [InvitesBackend] whose `accept` records the invite, optionally waits on
-/// [gate] and fails with [failure]; `mine` answers [mineResult] or fails
-/// with [mineFailure].
-class _FakeInvitesBackend implements InvitesBackend {
-  final accepted = <String>[];
-  Completer<void>? gate;
-  Object? failure;
-  List<Invite> mineResult = const [];
-  Object? mineFailure;
-
-  @override
-  Future<Invite> accept(Invite invite) async {
-    accepted.add(invite.id);
-    await gate?.future;
-    if (failure case final failure?) throw failure;
-    return invite;
-  }
-
-  @override
-  Future<List<Invite>> mine() async {
-    if (mineFailure case final failure?) throw failure;
-    return mineResult;
-  }
-
-  @override
-  Future<InviteSendResult> send(
-    String organizationId, {
-    required String organizationName,
-    String? groupId,
-    String? firstGroupName,
-    required List<({String email, Set<GroupRole> roles})> invites,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<List<Invite>> listForGroup(String organizationId, String groupId) =>
-      throw UnimplementedError();
-
-  @override
-  Future<void> resend(String organizationId, String inviteId) =>
-      throw UnimplementedError();
-
-  @override
-  Future<void> cancel(String organizationId, String inviteId) =>
-      throw UnimplementedError();
+/// A [MockInvitesBackend] whose `accept` returns the invite and `mine`
+/// answers no invite.
+MockInvitesBackend _invitesBackend() {
+  final backend = MockInvitesBackend();
+  when(backend.accept(any)).thenAnswer(
+    (invocation) async => invocation.positionalArguments.single as Invite,
+  );
+  when(backend.mine()).thenAnswer((_) async => const []);
+  return backend;
 }
 
 final _kOtherInvite = Invite(
@@ -665,25 +446,27 @@ class _HarnessInvites {
       [_kRotaSul],
     ],
   }) {
-    directory = _SequencedOrganizationDirectory(answers);
+    directory = _sequencedDirectory(answers);
     session = _FakeOrganizationSessionInvites(log);
     controller = AuthGoogleController(
-      authGoogleService: _FakeAuthGoogleServiceInvites(log),
-      userRepository: _FakeUserGoogleRepositoryInvites(),
-      trackingStopper: _FakeTrackingStopperInvites(log),
+      authGoogleService: _authServiceSignIn(log, refreshedToken: null),
+      userRepository: _userRepository(),
+      trackingStopper: _trackingStopper(log),
       organizationDirectory: directory,
-      brandingLoader: _FakeBrandingLoaderInvites(),
+      brandingLoader: _brandingLoader(
+        (candidate) => _kOrganizationNames[candidate.id] ?? candidate.id,
+      ),
       organizationSession: session,
-      organizationLocalData: _FakeOrganizationLocalData(),
+      organizationLocalData: MockOrganizationLocalData(),
       invitesBackend: backend,
-      membershipCheck: _MemberEverywhere(),
+      membershipCheck: _membershipCheck(true),
       refreshTheme: () => log.add('refreshTheme'),
     );
   }
 
   final List<String> log = <String>[];
-  final backend = _FakeInvitesBackend();
-  late final _SequencedOrganizationDirectory directory;
+  final backend = _invitesBackend();
+  late final MockOrganizationDirectory directory;
   late final _FakeOrganizationSessionInvites session;
   late final AuthGoogleController controller;
 }
@@ -738,27 +521,20 @@ Future<void> _drive(
   await tester.pumpAndSettle();
 }
 
-/// [OrganizationDirectory] that counts its reads, returns [organizations],
-/// optionally waits on [gate] and fails with [failure].
-class FakeOrganizationDirectory implements OrganizationDirectory {
-  int reads = 0;
-  List<OrganizationCandidate> organizations = const [
-    OrganizationCandidate(id: 'rotasul', options: _kOptions, owner: true),
-    OrganizationCandidate(id: 'verdemar', options: _kOptions),
-  ];
-  Completer<void>? gate;
-  Object? failure;
+/// What the ownership tests' directory answers.
+const _kOwnershipOrganizations = [
+  OrganizationCandidate(id: 'rotasul', options: _kOptions, owner: true),
+  OrganizationCandidate(id: 'verdemar', options: _kOptions),
+];
 
-  @override
-  Future<List<OrganizationCandidate>> organizationsOfSignedInUser() async {
-    reads++;
-    await gate?.future;
-    if (failure case final failure?) throw failure;
-    return organizations;
-  }
+/// Makes [directory] answer [_kOwnershipOrganizations].
+void _directoryAnswers() {
+  when(
+    directory.organizationsOfSignedInUser(),
+  ).thenAnswer((_) async => _kOwnershipOrganizations);
 }
 
-late FakeOrganizationDirectory directory;
+late MockOrganizationDirectory directory;
 
 /// Built without `Get.put`, so the real `onInit` (Google Sign-In) never runs.
 AuthGoogleController newController() =>
@@ -780,143 +556,62 @@ const String _kLogDeleteUser = 'deleteUserGoogleModel';
 
 const String _kLogNavigateLogin = 'push:${Routes.LOGIN}';
 
-/// Fake do contrato de parada do rastreamento.
-class _FakeTrackingStopperLogout implements BackgroundTrackingStopper {
-  _FakeTrackingStopperLogout(this.log, {this.result = true, this.pending});
-
-  final List<String> log;
-  final bool result;
-
-  /// Quando informado, `stop` só conclui quando este completer completar.
-  final Completer<bool>? pending;
-
-  final List<String?> emails = <String?>[];
-
-  int get calls => emails.length;
-
-  @override
-  Future<bool> stop({String? email}) {
-    emails.add(email);
-    log.add(_kLogStop);
-    final waiting = pending;
-    if (waiting != null) return waiting.future;
-    return Future<bool>.value(result);
-  }
-}
-
-/// Fake do AuthGoogleService. Usa `implements` para não executar o construtor
-/// real (que acessa GoogleSignIn e Firebase).
-class _FakeAuthGoogleServiceLogout implements AuthGoogleService {
-  _FakeAuthGoogleServiceLogout(this.log, {this.logoutError});
-
-  final List<String> log;
-  final Object? logoutError;
-  int logoutCalls = 0;
-
-  @override
-  Future<void> logoutGoogle() async {
-    logoutCalls++;
+/// Mock do AuthGoogleService: o logout do Google registra [_kLogSignOut]
+/// no log e falha com [logoutError].
+MockAuthGoogleService _authServiceLogout(
+  List<String> log, {
+  Object? logoutError,
+}) {
+  final service = MockAuthGoogleService();
+  when(service.logoutGoogle()).thenAnswer((_) async {
     log.add(_kLogSignOut);
-    final failure = logoutError;
-    if (failure != null) throw failure;
-  }
-
-  @override
-  Stream<String?> get onWebSignIn => const Stream<String?>.empty();
-
-  @override
-  Future<void> ensureInitialized() async {}
-
-  @override
-  Future<String?> signInGoogle({void Function()? onAccountChosen}) async {
-    onAccountChosen?.call();
-    return null;
-  }
-
-  @override
-  Future<void> signInToOrganization(String idToken) async {}
-
-  @override
-  Future<UserGoogleModel?> saveOrganizationProfile() async => null;
-
-  @override
-  Future<String?> refreshGoogleIdToken() async => null;
-
-  @override
-  Future<String?> centralEmail() async => null;
-
-  @override
-  Future<void> signOutOfOrganization() async {}
-
-  @override
-  void dispose() {}
-}
-
-/// Fake do UserGoogleRepository. Usa `implements` para não instanciar os
-/// providers reais (Hive/Firebase).
-class _FakeUserGoogleRepositoryLogout implements UserGoogleRepository {
-  _FakeUserGoogleRepositoryLogout(
-    this.log, {
-    this.storedUser,
-    this.getUserError,
-    this.deleteError,
+    if (logoutError != null) throw logoutError;
   });
+  when(
+    service.signInGoogle(onAccountChosen: anyNamed('onAccountChosen')),
+  ).thenAnswer((invocation) async {
+    _onAccountChosen(invocation)?.call();
+    return null;
+  });
+  when(service.onWebSignIn).thenAnswer((_) => const Stream<String?>.empty());
+  return service;
+}
 
-  final List<String> log;
-  final UserGoogleModel? storedUser;
-  final Object? getUserError;
-  final Object? deleteError;
-  int deleteCalls = 0;
-
-  @override
-  Future<UserGoogleModel?> getUserGoogleModel() async {
-    final failure = getUserError;
-    if (failure != null) throw failure;
+/// Mock do UserGoogleRepository: devolve [storedUser] (ou falha com
+/// [getUserError]) e a exclusão registra [_kLogDeleteUser] no log (ou falha
+/// com [deleteError]).
+MockUserGoogleRepository _userRepositoryLogout(
+  List<String> log, {
+  UserGoogleModel? storedUser,
+  Object? getUserError,
+  Object? deleteError,
+}) {
+  final repository = MockUserGoogleRepository();
+  when(repository.getUserGoogleModel()).thenAnswer((_) async {
+    if (getUserError != null) throw getUserError;
     return storedUser;
-  }
-
-  @override
-  Future<String> deleteUserGoogleModel() async {
-    deleteCalls++;
+  });
+  when(repository.deleteUserGoogleModel()).thenAnswer((_) async {
     log.add(_kLogDeleteUser);
-    final failure = deleteError;
-    if (failure != null) throw failure;
+    if (deleteError != null) throw deleteError;
     return 'ok';
-  }
-
-  @override
-  Future<UserGoogleModel> saveGoogleProfile(
-    String email,
-    String name,
-    String uid,
-    String urlImage, {
-    String? avatarBase64,
-  }) => throw UnimplementedError('saveGoogleProfile não é usado no logout');
-
-  @override
-  Future<String> saveUserGoogleModel(UserGoogleModel user) =>
-      throw UnimplementedError('saveUserGoogleModel não é usado no logout');
-
-  @override
-  Future<String> clearAllUserGoogle() =>
-      throw UnimplementedError('clearAllUserGoogle não é usado no logout');
-
-  @override
-  Future<bool> hasUserGoogle() =>
-      throw UnimplementedError('hasUserGoogle não é usado no logout');
+  });
+  return repository;
 }
 
-/// Registra no log compartilhado as rotas empilhadas pelo Navigator.
-class _LoggingNavigatorObserver extends NavigatorObserver {
-  _LoggingNavigatorObserver(this.log);
-
-  final List<String> log;
-
-  @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+/// Mock de NavigatorObserver que registra no log as rotas empilhadas.
+MockNavigatorObserver _navigatorObserver(List<String> log) {
+  final observer = MockNavigatorObserver();
+  when(observer.didPush(any, any)).thenAnswer((invocation) {
+    final route = invocation.positionalArguments.first as Route<dynamic>;
     log.add('push:${route.settings.name}');
-  }
+  });
+  return observer;
 }
+
+/// E-mails passados a `stop` desde a última verificação.
+List<Object?> _stoppedEmails(MockBackgroundTrackingStopper stopper) =>
+    verify(stopper.stop(email: captureAnyNamed('email'))).captured;
 
 /// Conjunto de dependências falsas de um cenário de logout.
 class _HarnessLogout {
@@ -928,13 +623,14 @@ class _HarnessLogout {
     Completer<bool>? pendingStop,
     Object? logoutError,
   }) {
-    stopper = _FakeTrackingStopperLogout(
+    stopper = _trackingStopper(
       log,
+      entry: _kLogStop,
       result: stopResult,
       pending: pendingStop,
     );
-    authService = _FakeAuthGoogleServiceLogout(log, logoutError: logoutError);
-    userRepository = _FakeUserGoogleRepositoryLogout(
+    authService = _authServiceLogout(log, logoutError: logoutError);
+    userRepository = _userRepositoryLogout(
       log,
       storedUser: storedUser,
       getUserError: getUserError,
@@ -943,8 +639,10 @@ class _HarnessLogout {
     // O controller é construído sem `Get.put`, de modo que o `onInit` real
     // (que acessa o Google Sign-In) nunca é executado.
     controller = AuthGoogleController(
-      organizationSession: OrganizationSession(store: _MemoryBindingStore()),
-      organizationLocalData: _FakeOrganizationLocalData(),
+      organizationSession: OrganizationSession(
+        store: MockOrganizationBindingStore(),
+      ),
+      organizationLocalData: MockOrganizationLocalData(),
       refreshTheme: () {},
       authGoogleService: authService,
       userRepository: userRepository,
@@ -953,9 +651,9 @@ class _HarnessLogout {
   }
 
   final List<String> log = <String>[];
-  late final _FakeTrackingStopperLogout stopper;
-  late final _FakeAuthGoogleServiceLogout authService;
-  late final _FakeUserGoogleRepositoryLogout userRepository;
+  late final MockBackgroundTrackingStopper stopper;
+  late final MockAuthGoogleService authService;
+  late final MockUserGoogleRepository userRepository;
   late final AuthGoogleController controller;
 }
 
@@ -979,7 +677,7 @@ Future<void> _pumpAppLogout(WidgetTester tester, _HarnessLogout harness) async {
   await tester.pumpWidget(
     GetMaterialApp(
       initialRoute: _kHomeRoute,
-      navigatorObservers: [_LoggingNavigatorObserver(harness.log)],
+      navigatorObservers: [_navigatorObserver(harness.log)],
       getPages: [
         GetPage(
           name: _kHomeRoute,
@@ -1087,7 +785,11 @@ void main() {
             await tester.pump();
 
             // 3. Assert
-            expect(harness.authService.signInCalls, 1);
+            verify(
+              harness.authService.signInGoogle(
+                onAccountChosen: anyNamed('onAccountChosen'),
+              ),
+            ).called(1);
 
             // Cleanup: finishes the pending sign-in so no timers stay open.
             chooser.complete();
@@ -1120,7 +822,11 @@ void main() {
             expect(loadingEverTrue, isFalse);
             expect(controller.isLoading.value, isFalse);
             expect(controller.isChoosingAccount.value, isFalse);
-            expect(harness.authService.signInCalls, 1);
+            verify(
+              harness.authService.signInGoogle(
+                onAccountChosen: anyNamed('onAccountChosen'),
+              ),
+            ).called(1);
           },
         );
       },
@@ -1182,7 +888,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(harness.authService.logoutCalls, 0);
+            verifyNever(harness.authService.logoutGoogle());
           },
         );
 
@@ -1342,7 +1048,7 @@ void main() {
             // 3. Assert
             expect(Get.currentRoute, _kHomeRoute);
             expect(harness.controller.organizationChoices, isEmpty);
-            expect(harness.directory.calls, 0);
+            verifyNever(harness.directory.organizationsOfSignedInUser());
           },
         );
       },
@@ -1467,7 +1173,7 @@ void main() {
             );
 
             // 3. Assert
-            expect(harness.authService.signOutOfOrganizationCalls, 1);
+            verify(harness.authService.signOutOfOrganization()).called(1);
           },
         );
 
@@ -1588,7 +1294,7 @@ void main() {
 
             // 3. Assert
             expect(harness.controller.noAccessReason.value, isNull);
-            expect(harness.authService.signOutOfOrganizationCalls, 0);
+            verifyNever(harness.authService.signOutOfOrganization());
           },
         );
       },
@@ -1615,7 +1321,11 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.authService.signInCalls, 1);
+          verify(
+            harness.authService.signInGoogle(
+              onAccountChosen: anyNamed('onAccountChosen'),
+            ),
+          ).called(1);
         },
       );
 
@@ -1639,7 +1349,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.directory.calls, 2);
+          verify(harness.directory.organizationsOfSignedInUser()).called(2);
         },
       );
 
@@ -1679,7 +1389,11 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.authService.signInCalls, 1);
+          verify(
+            harness.authService.signInGoogle(
+              onAccountChosen: anyNamed('onAccountChosen'),
+            ),
+          ).called(1);
         },
       );
 
@@ -1694,8 +1408,12 @@ void main() {
           await harness.controller.recheckOrganizations();
 
           // 3. Assert
-          expect(harness.authService.signInCalls, 0);
-          expect(harness.directory.calls, 0);
+          verifyNever(
+            harness.authService.signInGoogle(
+              onAccountChosen: anyNamed('onAccountChosen'),
+            ),
+          );
+          verifyNever(harness.directory.organizationsOfSignedInUser());
         },
       );
 
@@ -1875,7 +1593,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.directory.calls, 1);
+          verify(harness.directory.organizationsOfSignedInUser()).called(1);
           expect(
             harness.log.where(
               (e) =>
@@ -1904,8 +1622,12 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.authService.logoutCalls, 0);
-          expect(harness.authService.signInCalls, 0);
+          verifyNever(harness.authService.logoutGoogle());
+          verifyNever(
+            harness.authService.signInGoogle(
+              onAccountChosen: anyNamed('onAccountChosen'),
+            ),
+          );
         },
       );
 
@@ -2040,7 +1762,7 @@ void main() {
           // 3. Assert
           expect(Get.currentRoute, Routes.NO_ORGANIZATION);
           expect(harness.controller.organizationChoices, isEmpty);
-          expect(harness.authService.logoutCalls, 0);
+          verifyNever(harness.authService.logoutGoogle());
         },
       );
 
@@ -2056,7 +1778,7 @@ void main() {
 
           // 3. Assert
           expect(harness.log, isEmpty);
-          expect(harness.directory.calls, 0);
+          verifyNever(harness.directory.organizationsOfSignedInUser());
         },
       );
 
@@ -2072,7 +1794,7 @@ void main() {
 
           // 3. Assert
           expect(harness.log, isEmpty);
-          expect(harness.directory.calls, 0);
+          verifyNever(harness.directory.organizationsOfSignedInUser());
         },
       );
 
@@ -2095,9 +1817,13 @@ void main() {
 
           // 3. Assert
           expect(harness.log, ['refreshGoogleIdToken']);
-          expect(harness.directory.calls, 0);
-          expect(harness.authService.logoutCalls, 0);
-          expect(harness.authService.signInCalls, 0);
+          verifyNever(harness.directory.organizationsOfSignedInUser());
+          verifyNever(harness.authService.logoutGoogle());
+          verifyNever(
+            harness.authService.signInGoogle(
+              onAccountChosen: anyNamed('onAccountChosen'),
+            ),
+          );
           expect(Get.currentRoute, _kHomeRoute);
         },
       );
@@ -2448,7 +2174,7 @@ void main() {
         await _accept(tester, harness.controller);
 
         // 3. Assert
-        expect(harness.backend.accepted, ['inv1']);
+        verify(harness.backend.accept(_kInvite)).called(1);
       });
 
       testWidgets('Happy Path: sets welcome to the accepted invite', (
@@ -2476,7 +2202,7 @@ void main() {
           await _accept(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.directory.calls, 1);
+          verify(harness.directory.organizationsOfSignedInUser()).called(1);
           expect(
             harness.log,
             containsAllInOrder(['bind', 'signInToOrganization']),
@@ -2496,7 +2222,7 @@ void main() {
           await _accept(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.directory.calls, 1);
+          verify(harness.directory.organizationsOfSignedInUser()).called(1);
           expect(harness.log, isNot(contains('bind')));
           expect(Get.currentRoute, Routes.NO_ORGANIZATION);
         },
@@ -2507,14 +2233,18 @@ void main() {
         () async {
           // 1. Arrange
           final harness = _HarnessInvites();
-          harness.backend.gate = Completer<void>();
+          final gate = Completer<void>();
+          when(harness.backend.accept(any)).thenAnswer((_) async {
+            await gate.future;
+            return _kInvite;
+          });
           unawaited(harness.controller.acceptInvite(_kInvite));
 
           // 2. Act
           await harness.controller.acceptInvite(_kInvite);
 
           // 3. Assert
-          expect(harness.backend.accepted, ['inv1']);
+          verify(harness.backend.accept(_kInvite)).called(1);
           expect(harness.controller.acceptingInvite.value, 'inv1');
         },
       );
@@ -2524,8 +2254,10 @@ void main() {
         () async {
           // 1. Arrange
           final harness = _HarnessInvites();
-          harness.backend.failure = const InvitesException(
-            'Este convite expirou. Peça um novo a quem convidou você.',
+          when(harness.backend.accept(any)).thenAnswer(
+            (_) async => throw const InvitesException(
+              'Este convite expirou. Peça um novo a quem convidou você.',
+            ),
           );
 
           // 2. Act
@@ -2537,7 +2269,7 @@ void main() {
             'Este convite expirou. Peça um novo a quem convidou você.',
           );
           expect(harness.controller.acceptingInvite.value, isNull);
-          expect(harness.directory.calls, 0);
+          verifyNever(harness.directory.organizationsOfSignedInUser());
         },
       );
     });
@@ -2548,7 +2280,7 @@ void main() {
         (WidgetTester tester) async {
           // 1. Arrange
           final harness = _HarnessInvites();
-          harness.backend.mineResult = [_kInvite];
+          when(harness.backend.mine()).thenAnswer((_) async => [_kInvite]);
           await _pumpAppInvites(tester);
 
           // 2. Act
@@ -2573,7 +2305,9 @@ void main() {
               [_kRotaSul, _kVerdeMarInvites],
             ],
           );
-          harness.backend.mineResult = [_kInvite, _kOtherInvite];
+          when(
+            harness.backend.mine(),
+          ).thenAnswer((_) async => [_kInvite, _kOtherInvite]);
           await _pumpAppInvites(tester);
 
           // 2. Act
@@ -2596,7 +2330,9 @@ void main() {
           // 1. Arrange
           final harness = _HarnessInvites();
           harness.controller.pendingInvites.add(_kOtherInvite);
-          harness.backend.mineFailure = Exception('sem rede');
+          when(
+            harness.backend.mine(),
+          ).thenAnswer((_) async => throw Exception('sem rede'));
           await _pumpAppInvites(tester);
 
           // 2. Act
@@ -2668,7 +2404,7 @@ void main() {
             await _accept(tester, harness.controller);
 
             // 3. Assert
-            expect(harness.directory.calls, 1);
+            verify(harness.directory.organizationsOfSignedInUser()).called(1);
             expect(harness.session.boundIds, isEmpty);
             expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
           },
@@ -2761,7 +2497,7 @@ void main() {
           );
 
           // 3. Assert
-          expect(harness.directory.calls, 1);
+          verify(harness.directory.organizationsOfSignedInUser()).called(1);
           expect(harness.session.boundIds, isEmpty);
           expect(Get.currentRoute, Routes.ORGANIZATION_PICKER);
         },
@@ -2792,7 +2528,8 @@ void main() {
   group('ownership', () {
     setUp(() {
       Get.testMode = true;
-      directory = FakeOrganizationDirectory();
+      directory = MockOrganizationDirectory();
+      _directoryAnswers();
     });
 
     group('AuthGoogleController.loadOwnership - Unit Test Suite', () {
@@ -2833,7 +2570,7 @@ void main() {
           await controller.loadOwnership('rotasul');
 
           // 3. Assert
-          expect(directory.reads, 1);
+          verify(directory.organizationsOfSignedInUser()).called(1);
         },
       );
 
@@ -2846,22 +2583,26 @@ void main() {
         await controller.loadOwnership('verdemar');
 
         // 3. Assert
-        expect(directory.reads, 2);
+        verify(directory.organizationsOfSignedInUser()).called(2);
         expect(controller.ownership, {'rotasul': true, 'verdemar': false});
       });
 
       test('Edge Case: a call while one is reading reads nothing', () async {
         // 1. Arrange
         final controller = newController();
-        directory.gate = Completer<void>();
+        final gate = Completer<void>();
+        when(directory.organizationsOfSignedInUser()).thenAnswer((_) async {
+          await gate.future;
+          return _kOwnershipOrganizations;
+        });
         final first = controller.loadOwnership('rotasul');
 
         // 2. Act
         await controller.loadOwnership('rotasul');
 
         // 3. Assert
-        expect(directory.reads, 1);
-        directory.gate!.complete();
+        verify(directory.organizationsOfSignedInUser()).called(1);
+        gate.complete();
         await first;
       });
 
@@ -2870,7 +2611,9 @@ void main() {
         () async {
           // 1. Arrange
           final controller = newController();
-          directory.failure = StateError('offline');
+          when(
+            directory.organizationsOfSignedInUser(),
+          ).thenAnswer((_) async => throw StateError('offline'));
 
           // 2. Act
           await controller.loadOwnership('rotasul');
@@ -2883,15 +2626,17 @@ void main() {
       test('Sad Path: after a failed read the next call tries again', () async {
         // 1. Arrange
         final controller = newController();
-        directory.failure = StateError('offline');
+        when(
+          directory.organizationsOfSignedInUser(),
+        ).thenAnswer((_) async => throw StateError('offline'));
         await controller.loadOwnership('rotasul');
-        directory.failure = null;
+        _directoryAnswers();
 
         // 2. Act
         await controller.loadOwnership('rotasul');
 
         // 3. Assert
-        expect(directory.reads, 2);
+        verify(directory.organizationsOfSignedInUser()).called(2);
         expect(controller.ownership, {'rotasul': true});
       });
     });
@@ -2921,7 +2666,7 @@ void main() {
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.stopper.emails, [_kStoredEmail]);
+          expect(_stoppedEmails(harness.stopper), [_kStoredEmail]);
         },
       );
 
@@ -3035,13 +2780,13 @@ void main() {
         // 2. Act
         final controller = AuthGoogleController(
           organizationSession: OrganizationSession(
-            store: _MemoryBindingStore(),
+            store: MockOrganizationBindingStore(),
           ),
-          organizationLocalData: _FakeOrganizationLocalData(),
+          organizationLocalData: MockOrganizationLocalData(),
           refreshTheme: () {},
-          authGoogleService: _FakeAuthGoogleServiceLogout(log),
-          userRepository: _FakeUserGoogleRepositoryLogout(log),
-          trackingStopper: _FakeTrackingStopperLogout(log),
+          authGoogleService: _authServiceLogout(log),
+          userRepository: _userRepositoryLogout(log),
+          trackingStopper: _trackingStopper(log, entry: _kLogStop),
         );
 
         // 3. Assert
@@ -3059,7 +2804,7 @@ void main() {
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.stopper.emails, [null]);
+          expect(_stoppedEmails(harness.stopper), [null]);
         },
       );
 
@@ -3117,8 +2862,8 @@ void main() {
           await tester.pump();
 
           // 3. Assert
-          expect(harness.authService.logoutCalls, 0);
-          expect(harness.userRepository.deleteCalls, 0);
+          verifyNever(harness.authService.logoutGoogle());
+          verifyNever(harness.userRepository.deleteUserGoogleModel());
         },
       );
 
@@ -3138,7 +2883,7 @@ void main() {
           await harness.controller.logout();
 
           // 3. Assert
-          expect(harness.stopper.calls, 1);
+          verify(harness.stopper.stop(email: anyNamed('email'))).called(1);
         },
       );
 
@@ -3157,8 +2902,8 @@ void main() {
           await tester.pumpAndSettle();
 
           // 3. Assert
-          expect(harness.stopper.calls, 1);
-          expect(harness.authService.logoutCalls, 1);
+          verify(harness.stopper.stop(email: anyNamed('email'))).called(1);
+          verify(harness.authService.logoutGoogle()).called(1);
         },
       );
 
@@ -3178,7 +2923,7 @@ void main() {
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.stopper.emails, [null]);
+          expect(_stoppedEmails(harness.stopper), [null]);
         },
       );
 
@@ -3260,7 +3005,7 @@ void main() {
           await _runLogout(tester, harness.controller);
 
           // 3. Assert
-          expect(harness.userRepository.deleteCalls, 0);
+          verifyNever(harness.userRepository.deleteUserGoogleModel());
         },
       );
 

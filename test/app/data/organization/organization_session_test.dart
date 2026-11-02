@@ -1,9 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/config/organization/organization.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/data/firebase/current_organization_firebase.dart';
@@ -13,6 +11,12 @@ import 'package:monamie_app/app/data/organization/organization_binding_store.dar
 import 'package:monamie_app/app/data/organization/organization_session.dart';
 
 import '../../../support/test_organization.dart';
+
+@GenerateNiceMocks([
+  MockSpec<OrganizationBindingStore>(),
+  MockSpec<OrganizationFirebase>(),
+])
+import 'organization_session_test.mocks.dart';
 
 const options = FirebaseOptions(
   apiKey: 'api-key',
@@ -26,53 +30,21 @@ const storedAcme = OrganizationBinding(
   options: options,
 );
 
-/// In-memory [OrganizationBindingStore] that records every call.
-class InMemoryOrganizationBindingStore implements OrganizationBindingStore {
-  InMemoryOrganizationBindingStore([this.binding]);
-
-  OrganizationBinding? binding;
-  final written = <OrganizationBinding>[];
-  int clearCount = 0;
-
-  @override
-  Future<OrganizationBinding?> read() async => binding;
-
-  @override
-  Future<void> write(OrganizationBinding binding) async {
-    written.add(binding);
-    this.binding = binding;
-  }
-
-  @override
-  Future<void> clear() async {
-    clearCount++;
-    binding = null;
-  }
+/// A [MockOrganizationBindingStore] holding [binding].
+MockOrganizationBindingStore mockStore([OrganizationBinding? binding]) {
+  final store = MockOrganizationBindingStore();
+  when(store.read()).thenAnswer((_) async => binding);
+  return store;
 }
 
-/// [OrganizationFirebase] that is only ever set and cleared, never used.
-class UnusedOrganizationFirebase implements OrganizationFirebase {
-  @override
-  FirebaseAuth get auth => throw UnimplementedError();
-
-  @override
-  FirebaseFirestore get firestore => throw UnimplementedError();
-
-  @override
-  FirebaseFunctions get functions => throw UnimplementedError();
-
-  @override
-  FirebaseStorage get storage => throw UnimplementedError();
-
-  @override
-  DocumentReference<Map<String, dynamic>> get organizationData =>
-      throw UnimplementedError();
-}
+/// The binding written to [store], verifying it was written exactly once.
+OrganizationBinding writtenTo(MockOrganizationBindingStore store) =>
+    verify(store.write(captureAny)).captured.single as OrganizationBinding;
 
 void main() {
   setUp(() {
     Organization.bind(testOrganization);
-    CurrentOrganizationFirebase.set(UnusedOrganizationFirebase());
+    CurrentOrganizationFirebase.set(MockOrganizationFirebase());
   });
 
   tearDown(() {
@@ -85,7 +57,7 @@ void main() {
       'Happy Path: stores the new branding of the stored organization',
       () async {
         // 1. Arrange
-        final store = InMemoryOrganizationBindingStore(storedAcme);
+        final store = mockStore(storedAcme);
         final session = OrganizationSession(store: store);
         const newer = OrganizationConfig(
           id: 'acme',
@@ -97,11 +69,9 @@ void main() {
         await session.storeBranding(newer);
 
         // 3. Assert
+        final written = writtenTo(store);
         expect(
-          [
-            store.binding?.organization.name,
-            store.binding?.organization.themeId,
-          ],
+          [written.organization.name, written.organization.themeId],
           ['Acme Tours', 'oceano'],
         );
       },
@@ -109,7 +79,7 @@ void main() {
 
     test('Happy Path: keeps the stored Firebase options', () async {
       // 1. Arrange
-      final store = InMemoryOrganizationBindingStore(storedAcme);
+      final store = mockStore(storedAcme);
       final session = OrganizationSession(store: store);
       const newer = OrganizationConfig(id: 'acme', name: 'Acme Tours');
 
@@ -117,12 +87,12 @@ void main() {
       await session.storeBranding(newer);
 
       // 3. Assert
-      expect(store.binding?.options, options);
+      expect(writtenTo(store).options, options);
     });
 
     test('Edge Case: does not change the running organization', () async {
       // 1. Arrange
-      final store = InMemoryOrganizationBindingStore(storedAcme);
+      final store = mockStore(storedAcme);
       final session = OrganizationSession(store: store);
       const newer = OrganizationConfig(id: 'acme', name: 'Acme Tours');
 
@@ -135,7 +105,7 @@ void main() {
 
     test('Edge Case: writes nothing when no binding is stored', () async {
       // 1. Arrange
-      final store = InMemoryOrganizationBindingStore();
+      final store = mockStore();
       final session = OrganizationSession(store: store);
       const newer = OrganizationConfig(id: 'acme', name: 'Acme Tours');
 
@@ -143,12 +113,12 @@ void main() {
       await session.storeBranding(newer);
 
       // 3. Assert
-      expect(store.written, isEmpty);
+      verifyNever(store.write(any));
     });
 
     test('Sad Path: ignores the branding of another organization', () async {
       // 1. Arrange
-      final store = InMemoryOrganizationBindingStore(storedAcme);
+      final store = mockStore(storedAcme);
       final session = OrganizationSession(store: store);
       const other = OrganizationConfig(id: 'beta', name: 'Beta');
 
@@ -156,31 +126,27 @@ void main() {
       await session.storeBranding(other);
 
       // 3. Assert
-      expect(
-        [store.written, store.binding?.organization.id],
-        [isEmpty, 'acme'],
-      );
+      verifyNever(store.write(any));
+      verifyNever(store.clear());
     });
   });
 
   group('OrganizationSession.forget - Unit Test Suite', () {
     test('Happy Path: clears the stored binding', () async {
       // 1. Arrange
-      final store = InMemoryOrganizationBindingStore(storedAcme);
+      final store = mockStore(storedAcme);
       final session = OrganizationSession(store: store);
 
       // 2. Act
       await session.forget();
 
       // 3. Assert
-      expect([store.clearCount, store.binding], [1, null]);
+      verify(store.clear()).called(1);
     });
 
     test('Happy Path: unbinds Organization.current', () async {
       // 1. Arrange
-      final session = OrganizationSession(
-        store: InMemoryOrganizationBindingStore(storedAcme),
-      );
+      final session = OrganizationSession(store: mockStore(storedAcme));
 
       // 2. Act
       await session.forget();
@@ -191,9 +157,7 @@ void main() {
 
     test('Happy Path: clears CurrentOrganizationFirebase', () async {
       // 1. Arrange
-      final session = OrganizationSession(
-        store: InMemoryOrganizationBindingStore(storedAcme),
-      );
+      final session = OrganizationSession(store: mockStore(storedAcme));
 
       // 2. Act
       await session.forget();
@@ -208,9 +172,7 @@ void main() {
         // 1. Arrange
         Organization.unbind();
         CurrentOrganizationFirebase.clear();
-        final session = OrganizationSession(
-          store: InMemoryOrganizationBindingStore(),
-        );
+        final session = OrganizationSession(store: mockStore());
 
         // 2. Act
         final forgetting = session.forget();
@@ -224,9 +186,7 @@ void main() {
       'Sad Path: CurrentOrganizationFirebase.instance throws after forget',
       () async {
         // 1. Arrange
-        final session = OrganizationSession(
-          store: InMemoryOrganizationBindingStore(storedAcme),
-        );
+        final session = OrganizationSession(store: mockStore(storedAcme));
 
         // 2. Act
         await session.forget();

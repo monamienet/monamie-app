@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/monamie/controller/tracking_toggle_controller.dart';
 import 'package:monamie_app/app/modules/monamie/ui/home/share_card.dart';
 
-class FakeTrackingToggleController implements TrackingToggleController {
-  @override
-  final RxBool isTrackingEnabled;
+@GenerateNiceMocks([MockSpec<TrackingToggleController>()])
+import 'share_card_test.mocks.dart';
 
-  @override
-  final RxBool isTrackingLoading;
-
-  int toggleCalls = 0;
-
-  FakeTrackingToggleController({bool enabled = false, bool loading = false})
-    : isTrackingEnabled = enabled.obs,
-      isTrackingLoading = loading.obs;
-
-  @override
-  Future<void> toggleService() async {
-    toggleCalls++;
-  }
+/// A [MockTrackingToggleController] whose flags start at [enabled] and
+/// [loading]; the test flips them through the returned `RxBool`s.
+MockTrackingToggleController mockToggle({
+  bool enabled = false,
+  bool loading = false,
+}) {
+  final toggle = MockTrackingToggleController();
+  final isEnabled = enabled.obs;
+  final isLoading = loading.obs;
+  when(toggle.isTrackingEnabled).thenReturn(isEnabled);
+  when(toggle.isTrackingLoading).thenReturn(isLoading);
+  return toggle;
 }
 
 Widget buildApp(TrackingToggleController controller) => MaterialApp(
@@ -35,7 +35,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = FakeTrackingToggleController();
+      final fake = mockToggle();
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -43,14 +43,14 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      expect(fake.toggleCalls, 1);
+      verify(fake.toggleService()).called(1);
     });
 
     testWidgets('Happy Path: while sharing it reads on, with no spinner', (
       tester,
     ) async {
       // 1. Arrange
-      final fake = FakeTrackingToggleController(enabled: true);
+      final fake = mockToggle(enabled: true);
 
       // 2. Act
       await tester.pumpWidget(buildApp(fake));
@@ -64,7 +64,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = FakeTrackingToggleController(enabled: false);
+      final fake = mockToggle(enabled: false);
 
       // 2. Act
       await tester.pumpWidget(buildApp(fake));
@@ -78,7 +78,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = FakeTrackingToggleController(enabled: true);
+      final fake = mockToggle(enabled: true);
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -86,14 +86,14 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      expect(fake.toggleCalls, 1);
+      verify(fake.toggleService()).called(1);
     });
 
     testWidgets('Edge Case: the spinner shows when the loading flag flips', (
       tester,
     ) async {
       // 1. Arrange
-      final fake = FakeTrackingToggleController();
+      final fake = mockToggle();
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -108,7 +108,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = FakeTrackingToggleController(loading: true);
+      final fake = mockToggle(loading: true);
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -125,7 +125,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = FakeTrackingToggleController(enabled: false, loading: true);
+      final fake = mockToggle(enabled: false, loading: true);
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -133,7 +133,7 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      expect(fake.toggleCalls, 0);
+      verifyNever(fake.toggleService());
       expect(find.byKey(busyKey), findsOneWidget);
     });
 
@@ -141,7 +141,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = FakeTrackingToggleController(enabled: true, loading: true);
+      final fake = mockToggle(enabled: true, loading: true);
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -149,7 +149,7 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      expect(fake.toggleCalls, 0);
+      verifyNever(fake.toggleService());
       expect(find.byKey(busyKey), findsOneWidget);
     });
   });

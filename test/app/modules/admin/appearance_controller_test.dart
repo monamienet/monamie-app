@@ -4,11 +4,16 @@ import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/modules/admin/appearance_backend.dart';
 import 'package:monamie_app/app/modules/admin/appearance_controller.dart';
 import 'package:monamie_app/app/modules/admin/logo_converter.dart';
+
+@GenerateNiceMocks([MockSpec<AppearanceBackend>()])
+import 'appearance_controller_test.mocks.dart';
 
 const oceano = OrganizationTheme(
   id: 'oceano',
@@ -43,45 +48,38 @@ final rotaSulWithLogo = OrganizationConfig(
 final pickedFile = Uint8List.fromList([9, 9, 9]);
 final convertedPng = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
 
-/// [AppearanceBackend] that records every call, optionally waiting on
-/// [gate] or failing with [failure] in `saveBranding`.
-class FakeAppearanceBackend implements AppearanceBackend {
-  final calls = <String>[];
-  final saved = <({String? name, String? themeId, String? logo})>[];
-  Completer<void>? gate;
-  Object? failure;
-
-  @override
-  Future<List<OrganizationTheme>> pickableThemes() async {
-    calls.add('pickableThemes');
-    return [oceano, defaultOrganizationTheme];
-  }
-
-  @override
-  Future<void> uploadLogo(String organizationId, Uint8List png) async {
-    calls.add('uploadLogo:$organizationId:${png.length}');
-  }
-
-  @override
-  Future<void> deleteLogo(String organizationId) async {
-    calls.add('deleteLogo:$organizationId');
-  }
-
-  @override
-  Future<void> saveBranding(
-    String organizationId, {
-    String? name,
-    String? themeId,
-    String? logo,
-  }) async {
-    calls.add('saveBranding:$organizationId');
-    saved.add((name: name, themeId: themeId, logo: logo));
-    await gate?.future;
-    if (failure case final failure?) throw failure;
-  }
+/// Makes `saveBranding` run [answer].
+void stubSave(Future<void> Function() answer) {
+  when(
+    backend.saveBranding(
+      any,
+      name: anyNamed('name'),
+      themeId: anyNamed('themeId'),
+      logo: anyNamed('logo'),
+    ),
+  ).thenAnswer((_) => answer());
 }
 
-late FakeAppearanceBackend backend;
+/// Verifies `saveBranding` was called once for Rota Sul and returns the
+/// fields it was sent.
+({String? name, String? themeId, String? logo}) savedBranding() {
+  final fields = verify(
+    backend.saveBranding(
+      'rotasul',
+      name: captureAnyNamed('name'),
+      themeId: captureAnyNamed('themeId'),
+      logo: captureAnyNamed('logo'),
+    ),
+  ).captured;
+  expect(fields, hasLength(3), reason: 'saveBranding called once');
+  return (
+    name: fields[0] as String?,
+    themeId: fields[1] as String?,
+    logo: fields[2] as String?,
+  );
+}
+
+late MockAppearanceBackend backend;
 late List<OrganizationConfig> onSavedWith;
 
 /// A controller for [organization] whose themes are already loaded, with a
@@ -98,7 +96,7 @@ Future<AppearanceController> controllerFor(
   );
   controller.onStart();
   await pumpEventQueue();
-  backend.calls.clear();
+  clearInteractions(backend);
   return controller;
 }
 
@@ -111,7 +109,10 @@ Future<void> pickAndUse(AppearanceController controller) async {
 void main() {
   setUp(() {
     Get.testMode = true;
-    backend = FakeAppearanceBackend();
+    backend = MockAppearanceBackend();
+    when(
+      backend.pickableThemes(),
+    ).thenAnswer((_) async => [oceano, defaultOrganizationTheme]);
     onSavedWith = [];
   });
 
@@ -197,13 +198,8 @@ void main() {
       await controller.save();
 
       // 3. Assert
-      expect(
-        [backend.calls, backend.saved],
-        [
-          ['saveBranding:rotasul'],
-          [(name: 'Rota Norte', themeId: null, logo: null)],
-        ],
-      );
+      expect(savedBranding(), (name: 'Rota Norte', themeId: null, logo: null));
+      verifyNoMoreInteractions(backend);
     });
 
     test('Happy Path: a new theme alone sends only the theme', () async {
@@ -215,7 +211,7 @@ void main() {
       await controller.save();
 
       // 3. Assert
-      expect(backend.saved, [(name: null, themeId: 'oceano', logo: null)]);
+      expect(savedBranding(), (name: null, themeId: 'oceano', logo: null));
     });
 
     test('Happy Path: a new logo is uploaded, then saved as "set"', () async {
@@ -227,13 +223,11 @@ void main() {
       await controller.save();
 
       // 3. Assert
-      expect(
-        [backend.calls, backend.saved],
-        [
-          ['uploadLogo:rotasul:4', 'saveBranding:rotasul'],
-          [(name: null, themeId: null, logo: 'set')],
-        ],
-      );
+      verifyInOrder([
+        backend.uploadLogo('rotasul', convertedPng),
+        backend.saveBranding('rotasul', name: null, themeId: null, logo: 'set'),
+      ]);
+      verifyNoMoreInteractions(backend);
     });
 
     test('Happy Path: a removed logo is deleted, then saved as '
@@ -246,13 +240,16 @@ void main() {
       await controller.save();
 
       // 3. Assert
-      expect(
-        [backend.calls, backend.saved],
-        [
-          ['deleteLogo:rotasul', 'saveBranding:rotasul'],
-          [(name: null, themeId: null, logo: 'removed')],
-        ],
-      );
+      verifyInOrder([
+        backend.deleteLogo('rotasul'),
+        backend.saveBranding(
+          'rotasul',
+          name: null,
+          themeId: null,
+          logo: 'removed',
+        ),
+      ]);
+      verifyNoMoreInteractions(backend);
     });
 
     test('Happy Path: onSaved receives the new name and theme', () async {
@@ -296,7 +293,7 @@ void main() {
       await controller.save();
 
       // 3. Assert
-      expect(backend.saved.single.name, 'Rota Norte');
+      expect(savedBranding().name, 'Rota Norte');
     });
 
     test('Sad Path: no changes returns false and calls nothing', () async {
@@ -307,7 +304,8 @@ void main() {
       final ok = await controller.save();
 
       // 3. Assert
-      expect([ok, backend.calls, onSavedWith], [false, isEmpty, isEmpty]);
+      expect([ok, onSavedWith], [false, isEmpty]);
+      verifyNoMoreInteractions(backend);
     });
 
     test('Sad Path: an AppearanceException lands in errorMessage and save '
@@ -315,7 +313,7 @@ void main() {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.name.value = 'Rota Norte';
-      backend.failure = const AppearanceException('Nome inválido.');
+      stubSave(() async => throw const AppearanceException('Nome inválido.'));
 
       // 2. Act
       final ok = await controller.save();
@@ -333,14 +331,15 @@ void main() {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.name.value = 'Rota Norte';
-      backend.gate = Completer<void>();
+      final gate = Completer<void>();
+      stubSave(() => gate.future);
 
       // 2. Act
       final pending = controller.save();
 
       // 3. Assert
       expect(controller.isSaving.value, isTrue);
-      backend.gate!.complete();
+      gate.complete();
       await pending;
     });
 
@@ -361,7 +360,8 @@ void main() {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.name.value = 'Rota Norte';
-      backend.gate = Completer<void>();
+      final gate = Completer<void>();
+      stubSave(() => gate.future);
       final first = controller.save();
       await pumpEventQueue();
 
@@ -369,22 +369,18 @@ void main() {
       final second = await controller.save();
 
       // 3. Assert
-      backend.gate!.complete();
+      gate.complete();
       await first;
-      expect(
-        [second, backend.calls],
-        [
-          false,
-          ['saveBranding:rotasul'],
-        ],
-      );
+      expect(second, isFalse);
+      savedBranding();
+      verifyNoMoreInteractions(backend);
     });
 
     test('Sad Path: isSaving is false after an AppearanceException', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.name.value = 'Rota Norte';
-      backend.failure = const AppearanceException('Sem permissão.');
+      stubSave(() async => throw const AppearanceException('Sem permissão.'));
 
       // 2. Act
       await controller.save();

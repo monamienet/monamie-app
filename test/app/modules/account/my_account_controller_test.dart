@@ -2,36 +2,34 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/account/account_deletion.dart';
 import 'package:monamie_app/app/modules/account/account_deletion_backend.dart';
 import 'package:monamie_app/app/modules/account/my_account_controller.dart';
+
+@GenerateNiceMocks([MockSpec<AccountDeletionBackend>()])
+import 'my_account_controller_test.mocks.dart';
 
 final _deletion = AccountDeletion(
   deleteAt: DateTime.utc(2026, 11, 25, 12),
   ownedOrganizationIds: const ['rotasul'],
 );
 
-/// [AccountDeletionBackend] that records `request`, optionally waits on
-/// [gate] and fails with [failure].
-class FakeAccountDeletionBackend implements AccountDeletionBackend {
-  final requests = <List<String>>[];
-  Completer<void>? gate;
-  Object? failure;
-
-  @override
-  Future<AccountDeletion> request({List<String> confirmIds = const []}) async {
-    requests.add(confirmIds);
-    await gate?.future;
-    if (failure case final failure?) throw failure;
+/// Makes `request` run [answer] before returning [_deletion].
+void stubRequest(Future<void> Function() answer) {
+  when(backend.request(confirmIds: anyNamed('confirmIds'))).thenAnswer((
+    _,
+  ) async {
+    await answer();
     return _deletion;
-  }
-
-  @override
-  Future<void> cancel() => throw UnimplementedError();
-
-  @override
-  Future<AccountDeletion?> pending() => throw UnimplementedError();
+  });
 }
+
+/// The `confirmIds` of every `request` call, verifying there was at least
+/// one.
+List<Object?> requestedConfirmIds() =>
+    verify(backend.request(confirmIds: captureAnyNamed('confirmIds'))).captured;
 
 /// A `checkOwner` that counts its calls, optionally waits on [gate] and
 /// fails with [failure].
@@ -51,7 +49,7 @@ class FakeOwnerCheck {
   }
 }
 
-late FakeAccountDeletionBackend backend;
+late MockAccountDeletionBackend backend;
 late List<AccountDeletion> deleted;
 
 MyAccountController newController(FakeOwnerCheck check) => MyAccountController(
@@ -71,7 +69,8 @@ Future<MyAccountController> controllerFor({required bool isOwner}) async {
 void main() {
   setUp(() {
     Get.testMode = true;
-    backend = FakeAccountDeletionBackend();
+    backend = MockAccountDeletionBackend();
+    stubRequest(() async {});
     deleted = [];
   });
 
@@ -272,7 +271,7 @@ void main() {
       await controller.deleteAccount();
 
       // 3. Assert
-      expect(backend.requests, [<String>[]]);
+      expect(requestedConfirmIds(), [<String>[]]);
       expect(deleted, [_deletion]);
       expect(controller.errorMessage.value, isEmpty);
       expect(controller.isDeleting.value, isFalse);
@@ -287,7 +286,7 @@ void main() {
       await controller.deleteAccount();
 
       // 3. Assert
-      expect(backend.requests, [
+      expect(requestedConfirmIds(), [
         ['rotasul'],
       ]);
       expect(deleted, [_deletion]);
@@ -296,7 +295,8 @@ void main() {
     test('Edge Case: isDeleting is set while the request runs', () async {
       // 1. Arrange
       final controller = await controllerFor(isOwner: false);
-      backend.gate = Completer<void>();
+      final gate = Completer<void>();
+      stubRequest(() => gate.future);
 
       // 2. Act
       final pending = controller.deleteAccount();
@@ -304,7 +304,7 @@ void main() {
       // 3. Assert
       expect(controller.isDeleting.value, isTrue);
       expect(controller.canDelete, isFalse);
-      backend.gate!.complete();
+      gate.complete();
       await pending;
       expect(controller.isDeleting.value, isFalse);
     });
@@ -312,15 +312,16 @@ void main() {
     test('Edge Case: a second tap while in flight sends nothing', () async {
       // 1. Arrange
       final controller = await controllerFor(isOwner: false);
-      backend.gate = Completer<void>();
+      final gate = Completer<void>();
+      stubRequest(() => gate.future);
       final first = controller.deleteAccount();
 
       // 2. Act
       await controller.deleteAccount();
 
       // 3. Assert
-      expect(backend.requests, hasLength(1));
-      backend.gate!.complete();
+      verify(backend.request(confirmIds: anyNamed('confirmIds'))).called(1);
+      gate.complete();
       await first;
     });
 
@@ -332,7 +333,7 @@ void main() {
       await controller.deleteAccount();
 
       // 3. Assert
-      expect(backend.requests, isEmpty);
+      verifyNever(backend.request(confirmIds: anyNamed('confirmIds')));
       expect(deleted, isEmpty);
     });
 
@@ -347,14 +348,16 @@ void main() {
       await controller.deleteAccount();
 
       // 3. Assert
-      expect(backend.requests, isEmpty);
+      verifyNever(backend.request(confirmIds: anyNamed('confirmIds')));
       expect(deleted, isEmpty);
     });
 
     test('Sad Path: a backend refusal shows its own message', () async {
       // 1. Arrange
       final controller = await controllerFor(isOwner: false);
-      backend.failure = const AccountDeletionException('Recusado.');
+      stubRequest(
+        () async => throw const AccountDeletionException('Recusado.'),
+      );
 
       // 2. Act
       await controller.deleteAccount();
@@ -368,7 +371,7 @@ void main() {
     test('Sad Path: an unexpected error shows a generic message', () async {
       // 1. Arrange
       final controller = await controllerFor(isOwner: false);
-      backend.failure = StateError('offline');
+      stubRequest(() async => throw StateError('offline'));
 
       // 2. Act
       await controller.deleteAccount();

@@ -3,11 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
 import 'package:monamie_app/app/data/theme/theme_catalog.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_controller.dart';
 import 'package:monamie_app/app/modules/creation/create_organization_view.dart';
 import 'package:monamie_app/app/modules/creation/creation_backend.dart';
+
+@GenerateNiceMocks([MockSpec<CreationBackend>(), MockSpec<ThemeCatalog>()])
+import 'create_organization_view_test.mocks.dart';
 
 const _white = Color(0xFFFFFFFF);
 
@@ -23,45 +28,24 @@ final oceano = OrganizationTheme(
   active: true,
 );
 
-/// One `create` call as the fake recorded it.
-typedef CreateCall = ({String id, String name, String themeId, String plan});
+/// The `create` stub of [backend], with any arguments.
+Future<String> anyCreate() => backend.create(
+  id: anyNamed('id'),
+  name: anyNamed('name'),
+  themeId: anyNamed('themeId'),
+  plan: anyNamed('plan'),
+);
 
-/// [CreationBackend] where every id is available and `create` is recorded,
-/// optionally waiting on [gate] and failing with [failure].
-class FakeCreationBackend implements CreationBackend {
-  final creates = <CreateCall>[];
-  String status = 'active';
-  Completer<void>? gate;
-  Object? failure;
-
-  @override
-  Future<String?> idProblem(String id) async => null;
-
-  @override
-  Future<String> create({
-    required String id,
-    required String name,
-    required String themeId,
-    required String plan,
-  }) async {
-    creates.add((id: id, name: name, themeId: themeId, plan: plan));
-    await gate?.future;
-    if (failure case final failure?) throw failure;
-    return status;
-  }
-
-  @override
-  Future<List<Creation>> mine() => throw UnimplementedError();
+/// Makes `create` run [answer] before returning `active`.
+void stubCreate(Future<void> Function() answer) {
+  when(anyCreate()).thenAnswer((_) async {
+    await answer();
+    return 'active';
+  });
 }
 
-class FakeThemeCatalog implements ThemeCatalog {
-  @override
-  Future<Map<String, OrganizationTheme>> themes() async => {
-    for (final t in [defaultOrganizationTheme, oceano]) t.id: t,
-  };
-}
-
-late FakeCreationBackend backend;
+late MockCreationBackend backend;
+late MockThemeCatalog catalog;
 
 final _createButton = find.widgetWithText(FilledButton, 'Criar organização');
 final _planFooter = find.widgetWithText(
@@ -76,7 +60,7 @@ Future<void> pumpView(WidgetTester tester) async {
   addTearDown(tester.view.reset);
   final controller = CreateOrganizationController(
     backend: backend,
-    themes: FakeThemeCatalog(),
+    themes: catalog,
     debounce: Duration.zero,
   );
   await tester.pumpWidget(
@@ -117,7 +101,15 @@ Future<void> acceptTerms(WidgetTester tester) async {
 void main() {
   setUp(() {
     Get.testMode = true;
-    backend = FakeCreationBackend();
+    backend = MockCreationBackend();
+    when(backend.idProblem(any)).thenAnswer((_) async => null);
+    stubCreate(() async {});
+    catalog = MockThemeCatalog();
+    when(catalog.themes()).thenAnswer(
+      (_) async => {
+        for (final t in [defaultOrganizationTheme, oceano]) t.id: t,
+      },
+    );
   });
 
   tearDown(Get.reset);
@@ -137,7 +129,7 @@ void main() {
         await tester.pump();
 
         // 3. Assert
-        expect(backend.creates, isEmpty);
+        verifyNever(anyCreate());
         expect(_createButton, findsOneWidget);
         expect(find.text('Community'), findsOneWidget);
       },
@@ -178,7 +170,7 @@ void main() {
 
         // 3. Assert
         expect(tester.widget<FilledButton>(_createButton).enabled, isFalse);
-        expect(backend.creates, isEmpty);
+        verifyNever(anyCreate());
       },
     );
 
@@ -187,7 +179,8 @@ void main() {
       'not create twice',
       (tester) async {
         // 1. Arrange
-        backend.gate = Completer<void>();
+        final gate = Completer<void>();
+        stubCreate(() => gate.future);
         await goToReview(tester);
         await acceptTerms(tester);
         await tester.tap(_createButton);
@@ -198,7 +191,7 @@ void main() {
         await tester.pump();
 
         // 3. Assert
-        expect(backend.creates, hasLength(1));
+        verify(anyCreate()).called(1);
         expect(
           tester
               .widget<FilledButton>(
@@ -207,7 +200,7 @@ void main() {
               .enabled,
           isFalse,
         );
-        backend.gate!.complete();
+        gate.complete();
         await tester.pump();
       },
     );
@@ -216,7 +209,9 @@ void main() {
       'Sad Path: a CreationException shows its message on the Review',
       (tester) async {
         // 1. Arrange
-        backend.failure = const CreationException('Identificador já em uso.');
+        stubCreate(
+          () async => throw const CreationException('Identificador já em uso.'),
+        );
         await goToReview(tester);
         await acceptTerms(tester);
 
@@ -243,14 +238,15 @@ void main() {
         await tester.pump();
 
         // 3. Assert
-        expect(backend.creates, [
-          (
-            id: 'rotasul',
-            name: 'Rota Sul',
-            themeId: 'oceano',
-            plan: 'community',
+        final sent = verify(
+          backend.create(
+            id: captureAnyNamed('id'),
+            name: captureAnyNamed('name'),
+            themeId: captureAnyNamed('themeId'),
+            plan: captureAnyNamed('plan'),
           ),
-        ]);
+        ).captured;
+        expect(sent, ['rotasul', 'Rota Sul', 'oceano', 'community']);
         expect(_createButton, findsNothing);
         expect(
           find.widgetWithText(FilledButton, 'Entrar na Rota Sul'),

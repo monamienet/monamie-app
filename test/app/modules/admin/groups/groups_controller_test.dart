@@ -2,76 +2,48 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
 import 'package:monamie_app/app/modules/admin/groups/groups_backend.dart';
 import 'package:monamie_app/app/modules/admin/groups/groups_controller.dart';
+
+@GenerateNiceMocks([MockSpec<GroupsBackend>()])
+import 'groups_controller_test.mocks.dart';
 
 const norte = Group(id: '01', name: 'Equipe Norte', people: []);
 const leste = Group(id: '03', name: 'Equipe Léste', people: []);
 const serra = Group(id: '02', name: 'Equipe Serra', people: []);
 
-/// [GroupsBackend] that records every call, returns [groups] from `list`,
-/// optionally waits on [gate] and fails with [failure] in the writes.
-class FakeGroupsBackend implements GroupsBackend {
-  final calls = <String>[];
-  List<Group> groups = [norte, leste];
-  Completer<void>? gate;
-  Object? failure;
-
-  Future<void> _write(String call) async {
-    calls.add(call);
-    await gate?.future;
-    if (failure case final failure?) throw failure;
-  }
-
-  @override
-  Future<List<Group>> list(String organizationId) async {
-    calls.add('list:$organizationId');
-    return groups;
-  }
-
-  @override
-  Future<Group> create(String organizationId, String name) async {
-    await _write('create:$organizationId:$name');
+/// Stubs every write of [backend] to run [answer] before its result:
+/// `create` returns [serra] and `deletionImpact` says only ana@x.com
+/// leaves the organization.
+void stubWrites(Future<void> Function() answer) {
+  when(backend.create(any, any)).thenAnswer((_) async {
+    await answer();
     return serra;
-  }
-
-  @override
-  Future<void> rename(String organizationId, String team, String name) =>
-      _write('rename:$organizationId:$team:$name');
-
-  @override
-  Future<({List<String> loses, List<String> stays})> deletionImpact(
-    String organizationId,
-    String team,
-  ) async {
-    await _write('deletionImpact:$organizationId:$team');
+  });
+  when(backend.rename(any, any, any)).thenAnswer((_) => answer());
+  when(backend.deletionImpact(any, any)).thenAnswer((_) async {
+    await answer();
     return (loses: ['ana@x.com'], stays: <String>[]);
-  }
-
-  @override
-  Future<void> delete(String organizationId, String team) =>
-      _write('delete:$organizationId:$team');
-
-  @override
-  Future<void> setRoles(
-    String organizationId,
-    String team,
-    String email,
-    Set<GroupRole> roles,
-  ) => _write(
-    'setRoles:$organizationId:$team:$email:${(roles.map((r) => r.name).toList()..sort()).join(',')}',
-  );
-
-  @override
-  Future<void> remove(String organizationId, String team, String email) =>
-      _write('remove:$organizationId:$team:$email');
+  });
+  when(backend.delete(any, any)).thenAnswer((_) => answer());
+  when(backend.setRoles(any, any, any, any)).thenAnswer((_) => answer());
+  when(backend.remove(any, any, any)).thenAnswer((_) => answer());
 }
 
-late FakeGroupsBackend backend;
+/// Makes every write wait on [gate].
+void writesWaitOn(Completer<void> gate) => stubWrites(() => gate.future);
+
+/// Makes every write fail with [failure].
+void writesFail(Object failure) => stubWrites(() async => throw failure);
+
+late MockGroupsBackend backend;
 
 /// A started controller for Rota Sul with [norte] and [leste] loaded and
-/// the backend's call log cleared; [isAdmin] false is a group's maintainer.
+/// the backend's interactions cleared; [isAdmin] false is a group's
+/// maintainer.
 Future<GroupsController> loadedController({bool isAdmin = false}) async {
   final controller = GroupsController(
     organizationId: 'rotasul',
@@ -80,14 +52,16 @@ Future<GroupsController> loadedController({bool isAdmin = false}) async {
   );
   controller.onStart();
   await pumpEventQueue();
-  backend.calls.clear();
+  clearInteractions(backend);
   return controller;
 }
 
 void main() {
   setUp(() {
     Get.testMode = true;
-    backend = FakeGroupsBackend();
+    backend = MockGroupsBackend();
+    when(backend.list(any)).thenAnswer((_) async => [norte, leste]);
+    stubWrites(() async {});
   });
 
   group('GroupsController.onInit - Unit Test Suite', () {
@@ -103,7 +77,8 @@ void main() {
       await pumpEventQueue();
 
       // 3. Assert
-      expect(backend.calls, ['list:rotasul']);
+      verify(backend.list('rotasul')).called(1);
+      verifyNoMoreInteractions(backend);
       expect(controller.groups, [norte, leste]);
       expect(controller.isLoading.value, isFalse);
     });
@@ -112,7 +87,9 @@ void main() {
       'Sad Path: a failed load shows the message and leaves no team',
       () async {
         // 1. Arrange
-        backend = _FailingListBackend();
+        when(backend.list(any)).thenAnswer(
+          (_) async => throw const GroupsException('Sem permissão.'),
+        );
         final controller = GroupsController(
           organizationId: 'rotasul',
           backend: backend,
@@ -179,7 +156,8 @@ void main() {
       // 3. Assert
       expect(created, serra);
       expect(controller.groups, [norte, leste, serra]);
-      expect(backend.calls, ['create:rotasul:Equipe Serra']);
+      verify(backend.create('rotasul', 'Equipe Serra')).called(1);
+      verifyNoMoreInteractions(backend);
       expect(controller.isWorking.value, isFalse);
     });
 
@@ -188,7 +166,8 @@ void main() {
       () async {
         // 1. Arrange
         final controller = await loadedController();
-        backend.gate = Completer<void>();
+        final gate = Completer<void>();
+        writesWaitOn(gate);
         final first = controller.create('Equipe Serra');
 
         // 2. Act
@@ -196,8 +175,9 @@ void main() {
 
         // 3. Assert
         expect(second, isNull);
-        expect(backend.calls, ['create:rotasul:Equipe Serra']);
-        backend.gate!.complete();
+        verify(backend.create('rotasul', 'Equipe Serra')).called(1);
+        verifyNoMoreInteractions(backend);
+        gate.complete();
         await first;
       },
     );
@@ -205,23 +185,22 @@ void main() {
     test('Edge Case: isWorking is true while the backend works', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.gate = Completer<void>();
+      final gate = Completer<void>();
+      writesWaitOn(gate);
 
       // 2. Act
       final pending = controller.create('Equipe Serra');
 
       // 3. Assert
       expect(controller.isWorking.value, isTrue);
-      backend.gate!.complete();
+      gate.complete();
       await pending;
     });
 
     test('Sad Path: a GroupsException returns null with its message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.failure = const GroupsException(
-        'Já existe a equipe Equipe Serra.',
-      );
+      writesFail(const GroupsException('Já existe a equipe Equipe Serra.'));
 
       // 2. Act
       final created = await controller.create('Equipe Serra');
@@ -247,10 +226,14 @@ void main() {
 
       // 3. Assert
       expect(ok, isTrue);
-      expect(backend.calls, [
-        'setRoles:rotasul:01:ana@x.com:publisher,subscriber',
-        'list:rotasul',
+      verifyInOrder([
+        backend.setRoles('rotasul', '01', 'ana@x.com', {
+          GroupRole.publisher,
+          GroupRole.subscriber,
+        }),
+        backend.list('rotasul'),
       ]);
+      verifyNoMoreInteractions(backend);
     });
 
     test(
@@ -258,7 +241,8 @@ void main() {
       () async {
         // 1. Arrange
         final controller = await loadedController();
-        backend.gate = Completer<void>();
+        final gate = Completer<void>();
+        writesWaitOn(gate);
         final first = controller.delete('03');
 
         // 2. Act
@@ -268,8 +252,9 @@ void main() {
 
         // 3. Assert
         expect(ok, isFalse);
-        expect(backend.calls, ['delete:rotasul:03']);
-        backend.gate!.complete();
+        verify(backend.delete('rotasul', '03')).called(1);
+        verifyNoMoreInteractions(backend);
+        gate.complete();
         await first;
       },
     );
@@ -283,7 +268,7 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      expect(backend.calls, isEmpty);
+      verifyNoMoreInteractions(backend);
     });
   });
 
@@ -316,10 +301,11 @@ void main() {
 
       // 3. Assert
       expect(ok, isTrue);
-      expect(backend.calls, [
-        'setRoles:rotasul:01:vera@x.com:maintainer',
-        'list:rotasul',
+      verifyInOrder([
+        backend.setRoles('rotasul', '01', 'vera@x.com', {GroupRole.maintainer}),
+        backend.list('rotasul'),
       ]);
+      verifyNoMoreInteractions(backend);
     });
 
     test('Edge Case: an administrator may remove a maintainer', () async {
@@ -368,7 +354,7 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      expect(backend.calls, isEmpty);
+      verifyNoMoreInteractions(backend);
       expect(controller.errorMessage.value, 'Marque pelo menos uma opção.');
     });
   });
@@ -384,13 +370,14 @@ void main() {
       // 3. Assert
       expect(ok, isTrue);
       expect(controller.groups, [leste]);
-      expect(backend.calls, ['delete:rotasul:01']);
+      verify(backend.delete('rotasul', '01')).called(1);
+      verifyNoMoreInteractions(backend);
     });
 
     test('Edge Case: an unexpected error gives a generic message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.failure = StateError('network down');
+      writesFail(StateError('network down'));
 
       // 2. Act
       final ok = await controller.delete('01');
@@ -404,7 +391,7 @@ void main() {
     test('Sad Path: a failed delete keeps the team', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.failure = const GroupsException('Equipe não encontrada.');
+      writesFail(const GroupsException('Equipe não encontrada.'));
 
       // 2. Act
       final ok = await controller.delete('01');
@@ -429,24 +416,26 @@ void main() {
 
         // 3. Assert
         expect(ok, isTrue);
-        expect(backend.calls, [
-          'rename:rotasul:01:Guias Norte',
-          'list:rotasul',
+        verifyInOrder([
+          backend.rename('rotasul', '01', 'Guias Norte'),
+          backend.list('rotasul'),
         ]);
+        verifyNoMoreInteractions(backend);
       },
     );
 
     test('Edge Case: isWorking is true while the backend works', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.gate = Completer<void>();
+      final gate = Completer<void>();
+      writesWaitOn(gate);
 
       // 2. Act
       final pending = controller.rename('01', 'Guias');
 
       // 3. Assert
       expect(controller.isWorking.value, isTrue);
-      backend.gate!.complete();
+      gate.complete();
       await pending;
       expect(controller.isWorking.value, isFalse);
     });
@@ -456,9 +445,7 @@ void main() {
       () async {
         // 1. Arrange
         final controller = await loadedController();
-        backend.failure = const GroupsException(
-          'Já existe o grupo Equipe Léste.',
-        );
+        writesFail(const GroupsException('Já existe o grupo Equipe Léste.'));
 
         // 2. Act
         final ok = await controller.rename('01', 'equipe leste');
@@ -469,7 +456,8 @@ void main() {
           controller.errorMessage.value,
           'Já existe o grupo Equipe Léste.',
         );
-        expect(backend.calls, ['rename:rotasul:01:equipe leste']);
+        verify(backend.rename('rotasul', '01', 'equipe leste')).called(1);
+        verifyNoMoreInteractions(backend);
       },
     );
   });
@@ -484,13 +472,15 @@ void main() {
 
       // 3. Assert
       expect(impact?.loses, ['ana@x.com']);
-      expect(backend.calls, ['deletionImpact:rotasul:01']);
+      verify(backend.deletionImpact('rotasul', '01')).called(1);
+      verifyNoMoreInteractions(backend);
     });
 
     test('Edge Case: while another operation runs it returns null', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.gate = Completer<void>();
+      final gate = Completer<void>();
+      writesWaitOn(gate);
       final first = controller.delete('03');
 
       // 2. Act
@@ -498,14 +488,14 @@ void main() {
 
       // 3. Assert
       expect(impact, isNull);
-      backend.gate!.complete();
+      gate.complete();
       await first;
     });
 
     test('Sad Path: a failure returns null with its message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.failure = const GroupsException('Grupo não encontrado.');
+      writesFail(const GroupsException('Grupo não encontrado.'));
 
       // 2. Act
       final impact = await controller.deletionImpact('01');
@@ -526,13 +516,17 @@ void main() {
 
       // 3. Assert
       expect(ok, isTrue);
-      expect(backend.calls, ['remove:rotasul:01:ana@x.com', 'list:rotasul']);
+      verifyInOrder([
+        backend.remove('rotasul', '01', 'ana@x.com'),
+        backend.list('rotasul'),
+      ]);
+      verifyNoMoreInteractions(backend);
     });
 
     test('Edge Case: an unexpected error gives a generic message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.failure = StateError('network down');
+      writesFail(StateError('network down'));
 
       // 2. Act
       final ok = await controller.remove('01', 'ana@x.com');
@@ -545,24 +539,16 @@ void main() {
     test('Sad Path: a refused removal does not reload the groups', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.failure = const GroupsException('Essa pessoa não está no grupo.');
+      writesFail(const GroupsException('Essa pessoa não está no grupo.'));
 
       // 2. Act
       final ok = await controller.remove('01', 'vera@x.com');
 
       // 3. Assert
       expect(ok, isFalse);
-      expect(backend.calls, ['remove:rotasul:01:vera@x.com']);
+      verify(backend.remove('rotasul', '01', 'vera@x.com')).called(1);
+      verifyNoMoreInteractions(backend);
       expect(controller.errorMessage.value, 'Essa pessoa não está no grupo.');
     });
   });
-}
-
-/// A backend whose `list` fails with a [GroupsException].
-class _FailingListBackend extends FakeGroupsBackend {
-  @override
-  Future<List<Group>> list(String organizationId) async {
-    calls.add('list:$organizationId');
-    throw const GroupsException('Sem permissão.');
-  }
 }

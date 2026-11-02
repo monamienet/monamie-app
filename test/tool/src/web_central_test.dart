@@ -2,12 +2,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../tool/src/firebase_cli.dart';
 import '../../../tool/src/organizations.dart';
 import '../../../tool/src/web_central.dart';
-import '../../support/fake_firebase_cli.dart';
+import '../../support/firebase_config_fixtures.dart';
+
+@GenerateNiceMocks([MockSpec<FirebaseCli>()])
+import 'web_central_test.mocks.dart';
 
 const centralWebApp = FirebaseWebApp(
   appId: '1:222:web:central',
@@ -29,14 +34,36 @@ Map<String, Object?> sdkConfig() => {
   'measurementId': 'G-XXXX',
 };
 
+/// A [MockFirebaseCli] answering from memory for any project.
+MockFirebaseCli mockCli({
+  required List<FirebaseWebApp> webApps,
+  required Map<String, Object?> webSdkConfig,
+  required List<FirebaseAndroidApp> apps,
+  required String config,
+}) {
+  final cli = MockFirebaseCli();
+  when(cli.listWebApps(any)).thenAnswer((_) async => webApps);
+  when(
+    cli.webConfig(projectId: anyNamed('projectId'), appId: anyNamed('appId')),
+  ).thenAnswer((_) async => webSdkConfig);
+  when(cli.listAndroidApps(any)).thenAnswer((_) async => apps);
+  when(
+    cli.androidConfig(
+      projectId: anyNamed('projectId'),
+      appId: anyNamed('appId'),
+    ),
+  ).thenAnswer((_) async => config);
+  return cli;
+}
+
 /// A CLI where the central project has one web app with [webSdkConfig] and
 /// one MonAmie Android app whose config has an OAuth web client.
-FakeFirebaseCli centralCli({
+MockFirebaseCli centralCli({
   List<FirebaseWebApp> webApps = const [centralWebApp],
   Map<String, Object?>? webSdkConfig,
   List<FirebaseAndroidApp> apps = const [centralAndroidApp],
   List<int> oauthClientTypes = const [1, 3],
-}) => FakeFirebaseCli(
+}) => mockCli(
   webApps: webApps,
   webSdkConfig: webSdkConfig ?? sdkConfig(),
   apps: apps,
@@ -58,7 +85,7 @@ void main() {
 
   /// Runs [stageCentralWebConfig] and returns the [OrganizationToolException]
   /// message, or fails the test when it does not throw one.
-  Future<String> failureOf(FakeFirebaseCli cli) async {
+  Future<String> failureOf(MockFirebaseCli cli) async {
     try {
       await stageCentralWebConfig(repoRoot: repoRoot, cli: cli);
     } on OrganizationToolException catch (error) {
@@ -108,16 +135,16 @@ void main() {
       await stageCentralWebConfig(repoRoot: repoRoot, cli: cli);
 
       // 3. Assert
-      expect(
-        [cli.listedProjects.toSet(), cli.configRequests],
-        [
-          {centralProjectId},
-          [
-            (projectId: centralProjectId, appId: '1:222:web:central'),
-            (projectId: centralProjectId, appId: '1:222:android:central'),
-          ],
-        ],
-      );
+      verifyInOrder([
+        cli.webConfig(projectId: centralProjectId, appId: '1:222:web:central'),
+        cli.androidConfig(
+          projectId: centralProjectId,
+          appId: '1:222:android:central',
+        ),
+      ]);
+      verify(cli.listWebApps(centralProjectId)).called(greaterThan(0));
+      verify(cli.listAndroidApps(centralProjectId)).called(greaterThan(0));
+      verifyNoMoreInteractions(cli);
     });
 
     test('Edge Case: absent optional web fields are left out', () async {
@@ -281,7 +308,7 @@ void main() {
     test('Sad Path: a truncated google-services.json fails without leaking '
         'the API key', () async {
       // 1. Arrange
-      final cli = FakeFirebaseCli(
+      final cli = mockCli(
         webApps: const [centralWebApp],
         webSdkConfig: sdkConfig(),
         apps: const [centralAndroidApp],

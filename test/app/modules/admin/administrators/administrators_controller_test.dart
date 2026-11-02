@@ -2,9 +2,14 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/admin/administrators/administrators.dart';
 import 'package:monamie_app/app/modules/admin/administrators/administrators_backend.dart';
 import 'package:monamie_app/app/modules/admin/administrators/administrators_controller.dart';
+
+@GenerateNiceMocks([MockSpec<AdministratorsBackend>()])
+import 'administrators_controller_test.mocks.dart';
 
 const _before = OrganizationAdministrators(
   administrators: [Administrator(email: 'olga@x.com', owner: true)],
@@ -18,55 +23,44 @@ const _after = OrganizationAdministrators(
   ],
 );
 
-/// [AdministratorsBackend] that records every call, returns [people] from
-/// `list`, optionally waits on [listGate] / [setGate] and fails with
-/// [listFailure] / [setFailure].
-class FakeAdministratorsBackend implements AdministratorsBackend {
-  final calls = <String>[];
-  OrganizationAdministrators people = _before;
-  Completer<void>? listGate;
-  Completer<void>? setGate;
-  Object? listFailure;
-  Object? setFailure;
-
-  @override
-  Future<OrganizationAdministrators> list(String organizationId) async {
-    calls.add('list:$organizationId');
-    await listGate?.future;
-    if (listFailure case final failure?) throw failure;
+/// Makes `list` wait on [gate] before returning [people].
+void listWaitsOn(
+  Completer<void> gate, [
+  OrganizationAdministrators people = _before,
+]) {
+  when(backend.list(any)).thenAnswer((_) async {
+    await gate.future;
     return people;
-  }
-
-  @override
-  Future<void> setAdministrator(
-    String organizationId,
-    String email, {
-    required bool admin,
-  }) async {
-    calls.add('set:$organizationId:$email:$admin');
-    await setGate?.future;
-    if (setFailure case final failure?) throw failure;
-  }
+  });
 }
 
-late FakeAdministratorsBackend backend;
+/// Makes `setAdministrator` wait on [gate].
+void setWaitsOn(Completer<void> gate) {
+  when(
+    backend.setAdministrator(any, any, admin: anyNamed('admin')),
+  ).thenAnswer((_) => gate.future);
+}
+
+late MockAdministratorsBackend backend;
 
 AdministratorsController newController() =>
     AdministratorsController(organizationId: 'rotasul', backend: backend);
 
-/// A started controller with [_before] loaded and the call log cleared.
+/// A started controller with [_before] loaded and the backend's
+/// interactions cleared.
 Future<AdministratorsController> loadedController() async {
   final controller = newController();
   controller.onStart();
   await pumpEventQueue();
-  backend.calls.clear();
+  clearInteractions(backend);
   return controller;
 }
 
 void main() {
   setUp(() {
     Get.testMode = true;
-    backend = FakeAdministratorsBackend();
+    backend = MockAdministratorsBackend();
+    when(backend.list(any)).thenAnswer((_) async => _before);
   });
 
   group('AdministratorsController.load - Unit Test Suite', () {
@@ -79,7 +73,8 @@ void main() {
       await pumpEventQueue();
 
       // 3. Assert
-      expect(backend.calls, ['list:rotasul']);
+      verify(backend.list('rotasul')).called(1);
+      verifyNoMoreInteractions(backend);
       expect(controller.people.value, same(_before));
       expect(controller.isLoading.value, isFalse);
     });
@@ -87,14 +82,15 @@ void main() {
     test('Edge Case: isLoading is true while the list is read', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.listGate = Completer<void>();
+      final gate = Completer<void>();
+      listWaitsOn(gate);
 
       // 2. Act
       final pending = controller.load();
 
       // 3. Assert
       expect(controller.isLoading.value, isTrue);
-      backend.listGate!.complete();
+      gate.complete();
       await pending;
       expect(controller.isLoading.value, isFalse);
     });
@@ -102,15 +98,17 @@ void main() {
     test('Edge Case: a second load while one runs reads nothing', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.listGate = Completer<void>();
+      final gate = Completer<void>();
+      listWaitsOn(gate);
       final first = controller.load();
 
       // 2. Act
       await controller.load();
 
       // 3. Assert
-      expect(backend.calls, ['list:rotasul']);
-      backend.listGate!.complete();
+      verify(backend.list('rotasul')).called(1);
+      verifyNoMoreInteractions(backend);
+      gate.complete();
       await first;
     });
 
@@ -118,7 +116,9 @@ void main() {
         'loading', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.listFailure = const AdministratorsException('Sem permissão.');
+      when(backend.list(any)).thenAnswer(
+        (_) async => throw const AdministratorsException('Sem permissão.'),
+      );
 
       // 2. Act
       await controller.load();
@@ -131,7 +131,9 @@ void main() {
     test('Sad Path: an unexpected error shows a generic message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.listFailure = StateError('offline');
+      when(
+        backend.list(any),
+      ).thenAnswer((_) async => throw StateError('offline'));
 
       // 2. Act
       await controller.load();
@@ -149,28 +151,33 @@ void main() {
     test('Happy Path: the change is sent and the list read again', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.people = _after;
+      when(backend.list(any)).thenAnswer((_) async => _after);
 
       // 2. Act
       final ok = await controller.setAdministrator('caio@x.com', admin: true);
 
       // 3. Assert
       expect(ok, isTrue);
-      expect(backend.calls, ['set:rotasul:caio@x.com:true', 'list:rotasul']);
+      verifyInOrder([
+        backend.setAdministrator('rotasul', 'caio@x.com', admin: true),
+        backend.list('rotasul'),
+      ]);
+      verifyNoMoreInteractions(backend);
       expect(controller.people.value, same(_after));
     });
 
     test('Edge Case: the row in flight is marked and then cleared', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.setGate = Completer<void>();
+      final gate = Completer<void>();
+      setWaitsOn(gate);
 
       // 2. Act
       final pending = controller.setAdministrator('ana@x.com', admin: false);
 
       // 3. Assert
       expect(controller.workingEmail.value, 'ana@x.com');
-      backend.setGate!.complete();
+      gate.complete();
       await pending;
       expect(controller.workingEmail.value, isNull);
     });
@@ -178,7 +185,8 @@ void main() {
     test('Edge Case: a second change while one runs returns false', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.setGate = Completer<void>();
+      final gate = Completer<void>();
+      setWaitsOn(gate);
       final first = controller.setAdministrator('ana@x.com', admin: false);
 
       // 2. Act
@@ -186,15 +194,17 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      expect(backend.calls, ['set:rotasul:ana@x.com:false']);
-      backend.setGate!.complete();
+      verify(backend.setAdministrator('rotasul', 'ana@x.com', admin: false));
+      verifyNoMoreInteractions(backend);
+      gate.complete();
       await first;
     });
 
     test('Edge Case: no change starts while the list is loading', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.listGate = Completer<void>();
+      final gate = Completer<void>();
+      listWaitsOn(gate);
       final loading = controller.load();
 
       // 2. Act
@@ -202,8 +212,9 @@ void main() {
 
       // 3. Assert
       expect(ok, isFalse);
-      expect(backend.calls, ['list:rotasul']);
-      backend.listGate!.complete();
+      verify(backend.list('rotasul')).called(1);
+      verifyNoMoreInteractions(backend);
+      gate.complete();
       await loading;
     });
 
@@ -211,8 +222,12 @@ void main() {
         'message and clears the row', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.setFailure = const AdministratorsException(
-        'Essa pessoa não faz parte da organização.',
+      when(
+        backend.setAdministrator(any, any, admin: anyNamed('admin')),
+      ).thenAnswer(
+        (_) async => throw const AdministratorsException(
+          'Essa pessoa não faz parte da organização.',
+        ),
       );
 
       // 2. Act
@@ -231,7 +246,9 @@ void main() {
     test('Sad Path: an unexpected error gives a generic message', () async {
       // 1. Arrange
       final controller = await loadedController();
-      backend.setFailure = StateError('offline');
+      when(
+        backend.setAdministrator(any, any, admin: anyNamed('admin')),
+      ).thenAnswer((_) async => throw StateError('offline'));
 
       // 2. Act
       final ok = await controller.setAdministrator('caio@x.com', admin: true);
