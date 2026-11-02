@@ -8,6 +8,12 @@ import '../../../tool/src/state_layer_imports.dart';
 const controllerPath = 'lib/app/modules/x/controller/x_controller.dart';
 const marker = '// check_layers: state_contract';
 
+const getUris = [
+  'package:get/get.dart',
+  'package:get/route_manager.dart',
+  'package:get/get_state_manager/get_state_manager.dart',
+];
+
 const uiLibraries = [
   'package:flutter/material.dart',
   'package:flutter/widgets.dart',
@@ -23,7 +29,7 @@ void main() {
   group('isStateFile', () {
     test('a *_controller.dart under lib/ is a state file', () {
       // 1. Arrange
-      const content = "import 'package:get/get.dart';\n";
+      const content = "import 'package:flutter/foundation.dart';\n";
 
       // 2. Act
       final result = isStateFile(controllerPath, content);
@@ -131,7 +137,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 export 'package:flutter/foundation.dart' show ChangeNotifier;
 ''';
 
@@ -177,7 +182,9 @@ export 'package:flutter/foundation.dart' show ChangeNotifier;
           final result = findLayerViolations(controllerPath, content);
 
           // 3. Assert
-          expect(result.map((v) => v.uri), [uri]);
+          expect(result.map((v) => (v.uri, v.rule)), [
+            (uri, stateImportsFlutterUi),
+          ]);
         });
       }
     }
@@ -368,7 +375,207 @@ import 'package:flutter/material.dart';
         allOf(
           startsWith('$controllerPath:1:8 '),
           contains("'package:flutter/material.dart'"),
-          endsWith(stateImportsFlutterUi),
+          contains('State files (controllers and state contracts)'),
+          endsWith(' - $stateImportsFlutterUi'),
+        ),
+      );
+    });
+  });
+
+  group('findLayerViolations: lib_imports_get', () {
+    for (final directive in ['import', 'export']) {
+      for (final uri in getUris) {
+        test('$directive of $uri in a controller is a violation', () {
+          // 1. Arrange
+          final content = "$directive '$uri';\n";
+
+          // 2. Act
+          final result = findLayerViolations(controllerPath, content);
+
+          // 3. Assert
+          expect(result.map((v) => (v.uri, v.rule)), [(uri, libImportsGet)]);
+        });
+      }
+    }
+
+    for (final path in [
+      'lib/app/x/ui/x_page.dart',
+      'lib/app/data/model/x.dart',
+      'lib/main.dart',
+      r'lib\app\x\ui\x_page.dart',
+    ]) {
+      test(
+        'a non-state file under lib/ importing get is a violation: $path',
+        () {
+          // 1. Arrange
+          const content = "import 'package:get/get.dart';\n";
+
+          // 2. Act
+          final result = findLayerViolations(path, content);
+
+          // 3. Assert
+          expect(result.map((v) => (v.path, v.rule)), [(path, libImportsGet)]);
+        },
+      );
+    }
+
+    for (final path in [
+      'test/app/x/x_page_test.dart',
+      'tool/x.dart',
+      'mylib/x.dart',
+      'lib/app/x/x.g.dart',
+      'lib/app/x/x.freezed.dart',
+      'lib/app/x/x_controller.mocks.dart',
+      'lib/app/x/notes.txt',
+    ]) {
+      test('get is ignored outside hand-written lib/ Dart files: $path', () {
+        // 1. Arrange
+        const content = "import 'package:get/get.dart';\n";
+
+        // 2. Act
+        final result = findLayerViolations(path, content);
+
+        // 3. Assert
+        expect(result, isEmpty);
+      });
+    }
+
+    for (final (label, content) in [
+      ('show', "import 'package:get/get.dart' show Get;\n"),
+      ('hide', "import 'package:get/get.dart' hide Rx;\n"),
+      ('as', "import 'package:get/get.dart' as getx;\n"),
+      ('deferred as', "import 'package:get/get.dart' deferred as getx;\n"),
+      ('export show', "export 'package:get/get.dart' show Get;\n"),
+      ('double quotes', 'import "package:get/get.dart";\n'),
+    ]) {
+      test('a get directive with $label is a violation', () {
+        // 1. Arrange (content from the table)
+
+        // 2. Act
+        final result = findLayerViolations('lib/app/x/x.dart', content);
+
+        // 3. Assert
+        expect(result.single.rule, libImportsGet);
+      });
+    }
+
+    test('get as the default URI of a conditional import is reported', () {
+      // 1. Arrange
+      const content = '''
+import 'package:get/get.dart'
+    if (dart.library.io) 'src/io_stub.dart';
+''';
+
+      // 2. Act
+      final result = findLayerViolations('lib/app/x/x.dart', content);
+
+      // 3. Assert
+      expect(
+        (result.single.uri, result.single.rule),
+        ('package:get/get.dart', libImportsGet),
+      );
+    });
+
+    test('get in a conditional branch is reported at the branch', () {
+      // 1. Arrange
+      const content = """
+import 'src/stub.dart'
+    if (dart.library.io) 'package:get/get.dart';
+""";
+
+      // 2. Act
+      final result = findLayerViolations('lib/app/x/x.dart', content);
+
+      // 3. Assert
+      expect(
+        (result.single.line, result.single.column, result.single.rule),
+        (2, 26, libImportsGet),
+      );
+    });
+
+    for (final uri in [
+      'package:get_it/get_it.dart',
+      'package:get_storage/get_storage.dart',
+      'package:getx/getx.dart',
+      'package:flutter_get/get.dart',
+      'get/get.dart',
+    ]) {
+      test('a URI that only looks like get is allowed: $uri', () {
+        // 1. Arrange
+        final content = "import '$uri';\n";
+
+        // 2. Act
+        final result = findLayerViolations('lib/app/x/x.dart', content);
+
+        // 3. Assert
+        expect(result, isEmpty);
+      });
+    }
+
+    test('a get import inside a comment is not a violation', () {
+      // 1. Arrange
+      const content = """
+// import 'package:get/get.dart';
+/*
+export 'package:get/get.dart';
+*/
+""";
+
+      // 2. Act
+      final result = findLayerViolations('lib/app/x/x.dart', content);
+
+      // 3. Assert
+      expect(result, isEmpty);
+    });
+
+    test('a state file with material and get reports both, in file order', () {
+      // 1. Arrange
+      const content = '''
+import 'package:get/get.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+''';
+
+      // 2. Act
+      final result = findLayerViolations(controllerPath, content);
+
+      // 3. Assert
+      expect(result.map((v) => (v.line, v.uri, v.rule)), [
+        (1, 'package:get/get.dart', libImportsGet),
+        (3, 'package:flutter/material.dart', stateImportsFlutterUi),
+      ]);
+    });
+
+    test('a screen with material and get reports only get', () {
+      // 1. Arrange
+      const content = '''
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+''';
+
+      // 2. Act
+      final result = findLayerViolations('lib/app/x/ui/x_page.dart', content);
+
+      // 3. Assert
+      expect(result.map((v) => (v.line, v.rule)), [(2, libImportsGet)]);
+    });
+
+    test('the get message names the file, position, URI and rule', () {
+      // 1. Arrange
+      const path = 'lib/app/x/ui/x_page.dart';
+      const content = "import 'dart:async';\nimport 'package:get/get.dart';\n";
+
+      // 2. Act
+      final message = findLayerViolations(path, content).single.toString();
+
+      // 3. Assert
+      expect(
+        message,
+        allOf(
+          startsWith('$path:2:8 - Files under lib/ must not import or export '),
+          contains("'package:get/get.dart'"),
+          contains('no longer uses GetX'),
+          endsWith(' - $libImportsGet'),
         ),
       );
     });
@@ -405,7 +612,7 @@ import 'package:flutter/material.dart';
         ..writeAsStringSync(content);
     }
 
-    test('exits 0 when no state file imports the UI', () async {
+    test('exits 0 and says so when no rule is broken', () async {
       // 1. Arrange
       writeLib(
         'a/a_controller.dart',
@@ -417,7 +624,11 @@ import 'package:flutter/material.dart';
       final result = await runTool();
 
       // 3. Assert
-      expect(result.exitCode, 0, reason: '${result.stderr}');
+      expect(
+        (result.exitCode, (result.stdout as String).trim()),
+        (0, 'No layer rule violations.'),
+        reason: '${result.stderr}',
+      );
     });
 
     test('exits 1 and lists every violation, nested files included', () async {
@@ -430,6 +641,8 @@ import 'package:flutter/material.dart';
         'z_state.dart',
         "$marker\nexport 'package:flutter/widgets.dart';\n",
       );
+      writeLib('m/model.dart', "import 'package:get/get.dart';\n");
+      writeLib('m/model.g.dart', "import 'package:get/get.dart';\n");
 
       // 2. Act
       final result = await runTool();
@@ -441,7 +654,11 @@ import 'package:flutter/material.dart';
         allOf(
           contains(p.join('lib', 'a', 'b', 'c', 'c_controller.dart')),
           contains(p.join('lib', 'z_state.dart')),
-          contains('2 violation(s) found.'),
+          contains('${p.join('lib', 'm', 'model.dart')}:1:8'),
+          isNot(contains('model.g.dart')),
+          contains(libImportsGet),
+          contains(stateImportsFlutterUi),
+          contains('3 violation(s) found.'),
         ),
       );
     });

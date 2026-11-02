@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/data/groups/membership_source.dart';
@@ -117,7 +116,6 @@ watchingLive() async {
 
 void main() {
   setUp(() {
-    Get.testMode = true;
     organization = StreamController<Map<String, Object?>?>();
     roles = StreamController<Map<String, Object?>>();
     allNames = StreamController<Map<String, String>>();

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/account/account_deletion.dart';
@@ -68,7 +67,6 @@ Future<MyAccountController> controllerFor({required bool isOwner}) async {
 
 void main() {
   setUp(() {
-    Get.testMode = true;
     backend = MockAccountDeletionBackend();
     stubRequest(() async {});
     deleted = [];

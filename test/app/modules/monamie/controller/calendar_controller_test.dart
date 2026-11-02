@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/monamie/controller/calendar_controller.dart';
@@ -42,10 +41,6 @@ class _Harness {
 }
 
 void main() {
-  setUp(() {
-    Get.testMode = true;
-  });
-
   group('CalendarController - meses do histórico', () {
     test(
       'Happy Path: Deve marcar os dias com trilha do mês do dia observado',

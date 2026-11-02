@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/admin/administrators/administrators.dart';
@@ -58,7 +57,6 @@ Future<AdministratorsController> loadedController() async {
 
 void main() {
   setUp(() {
-    Get.testMode = true;
     backend = MockAdministratorsBackend();
     when(backend.list(any)).thenAnswer((_) async => _before);
   });

@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/config/organization/organization_config.dart';
@@ -117,7 +116,6 @@ Future<void> pickAndUse(AppearanceController controller) async {
 
 void main() {
   setUp(() {
-    Get.testMode = true;
     backend = MockAppearanceBackend();
     when(
       backend.pickableThemes(),

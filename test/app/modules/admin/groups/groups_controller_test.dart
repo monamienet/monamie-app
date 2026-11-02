@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/modules/admin/groups/group.dart';
@@ -62,7 +61,6 @@ Future<GroupsController> loadedController({bool isAdmin = false}) async {
 
 void main() {
   setUp(() {
-    Get.testMode = true;
     backend = MockGroupsBackend();
     when(backend.list(any)).thenAnswer((_) async => [norte, leste]);
     stubWrites(() async {});

@@ -5,7 +5,8 @@ import 'package:path/path.dart' as p;
 import 'src/state_layer_imports.dart';
 
 /// Fails (exit code 1) when a controller or state contract under `lib/`
-/// imports one of Flutter's UI libraries (see `src/state_layer_imports.dart`).
+/// imports one of Flutter's UI libraries, or any file under `lib/` imports
+/// GetX (see `src/state_layer_imports.dart`).
 /// Run from anywhere in the repo: `dart run tool/check_layers.dart`.
 void main() {
   // tool/check_layers.dart -> repository root, independent of the working
@@ -22,7 +23,7 @@ void main() {
   }
 
   if (violations.isEmpty) {
-    stdout.writeln('No state file imports Flutter UI libraries.');
+    stdout.writeln('No layer rule violations.');
     return;
   }
   violations.forEach(stderr.writeln);

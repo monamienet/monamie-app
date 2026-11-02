@@ -270,6 +270,7 @@ flowchart TD
 - Estender a regra da Fase 4: `package:get` proibido em todo `lib/`.
 - Atualizar os 2 comentários que citam GetX e a doc. O AGENTS.md hoje não cita GetX; conferir se algo nele descreve o registro antigo.
 - **Pronto quando:** `grep -r "package:get/" lib test` vazio; CI e aparelho verdes.
+- **Feito (2026-11-02):** `get` saiu do `pubspec.yaml` e dos testes, e o `tool/check_layers.dart` ganhou a regra `lib_imports_get`, que proíbe `package:get` em todo arquivo escrito à mão de `lib/`. Nenhum comentário de `lib/` citava mais o GetX depois da Fase 8.
 
 ## 5. Esforço
 

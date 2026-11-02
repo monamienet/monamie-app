@@ -127,7 +127,8 @@ opened against `main` (the `pull_request` event), with no path filter:
    state contract (a file with the line `// check_layers: state_contract`) in `lib/` imports a Flutter UI
    library (`material.dart`, `widgets.dart`, `cupertino.dart` and similar). `foundation.dart`,
    `services.dart` and `dart:ui` are allowed. Fix it by switching the import to one of those or by moving
-   the UI piece to the screen.
+   the UI piece to the screen. It also fails if any file in `lib/` imports GetX (`package:get`), which the
+   app no longer uses.
 5. `flutter test -j 2`: every Dart test under `test/`, as in the deploy.
 
 It uses no secrets and no write permission (`permissions: contents: read`), so it is safe to run on any

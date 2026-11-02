@@ -127,7 +127,8 @@ todo PR aberto para a `main` (evento `pull_request`), sem filtro de caminhos:
    ou um contrato de estado (arquivo com a linha `// check_layers: state_contract`) em `lib/` importar
    uma biblioteca de interface do Flutter (`material.dart`, `widgets.dart`, `cupertino.dart` e
    parecidas). `foundation.dart`, `services.dart` e `dart:ui` são permitidos. Corrija trocando o import
-   por um desses ou levando a parte de interface para a tela.
+   por um desses ou levando a parte de interface para a tela. Também falha se qualquer arquivo de `lib/`
+   importar o GetX (`package:get`), que o app não usa mais.
 5. `flutter test -j 2`: todos os testes Dart de `test/`, como no deploy.
 
 Ele não usa nenhum secret nem permissão de escrita (`permissions: contents: read`), então é seguro rodar

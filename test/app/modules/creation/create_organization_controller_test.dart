@@ -3,7 +3,6 @@ import 'dart:ui' show Color;
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/app/config/organization/organization_theme.dart';
@@ -87,7 +86,6 @@ Future<CreateOrganizationController> readyController() async {
 
 void main() {
   setUp(() {
-    Get.testMode = true;
     backend = MockCreationBackend();
     when(backend.idProblem(any)).thenAnswer((_) async => null);
     stubCreate(() async {});
