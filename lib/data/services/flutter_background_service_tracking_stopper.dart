@@ -1,0 +1,73 @@
+import 'package:flutter/foundation.dart';
+import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/data/services/background_tracking_service.dart';
+import 'package:monamie_app/data/services/background_tracking_stopper.dart';
+
+/// Para o serviço do `flutter_background_service` enviando o evento
+/// `stopService` ao isolate de rastreamento (ver `foreground_service.dart`).
+///
+/// O envio não tem confirmação: se o isolate ainda não registrou o listener,
+/// o evento é descartado em silêncio. Por isso ele é reenviado a cada
+/// [pollInterval] até `isRunning()` retornar `false` ou o [timeout] expirar.
+class FlutterBackgroundServiceTrackingStopper
+    implements BackgroundTrackingStopper {
+  /// [service] is the tracking service; [positions] marks the person as
+  /// not sharing.
+  FlutterBackgroundServiceTrackingStopper({
+    required this._service,
+    required this._positions,
+    this.timeout = const Duration(seconds: 5),
+    this.pollInterval = const Duration(milliseconds: 250),
+  });
+
+  final BackgroundTrackingService _service;
+  final PositionsRepository _positions;
+
+  /// Tempo máximo de espera pela parada do serviço e, separadamente, pela
+  /// escrita de `isPublishing` (que nunca completa enquanto o aparelho está
+  /// offline).
+  final Duration timeout;
+  final Duration pollInterval;
+
+  @override
+  Future<bool> stop({String? email}) async {
+    if (!await _isRunning()) return true;
+
+    final stopwatch = Stopwatch()..start();
+    var stopped = false;
+    while (!stopped && stopwatch.elapsed < timeout) {
+      _service.stop();
+      await Future<void>.delayed(pollInterval);
+      stopped = !await _isRunning();
+    }
+
+    if (!stopped) {
+      debugPrint(
+        '[BackgroundTrackingStopper] O serviço não parou em '
+        '${timeout.inMilliseconds} ms.',
+      );
+    }
+
+    if (email != null && email.isNotEmpty) {
+      try {
+        await _positions.markNotPublishing(email).timeout(timeout);
+      } catch (e) {
+        debugPrint(
+          '[BackgroundTrackingStopper] Erro ao desativar isPublishing: $e',
+        );
+      }
+    }
+
+    return stopped;
+  }
+
+  Future<bool> _isRunning() async {
+    try {
+      return await _service.isRunning();
+    } catch (e) {
+      // Plataformas sem o plugin (ex.: web) não têm serviço a parar.
+      debugPrint('[BackgroundTrackingStopper] isRunning indisponível: $e');
+      return false;
+    }
+  }
+}

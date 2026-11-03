@@ -1,0 +1,20 @@
+# Configuration of `flutter gen-l10n`, which `flutter pub get`, `run` and
+# `build` also run (pubspec.yaml, `generate: true`). The app's texts live in
+# lib/l10n/: app_pt.arb is the template (every key, with its @description)
+# and app_en.arb its English translation. The generated Dart files are
+# written next to them and committed, like the freezed classes: the PR
+# checks regenerate them on `flutter pub get` and fail if they differ from
+# what is committed (AGENTS.md, "Language Conventions").
+arb-dir: lib/l10n
+template-arb-file: app_pt.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+# AppLocalizations.of(context) never returns null: every screen sits below
+# MaterialApp.router, which declares the delegate.
+nullable-getter: false
+# Every key in the template needs its @key entry (with a description).
+required-resource-attributes: true
+# Portuguese first: it is the fallback for a device language the app does not
+# have.
+preferred-supported-locales: [pt]
+format: true

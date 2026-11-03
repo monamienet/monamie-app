@@ -1,0 +1,151 @@
+import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
+import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
+import 'package:monamie_app/domain/models/group.dart';
+import 'package:monamie_app/domain/models/invite.dart';
+import 'package:monamie_app/ui/auth/view_models/organization_choice_view_model.dart';
+
+/// A pending invite with *Aceitar e entrar*, on *Sem organização* and
+/// *Escolher organização*.
+class InviteCard extends StatelessWidget {
+  const InviteCard({super.key, required this.invite, required this.controller});
+
+  final Invite invite;
+  final OrganizationChoiceViewModel controller;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([
+      controller,
+      controller.recheckOrganizations,
+      controller.chooseOrganization,
+      controller.acceptInvite,
+    ]),
+    builder: (context, _) {
+      final state = controller.state;
+      final accepting = controller.acceptingInvite == invite.id;
+      // Entering an organization from the picker also locks the card.
+      final busy = controller.acceptingInvite != null || controller.isEntering;
+      final shares = invite.roles.contains(GroupRole.publisher);
+      final watches = invite.roles.contains(GroupRole.subscriber);
+      final l10n = AppLocalizations.of(context);
+      final role = shares && watches
+          ? 'both'
+          : shares
+          ? 'publisher'
+          : 'subscriber';
+      final expiresAt = invite.expiresAt;
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: MonAmieBrand.navy, width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              l10n.inviteCardTitle,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: MonAmieBrand.mutedInk,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              invite.organizationName,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+                color: MonAmieBrand.navy,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              [
+                l10n.inviteCardBody(
+                  invite.inviterName.isEmpty
+                      ? l10n.inviteSomeone
+                      : invite.inviterName,
+                  l10n.inviteGroupName(invite),
+                  role,
+                ),
+                if (expiresAt != null)
+                  l10n.inviteCardValidUntil(expiresAt.toLocal()),
+              ].join(' '),
+              style: const TextStyle(
+                fontSize: 15,
+                height: 22 / 15,
+                fontWeight: FontWeight.w500,
+                color: MonAmieBrand.mutedInk,
+              ),
+            ),
+            if (state.inviteFailure case final failure? when !busy) ...[
+              const SizedBox(height: 16),
+              Text(
+                failure.message(l10n),
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 19 / 13,
+                  color: Color(0xFFB3261E),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 56,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: MonAmieBrand.navy,
+                  foregroundColor: MonAmieBrand.cream,
+                  disabledBackgroundColor: MonAmieBrand.navy.withValues(
+                    alpha: accepting ? 0.8 : 0.38,
+                  ),
+                  disabledForegroundColor: MonAmieBrand.cream,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                onPressed: busy
+                    ? null
+                    : () => controller.acceptInvite.execute(invite),
+                child: accepting
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: MonAmieBrand.cream,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              l10n.inviteCardEntering(invite.organizationName),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(l10n.inviteCardAccept),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}

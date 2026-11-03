@@ -7,7 +7,7 @@ import 'branding.dart';
 import 'firestore_documents.dart';
 import 'organizations.dart';
 import 'themes_command.dart';
-import 'package:monamie_app/app/data/firebase/firestore_paths.dart';
+import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
 
 /// `publish <id>`: writes the organization's branding to its own Firestore.
 class PublishCommand extends Command<void> {

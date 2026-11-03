@@ -123,12 +123,18 @@ opened against `main` (the `pull_request` event), with no path filter:
    Fix it by running `dart format lib test tool` and committing.
 3. `flutter analyze`: the Dart analyzer. It also fails on *info*-level findings, because `--fatal-infos`
    is on by default.
-4. `dart run tool/check_layers.dart`: the layer rule. It fails if a controller (`*_controller.dart`) or a
+4. `dart run tool/check_layers.dart`: the layer rule. It fails if a view model (`*_view_model.dart`) or a
    state contract (a file with the line `// check_layers: state_contract`) in `lib/` imports a Flutter UI
    library (`material.dart`, `widgets.dart`, `cupertino.dart` and similar). `foundation.dart`,
    `services.dart` and `dart:ui` are allowed. Fix it by switching the import to one of those or by moving
    the UI piece to the screen. It also fails if any file in `lib/` imports GetX (`package:get`), which the
-   app no longer uses.
+   app no longer uses (`lib_imports_get`); if a hand-written file in `lib/ui/` or `lib/domain/` imports
+   a plugin package (`firebase_*`, `cloud_*`, `geolocator`, `permission_handler`,
+   `flutter_background_service`, `hive*`, `shared_preferences`, `google_sign_in`, `http`;
+   `ui_imports_plugin`), fixed by going through a service or repository in `lib/data/`; and if a file in
+   `lib/domain/` imports anything from `lib/data/`, `lib/ui/`, `lib/routing/` or `lib/config/`
+   (`domain_imports_outer`), fixed by moving the conversion to `lib/data/`. Each message ends with the
+   rule's name.
 5. `flutter test -j 2`: every Dart test under `test/`, as in the deploy.
 
 It uses no secrets and no write permission (`permissions: contents: read`), so it is safe to run on any

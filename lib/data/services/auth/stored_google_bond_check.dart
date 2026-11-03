@@ -1,0 +1,28 @@
+import 'package:flutter/foundation.dart';
+import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
+import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
+
+import 'google_bond_check.dart';
+
+/// [GoogleBondCheck] over the bound organization's Firebase Auth
+/// ([CurrentOrganizationFirebase]) and the Google profile kept in Hive.
+class StoredGoogleBondCheck implements GoogleBondCheck {
+  StoredGoogleBondCheck({required this._userRepository});
+
+  final UserGoogleRepository _userRepository;
+
+  @override
+  Future<bool> hasActiveBond() async {
+    try {
+      // No bound organization: the user must sign in and pick one first.
+      if (!CurrentOrganizationFirebase.isSet) return false;
+      final currentUser = CurrentOrganizationFirebase.instance.auth.currentUser;
+      final storedUser = await _userRepository.getUserGoogleModel();
+      final hasStoredUser = storedUser != null && storedUser.email.isNotEmpty;
+      return currentUser != null && hasStoredUser;
+    } catch (e) {
+      debugPrint("Error checking Google bond: $e");
+      return false;
+    }
+  }
+}

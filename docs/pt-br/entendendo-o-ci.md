@@ -123,12 +123,18 @@ todo PR aberto para a `main` (evento `pull_request`), sem filtro de caminhos:
    formatado. Corrija rodando `dart format lib test tool` e faça um commit.
 3. `flutter analyze`: o analisador do Dart. Ele falha também com avisos de nível *info*, porque o
    `--fatal-infos` vem ligado por padrão.
-4. `dart run tool/check_layers.dart`: a regra de camadas. Falha se um controller (`*_controller.dart`)
+4. `dart run tool/check_layers.dart`: a regra de camadas. Falha se um view model (`*_view_model.dart`)
    ou um contrato de estado (arquivo com a linha `// check_layers: state_contract`) em `lib/` importar
    uma biblioteca de interface do Flutter (`material.dart`, `widgets.dart`, `cupertino.dart` e
    parecidas). `foundation.dart`, `services.dart` e `dart:ui` são permitidos. Corrija trocando o import
    por um desses ou levando a parte de interface para a tela. Também falha se qualquer arquivo de `lib/`
-   importar o GetX (`package:get`), que o app não usa mais.
+   importar o GetX (`package:get`), que o app não usa mais (`lib_imports_get`); se um arquivo escrito à
+   mão em `lib/ui/` ou `lib/domain/` importar um pacote de plugin (`firebase_*`, `cloud_*`,
+   `geolocator`, `permission_handler`, `flutter_background_service`, `hive*`, `shared_preferences`,
+   `google_sign_in`, `http`; `ui_imports_plugin`), o que se corrige passando por um Service ou
+   Repository de `lib/data/`; e se um arquivo de `lib/domain/` importar qualquer coisa de `lib/data/`,
+   `lib/ui/`, `lib/routing/` ou `lib/config/` (`domain_imports_outer`), o que se corrige levando a
+   conversão para `lib/data/`. Cada mensagem termina com o nome da regra.
 5. `flutter test -j 2`: todos os testes Dart de `test/`, como no deploy.
 
 Ele não usa nenhum secret nem permissão de escrita (`permissions: contents: read`), então é seguro rodar

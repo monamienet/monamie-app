@@ -12,7 +12,7 @@ import 'organizations.dart';
 /// `flutter build web` copies `web/` into the output and `flutter run -d
 /// chrome` serves it, so the web app reads `central/firebase.json` over HTTP
 /// at startup. Gitignored, and kept in sync with
-/// `lib/app/data/firebase/central_firebase.dart`.
+/// `lib/data/services/firebase/central_firebase.dart`.
 final webCentralConfigPath = p.join('web', 'central', 'firebase.json');
 
 /// The FirebaseOptions fields the web app needs from the web SDK config.

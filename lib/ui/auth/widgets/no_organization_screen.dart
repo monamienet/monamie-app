@@ -1,0 +1,213 @@
+import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
+import 'package:flutter/services.dart';
+import 'package:monamie_app/ui/core/ui/app_messenger.dart';
+import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
+import 'package:monamie_app/ui/auth/view_models/organization_choice_view_model.dart';
+
+import 'invite_card.dart';
+import 'monamie_account_header.dart';
+
+/// *Sem organização*: the signed-in account belongs to no organization yet
+/// (or just lost access to one). The person can create their own or check
+/// again after someone adds or invites them.
+class NoOrganizationScreen extends StatelessWidget {
+  const NoOrganizationScreen({
+    super.key,
+    required this.controller,
+    required this.onCreateOrganization,
+  });
+
+  final OrganizationChoiceViewModel controller;
+
+  /// "Criar minha organização": opens the creation flow over this screen.
+  final VoidCallback onCreateOrganization;
+
+  @override
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+    // Dark status bar icons on the cream background.
+    value: SystemUiOverlayStyle.dark,
+    child: Scaffold(
+      backgroundColor: MonAmieBrand.cream,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+          child: ListenableBuilder(
+            listenable: Listenable.merge([
+              controller,
+              controller.recheckOrganizations,
+              controller.chooseOrganization,
+              controller.acceptInvite,
+            ]),
+            builder: (context, _) {
+              final state = controller.state;
+              final l10n = AppLocalizations.of(context);
+              final busy = controller.isEntering;
+              final reason = state.noAccessReason;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  MonAmieAccountHeader(
+                    email: state.signedInEmail,
+                    onSwitch: busy || state.isLoggingOut
+                        ? null
+                        : () => runReportingErrors(
+                            context,
+                            controller.logout.execute,
+                          ),
+                  ),
+                  const SizedBox(height: 32),
+                  if (reason != null) ...[
+                    _Notice(text: reason.message(l10n)),
+                    const SizedBox(height: 24),
+                  ],
+                  // Membership starts on acceptance, so an invited person has
+                  // no group yet and lands here, with the invite.
+                  for (final invite in state.pendingInvites) ...[
+                    InviteCard(invite: invite, controller: controller),
+                    const SizedBox(height: 20),
+                  ],
+                  Text(
+                    l10n.noOrganizationTitle,
+                    style: const TextStyle(
+                      fontSize: 34,
+                      height: 1.08,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -1.1,
+                      color: MonAmieBrand.navy,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    l10n.noOrganizationBody,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
+                      color: MonAmieBrand.mutedInk,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  for (final line in [
+                    l10n.noOrganizationFast,
+                    l10n.noOrganizationYouAdminister,
+                    l10n.noOrganizationLater,
+                  ])
+                    _Bullet(text: line),
+                  const Spacer(),
+                  SizedBox(
+                    height: 56,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: MonAmieBrand.navy,
+                        foregroundColor: MonAmieBrand.cream,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onPressed: busy ? null : onCreateOrganization,
+                      child: Text(l10n.noOrganizationCreate),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 52,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: MonAmieBrand.navy,
+                        textStyle: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      onPressed: busy
+                          ? null
+                          : () => runReportingErrors(
+                              context,
+                              controller.recheckOrganizations.execute,
+                            ),
+                      child: busy
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    color: MonAmieBrand.navy,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Text(l10n.commonChecking),
+                              ],
+                            )
+                          : Text(l10n.noOrganizationRecheck),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _Bullet extends StatelessWidget {
+  const _Bullet({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: MonAmieBrand.coral,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 15, color: MonAmieBrand.navy),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _Notice extends StatelessWidget {
+  const _Notice({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFECE6D9),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+        color: MonAmieBrand.navy,
+      ),
+    ),
+  );
+}

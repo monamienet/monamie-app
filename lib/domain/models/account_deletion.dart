@@ -1,0 +1,61 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'account_deletion.freezed.dart';
+
+/// A scheduled deletion of the signed-in account: in its 30 days the person
+/// can cancel; then the account (and the organizations they own) is erased.
+@freezed
+abstract class AccountDeletion with _$AccountDeletion {
+  const factory AccountDeletion({
+    required DateTime deleteAt,
+
+    /// Ids of the organizations deleted with the account.
+    @Default([]) List<String> ownedOrganizationIds,
+    @Default({}) Map<String, String> ownedOrganizationNames,
+  }) = _AccountDeletion;
+
+  const AccountDeletion._();
+
+  /// Reads `{deleteAt: ISO string, ownedOrganizationIds: [id], ownedOrganizationNames: {id:
+  /// name}}`; `null` when [json] is not a deletion.
+  static AccountDeletion? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final deleteAt = DateTime.tryParse('${json['deleteAt']}');
+    if (deleteAt == null) return null;
+    final owned = json['ownedOrganizationIds'];
+    final names = json['ownedOrganizationNames'];
+    return AccountDeletion(
+      deleteAt: deleteAt,
+      ownedOrganizationIds: [
+        if (owned is List)
+          for (final id in owned)
+            if (id is String) id,
+      ],
+      ownedOrganizationNames: {
+        if (names is Map)
+          for (final MapEntry(:key, :value) in names.entries)
+            if (key is String && value is String) key: value,
+      },
+    );
+  }
+
+  /// The organization deleted with the account, as shown in the titles; the
+  /// first one when there are several, `null` for a plain member.
+  String? get organizationName {
+    if (ownedOrganizationIds.isEmpty) return null;
+    final id = ownedOrganizationIds.first;
+    return ownedOrganizationNames[id] ?? id;
+  }
+}
+
+/// Whole days left until [deleteAt], counting a started day as one and
+/// never below zero.
+int daysLeft(DateTime deleteAt, DateTime now) {
+  final left = deleteAt.difference(now);
+  if (left <= Duration.zero) return 0;
+  return (left.inMinutes / Duration.minutesPerDay).ceil();
+}
+
+/// Whether the text typed to confirm matches the organization's id (case
+/// and surrounding spaces ignored).
+bool confirmsId(String typed, String id) => typed.trim().toLowerCase() == id;

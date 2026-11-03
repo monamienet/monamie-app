@@ -1,7 +1,7 @@
 /**
  * The Firestore collection and document names the central functions use, in
  * one place, so a rename cannot miss one. The app (`FirestorePaths` in
- * lib/app/data/firebase/firestore_paths.dart), the organization functions
+ * lib/data/services/firebase/firestore_paths.dart), the organization functions
  * (functions/firestore_paths.js) and the rules use the same names.
  *
  * A person's documents are keyed by `personKey(email)` (person_key.js).

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:monamie_app/app/config/organization/organization.dart';
+import 'package:monamie_app/domain/models/organization/organization.dart';
 
 import 'support/test_organization.dart';
 

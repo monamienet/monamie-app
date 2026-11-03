@@ -1,0 +1,2254 @@
+{
+  "@@locale": "pt",
+  "loginTagline": "Sua equipe, no mesmo ponto.",
+  "@loginTagline": {
+    "description": "MonAmie's tagline under its logo on the sign-in screen."
+  },
+  "commonSignOut": "Sair",
+  "@commonSignOut": {
+    "description": "Button or menu item that signs the person out of the app."
+  },
+  "commonCancel": "Cancelar",
+  "@commonCancel": {
+    "description": "Button that closes a dialog or sheet without doing anything."
+  },
+  "commonOk": "OK",
+  "@commonOk": {
+    "description": "Button that confirms a short dialog."
+  },
+  "commonSaving": "Salvando…",
+  "@commonSaving": {
+    "description": "Label of a save button while the change is being saved."
+  },
+  "commonSave": "Salvar",
+  "@commonSave": {
+    "description": "Button that saves a change."
+  },
+  "commonSaveChanges": "Salvar alterações",
+  "@commonSaveChanges": {
+    "description": "Button that saves the changes made on a settings screen."
+  },
+  "commonChange": "Alterar",
+  "@commonChange": {
+    "description": "Small button that opens an editor for a value."
+  },
+  "commonContinue": "Continuar",
+  "@commonContinue": {
+    "description": "Button that moves to the next step of a wizard."
+  },
+  "commonBack": "Voltar",
+  "@commonBack": {
+    "description": "Button or tooltip that goes back to the previous screen or step."
+  },
+  "commonTryAgain": "Tentar de novo",
+  "@commonTryAgain": {
+    "description": "Button that retries an action that failed."
+  },
+  "commonChecking": "Verificando…",
+  "@commonChecking": {
+    "description": "Shown while something is being checked with the server."
+  },
+  "commonCreating": "Criando…",
+  "@commonCreating": {
+    "description": "Label of a create button while the item is being created."
+  },
+  "commonAdd": "Adicionar",
+  "@commonAdd": {
+    "description": "Button that adds an item (a logo, a person to a list)."
+  },
+  "commonRemove": "Remover",
+  "@commonRemove": {
+    "description": "Button that removes an item."
+  },
+  "commonClose": "Fechar",
+  "@commonClose": {
+    "description": "Button that closes a sheet."
+  },
+  "commonGotIt": "Entendi",
+  "@commonGotIt": {
+    "description": "Button that dismisses an informative message."
+  },
+  "commonGenericFailure": "Não foi possível concluir agora. Tente de novo.",
+  "@commonGenericFailure": {
+    "description": "Shown in a confirmation sheet when the action failed without a message of its own."
+  },
+  "deletionRestoredAccountTitle": "Sua conta está de volta",
+  "@deletionRestoredAccountTitle": {
+    "description": "Title after a person cancels the deletion of their account."
+  },
+  "deletionRestoredOrganizationTitle": "A {name} está de volta",
+  "@deletionRestoredOrganizationTitle": {
+    "description": "Title after the owner cancels the deletion of their account and organization.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "deletionPendingAccountTitle": "Sua conta será excluída {days, plural, =0{hoje} =1{em 1 dia} other{em {days} dias}}",
+  "@deletionPendingAccountTitle": {
+    "description": "Title while a person's account waits to be deleted; days is how many days are left.",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "deletionPendingOrganizationTitle": "A {name} será excluída {days, plural, =0{hoje} =1{em 1 dia} other{em {days} dias}}",
+  "@deletionPendingOrganizationTitle": {
+    "description": "Title while the owner's organization waits to be deleted with their account; days is how many days are left.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      },
+      "days": {
+        "type": "int",
+        "example": "30"
+      }
+    }
+  },
+  "deletionRestoredBody": "Nada foi apagado. Entre para continuar de onde parou.",
+  "@deletionRestoredBody": {
+    "description": "Text under the title after a deletion is cancelled."
+  },
+  "deletionPendingAccountBody": "Em {date} apagamos de vez sua conta e seus dados no MonAmie.",
+  "@deletionPendingAccountBody": {
+    "description": "Text under the title while a person's account waits to be deleted.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "yMMMMd",
+        "example": "2026-11-25"
+      }
+    }
+  },
+  "deletionPendingOrganizationBody": "Em {date} apagamos de vez a {name}, os grupos, o histórico de todos e a sua conta. Até lá ninguém usa a organização.",
+  "@deletionPendingOrganizationBody": {
+    "description": "Text under the title while the owner's organization waits to be deleted.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "yMMMMd",
+        "example": "2026-11-25"
+      },
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "deletionEnter": "Entrar",
+  "@deletionEnter": {
+    "description": "Button that enters the app after a deletion was cancelled."
+  },
+  "deletionCancelAccount": "Cancelar exclusão da conta",
+  "@deletionCancelAccount": {
+    "description": "Button that cancels the pending deletion of the person's account."
+  },
+  "deletionCancel": "Cancelar exclusão",
+  "@deletionCancel": {
+    "description": "Button that cancels the pending deletion of the account and the organization."
+  },
+  "myAccountTitle": "Minha conta",
+  "@myAccountTitle": {
+    "description": "Title of the account screen."
+  },
+  "myAccountDeleteHeading": "Excluir conta",
+  "@myAccountDeleteHeading": {
+    "description": "Heading of the account deletion section."
+  },
+  "myAccountOwnerLeaves": "Você é titular da {name}, então a organização inteira é excluída junto com a sua conta.",
+  "@myAccountOwnerLeaves": {
+    "description": "Explains to the owner what deleting their account does.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "myAccountMemberLeaves": "Você sai da {name} agora e deixa de aparecer no mapa.",
+  "@myAccountMemberLeaves": {
+    "description": "Explains to a member what deleting their account does.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "myAccountEraseOn": "Em {date} apagamos de vez sua conta e seus dados no MonAmie.",
+  "@myAccountEraseOn": {
+    "description": "When the account is erased for good, 30 days from now.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "yMMMMd",
+        "example": "2026-11-25"
+      }
+    }
+  },
+  "myAccountUndo": "Até lá, é só entrar de novo e cancelar a exclusão.",
+  "@myAccountUndo": {
+    "description": "How to undo an account deletion."
+  },
+  "myAccountDeleteWithOrganization": "Excluir conta e organização",
+  "@myAccountDeleteWithOrganization": {
+    "description": "Button that deletes the owner's account and organization."
+  },
+  "myAccountDelete": "Excluir conta",
+  "@myAccountDelete": {
+    "description": "Button that deletes the person's account."
+  },
+  "myAccountConfirmPrompt": "Para confirmar, digite {id}",
+  "@myAccountConfirmPrompt": {
+    "description": "Asks the owner to type the organization's id to confirm the deletion.",
+    "placeholders": {
+      "id": {
+        "type": "String",
+        "example": "transporteslima"
+      }
+    }
+  },
+  "adminOrganizationFallback": "organização",
+  "@adminOrganizationFallback": {
+    "description": "Stands for the organization's name in a sentence before one is bound."
+  },
+  "loggingOut": "Encerrando sessão…",
+  "@loggingOut": {
+    "description": "Overlay shown while the person signs out."
+  },
+  "switchingOrganization": "Trocando de organização…",
+  "@switchingOrganization": {
+    "description": "Overlay shown while the person switches to another organization."
+  },
+  "administratorsTitle": "Administradores",
+  "@administratorsTitle": {
+    "description": "Title of the screen where the owner chooses who administers the organization, and of its first section."
+  },
+  "administratorsIntro": "Quem administra cuida de todos os grupos, dos convites, da aparência e dos ajustes da organização, e vê todos os grupos no mapa. Só você, titular, escolhe quem administra.",
+  "@administratorsIntro": {
+    "description": "Explains on Administradores what administrators do."
+  },
+  "administratorsOwner": "Titular",
+  "@administratorsOwner": {
+    "description": "Under the owner's e-mail: the person who created the organization. Gender-neutral in Portuguese."
+  },
+  "administratorsAdministers": "Administra a organização",
+  "@administratorsAdministers": {
+    "description": "Under an administrator's e-mail."
+  },
+  "administratorsMakeMember": "Tornar membro",
+  "@administratorsMakeMember": {
+    "description": "Button that turns an administrator back into a member."
+  },
+  "administratorsNone": "Ninguém administra a organização.",
+  "@administratorsNone": {
+    "description": "Shown when the administrators list is empty."
+  },
+  "administratorsMembers": "Membros",
+  "@administratorsMembers": {
+    "description": "Section of the people who belong to the organization without administering it."
+  },
+  "administratorsMember": "Membro",
+  "@administratorsMember": {
+    "description": "Under a member's e-mail."
+  },
+  "administratorsMakeAdmin": "Tornar administrador",
+  "@administratorsMakeAdmin": {
+    "description": "Button that makes a member an administrator."
+  },
+  "administratorsNoMembers": "Ninguém mais na organização ainda. Quem aceitar um convite para um grupo aparece aqui.",
+  "@administratorsNoMembers": {
+    "description": "Shown when the members list is empty."
+  },
+  "administratorsSection": "{title} · {count}",
+  "@administratorsSection": {
+    "description": "A section heading with how many people it lists; title is already in capitals.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "ADMINISTRADORES"
+      },
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "administratorsPromoteTitle": "Tornar {email} administrador?",
+  "@administratorsPromoteTitle": {
+    "description": "Title of the sheet that confirms making a member an administrator.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "administratorsPromoteSees": "Passa a ver todos os grupos no mapa e a cuidar dos grupos, dos convites, da aparência e dos ajustes da organização.",
+  "@administratorsPromoteSees": {
+    "description": "What changes when a member becomes an administrator."
+  },
+  "administratorsUndoLater": "Você pode desfazer depois.",
+  "@administratorsUndoLater": {
+    "description": "Reassures that a change of administrator can be undone."
+  },
+  "administratorsPromoted": "{email} agora administra a organização",
+  "@administratorsPromoted": {
+    "description": "Toast after making a member an administrator.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "administratorsDemoteTitle": "Tornar {email} membro?",
+  "@administratorsDemoteTitle": {
+    "description": "Title of the sheet that confirms turning an administrator back into a member.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "administratorsDemoteStops": "Deixa de administrar a organização e de ver os grupos em que não está.",
+  "@administratorsDemoteStops": {
+    "description": "What changes when an administrator becomes a member."
+  },
+  "administratorsDemoteStays": "Continua nos grupos em que já está. Se não estiver em nenhum, continua na organização sem ver o mapa até ser convidado para um grupo.",
+  "@administratorsDemoteStays": {
+    "description": "What stays the same when an administrator becomes a member."
+  },
+  "administratorsDemoted": "{email} agora é membro",
+  "@administratorsDemoted": {
+    "description": "Toast after turning an administrator back into a member.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "appearanceTitle": "Aparência",
+  "@appearanceTitle": {
+    "description": "Title of the screen where an administrator changes the organization's name, theme and logo."
+  },
+  "appearanceYouAdminister": "Você administra esta organização",
+  "@appearanceYouAdminister": {
+    "description": "Under the organization's name on Aparência."
+  },
+  "appearanceName": "Nome",
+  "@appearanceName": {
+    "description": "Label of the organization's name row."
+  },
+  "appearanceLogo": "Logo",
+  "@appearanceLogo": {
+    "description": "Label of the organization's logo row."
+  },
+  "appearanceNoLogo": "Sem logo · usamos a inicial",
+  "@appearanceNoLogo": {
+    "description": "Logo row when the organization has no logo."
+  },
+  "appearanceLogoSaved": "PNG quadrado de 512 px",
+  "@appearanceLogoSaved": {
+    "description": "Logo row when the saved logo is shown."
+  },
+  "appearanceLogoNew": "Novo logo · salve para aplicar",
+  "@appearanceLogoNew": {
+    "description": "Logo row when a new logo was picked but not saved yet."
+  },
+  "appearanceLogoFormats": "SVG, PNG, JPEG ou WebP",
+  "@appearanceLogoFormats": {
+    "description": "Hint with the image formats accepted for the logo."
+  },
+  "appearanceTheme": "Tema",
+  "@appearanceTheme": {
+    "description": "Heading of the theme picker."
+  },
+  "appearanceNextLaunch": "A equipe vê a nova aparência na próxima vez que abrir o app.",
+  "@appearanceNextLaunch": {
+    "description": "Note on when the changes reach the team; also the text of the toast after saving."
+  },
+  "appearanceSaved": "Aparência salva",
+  "@appearanceSaved": {
+    "description": "Title of the toast after saving the appearance."
+  },
+  "appearanceNameDialog": "Nome da organização",
+  "@appearanceNameDialog": {
+    "description": "Title of the dialog that edits the organization's name."
+  },
+  "appearanceLogoError": "Não deu para usar este arquivo",
+  "@appearanceLogoError": {
+    "description": "Title of the logo sheet when the file could not be converted."
+  },
+  "appearanceLogoPreview": "Assim fica o logo",
+  "@appearanceLogoPreview": {
+    "description": "Title of the logo sheet showing the converted logo."
+  },
+  "appearanceLogoSheet": "Logo da organização",
+  "@appearanceLogoSheet": {
+    "description": "Title of the logo sheet while it converts the file."
+  },
+  "appearanceConverting": "Convertendo para PNG no seu celular",
+  "@appearanceConverting": {
+    "description": "Shown while the picked file is converted to a PNG."
+  },
+  "appearanceUseLogo": "Usar este logo",
+  "@appearanceUseLogo": {
+    "description": "Button that keeps the converted logo."
+  },
+  "appearanceLogoExplained": "Convertemos o arquivo para um PNG quadrado de 512 px. É assim que ele aparece no topo do app, no menu e na lista de organizações.",
+  "@appearanceLogoExplained": {
+    "description": "Explains the converted logo under its preview."
+  },
+  "loginWithGoogle": "Entrar com o Google",
+  "@loginWithGoogle": {
+    "description": "Text of the Google sign-in button (Android)."
+  },
+  "loginLookingForOrganization": "Procurando sua organização…",
+  "@loginLookingForOrganization": {
+    "description": "Shown on the sign-in screen while the person's organizations are looked up."
+  },
+  "loginEntering": "Entrando em {name}…",
+  "@loginEntering": {
+    "description": "Shown on the sign-in screen while the remembered organization opens.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "accountHeaderSwitch": "Trocar",
+  "@accountHeaderSwitch": {
+    "description": "Button next to the signed-in Google account that picks another account."
+  },
+  "inviteCardTitle": "Você tem um convite",
+  "@inviteCardTitle": {
+    "description": "Small heading of an invite card on the organization screens."
+  },
+  "inviteSomeone": "Alguém",
+  "@inviteSomeone": {
+    "description": "Stands for the inviter when their name is unknown."
+  },
+  "inviteCardBody": "{inviter} chamou você para o grupo {group}, {role, select, both{em campo e vendo o mapa} publisher{em campo} other{vendo o mapa}}.",
+  "@inviteCardBody": {
+    "description": "What an invite is for. role is both (shares their location and sees the map), publisher (shares their location) or subscriber (sees the map).",
+    "placeholders": {
+      "inviter": {
+        "type": "String",
+        "example": "Ana Lima"
+      },
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      },
+      "role": {
+        "type": "String",
+        "example": "both"
+      }
+    }
+  },
+  "inviteCardValidUntil": "Vale até {date}.",
+  "@inviteCardValidUntil": {
+    "description": "Sentence after an invite's text with the day it expires.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "MMMMd",
+        "example": "2026-11-09"
+      }
+    }
+  },
+  "inviteCardEntering": "Entrando na {name}…",
+  "@inviteCardEntering": {
+    "description": "Accept button while the invite is being accepted.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "inviteCardAccept": "Aceitar e entrar",
+  "@inviteCardAccept": {
+    "description": "Button that accepts an invite and opens the organization."
+  },
+  "noOrganizationTitle": "Você ainda não faz parte de uma organização",
+  "@noOrganizationTitle": {
+    "description": "Title of the screen for a person who belongs to no organization."
+  },
+  "noOrganizationBody": "Crie a da sua equipe agora ou peça para alguém dela adicionar você.",
+  "@noOrganizationBody": {
+    "description": "Text under the title of the no-organization screen."
+  },
+  "noOrganizationFast": "Nome e tema em menos de 2 minutos",
+  "@noOrganizationFast": {
+    "description": "First bullet about creating an organization."
+  },
+  "noOrganizationYouAdminister": "Você administra e convida a equipe",
+  "@noOrganizationYouAdminister": {
+    "description": "Second bullet about creating an organization."
+  },
+  "noOrganizationLater": "O logo e a aparência você ajusta depois, no app",
+  "@noOrganizationLater": {
+    "description": "Third bullet about creating an organization."
+  },
+  "noOrganizationCreate": "Criar minha organização",
+  "@noOrganizationCreate": {
+    "description": "Button that starts creating an organization."
+  },
+  "noOrganizationRecheck": "Já me convidaram · verificar de novo",
+  "@noOrganizationRecheck": {
+    "description": "Button that looks up the person's organizations and invites again."
+  },
+  "pickerTitle": "Em qual organização você quer entrar?",
+  "@pickerTitle": {
+    "description": "Title of the organization picker."
+  },
+  "pickerCount": "{count, plural, =0{Você participa de 0. Dá para trocar depois pelo menu.} =1{Você participa de 1 organização.} other{Você participa de {count}. Dá para trocar depois pelo menu.}}",
+  "@pickerCount": {
+    "description": "Under the picker's title: how many organizations the person belongs to.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "pickerCreate": "Criar nova organização",
+  "@pickerCreate": {
+    "description": "Button at the bottom of the picker that starts creating an organization."
+  },
+  "creationTitle": "Nova organização",
+  "@creationTitle": {
+    "description": "Title at the top of the organization creation wizard."
+  },
+  "creationStep": "{step} de {count}",
+  "@creationStep": {
+    "description": "Which step of the creation wizard is shown.",
+    "placeholders": {
+      "step": {
+        "type": "int",
+        "example": "1"
+      },
+      "count": {
+        "type": "int",
+        "example": "4"
+      }
+    }
+  },
+  "creationReadyTitle": "A {name} está pronta",
+  "@creationReadyTitle": {
+    "description": "Title after the organization was created and is active.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "creationReadyBody": "O app já aparece com o nome e o tema de vocês. O logo você adiciona quando quiser, em Aparência. Próximo passo: chame sua equipe em Grupos.",
+  "@creationReadyBody": {
+    "description": "Text after the organization was created. Aparência and Grupos are names of screens in the menu."
+  },
+  "creationReadyEnter": "Entrar na {name}",
+  "@creationReadyEnter": {
+    "description": "Button that opens the newly created organization.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "creationBillingTitle": "Falta ativar o faturamento",
+  "@creationBillingTitle": {
+    "description": "Title after a Standard organization was created but has no billing account yet."
+  },
+  "creationBillingBody": "A {name} roda num projeto do Google Cloud pago pela sua organização. Entre no Google Cloud com esta mesma Conta Google, escolha ou crie uma conta de faturamento e vincule ao projeto monamienet-{id}. O identificador fica reservado por 7 dias.",
+  "@creationBillingBody": {
+    "description": "What to do so that a Standard organization can start.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      },
+      "id": {
+        "type": "String",
+        "example": "transporteslima"
+      }
+    }
+  },
+  "creationFailedTitle": "Algo deu errado ao criar a {name}",
+  "@creationFailedTitle": {
+    "description": "Title when the creation of the organization failed on the server.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "creationFailedBody": "Não é nada que você precise fazer. A equipe do MonAmie já foi avisada e vai terminar a criação. O identificador {id} continua reservado para vocês enquanto isso.",
+  "@creationFailedBody": {
+    "description": "Text when the creation of the organization failed on the server.",
+    "placeholders": {
+      "id": {
+        "type": "String",
+        "example": "transporteslima"
+      }
+    }
+  },
+  "creationNameTitle": "Como sua organização se chama?",
+  "@creationNameTitle": {
+    "description": "Title of the name step of the creation wizard."
+  },
+  "creationNameSubtitle": "Use o nome que a equipe reconhece: da empresa, do grupo ou do projeto.",
+  "@creationNameSubtitle": {
+    "description": "Subtitle of the name step."
+  },
+  "creationNameLabel": "Nome da organização",
+  "@creationNameLabel": {
+    "description": "Label of the organization name field."
+  },
+  "creationNamePreview": "Sua equipe vai ver {name} no topo do app",
+  "@creationNamePreview": {
+    "description": "Under the name field; name is drawn in bold.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "creationIdLabel": "Identificador",
+  "@creationIdLabel": {
+    "description": "Label of the organization identifier field."
+  },
+  "creationIdAdjusted": "Ajustamos para letras minúsculas, sem acentos, espaços ou números.",
+  "@creationIdAdjusted": {
+    "description": "Shown when the typed identifier was adjusted."
+  },
+  "creationIdRules": "Só letras minúsculas, sem acentos, espaços ou números. É o código da organização no MonAmie.",
+  "@creationIdRules": {
+    "description": "Rules of the organization identifier."
+  },
+  "creationIdPermanent": "O identificador não muda depois. O nome pode mudar.",
+  "@creationIdPermanent": {
+    "description": "Note that the identifier is permanent."
+  },
+  "creationIdTooShort": "Mínimo 3 letras",
+  "@creationIdTooShort": {
+    "description": "Status next to the identifier field when it is too short."
+  },
+  "creationIdAvailable": "Disponível",
+  "@creationIdAvailable": {
+    "description": "Status next to the identifier field when no other organization uses it."
+  },
+  "planCommunity": "Community",
+  "@planCommunity": {
+    "description": "Name of the free plan (a product name, the same in every language)."
+  },
+  "planStandard": "Standard",
+  "@planStandard": {
+    "description": "Name of the paid plan (a product name, the same in every language)."
+  },
+  "creationPlanTitle": "Escolha um plano",
+  "@creationPlanTitle": {
+    "description": "Title of the plan step of the creation wizard."
+  },
+  "creationPlanSubtitle": "Os dois têm o mapa, os grupos e a aparência da {name}. Muda onde os dados ficam e quem paga.",
+  "@creationPlanSubtitle": {
+    "description": "Subtitle of the plan step.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "creationPlanFree": "Grátis",
+  "@creationPlanFree": {
+    "description": "Price tag of the Community plan."
+  },
+  "creationPlanCommunityTagline": "Para começar agora, sem cadastrar pagamento.",
+  "@creationPlanCommunityTagline": {
+    "description": "Who the Community plan is for."
+  },
+  "creationPlanCommunityReady": "Pronta em instantes",
+  "@creationPlanCommunityReady": {
+    "description": "First point of the Community plan."
+  },
+  "creationPlanCommunityData": "Dados guardados pela MonAmie, separados das outras organizações",
+  "@creationPlanCommunityData": {
+    "description": "Second point of the Community plan."
+  },
+  "creationPlanCommunityInterval": "Localização enviada a cada 15 min (perfil Economia)",
+  "@creationPlanCommunityInterval": {
+    "description": "Third point of the Community plan; Economia is the name of a tracking profile."
+  },
+  "creationPlanGoogleUsage": "Uso no Google",
+  "@creationPlanGoogleUsage": {
+    "description": "Price tag of the Standard plan: the organization pays Google for what it uses."
+  },
+  "creationPlanStandardTagline": "Para quem quer o próprio espaço de dados e mais precisão.",
+  "@creationPlanStandardTagline": {
+    "description": "Who the Standard plan is for."
+  },
+  "creationPlanStandardProject": "Projeto Firebase só da {name}",
+  "@creationPlanStandardProject": {
+    "description": "First point of the Standard plan.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "creationPlanStandardProfiles": "Todos os perfis de acompanhamento, até a cada 1 min",
+  "@creationPlanStandardProfiles": {
+    "description": "Second point of the Standard plan."
+  },
+  "creationPlanStandardBilling": "Pede uma conta de faturamento do Google Cloud; vocês pagam o uso direto ao Google",
+  "@creationPlanStandardBilling": {
+    "description": "Third point of the Standard plan."
+  },
+  "creationPlanSwitchLater": "Dá para passar do Community para o Standard depois, sem perder grupos nem histórico.",
+  "@creationPlanSwitchLater": {
+    "description": "Note under the plans."
+  },
+  "creationPlanContinue": "Continuar com {plan}",
+  "@creationPlanContinue": {
+    "description": "Button of the plan step; plan is the chosen plan's name.",
+    "placeholders": {
+      "plan": {
+        "type": "String",
+        "example": "Community"
+      }
+    }
+  },
+  "creationReviewTitle": "Tudo certo?",
+  "@creationReviewTitle": {
+    "description": "Title of the review step of the creation wizard."
+  },
+  "creationReviewTeamSees": "Sua equipe vai ver",
+  "@creationReviewTeamSees": {
+    "description": "Small text above the organization's name in the review preview."
+  },
+  "creationReviewName": "Nome",
+  "@creationReviewName": {
+    "description": "Label of the name row of the review."
+  },
+  "creationReviewTheme": "Tema",
+  "@creationReviewTheme": {
+    "description": "Label of the theme row of the review."
+  },
+  "creationReviewPlan": "Plano",
+  "@creationReviewPlan": {
+    "description": "Label of the plan row of the review."
+  },
+  "creationReviewOwnerTitle": "Você será titular",
+  "@creationReviewOwnerTitle": {
+    "description": "Heading of the note about the person who creates the organization. Titular is gender-neutral."
+  },
+  "creationReviewOwnerBody": "{email} vai administrar a organização: convidar pessoas, criar grupos, mudar a aparência e adicionar o logo. Depois, outras pessoas também podem administrar.",
+  "@creationReviewOwnerBody": {
+    "description": "What the owner does.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "creationTermsAccept": "Li e aceito os {terms}.",
+  "@creationTermsAccept": {
+    "description": "Checkbox to accept the terms; terms is creationTerms, drawn in bold.",
+    "placeholders": {
+      "terms": {
+        "type": "String",
+        "example": "Termos para organizações"
+      }
+    }
+  },
+  "creationTerms": "Termos para organizações",
+  "@creationTerms": {
+    "description": "Name of the terms an organization accepts."
+  },
+  "creationCreate": "Criar organização",
+  "@creationCreate": {
+    "description": "Button that creates the organization."
+  },
+  "creationThemeTitle": "Escolha um tema",
+  "@creationThemeTitle": {
+    "description": "Title of the theme step of the creation wizard."
+  },
+  "creationThemeSubtitle": "Cada tema já traz os tons do app, com contraste garantido para textos e botões.",
+  "@creationThemeSubtitle": {
+    "description": "Subtitle of the theme step."
+  },
+  "creationThemePreview": "Prévia do app com o tema",
+  "@creationThemePreview": {
+    "description": "Screen reader label of the theme preview."
+  },
+  "creationPreviewGroup": "Motoristas",
+  "@creationPreviewGroup": {
+    "description": "Sample group name shown in the theme preview."
+  },
+  "creationPreviewSharing": "Compartilhando",
+  "@creationPreviewSharing": {
+    "description": "Sample sharing pill shown in the theme preview."
+  },
+  "createGroupTitle": "Novo grupo",
+  "@createGroupTitle": {
+    "description": "Title of the screen that creates a group."
+  },
+  "createGroupHeading": "Criar um grupo",
+  "@createGroupHeading": {
+    "description": "Heading of the create group form."
+  },
+  "groupNameLabel": "Nome do grupo",
+  "@groupNameLabel": {
+    "description": "Label of the group name field."
+  },
+  "groupNameHint": "Ex.: Motoristas",
+  "@groupNameHint": {
+    "description": "Example group name in an empty group name field."
+  },
+  "groupNameHelper": "É assim que o grupo aparece no mapa e nos convites.",
+  "@groupNameHelper": {
+    "description": "Help under the group name field."
+  },
+  "createGroupNote": "Você administra a organização, então já vê todos os grupos no mapa. O grupo nasce vazio: depois de criar, convide quem vai fazer parte dele.",
+  "@createGroupNote": {
+    "description": "Note on the create group form."
+  },
+  "createGroupButton": "Criar grupo",
+  "@createGroupButton": {
+    "description": "Button that creates a group."
+  },
+  "createGroupDone": "Grupo criado",
+  "@createGroupDone": {
+    "description": "Title after a group was created."
+  },
+  "createGroupDoneBody": "{group} ainda não tem ninguém. Convide as pessoas que vão trabalhar nele e escolha o que cada uma faz no app.",
+  "@createGroupDoneBody": {
+    "description": "Text after a group was created.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      }
+    }
+  },
+  "createGroupOpen": "Ver o grupo",
+  "@createGroupOpen": {
+    "description": "Button that opens the group just created."
+  },
+  "rolePublisher": "Em campo",
+  "@rolePublisher": {
+    "description": "Name of the role of a person who shares their own location in a group."
+  },
+  "rolePublisherDescription": "Compartilha a própria localização",
+  "@rolePublisherDescription": {
+    "description": "One line under the in-the-field role in the role pickers."
+  },
+  "roleSubscriber": "Vê o mapa",
+  "@roleSubscriber": {
+    "description": "Name of the role of a person who sees the group on the map."
+  },
+  "roleSubscriberDescription": "Vê quem está em campo",
+  "@roleSubscriberDescription": {
+    "description": "One line under the sees-the-map role in the role pickers."
+  },
+  "roleMaintainer": "Gestor do grupo",
+  "@roleMaintainer": {
+    "description": "Name of the role of a person who manages a group's people and invites."
+  },
+  "roleMaintainerDescription": "Cuida das pessoas e dos convites do grupo",
+  "@roleMaintainerDescription": {
+    "description": "One line under the group manager role in the role pickers."
+  },
+  "peopleCount": "{count, plural, =0{Ninguém ainda} =1{1 pessoa} other{{count} pessoas}}",
+  "@peopleCount": {
+    "description": "How many people a group has.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "4"
+      }
+    }
+  },
+  "pendingInvites": "{count, plural, =0{0 convites pendentes} =1{1 convite pendente} other{{count} convites pendentes}}",
+  "@pendingInvites": {
+    "description": "How many invites of a group wait for an answer (never shown for none).",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "inviteValidUntil": "Vale até {date}",
+  "@inviteValidUntil": {
+    "description": "Status of a pending invite with the day it expires.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "MMMMd",
+        "example": "2026-11-09"
+      }
+    }
+  },
+  "inviteExpired": "Expirado",
+  "@inviteExpired": {
+    "description": "Status of an expired invite whose date is unknown."
+  },
+  "inviteExpiredOn": "Expirado · venceu em {date}",
+  "@inviteExpiredOn": {
+    "description": "Status of an expired invite with the day it expired.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "MMMMd",
+        "example": "2026-11-09"
+      }
+    }
+  },
+  "invitesResend": "Reenviar",
+  "@invitesResend": {
+    "description": "Button that sends an expired invite again."
+  },
+  "invitesNone": "Nenhum convite pendente.",
+  "@invitesNone": {
+    "description": "Shown when a group has no pending invites."
+  },
+  "invitesResendTitle": "Reenviar o convite?",
+  "@invitesResendTitle": {
+    "description": "Title of the sheet that confirms resending an invite."
+  },
+  "invitesResendConfirm": "Reenviar convite",
+  "@invitesResendConfirm": {
+    "description": "Button that resends an invite."
+  },
+  "invitesResending": "Reenviando…",
+  "@invitesResending": {
+    "description": "Resend button while the invite is being resent."
+  },
+  "invitesResendEmail": "{email} recebe um novo e-mail.",
+  "@invitesResendEmail": {
+    "description": "What resending an invite does.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "invitesResendValid": "O novo convite vale por 14 dias.",
+  "@invitesResendValid": {
+    "description": "How long a resent invite is valid."
+  },
+  "invitesResent": "Convite reenviado",
+  "@invitesResent": {
+    "description": "Toast after resending an invite."
+  },
+  "invitesCancelTitle": "Cancelar o convite?",
+  "@invitesCancelTitle": {
+    "description": "Title of the sheet that confirms cancelling an invite."
+  },
+  "invitesCancelConfirm": "Cancelar convite",
+  "@invitesCancelConfirm": {
+    "description": "Button that cancels an invite."
+  },
+  "invitesCancelling": "Cancelando…",
+  "@invitesCancelling": {
+    "description": "Cancel button while the invite is being cancelled."
+  },
+  "invitesCancelLink": "O link enviado para {email} deixa de funcionar.",
+  "@invitesCancelLink": {
+    "description": "What cancelling an invite does.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "invitesInviteAgain": "Você pode convidar de novo depois.",
+  "@invitesInviteAgain": {
+    "description": "Reassures that a cancelled invite can be sent again."
+  },
+  "invitesCancelled": "Convite cancelado",
+  "@invitesCancelled": {
+    "description": "Toast after cancelling an invite."
+  },
+  "groupPersonEditRoles": "Mudar o que {name} faz",
+  "@groupPersonEditRoles": {
+    "description": "Screen reader label of a person row that opens their roles.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "groupDeletionLoses": "{count, plural, =0{0 pessoas só estavam neste grupo e perdem o acesso à {organization}.} =1{1 pessoa só estava neste grupo e perde o acesso à {organization}.} other{{count} pessoas só estavam neste grupo e perdem o acesso à {organization}.}}",
+  "@groupDeletionLoses": {
+    "description": "Line of the delete group sheet: people in no other group.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      },
+      "organization": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "groupDeletionStays": "{count, plural, =0{0 pessoas continuam nos outros grupos.} =1{1 pessoa continua nos outros grupos.} other{{count} pessoas continuam nos outros grupos.}}",
+  "@groupDeletionStays": {
+    "description": "Line of the delete group sheet: people who are also in other groups.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "groupDeletionInvites": "{count, plural, =0{Os 0 convites pendentes são cancelados.} =1{O convite pendente é cancelado.} other{Os {count} convites pendentes são cancelados.}}",
+  "@groupDeletionInvites": {
+    "description": "Line of the delete group sheet: the group's pending invites.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "groupDeletionTrails": "Os trajetos publicados neste grupo são apagados junto. Não dá para desfazer.",
+  "@groupDeletionTrails": {
+    "description": "Last line of the delete group sheet."
+  },
+  "groupDeletedLost": "{count, plural, =0{0 pessoas perderam o acesso à {organization}.} =1{1 pessoa perdeu o acesso à {organization}.} other{{count} pessoas perderam o acesso à {organization}.}}",
+  "@groupDeletedLost": {
+    "description": "After deleting a group: how many people lost access to the organization.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      },
+      "organization": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "groupDeletedOthersStay": "Quem estava em outros grupos continua neles.",
+  "@groupDeletedOthersStay": {
+    "description": "After deleting a group: what happens to the others."
+  },
+  "presetEconomia": "Economia",
+  "@presetEconomia": {
+    "description": "Name of the tracking profile that saves the most battery."
+  },
+  "presetEquilibrio": "Equilíbrio",
+  "@presetEquilibrio": {
+    "description": "Name of the balanced tracking profile."
+  },
+  "presetPrecisao": "Precisão",
+  "@presetPrecisao": {
+    "description": "Name of the most precise tracking profile."
+  },
+  "presetPersonalizado": "Personalizado",
+  "@presetPersonalizado": {
+    "description": "Name of the tracking profile where the administrator picks interval and distance."
+  },
+  "groupPeopleEmpty": "Ninguém neste grupo ainda. Convide quem vai trabalhar nele.",
+  "@groupPeopleEmpty": {
+    "description": "Shown when a group has no people."
+  },
+  "groupRolesTitle": "O que {email} faz",
+  "@groupRolesTitle": {
+    "description": "Title of the sheet that changes a person's roles in a group.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "groupRolesImmediate": "A mudança vale na hora.",
+  "@groupRolesImmediate": {
+    "description": "Note in the roles sheet."
+  },
+  "groupRolesUpdated": "Papel atualizado",
+  "@groupRolesUpdated": {
+    "description": "Toast after changing a person's roles."
+  },
+  "groupRemoveTitle": "Remover {email} de {group}?",
+  "@groupRemoveTitle": {
+    "description": "Title of the sheet that confirms removing a person from a group.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      },
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      }
+    }
+  },
+  "groupRemoving": "Removendo…",
+  "@groupRemoving": {
+    "description": "Remove button while the person is being removed."
+  },
+  "groupRemoveAccess": "Se este for o único grupo da pessoa, o acesso à {organization} acaba (a não ser que ela administre a organização).",
+  "@groupRemoveAccess": {
+    "description": "What removing a person does to their access.",
+    "placeholders": {
+      "organization": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "groupRemoveMap": "Deixa de aparecer no mapa deste grupo e de ver quem está nele.",
+  "@groupRemoveMap": {
+    "description": "What removing a person does on the map."
+  },
+  "groupRemoveHistory": "Os trajetos antigos continuam no histórico.",
+  "@groupRemoveHistory": {
+    "description": "What removing a person keeps."
+  },
+  "groupRemoved": "{email} não faz mais parte do grupo",
+  "@groupRemoved": {
+    "description": "Toast after removing a person from a group.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "groupTitle": "Grupo",
+  "@groupTitle": {
+    "description": "Title of the screen of one group."
+  },
+  "groupNotFound": "Grupo não encontrado.",
+  "@groupNotFound": {
+    "description": "Shown when the group no longer exists."
+  },
+  "groupRename": "Renomear",
+  "@groupRename": {
+    "description": "Button that opens the rename group sheet."
+  },
+  "groupTabPeople": "No grupo · {count}",
+  "@groupTabPeople": {
+    "description": "Tab with the group's people and how many they are.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "4"
+      }
+    }
+  },
+  "groupTabInvited": "Convidados · {count}",
+  "@groupTabInvited": {
+    "description": "Tab with the group's pending invites; count is a number, or … while it loads.",
+    "placeholders": {
+      "count": {
+        "type": "String",
+        "example": "2"
+      }
+    }
+  },
+  "groupInvite": "Convidar para este grupo",
+  "@groupInvite": {
+    "description": "Button that opens the invite screen for this group."
+  },
+  "groupDelete": "Excluir grupo",
+  "@groupDelete": {
+    "description": "Button that deletes the group, and the confirm button of its sheet."
+  },
+  "groupDeleted": "Grupo excluído",
+  "@groupDeleted": {
+    "description": "Title after a group was deleted."
+  },
+  "groupSeeGroups": "Ver grupos",
+  "@groupSeeGroups": {
+    "description": "Button that goes back to the list of groups after deleting one."
+  },
+  "groupRenameTitle": "Renomear grupo",
+  "@groupRenameTitle": {
+    "description": "Title of the rename group sheet."
+  },
+  "groupRenameConfirm": "Salvar nome",
+  "@groupRenameConfirm": {
+    "description": "Button that saves the new group name."
+  },
+  "groupRenameNote": "As pessoas do grupo veem o novo nome na hora.",
+  "@groupRenameNote": {
+    "description": "Note under the group name field in the rename sheet."
+  },
+  "groupRenamed": "Grupo renomeado",
+  "@groupRenamed": {
+    "description": "Toast after renaming a group."
+  },
+  "groupDeleteTitle": "Excluir {group}?",
+  "@groupDeleteTitle": {
+    "description": "Title of the sheet that confirms deleting a group.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      }
+    }
+  },
+  "groupDeleting": "Excluindo…",
+  "@groupDeleting": {
+    "description": "Delete button while the group is being deleted."
+  },
+  "groupsTitle": "Grupos",
+  "@groupsTitle": {
+    "description": "Title of the screen that lists the organization's groups, and its menu item."
+  },
+  "groupsEmptyAdmin": "Sua organização ainda não tem grupos. Crie o primeiro e convide quem vai trabalhar nele.",
+  "@groupsEmptyAdmin": {
+    "description": "Shown to an administrator when there are no groups."
+  },
+  "groupsEmptyMaintainer": "Você não é gestor de nenhum grupo agora.",
+  "@groupsEmptyMaintainer": {
+    "description": "Shown to a group manager who manages no group."
+  },
+  "calendarPreviousMonth": "Mês anterior",
+  "@calendarPreviousMonth": {
+    "description": "Tooltip of the arrow that shows the previous month in the history calendar."
+  },
+  "calendarNextMonth": "Próximo mês",
+  "@calendarNextMonth": {
+    "description": "Tooltip of the arrow that shows the next month in the history calendar."
+  },
+  "calendarDaysWithTrails": "Dias com trajetos",
+  "@calendarDaysWithTrails": {
+    "description": "Legend of the dot that marks days with trails."
+  },
+  "calendarDayLabel": "{date}{today, select, yes{, hoje} other{}}{status, select, future{, ainda não chegou} trails{, com trajetos} other{, sem trajetos}}",
+  "@calendarDayLabel": {
+    "description": "Screen reader label of a day in the history calendar. today is yes or no; status is future, trails or none.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "MMMMd",
+        "example": "2026-11-09"
+      },
+      "today": {
+        "type": "String",
+        "example": "yes"
+      },
+      "status": {
+        "type": "String",
+        "example": "trails"
+      }
+    }
+  },
+  "permissionBackgroundUsage": "O seu aparelho está restringindo o aplicativo em segundo plano. Assim, o rastreamento é desabilitado quando você sai do aplicativo ou desliga a tela.\n\nComo ajustar:\n1. Toque em 'Prosseguir'.\n2. Ative 'Permitir o uso em segundo plano' (ou escolha 'Sem restrições').\n3. Volte para o aplicativo.\n\nSe abrir a tela de informações do app, toque antes em 'Uso da bateria pelo app' (ou 'Bateria'). Se o interruptor já aparecer ativado, desative-o e ative-o novamente.",
+  "@permissionBackgroundUsage": {
+    "description": "Dialog asking to lift Android's background restriction. The quoted names are Android settings as Android shows them in each language; Prosseguir is permissionContinue."
+  },
+  "permissionBackgroundLocation": "O app deseja coletar dados de localização mesmo quando o aplicativo estiver fechado ou não estiver em uso.\n\nEsses dados permitem que um grupo de pessoas, determinado e gerenciado pela sua empresa, visualize sua posição em tempo real.\n\nComo ativar:\n1. Toque em 'Prosseguir'.\n2. Em Permissões > Localização.\n3. Selecione 'Permitir o tempo todo'.",
+  "@permissionBackgroundLocation": {
+    "description": "Prominent disclosure before asking for background location (required by Google Play). The quoted names are Android settings as Android shows them in each language."
+  },
+  "permissionGpsOffTitle": "O GPS está desativado",
+  "@permissionGpsOffTitle": {
+    "description": "Title of the dialog shown when the device's location is off."
+  },
+  "permissionGpsOffBody": "Por favor, ative o GPS para continuar.",
+  "@permissionGpsOffBody": {
+    "description": "Text of the dialog shown when the device's location is off."
+  },
+  "permissionGotIt": "ENTENDI",
+  "@permissionGotIt": {
+    "description": "Button that closes the GPS dialog, in capitals."
+  },
+  "permissionAttention": "Atenção",
+  "@permissionAttention": {
+    "description": "Title of the permission dialogs."
+  },
+  "permissionNotNow": "AGORA NÃO",
+  "@permissionNotNow": {
+    "description": "Button that declines a permission dialog, in capitals."
+  },
+  "permissionContinue": "PROSSEGUIR",
+  "@permissionContinue": {
+    "description": "Button that goes on to the permission or settings screen, in capitals."
+  },
+  "mapGroupChip": "Grupo no mapa: {group}",
+  "@mapGroupChip": {
+    "description": "Screen reader label of the button that picks the group shown on the map.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      }
+    }
+  },
+  "mapSeeOnMap": "VER NO MAPA",
+  "@mapSeeOnMap": {
+    "description": "Heading of the group picker over the map, in capitals."
+  },
+  "groupCount": "{count, plural, =0{0 grupos} =1{1 grupo} other{{count} grupos}}",
+  "@groupCount": {
+    "description": "How many groups the group picker lists.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "mapNoGroups": "Nenhum grupo disponível",
+  "@mapNoGroups": {
+    "description": "Shown in the group picker when the person sees no group."
+  },
+  "memberCount": "{count, plural, =0{0 pessoas} =1{1 pessoa} other{{count} pessoas}}",
+  "@memberCount": {
+    "description": "How many people a group on the map has.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "4"
+      }
+    }
+  },
+  "homeMenuTooltip": "Menu",
+  "@homeMenuTooltip": {
+    "description": "Tooltip of the button that opens the side menu."
+  },
+  "homeGroupChip": "Grupo: {group}",
+  "@homeGroupChip": {
+    "description": "Screen reader label of the chip with the group(s) a person shares with.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      }
+    }
+  },
+  "homeDayChip": "Histórico por data, {day}",
+  "@homeDayChip": {
+    "description": "Screen reader label of the chip that opens the history calendar; day is the chip's text.",
+    "placeholders": {
+      "day": {
+        "type": "String",
+        "example": "Hoje"
+      }
+    }
+  },
+  "homeBackToToday": "Voltar para hoje",
+  "@homeBackToToday": {
+    "description": "Chip that goes back to today's map."
+  },
+  "dayToday": "Hoje",
+  "@dayToday": {
+    "description": "The observed day when it is today."
+  },
+  "dayYesterday": "Ontem",
+  "@dayYesterday": {
+    "description": "The observed day when it is yesterday."
+  },
+  "homeChooseGroup": "Escolher grupo",
+  "@homeChooseGroup": {
+    "description": "Group chip before the person picks the group to see."
+  },
+  "homeNoGroup": "Sem grupo",
+  "@homeNoGroup": {
+    "description": "Group chip of a person who shares with no group."
+  },
+  "homeMoreGroups": "{group} +{more}",
+  "@homeMoreGroups": {
+    "description": "Group chip of a person who shares with several groups: the first one and how many more.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      },
+      "more": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "menuAdministers": "Administra a organização",
+  "@menuAdministers": {
+    "description": "Line under the organization's name in the menu, for an administrator."
+  },
+  "menuWatchesAndShares": "Acompanha e compartilha",
+  "@menuWatchesAndShares": {
+    "description": "Line under the organization's name in the menu, for a person who sees the map and shares their location."
+  },
+  "menuWatches": "Acompanha o mapa",
+  "@menuWatches": {
+    "description": "Line under the organization's name in the menu, for a person who only sees the map."
+  },
+  "menuInTheField": "{group} · em campo",
+  "@menuInTheField": {
+    "description": "Line under the organization's name in the menu, for a person who only shares their location.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      }
+    }
+  },
+  "menuSwitchOrganization": "Trocar de organização",
+  "@menuSwitchOrganization": {
+    "description": "Menu item that goes back to the organization picker."
+  },
+  "menuMyAccount": "Minha conta",
+  "@menuMyAccount": {
+    "description": "Screen reader label of the account card in the menu."
+  },
+  "menuGroupManagement": "GESTÃO DE GRUPOS",
+  "@menuGroupManagement": {
+    "description": "Menu section for group managers, in capitals."
+  },
+  "menuMyGroups": "Meus grupos",
+  "@menuMyGroups": {
+    "description": "Menu item that opens the groups a group manager manages."
+  },
+  "menuAdministration": "ADMINISTRAÇÃO",
+  "@menuAdministration": {
+    "description": "Menu section for administrators, in capitals."
+  },
+  "menuAppearance": "Aparência da organização",
+  "@menuAppearance": {
+    "description": "Menu item that opens Aparência."
+  },
+  "menuTrackingSettings": "Ajustes de acompanhamento",
+  "@menuTrackingSettings": {
+    "description": "Menu item that opens the tracking settings, and that screen's title."
+  },
+  "homeLoadingGroup": "Carregando {group}…",
+  "@homeLoadingGroup": {
+    "description": "Banner over the map while the picked group's people load.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      }
+    }
+  },
+  "homeAllowNotification": "Permitir notificação",
+  "@homeAllowNotification": {
+    "description": "Button that asks for the notification permission."
+  },
+  "homeAllowLocationWhileInUse": "Permitir localização (durante uso)",
+  "@homeAllowLocationWhileInUse": {
+    "description": "Button that asks for the location permission while the app is in use."
+  },
+  "homeAllowLocationAlways": "Permitir localização (sempre)",
+  "@homeAllowLocationAlways": {
+    "description": "Button that asks for the location permission all the time."
+  },
+  "homeAllowBackground": "Permitir uso em segundo plano",
+  "@homeAllowBackground": {
+    "description": "Button that opens the settings that lift Android's background restriction."
+  },
+  "mapAttribution": "OpenStreetMap contributors",
+  "@mapAttribution": {
+    "description": "Credit the OpenStreetMap licence requires on the map; kept in English in Portuguese, as OpenStreetMap shows it."
+  },
+  "sheetShowList": "Mostrar a lista do grupo",
+  "@sheetShowList": {
+    "description": "Screen reader label of the handle that opens the group's list under the map."
+  },
+  "sheetHideList": "Recolher a lista do grupo",
+  "@sheetHideList": {
+    "description": "Screen reader label of the handle that collapses the group's list under the map."
+  },
+  "sheetNoGroup": "Nenhum grupo escolhido",
+  "@sheetNoGroup": {
+    "description": "Shown under the map before a group is picked."
+  },
+  "sheetEmptyGroup": "Ninguém neste grupo ainda. Convide quem vai trabalhar nele para ver todos no mapa.",
+  "@sheetEmptyGroup": {
+    "description": "Shown under the map when the group has no people."
+  },
+  "invitePeople": "Convidar pessoas",
+  "@invitePeople": {
+    "description": "Button that invites people, and the title of the invite screen."
+  },
+  "personHideTrail": "Esconder trajeto de {name}",
+  "@personHideTrail": {
+    "description": "Screen reader label of the button that hides a person's trail on the map.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ana Lima"
+      }
+    }
+  },
+  "personShowTrail": "Mostrar trajeto de {name}",
+  "@personShowTrail": {
+    "description": "Screen reader label of the button that shows a person's trail on the map.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ana Lima"
+      }
+    }
+  },
+  "personTrailVisible": "{presence} · trajeto visível",
+  "@personTrailVisible": {
+    "description": "Line under a person's name when their trail is drawn; presence is how fresh their position is.",
+    "placeholders": {
+      "presence": {
+        "type": "String",
+        "example": "Agora"
+      }
+    }
+  },
+  "personCallOnMeet": "Chamar {name} no Meet",
+  "@personCallOnMeet": {
+    "description": "Screen reader label of the button that calls a person on Google Meet.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Ana Lima"
+      }
+    }
+  },
+  "presenceNever": "Ainda não ativou a localização",
+  "@presenceNever": {
+    "description": "Under the name of a person who never shared their location."
+  },
+  "presenceOff": "Localização desligada",
+  "@presenceOff": {
+    "description": "Under the name of a person who turned their location off."
+  },
+  "presenceOffSeen": "Localização desligada · visto {ago}",
+  "@presenceOffSeen": {
+    "description": "Under the name of a person who turned their location off; ago is presenceAgo.",
+    "placeholders": {
+      "ago": {
+        "type": "String",
+        "example": "há 12 min"
+      }
+    }
+  },
+  "presenceLive": "Agora",
+  "@presenceLive": {
+    "description": "Under the name of a person whose position is fresh."
+  },
+  "agoNow": "agora",
+  "@agoNow": {
+    "description": "How long ago a person was seen: less than a minute."
+  },
+  "agoMinutes": "há {minutes} min",
+  "@agoMinutes": {
+    "description": "How long ago a person was seen, in minutes.",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "agoHours": "há {hours} h",
+  "@agoHours": {
+    "description": "How long ago a person was seen, in hours.",
+    "placeholders": {
+      "hours": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "agoYesterday": "ontem",
+  "@agoYesterday": {
+    "description": "How long ago a person was seen: yesterday."
+  },
+  "agoDays": "há {days} dias",
+  "@agoDays": {
+    "description": "How long ago a person was seen, in days (2 or more).",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "presenceDayPoints": "Tem posições neste dia",
+  "@presenceDayPoints": {
+    "description": "Under a person's name on a past day when they shared their location that day."
+  },
+  "presenceDayNoPoints": "Sem posições neste dia",
+  "@presenceDayNoPoints": {
+    "description": "Under a person's name on a past day when they did not share their location that day."
+  },
+  "shareStopping": "Desativando compartilhamento…",
+  "@shareStopping": {
+    "description": "Sharing card while location sharing turns off."
+  },
+  "shareStarting": "Ativando compartilhamento…",
+  "@shareStarting": {
+    "description": "Sharing card while location sharing turns on."
+  },
+  "shareWait": "Aguarde um instante",
+  "@shareWait": {
+    "description": "Under the sharing card's title while it turns on or off."
+  },
+  "shareOn": "Compartilhando sua localização",
+  "@shareOn": {
+    "description": "Sharing card while location sharing is on."
+  },
+  "shareOnSubtitle": "Seus grupos veem você no mapa",
+  "@shareOnSubtitle": {
+    "description": "Under the sharing card's title while sharing is on."
+  },
+  "shareOff": "Localização desligada",
+  "@shareOff": {
+    "description": "Sharing card while location sharing is off."
+  },
+  "shareOffSubtitle": "Seus grupos não veem você no mapa",
+  "@shareOffSubtitle": {
+    "description": "Under the sharing card's title while sharing is off."
+  },
+  "inviteFirstGroupTitle": "Crie seu primeiro grupo",
+  "@inviteFirstGroupTitle": {
+    "description": "Heading on the invite screen when the organization has no group yet."
+  },
+  "inviteFirstGroupBody": "Toda pessoa entra num grupo. Dê um nome para o primeiro; você cria outros depois, em Grupos.",
+  "@inviteFirstGroupBody": {
+    "description": "Explains why the first invite also creates a group. Grupos is the name of a screen in the menu."
+  },
+  "inviteWhichGroup": "Para qual grupo?",
+  "@inviteWhichGroup": {
+    "description": "Label of the group picker on the invite screen."
+  },
+  "inviteGroupOption": "{group} · {people}",
+  "@inviteGroupOption": {
+    "description": "An option of the group picker: the group's name and how many people it has (peopleCount).",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      },
+      "people": {
+        "type": "String",
+        "example": "4 pessoas"
+      }
+    }
+  },
+  "inviteWho": "Quem você quer chamar?",
+  "@inviteWho": {
+    "description": "Label of the e-mail field on the invite screen."
+  },
+  "inviteEmailHint": "email@exemplo.com",
+  "@inviteEmailHint": {
+    "description": "Example e-mail in the empty e-mail field."
+  },
+  "inviteRolesQuestion": "O que cada pessoa faz? Uma ou as duas.",
+  "@inviteRolesQuestion": {
+    "description": "Heading over the list of people to invite."
+  },
+  "inviteRolesExplained": "Em campo compartilha a própria localização. Vê o mapa vê quem está em campo.",
+  "@inviteRolesExplained": {
+    "description": "Explains the two roles; Em campo and Vê o mapa are rolePublisher and roleSubscriber."
+  },
+  "inviteHowItWorks": "Cada pessoa recebe um e-mail e entra no app com essa Conta Google. A localização só é compartilhada depois que ela ativar no próprio celular.",
+  "@inviteHowItWorks": {
+    "description": "Note at the bottom of the invite screen."
+  },
+  "inviteSending": "Enviando…",
+  "@inviteSending": {
+    "description": "Send button while the invites are being sent."
+  },
+  "inviteSend": "{count, plural, =0{Enviar convite} =1{Enviar convite} other{Enviar {count} convites}}",
+  "@inviteSend": {
+    "description": "Button that sends the invites; count is how many people are in the list.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "inviteRemovePerson": "Tirar {email}",
+  "@inviteRemovePerson": {
+    "description": "Tooltip of the button that takes a person off the invite list.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "inviteNoRole": "Marque pelo menos uma opção.",
+  "@inviteNoRole": {
+    "description": "Shown under a person on the invite list who has no role."
+  },
+  "inviteSent": "{count, plural, =0{0 convites enviados} =1{Convite enviado} other{{count} convites enviados}}",
+  "@inviteSent": {
+    "description": "Title after the invites were sent.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "inviteSentBody": "Para {group}. Vale por 14 dias; acompanhe em Grupos.",
+  "@inviteSentBody": {
+    "description": "Under the title after the invites were sent. Grupos is the name of a screen in the menu.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      }
+    }
+  },
+  "inviteNotEmailed": "O e-mail não saiu agora; a pessoa vê o convite ao entrar no app com essa conta.",
+  "@inviteNotEmailed": {
+    "description": "Under an invited e-mail whose message could not be sent."
+  },
+  "inviteMore": "Convidar mais pessoas",
+  "@inviteMore": {
+    "description": "Button that goes back to the invite form after sending."
+  },
+  "welcomeJoined": "Você entrou na {name}",
+  "@welcomeJoined": {
+    "description": "Title of the welcome screen after accepting an invite.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "welcomeInvitedBy": "{group} · convite de {inviter}",
+  "@welcomeInvitedBy": {
+    "description": "Under the welcome title: the group and who sent the invite.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      },
+      "inviter": {
+        "type": "String",
+        "example": "Ana Lima"
+      }
+    }
+  },
+  "welcomeWhatYouDo": "O que você faz no app",
+  "@welcomeWhatYouDo": {
+    "description": "Heading of the welcome screen's roles."
+  },
+  "welcomePublisher": "Seus grupos veem onde você está enquanto o compartilhamento estiver ligado. Você liga e desliga quando quiser.",
+  "@welcomePublisher": {
+    "description": "What the in-the-field role means, on the welcome screen."
+  },
+  "welcomeSubscriber": "Você acompanha no mapa quem está em campo em {group}.",
+  "@welcomeSubscriber": {
+    "description": "What the sees-the-map role means, on the welcome screen.",
+    "placeholders": {
+      "group": {
+        "type": "String",
+        "example": "Motoristas"
+      }
+    }
+  },
+  "welcomeTurnOnLocation": "Ativar minha localização",
+  "@welcomeTurnOnLocation": {
+    "description": "Welcome button for a person in the field."
+  },
+  "welcomeOpenMap": "Abrir o mapa",
+  "@welcomeOpenMap": {
+    "description": "Welcome button for a person who only sees the map."
+  },
+  "welcomeLater": "Ativar depois",
+  "@welcomeLater": {
+    "description": "Welcome button that opens the map without turning on the location."
+  },
+  "trackingMinutes": "{count, plural, =0{0 min} =1{1 min} other{{count} min}}",
+  "@trackingMinutes": {
+    "description": "A number of minutes, short.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "15"
+      }
+    }
+  },
+  "trackingQuestion": "Com que frequência a equipe envia a localização?",
+  "@trackingQuestion": {
+    "description": "Heading of the tracking settings."
+  },
+  "trackingAppliesTo": "Vale para todos da {name} que estão em campo.",
+  "@trackingAppliesTo": {
+    "description": "Who the tracking settings apply to.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Transportes Lima"
+      }
+    }
+  },
+  "trackingCommunityLimit": "No plano Community, a localização é enviada no máximo a cada {minutes} min.",
+  "@trackingCommunityLimit": {
+    "description": "Limit of the free plan.",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "15"
+      }
+    }
+  },
+  "trackingInterval": "Intervalo",
+  "@trackingInterval": {
+    "description": "Label of the interval slider."
+  },
+  "trackingEvery": "a cada {interval}",
+  "@trackingEvery": {
+    "description": "Value of the interval slider; interval is trackingMinutes.",
+    "placeholders": {
+      "interval": {
+        "type": "String",
+        "example": "15 min"
+      }
+    }
+  },
+  "trackingDistance": "Distância mínima",
+  "@trackingDistance": {
+    "description": "Label of the distance slider."
+  },
+  "trackingMeters": "{meters} m",
+  "@trackingMeters": {
+    "description": "A distance in meters, short.",
+    "placeholders": {
+      "meters": {
+        "type": "int",
+        "example": "100"
+      }
+    }
+  },
+  "trackingPositionsPerHour": "{count, plural, =0{Até 0 posições} =1{Até 1 posição} other{Até {count} posições}} por hora, só quando a pessoa se mover {meters} m ou mais.",
+  "@trackingPositionsPerHour": {
+    "description": "What the chosen settings mean in positions per hour.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "4"
+      },
+      "meters": {
+        "type": "int",
+        "example": "100"
+      }
+    }
+  },
+  "trackingLeavesMap": "Quem ficar {duration} sem dar notícia sai do mapa.",
+  "@trackingLeavesMap": {
+    "description": "How long until a silent person leaves the map; duration is trackingMinutes.",
+    "placeholders": {
+      "duration": {
+        "type": "String",
+        "example": "12 min"
+      }
+    }
+  },
+  "trackingBattery": "Uso de bateria: {level, select, low{Baixo} medium{Médio} other{Alto}}",
+  "@trackingBattery": {
+    "description": "Battery use of the chosen settings; level is low, medium or high.",
+    "placeholders": {
+      "level": {
+        "type": "String",
+        "example": "low"
+      }
+    }
+  },
+  "trackingSaved": "Salvo. A equipe recebe em instantes, sem desligar o compartilhamento.",
+  "@trackingSaved": {
+    "description": "Shown after saving the tracking settings."
+  },
+  "trackingNoChanges": "Nenhuma alteração",
+  "@trackingNoChanges": {
+    "description": "Disabled save button when nothing changed."
+  },
+  "trackingCustomDescription": "Você escolhe intervalo e distância",
+  "@trackingCustomDescription": {
+    "description": "Description of the custom tracking profile."
+  },
+  "trackingPresetDescription": "A cada {minutes} min, se andar {meters} m",
+  "@trackingPresetDescription": {
+    "description": "Description of a tracking profile.",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "15"
+      },
+      "meters": {
+        "type": "int",
+        "example": "100"
+      }
+    }
+  },
+  "trackingInUse": "Em uso",
+  "@trackingInUse": {
+    "description": "Tag next to the tracking profile saved now."
+  },
+  "failureConnectionConclude": "Não foi possível concluir agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionConclude": {
+    "description": "An operation failed, most likely for lack of connection."
+  },
+  "failureConnectionDelete": "Não foi possível excluir agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionDelete": {
+    "description": "Deleting failed, most likely for lack of connection."
+  },
+  "failureConnectionCancel": "Não foi possível cancelar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionCancel": {
+    "description": "Cancelling (e.g. the account deletion) failed, most likely for lack of connection."
+  },
+  "failureConnectionCreate": "Não foi possível criar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionCreate": {
+    "description": "Creating an organization failed, most likely for lack of connection."
+  },
+  "failureConnectionSend": "Não foi possível enviar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionSend": {
+    "description": "Sending invites failed, most likely for lack of connection."
+  },
+  "failureConnectionAccept": "Não foi possível aceitar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionAccept": {
+    "description": "Accepting an invite failed, most likely for lack of connection."
+  },
+  "failureConnectionSave": "Não foi possível salvar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionSave": {
+    "description": "Saving a change failed, most likely for lack of connection."
+  },
+  "failureConnectionSwitch": "Não foi possível trocar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionSwitch": {
+    "description": "Switching organization failed, most likely for lack of connection."
+  },
+  "failureConnectionLoadAccount": "Não foi possível carregar sua conta. Verifique a conexão e tente de novo.",
+  "@failureConnectionLoadAccount": {
+    "description": "The account screen could not read whether the person owns the organization."
+  },
+  "failureLoadAdministrators": "Não foi possível carregar os administradores.",
+  "@failureLoadAdministrators": {
+    "description": "The list of administrators could not be read."
+  },
+  "failureLoadInvites": "Não foi possível carregar os convites.",
+  "@failureLoadInvites": {
+    "description": "The invites could not be read."
+  },
+  "failureLoadGroups": "Não foi possível carregar os grupos.",
+  "@failureLoadGroups": {
+    "description": "The groups could not be read."
+  },
+  "failureLoadThemes": "Não foi possível carregar os temas.",
+  "@failureLoadThemes": {
+    "description": "The theme catalog could not be read."
+  },
+  "failureLoadCreations": "Não foi possível carregar as organizações em criação.",
+  "@failureLoadCreations": {
+    "description": "The organizations being created could not be read."
+  },
+  "failureLoadAccountDeletion": "Não foi possível ler a exclusão da conta.",
+  "@failureLoadAccountDeletion": {
+    "description": "The account's pending deletion could not be read."
+  },
+  "failureLoadOrganizationIdCheck": "Não foi possível verificar agora.",
+  "@failureLoadOrganizationIdCheck": {
+    "description": "Whether an organization identifier is free could not be checked."
+  },
+  "failureRefusedConclude": "Não foi possível concluir.",
+  "@failureRefusedConclude": {
+    "description": "The server refused an operation without saying why."
+  },
+  "failureRefusedAny": "Não foi possível agora.",
+  "@failureRefusedAny": {
+    "description": "The server refused an account operation without saying why."
+  },
+  "failureRefusedCreate": "Não foi possível criar.",
+  "@failureRefusedCreate": {
+    "description": "The server refused to create the organization without saying why."
+  },
+  "failureRefusedSave": "Não foi possível salvar.",
+  "@failureRefusedSave": {
+    "description": "The server refused to save the appearance without saying why."
+  },
+  "failureUnexpectedResponse": "Resposta inesperada do servidor.",
+  "@failureUnexpectedResponse": {
+    "description": "The server answered something the app cannot read."
+  },
+  "failureUnexpectedGroupResponse": "Resposta inesperada ao criar o grupo.",
+  "@failureUnexpectedGroupResponse": {
+    "description": "The server's answer to a group's creation could not be read."
+  },
+  "failureOrganizationIdNotPlain": "Use só letras minúsculas, sem acentos nem espaços.",
+  "@failureOrganizationIdNotPlain": {
+    "description": "An organization identifier with characters other than a to z."
+  },
+  "failureOrganizationIdTooLong": "Use no máximo {max} letras.",
+  "@failureOrganizationIdTooLong": {
+    "description": "An organization identifier that is too long.",
+    "placeholders": {
+      "max": {
+        "type": "int",
+        "example": "20"
+      }
+    }
+  },
+  "failureOrganizationIdReserved": "Esse identificador é reservado.",
+  "@failureOrganizationIdReserved": {
+    "description": "An organization identifier MonAmie keeps for itself."
+  },
+  "failureOrganizationIdUnusable": "Esse identificador não pode ser usado.",
+  "@failureOrganizationIdUnusable": {
+    "description": "The server says an organization identifier cannot be used, without saying why."
+  },
+  "failureGroupNameTooShort": "Use pelo menos 2 letras.",
+  "@failureGroupNameTooShort": {
+    "description": "A group name with fewer than 2 letters."
+  },
+  "failureGroupNameTooLong": "Use no máximo 40 caracteres.",
+  "@failureGroupNameTooLong": {
+    "description": "A group name longer than 40 characters."
+  },
+  "failureGroupNameTaken": "Já existe o grupo {name}.",
+  "@failureGroupNameTaken": {
+    "description": "A group name already taken by another group.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Equipe Sul"
+      }
+    }
+  },
+  "failureNoRoleChosen": "Marque pelo menos uma opção.",
+  "@failureNoRoleChosen": {
+    "description": "No role ticked for a person in a group."
+  },
+  "failureInvalidEmail": "Digite um e-mail válido.",
+  "@failureInvalidEmail": {
+    "description": "An invite's e-mail that is not an e-mail address."
+  },
+  "failureEmailAlreadyListed": "{email} já está na lista.",
+  "@failureEmailAlreadyListed": {
+    "description": "An invite's e-mail already in the list.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "failureLogoTooLarge": "O arquivo tem {megabytes} MB. Envie um de até 10 MB.",
+  "@failureLogoTooLarge": {
+    "description": "A logo file over the 10 MB allowed.",
+    "placeholders": {
+      "megabytes": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "failureLogoUnreadable": "Não deu para abrir este arquivo. Envie em PNG, JPEG, WebP ou SVG.",
+  "@failureLogoUnreadable": {
+    "description": "A logo file no decoder could open."
+  },
+  "failureLogoNotConverted": "Não deu para gerar o PNG do logo.",
+  "@failureLogoNotConverted": {
+    "description": "The logo's PNG could not be produced."
+  },
+  "failureLogoNotOpened": "Não deu para abrir este arquivo.",
+  "@failureLogoNotOpened": {
+    "description": "A logo file that could not be opened for any other reason."
+  },
+  "failureEntryEnter": "Não foi possível entrar agora: {detail}",
+  "@failureEntryEnter": {
+    "description": "Entering an organization failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureEntryCheck": "Não foi possível verificar agora: {detail}",
+  "@failureEntryCheck": {
+    "description": "Asking again which organizations the person belongs to failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureEntryUnexpected": "Ocorreu um erro inesperado: {detail}",
+  "@failureEntryUnexpected": {
+    "description": "Signing in with Google failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureEntryLoadData": "Ocorreu um erro ao carregar seus dados: {detail}",
+  "@failureEntryLoadData": {
+    "description": "Entering after a web sign-in failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureEntryOrganization": "Não foi possível entrar em {organization}: {detail}",
+  "@failureEntryOrganization": {
+    "description": "Entering the organization picked failed; detail is the original error.",
+    "placeholders": {
+      "organization": {
+        "type": "String",
+        "example": "Rota Sul"
+      },
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureGoogleAuth": "Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.",
+  "@failureGoogleAuth": {
+    "description": "A web Google sign-in returned no account."
+  },
+  "failureGoogleRenewal": "Não foi possível renovar o acesso com o Google. Tente de novo.",
+  "@failureGoogleRenewal": {
+    "description": "Google did not renew the sign-in needed to switch organization."
+  },
+  "failureSignOut": "Não foi possível encerrar a sessão. Tente novamente.\nErro: {detail}",
+  "@failureSignOut": {
+    "description": "Signing out failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureAccessLost": "Sua conta não tem mais acesso à {organization}.",
+  "@failureAccessLost": {
+    "description": "Why the person is on the no-organization screen: no membership in the organization any more.",
+    "placeholders": {
+      "organization": {
+        "type": "String",
+        "example": "Rota Sul"
+      }
+    }
+  },
+  "failureRemovedFromOrganization": "Você não faz mais parte da {organization}.",
+  "@failureRemovedFromOrganization": {
+    "description": "Why the person is on the no-organization screen: removed from the organization.",
+    "placeholders": {
+      "organization": {
+        "type": "String",
+        "example": "Rota Sul"
+      }
+    }
+  },
+  "failureRemovedFromUnnamedOrganization": "Você não faz mais parte desta organização.",
+  "@failureRemovedFromUnnamedOrganization": {
+    "description": "Why the person is on the no-organization screen: removed from an organization whose name is unknown."
+  },
+  "failureSharingNotAllowed": "Você não está em campo em nenhum grupo. Peça a um administrador para liberar o compartilhamento da sua localização.",
+  "@failureSharingNotAllowed": {
+    "description": "Sharing cannot start: the person publishes in no group."
+  },
+  "failureSharingNotChanged": "Não foi possível alterar o compartilhamento agora. Tente de novo.",
+  "@failureSharingNotChanged": {
+    "description": "Turning sharing on or off failed."
+  },
+  "failureTitleSignIn": "Erro de Login",
+  "@failureTitleSignIn": {
+    "description": "Title of the messages about a failed sign-in or entry."
+  },
+  "failureTitleSwitchOrganization": "Trocar de organização",
+  "@failureTitleSwitchOrganization": {
+    "description": "Title of the messages about a failed switch of organization."
+  },
+  "failureTitleSignOut": "Erro ao sair",
+  "@failureTitleSignOut": {
+    "description": "Title of the message about a failed sign-out."
+  },
+  "failureTitleSharingNotAllowed": "Compartilhamento não autorizado",
+  "@failureTitleSharingNotAllowed": {
+    "description": "Title of the message saying the person may not share."
+  },
+  "failureTitleSharing": "Compartilhamento",
+  "@failureTitleSharing": {
+    "description": "Title of the message about a failed change of sharing."
+  },
+  "noticeWaitingForGpsTitle": "Aguardando sinal de GPS",
+  "@noticeWaitingForGpsTitle": {
+    "description": "Title of the remark shown when sharing started without a GPS fix."
+  },
+  "noticeWaitingForGps": "O monitoramento foi iniciado, mas a sua posição inicial ainda está sendo obtida pelos satélites.",
+  "@noticeWaitingForGps": {
+    "description": "Remark shown when sharing started without a GPS fix."
+  },
+  "noticeTrackingAtRiskTitle": "Rastreamento em risco",
+  "@noticeTrackingAtRiskTitle": {
+    "description": "Title of the warning that the device restricts the app in the background."
+  },
+  "noticeTrackingAtRisk": "O aparelho está restringindo o MonAmie em segundo plano. O rastreamento vai parar quando você sair do aplicativo.",
+  "@noticeTrackingAtRisk": {
+    "description": "Warning that the device started restricting the app in the background while sharing is on."
+  },
+  "noticeTrackingStopUnconfirmedTitle": "Rastreamento",
+  "@noticeTrackingStopUnconfirmedTitle": {
+    "description": "Title of the warning that the tracking did not confirm it stopped."
+  },
+  "noticeTrackingStopUnconfirmed": "Não foi possível confirmar o encerramento do rastreamento. Ele será encerrado automaticamente em instantes.",
+  "@noticeTrackingStopUnconfirmed": {
+    "description": "Warning that the tracking service did not confirm it stopped."
+  },
+  "noticeBackgroundStillRestrictedTitle": "Uso em segundo plano ainda restrito",
+  "@noticeBackgroundStillRestrictedTitle": {
+    "description": "Title of the warning shown back from the battery settings when the restriction is still on."
+  },
+  "noticeBackgroundStillRestricted": "A alteração não foi aplicada. Toque em 'Permitir uso em segundo plano' e, se o interruptor já estiver ativado, desative-o e ative-o novamente.",
+  "@noticeBackgroundStillRestricted": {
+    "description": "Warning shown back from the battery settings when the restriction is still on. The quoted text is the Android setting's name."
+  },
+  "sharingNotificationTitle": "Sua localização está sendo compartilhada",
+  "@sharingNotificationTitle": {
+    "description": "Title of the system notification shown while sharing is on."
+  },
+  "sharingNotificationContent": "O compartilhamento está ligado. Para preservar sua privacidade, certifique-se de desativá-lo assim que terminar suas atividades.",
+  "@sharingNotificationContent": {
+    "description": "Text of the system notification shown while sharing is on."
+  },
+  "groupUnnamed": "Grupo sem nome",
+  "@groupUnnamed": {
+    "description": "Name shown for a group whose name is blank."
+  },
+  "inviteGroupFallback": "Grupo",
+  "@inviteGroupFallback": {
+    "description": "Name shown for an invite's group when the server sent none."
+  },
+  "creationPreviewName": "Organização",
+  "@creationPreviewName": {
+    "description": "Placeholder name of the organization being created, before one is typed."
+  }
+}

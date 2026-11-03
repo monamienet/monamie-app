@@ -1,4 +1,4 @@
-import 'package:monamie_app/app/config/organization/organization_config.dart';
+import 'package:monamie_app/domain/models/organization/organization_config.dart';
 
 /// Organization every test runs with (see `test/flutter_test_config.dart`). It is
 /// inline, not read from `organizations/`, so tests never depend on a real

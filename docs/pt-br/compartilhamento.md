@@ -26,7 +26,7 @@ revisões e código.
 | **validade** | por quanto tempo um **capturedAt** mantém a pessoa no mapa | código | 12 min | `validity` | — |
 | **recheck** | a repetição da conferência do mapa sem nenhuma mudança no Firestore | código | a cada 30 s | `recheck` | — |
 
-Os três valores fixos ficam em [`sharing_times.dart`](../../lib/app/data/tracking/sharing_times.dart).
+Os três valores fixos ficam em [`sharing_times.dart`](../../lib/domain/models/sharing_times.dart).
 O **capturedAt** vem do relógio do aparelho; o `receivedAt` do mesmo documento é a hora do servidor em que a última posição chegou, usada pelas regras para conferir o **período mínimo**.
 
 Cada pessoa tem **um documento de posição por grupo** em que é `publisher` (quem publica a própria localização naquele grupo): `organizations/{id}/groups/{groupId}/positions/{personKey}`, onde `personKey` é o hash do e-mail. Não existe "grupo ativo": com o compartilhamento ligado, a mesma posição vai para todos esses grupos, e o **isPublishing** liga e desliga em todos juntos.
