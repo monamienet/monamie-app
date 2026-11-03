@@ -31,8 +31,11 @@ class HistoryDay {
   final bool hasTrails;
 }
 
-/// The month grid of *Histórico por data*: weeks start on Sunday, so the
-/// month is preceded by [leadingBlanks] empty cells.
+/// The month grid of *Histórico por data*. A week starts on the language's
+/// first day (Sunday in Portuguese (Brazil) and English (US), Monday in
+/// Spanish and French), which the screen gives as an index, 0 for Sunday to 6
+/// for Saturday (`MaterialLocalizations.firstDayOfWeekIndex`): the month is
+/// preceded by [leadingBlanks] empty cells.
 class HistoryMonth {
   HistoryMonth({
     required int year,
@@ -49,8 +52,22 @@ class HistoryMonth {
   /// Keys (`yyyy-mm-dd`) of the days with trails.
   final Set<String> trailDays;
 
-  /// Empty cells before day 1 (0 when the month starts on a Sunday).
-  int get leadingBlanks => first.weekday % 7;
+  /// Empty cells before day 1 in a week that starts on [firstDayOfWeek] (0
+  /// for Sunday to 6 for Saturday): 0 when the month starts on that day.
+  int leadingBlanks(int firstDayOfWeek) =>
+      (first.weekday % 7 - firstDayOfWeek) % 7;
+
+  /// The weekday labels of a week that starts on [firstDayOfWeek]: the
+  /// [sundayFirst] list (`MaterialLocalizations.narrowWeekdays`, which always
+  /// starts on Sunday) rotated to begin there, so the header sits above the
+  /// cells [leadingBlanks] counts.
+  static List<String> weekdaysFrom(
+    List<String> sundayFirst,
+    int firstDayOfWeek,
+  ) => [
+    ...sundayFirst.skip(firstDayOfWeek),
+    ...sundayFirst.take(firstDayOfWeek),
+  ];
 
   int get daysInMonth => DateTime(first.year, first.month + 1, 0).day;
 

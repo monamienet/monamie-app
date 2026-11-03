@@ -112,8 +112,11 @@ class HistoryCalendarSheet extends StatelessWidget {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    // Sunday first, like the grid (HistoryMonth.leadingBlanks).
-                    for (final letter in material.narrowWeekdays)
+                    // From the language's first day, like the grid.
+                    for (final letter in HistoryMonth.weekdaysFrom(
+                      material.narrowWeekdays,
+                      material.firstDayOfWeekIndex,
+                    ))
                       Expanded(
                         child: Center(
                           child: Text(
@@ -134,7 +137,11 @@ class HistoryCalendarSheet extends StatelessWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
-                    for (var i = 0; i < month.leadingBlanks; i++)
+                    for (
+                      var i = 0;
+                      i < month.leadingBlanks(material.firstDayOfWeekIndex);
+                      i++
+                    )
                       const SizedBox.shrink(),
                     for (final day in month.days)
                       _DayCell(
