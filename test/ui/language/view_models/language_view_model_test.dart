@@ -91,6 +91,27 @@ void main() {
       },
     );
 
+    test('Happy Path: a Spanish device is in Spanish', () {
+      // 1. Arrange / 2. Act
+      final harness = _Harness(deviceLocales: const [Locale('es', 'MX')]);
+
+      // 3. Assert
+      expect(harness.controller.state.inUse, AppLanguage.es);
+      harness.controller.dispose();
+    });
+
+    test('Edge Case: a device language the app does not have, then Spanish, '
+        'gets Spanish', () {
+      // 1. Arrange / 2. Act
+      final harness = _Harness(
+        deviceLocales: const [Locale('fr', 'FR'), Locale('es', 'ES')],
+      );
+
+      // 3. Assert
+      expect(harness.controller.state.inUse, AppLanguage.es);
+      harness.controller.dispose();
+    });
+
     test('Edge Case: the first device language the app has wins', () {
       // 1. Arrange / 2. Act
       final harness = _Harness(

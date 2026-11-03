@@ -5,12 +5,14 @@ import 'dart:ui' show Locale;
 /// The person's choice is stored by its [name] (`LanguageRepository`).
 enum AppLanguage {
   pt(Locale('pt', 'BR')),
-  en(Locale('en'));
+  en(Locale('en')),
+  es(Locale('es'));
 
   const AppLanguage(this.locale);
 
   /// The locale the app runs in when this language is in use. Portuguese is
-  /// Brazilian, which Material's date picker and formats follow.
+  /// Brazilian, which Material's date picker and formats follow; Spanish is
+  /// the neutral one, which uses "tú".
   final Locale locale;
 
   /// What a device language the app does not have resolves to.

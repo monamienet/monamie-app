@@ -55,7 +55,7 @@ void main() {
       'Edge Case: a name this build does not have gives no language',
       () async {
         // 1. Arrange
-        when(service.read()).thenAnswer((_) async => 'es');
+        when(service.read()).thenAnswer((_) async => 'fr');
 
         // 2. Act
         await repository.restore();

@@ -37,6 +37,23 @@ void main() {
       expect(find.text('PT'), findsNothing);
     });
 
+    testWidgets('Edge Case: shows ES when Spanish is in use, with its label', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final semantics = tester.ensureSemantics();
+      final harness = LanguageHarness(stored: AppLanguage.es);
+
+      // 2. Act
+      await harness.pump(tester, home: _screen(harness, LanguageScheme.login));
+
+      // 3. Assert
+      expect(find.text('ES'), findsOneWidget);
+      expect(find.text('PT'), findsNothing);
+      expect(find.bySemanticsLabel('Idioma: Español'), findsOneWidget);
+      semantics.dispose();
+    });
+
     testWidgets('Edge Case: follows the language chosen elsewhere, in its '
         'code and its label', (tester) async {
       // 1. Arrange

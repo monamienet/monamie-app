@@ -12,7 +12,11 @@ import 'package:monamie_app/l10n/app_localizations.dart';
 /// Portuguese entry is Brazilian, which the date picker labels, month and
 /// weekday names and dd/MM dates follow (the app's own texts for pt_BR come
 /// from `app_pt.arb`).
-const List<Locale> appSupportedLocales = [Locale('en'), Locale('pt', 'BR')];
+const List<Locale> appSupportedLocales = [
+  Locale('en'),
+  Locale('pt', 'BR'),
+  Locale('es'),
+];
 
 /// `MaterialApp.localeListResolutionCallback`: the locale of the language the
 /// app shows for the device's languages, or for the one the person chose,

@@ -187,14 +187,23 @@ class TestApp {
   /// and, when none, [locale]'s (Brazilian Portuguese unless a test checks
   /// another one), which stands for the device's language: the app's locale
   /// follows [language] as `MonAmieApp`'s does.
+  ///
+  /// The defaults keep the screen larger than a phone and the app on
+  /// Flutter's default theme and text scale. A layout test passes [theme]
+  /// (`AppTheme.lightTheme`), [textScale], and a phone's [physicalSize] and
+  /// [devicePixelRatio] (see `test/support/phone_layout.dart`).
   Future<void> pump(
     WidgetTester tester, {
     Locale locale = const Locale('pt', 'BR'),
+    ThemeData? theme,
+    double textScale = 1,
+    Size physicalSize = const Size(1600, 4000),
+    double devicePixelRatio = 2,
   }) async {
     // Larger than a phone (800 x 2000): the test font's square glyphs take
     // more room than the real font's (the map's attribution needs ~600).
-    tester.view.physicalSize = const Size(1600, 4000);
-    tester.view.devicePixelRatio = 2;
+    tester.view.physicalSize = physicalSize;
+    tester.view.devicePixelRatio = devicePixelRatio;
     addTearDown(tester.view.reset);
     // The device's language, which the language picker marks while the
     // person has not chosen one.
@@ -212,6 +221,15 @@ class TestApp {
             locale: chosen?.locale ?? locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: appSupportedLocales,
+            theme: theme,
+            builder: textScale == 1
+                ? null
+                : (context, child) => MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaler: TextScaler.linear(textScale)),
+                    child: child!,
+                  ),
             routerConfig: router,
           ),
         ),

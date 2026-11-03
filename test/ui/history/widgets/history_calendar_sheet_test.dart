@@ -44,7 +44,7 @@ Future<void> _pumpSheet(WidgetTester tester, _Calendar calendar) {
   );
 }
 
-/// App texts in Portuguese whatever the locale: French and Spanish have no app
+/// App texts in Portuguese whatever the locale: French has no app
 /// texts yet, but Material's own (`GlobalMaterialLocalizations`) do exist.
 class _PortugueseAppTexts extends LocalizationsDelegate<AppLocalizations> {
   const _PortugueseAppTexts();

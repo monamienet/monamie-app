@@ -57,8 +57,10 @@ void main() {
           expect(find.text('Idioma'), findsOneWidget);
           expect(find.text('Português'), findsOneWidget);
           expect(find.text('English'), findsOneWidget);
+          expect(find.text('Español'), findsOneWidget);
           expect(find.text('PT'), findsOneWidget);
           expect(find.text('EN'), findsOneWidget);
+          expect(find.text('ES'), findsOneWidget);
           expect(_sheetOf(scheme), findsOneWidget);
           expect(
             find.descendant(
@@ -90,6 +92,58 @@ void main() {
         expect(find.text(languageName(language)), findsOneWidget);
       }
       expect(find.byIcon(Icons.check), findsOneWidget);
+    });
+
+    testWidgets('Edge Case: three rows, one per language, in the order pt, en, '
+        'es', (tester) async {
+      // 1. Arrange / 2. Act
+      final harness = LanguageHarness();
+      await _open(tester, harness);
+
+      // 3. Assert
+      for (final name in ['Português', 'English', 'Español']) {
+        expect(languageRow(name), findsOneWidget);
+      }
+      final tops = [
+        for (final name in ['Português', 'English', 'Español'])
+          tester.getTopLeft(find.text(name)).dy,
+      ];
+      expect(tops, orderedEquals([...tops]..sort()));
+      expect(tops.toSet(), hasLength(3));
+    });
+
+    testWidgets('Edge Case: marks Español on a Spanish device', (tester) async {
+      // 1. Arrange / 2. Act: nothing was chosen.
+      final harness = LanguageHarness(
+        deviceLocales: const [Locale('es', 'MX')],
+      );
+      await _open(tester, harness);
+
+      // 3. Assert
+      expect(
+        find.descendant(
+          of: languageRow('Español'),
+          matching: find.byIcon(Icons.check),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.check), findsOneWidget);
+    });
+
+    testWidgets('Happy Path: choosing Español stores it and closes the '
+        'sheet', (tester) async {
+      // 1. Arrange
+      final harness = LanguageHarness();
+      await _open(tester, harness);
+
+      // 2. Act
+      await tester.tap(languageRow('Español'));
+      await tester.pumpAndSettle();
+
+      // 3. Assert
+      expect(find.byType(LanguageSheet), findsNothing);
+      expect(harness.repository.stored, AppLanguage.es);
+      expect(harness.controller.state.inUse, AppLanguage.es);
     });
 
     testWidgets('Edge Case: marks English on a device whose language the app '
