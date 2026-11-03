@@ -48,13 +48,18 @@ Locale _resolved(WidgetTester tester) =>
 
 void main() {
   group('appSupportedLocales - Unit Test Suite', () {
-    test('Happy Path: English comes first, then Brazilian Portuguese and '
-        'Spanish', () {
+    test('Happy Path: English comes first, then Brazilian Portuguese, '
+        'Spanish and French', () {
       // 1. Arrange / 2. Act
       const locales = appSupportedLocales;
 
       // 3. Assert
-      expect(locales, const [Locale('en'), Locale('pt', 'BR'), Locale('es')]);
+      expect(locales, const [
+        Locale('en'),
+        Locale('pt', 'BR'),
+        Locale('es'),
+        Locale('fr'),
+      ]);
     });
 
     test('Edge Case: they are the locales of the AppLanguages', () {
@@ -112,11 +117,43 @@ void main() {
       expect(_resolved(tester), const Locale('es'));
     });
 
-    testWidgets('Edge Case: a French device falls back to English', (
+    testWidgets('Happy Path: a French device gets French', (tester) async {
+      // 1. Arrange / 2. Act
+      await _pumpApp(tester, deviceLocales: const [Locale('fr', 'FR')]);
+
+      // 3. Assert
+      expect(_resolved(tester), const Locale('fr'));
+    });
+
+    testWidgets('Edge Case: a Canadian and a Belgian French device get the '
+        'same French', (tester) async {
+      for (final country in ['CA', 'BE']) {
+        // 1. Arrange / 2. Act
+        await _pumpApp(tester, deviceLocales: [Locale('fr', country)]);
+
+        // 3. Assert
+        expect(_resolved(tester), const Locale('fr'), reason: 'fr_$country');
+      }
+    });
+
+    testWidgets('Edge Case: [de, fr_FR] skips German and gets French', (
       tester,
     ) async {
       // 1. Arrange / 2. Act
-      await _pumpApp(tester, deviceLocales: const [Locale('fr', 'FR')]);
+      await _pumpApp(
+        tester,
+        deviceLocales: const [Locale('de'), Locale('fr', 'FR')],
+      );
+
+      // 3. Assert
+      expect(_resolved(tester), const Locale('fr'));
+    });
+
+    testWidgets('Edge Case: an Italian device falls back to English', (
+      tester,
+    ) async {
+      // 1. Arrange / 2. Act
+      await _pumpApp(tester, deviceLocales: const [Locale('it', 'IT')]);
 
       // 3. Assert
       expect(_resolved(tester), const Locale('en'));
@@ -192,10 +229,20 @@ void main() {
       expect(locale, const Locale('es'));
     });
 
-    test('Edge Case: a language the app does not have resolves to English', () {
+    test('Happy Path: a French device language resolves to French', () {
       // 1. Arrange / 2. Act
       final locale = resolveAppLocale(const [
         Locale('fr', 'FR'),
+      ], appSupportedLocales);
+
+      // 3. Assert
+      expect(locale, const Locale('fr'));
+    });
+
+    test('Edge Case: a language the app does not have resolves to English', () {
+      // 1. Arrange / 2. Act
+      final locale = resolveAppLocale(const [
+        Locale('de', 'DE'),
       ], appSupportedLocales);
 
       // 3. Assert
@@ -257,6 +304,71 @@ void main() {
       // 3. Assert
       expect(find.text('2/11/2026'), findsOneWidget);
       expect(find.text('11/2/2026'), findsNothing);
+    });
+  });
+
+  group('Date picker on a French device - Widget Test Suite', () {
+    testWidgets('Happy Path: the buttons and the month are in French', (
+      tester,
+    ) async {
+      // 1. Arrange
+      await _pumpApp(tester, deviceLocales: const [Locale('fr', 'FR')]);
+
+      // 2. Act
+      await _openPicker(tester);
+
+      // 3. Assert
+      expect(find.text('Annuler'), findsOneWidget);
+      expect(find.text('Cancel'), findsNothing);
+      expect(find.text('Cancelar'), findsNothing);
+      expect(find.textContaining('novembre'), findsWidgets);
+      expect(find.textContaining('November'), findsNothing);
+    });
+
+    testWidgets('Edge Case: the week starts on Monday with French letters', (
+      tester,
+    ) async {
+      // 1. Arrange
+      await _pumpApp(tester, deviceLocales: const [Locale('fr', 'CA')]);
+
+      // 2. Act
+      await _openPicker(tester);
+      final material = MaterialLocalizations.of(
+        tester.element(find.text('Annuler')),
+      );
+
+      // 3. Assert: the letters are listed from Sunday, the week from Monday.
+      expect(
+        Localizations.localeOf(tester.element(find.text('Annuler'))),
+        const Locale('fr'),
+      );
+      expect(material.firstDayOfWeekIndex, 1);
+      expect(material.narrowWeekdays, ['D', 'L', 'M', 'M', 'J', 'V', 'S']);
+      final weekdays = [
+        for (final text in tester.widgetList<Text>(
+          find.byWidgetPredicate(
+            (w) => w is Text && (w.data?.length ?? 0) == 1,
+          ),
+        ))
+          text.data,
+      ];
+      expect(weekdays.take(7), ['L', 'M', 'M', 'J', 'V', 'S', 'D']);
+    });
+
+    testWidgets('Happy Path: typing a date uses dd/MM/yyyy', (tester) async {
+      // 1. Arrange
+      await _pumpApp(
+        tester,
+        deviceLocales: const [Locale('fr', 'FR')],
+        mode: DatePickerEntryMode.input,
+      );
+
+      // 2. Act
+      await _openPicker(tester);
+
+      // 3. Assert
+      expect(find.text('02/11/2026'), findsOneWidget);
+      expect(find.text('11/02/2026'), findsNothing);
     });
   });
 

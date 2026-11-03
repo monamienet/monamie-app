@@ -100,11 +100,20 @@ void main() {
       harness.controller.dispose();
     });
 
+    test('Happy Path: a French device is in French', () {
+      // 1. Arrange / 2. Act
+      final harness = _Harness(deviceLocales: const [Locale('fr', 'CA')]);
+
+      // 3. Assert
+      expect(harness.controller.state.inUse, AppLanguage.fr);
+      harness.controller.dispose();
+    });
+
     test('Edge Case: a device language the app does not have, then Spanish, '
         'gets Spanish', () {
       // 1. Arrange / 2. Act
       final harness = _Harness(
-        deviceLocales: const [Locale('fr', 'FR'), Locale('es', 'ES')],
+        deviceLocales: const [Locale('it', 'IT'), Locale('es', 'ES')],
       );
 
       // 3. Assert

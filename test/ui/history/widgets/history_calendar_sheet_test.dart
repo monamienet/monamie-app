@@ -1,6 +1,4 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/ui/history/widgets/history_calendar_sheet.dart';
@@ -44,23 +42,8 @@ Future<void> _pumpSheet(WidgetTester tester, _Calendar calendar) {
   );
 }
 
-/// App texts in Portuguese whatever the locale: French has no app
-/// texts yet, but Material's own (`GlobalMaterialLocalizations`) do exist.
-class _PortugueseAppTexts extends LocalizationsDelegate<AppLocalizations> {
-  const _PortugueseAppTexts();
-
-  @override
-  bool isSupported(Locale locale) => true;
-
-  @override
-  Future<AppLocalizations> load(Locale locale) =>
-      SynchronousFuture(lookupAppLocalizations(const Locale('pt')));
-
-  @override
-  bool shouldReload(_PortugueseAppTexts old) => false;
-}
-
-/// The sheet over [calendar] in French, a language whose week starts on Monday.
+/// The sheet over [calendar] in French, a language whose week starts on
+/// Monday, with the app's own delegates (`Locale('fr')` has app texts too).
 Future<void> _pumpSheetInFrench(WidgetTester tester, _Calendar calendar) {
   tester.view
     ..physicalSize = const Size(1200, 2700)
@@ -69,13 +52,8 @@ Future<void> _pumpSheetInFrench(WidgetTester tester, _Calendar calendar) {
   return tester.pumpWidget(
     MaterialApp(
       locale: const Locale('fr'),
-      localizationsDelegates: const [
-        _PortugueseAppTexts(),
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('fr')],
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
       home: Scaffold(body: HistoryCalendarSheet(controller: calendar.mock)),
     ),
   );
@@ -198,6 +176,13 @@ void main() {
       await _pumpSheetInFrench(tester, calendar);
 
       // 3. Assert: November 2026 starts on a Sunday, the last French column.
+      expect(find.text('Novembre 2026'), findsOneWidget);
+      expect(
+        find.text(
+          lookupAppLocalizations(const Locale('fr')).calendarDaysWithTrails,
+        ),
+        findsOneWidget,
+      );
       final letters = _headerLetters(tester);
       expect(letters.first, 'L');
       expect(letters.last, 'D');

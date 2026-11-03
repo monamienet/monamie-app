@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/app_language.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/language/widgets/language_button.dart';
 import 'package:monamie_app/ui/language/widgets/language_scheme.dart';
 import 'package:monamie_app/ui/language/widgets/language_sheet.dart';
@@ -51,6 +52,27 @@ void main() {
       expect(find.text('ES'), findsOneWidget);
       expect(find.text('PT'), findsNothing);
       expect(find.bySemanticsLabel('Idioma: Español'), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('Edge Case: shows FR when French is in use, with its label', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final semantics = tester.ensureSemantics();
+      final harness = LanguageHarness(stored: AppLanguage.fr);
+
+      // 2. Act
+      await harness.pump(tester, home: _screen(harness, LanguageScheme.login));
+
+      // 3. Assert
+      final label = lookupAppLocalizations(
+        const Locale('fr'),
+      ).languageButtonLabel('Français');
+      expect(find.text('FR'), findsOneWidget);
+      expect(find.text('PT'), findsNothing);
+      expect(label, 'Langue\u00a0: Français');
+      expect(find.bySemanticsLabel(label), findsOneWidget);
       semantics.dispose();
     });
 

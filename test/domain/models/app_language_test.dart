@@ -16,7 +16,17 @@ void main() {
         AppLanguage.pt: const Locale('pt', 'BR'),
         AppLanguage.en: const Locale('en'),
         AppLanguage.es: const Locale('es'),
+        AppLanguage.fr: const Locale('fr'),
       });
+    });
+
+    test('Happy Path: French has no country either', () {
+      // 1. Arrange / 2. Act
+      final locale = AppLanguage.fr.locale;
+
+      // 3. Assert
+      expect(locale, const Locale('fr'));
+      expect(locale.countryCode, isNull);
     });
 
     test('Happy Path: Spanish is the neutral one, without a country', () {
@@ -28,12 +38,17 @@ void main() {
       expect(locale.countryCode, isNull);
     });
 
-    test('Happy Path: the languages come in the order pt, en, es', () {
+    test('Happy Path: the languages come in the order pt, en, es, fr', () {
       // 1. Arrange / 2. Act
       final values = AppLanguage.values;
 
       // 3. Assert
-      expect(values, [AppLanguage.pt, AppLanguage.en, AppLanguage.es]);
+      expect(values, [
+        AppLanguage.pt,
+        AppLanguage.en,
+        AppLanguage.es,
+        AppLanguage.fr,
+      ]);
     });
 
     test('Happy Path: English is the fallback', () {
@@ -69,7 +84,7 @@ void main() {
 
     test('Sad Path: a name this build does not have gives null', () {
       // 1. Arrange
-      const names = ['fr', '', 'PT', 'ES', 'pt_BR', 'es_MX'];
+      const names = ['de', '', 'PT', 'ES', 'FR', 'pt_BR', 'es_MX', 'fr_CA'];
 
       // 2. Act
       final parsed = [for (final name in names) AppLanguage.tryParse(name)];
@@ -119,30 +134,49 @@ void main() {
       expect(spain.locale, const Locale('es'));
     });
 
+    test('Happy Path: French from any country resolves to French', () {
+      // 1. Arrange / 2. Act
+      final france = AppLanguage.resolve(const [Locale('fr', 'FR')]);
+      final canada = AppLanguage.resolve(const [Locale('fr', 'CA')]);
+      final belgium = AppLanguage.resolve(const [Locale('fr', 'BE')]);
+      final plain = AppLanguage.resolve(const [Locale('fr')]);
+
+      // 3. Assert
+      expect([france, canada, belgium, plain], everyElement(AppLanguage.fr));
+      expect(france.locale, const Locale('fr'));
+    });
+
     test('Edge Case: a language the app does not have resolves to English', () {
       // 1. Arrange / 2. Act
       final german = AppLanguage.resolve(const [Locale('de', 'DE')]);
-      final french = AppLanguage.resolve(const [Locale('fr', 'FR')]);
+      final plainGerman = AppLanguage.resolve(const [Locale('de')]);
+      final italian = AppLanguage.resolve(const [Locale('it', 'IT')]);
 
       // 3. Assert
       expect(german, AppLanguage.en);
-      expect(french, AppLanguage.en);
+      expect(plainGerman, AppLanguage.en);
+      expect(italian, AppLanguage.en);
     });
 
     test('Edge Case: [de, es] skips German and gets Spanish, [de, fr] gets '
-        'English', () {
+        'French, [it, de] gets English', () {
       // 1. Arrange / 2. Act
       final skipsGerman = AppLanguage.resolve(const [
         Locale('de'),
         Locale('es'),
       ]);
-      final noneOffered = AppLanguage.resolve(const [
+      final frenchAfterGerman = AppLanguage.resolve(const [
         Locale('de'),
         Locale('fr'),
+      ]);
+      final noneOffered = AppLanguage.resolve(const [
+        Locale('it'),
+        Locale('de'),
       ]);
 
       // 3. Assert
       expect(skipsGerman, AppLanguage.es);
+      expect(frenchAfterGerman, AppLanguage.fr);
       expect(noneOffered, AppLanguage.en);
     });
 
@@ -161,11 +195,16 @@ void main() {
         Locale('es', 'MX'),
         Locale('en', 'US'),
       ]);
+      final frenchFirst = AppLanguage.resolve(const [
+        Locale('fr', 'CA'),
+        Locale('es', 'MX'),
+      ]);
 
       // 3. Assert
       expect(skipsGerman, AppLanguage.pt);
       expect(englishFirst, AppLanguage.en);
       expect(spanishFirst, AppLanguage.es);
+      expect(frenchFirst, AppLanguage.fr);
     });
 
     test('Edge Case: no device language resolves to English', () {

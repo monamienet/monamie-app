@@ -16,6 +16,7 @@ const List<Locale> appSupportedLocales = [
   Locale('en'),
   Locale('pt', 'BR'),
   Locale('es'),
+  Locale('fr'),
 ];
 
 /// `MaterialApp.localeListResolutionCallback`: the locale of the language the

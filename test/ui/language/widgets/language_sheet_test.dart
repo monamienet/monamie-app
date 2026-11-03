@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/app_language.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/language/widgets/language_scheme.dart';
 import 'package:monamie_app/ui/language/widgets/language_sheet.dart';
 import 'package:monamie_app/utils/result.dart';
 
 import 'language_harness.dart';
+
+/// The French texts, read from the generated localizations.
+final _fr = lookupAppLocalizations(const Locale('fr'));
 
 const _notSaved = 'Não foi possível guardar o idioma. Tente de novo.';
 
@@ -58,9 +62,11 @@ void main() {
           expect(find.text('Português'), findsOneWidget);
           expect(find.text('English'), findsOneWidget);
           expect(find.text('Español'), findsOneWidget);
+          expect(find.text('Français'), findsOneWidget);
           expect(find.text('PT'), findsOneWidget);
           expect(find.text('EN'), findsOneWidget);
           expect(find.text('ES'), findsOneWidget);
+          expect(find.text('FR'), findsOneWidget);
           expect(_sheetOf(scheme), findsOneWidget);
           expect(
             find.descendant(
@@ -94,22 +100,89 @@ void main() {
       expect(find.byIcon(Icons.check), findsOneWidget);
     });
 
-    testWidgets('Edge Case: three rows, one per language, in the order pt, en, '
-        'es', (tester) async {
+    testWidgets('Edge Case: four rows, one per language, in the order pt, en, '
+        'es, fr', (tester) async {
       // 1. Arrange / 2. Act
       final harness = LanguageHarness();
       await _open(tester, harness);
 
       // 3. Assert
-      for (final name in ['Português', 'English', 'Español']) {
+      const names = ['Português', 'English', 'Español', 'Français'];
+      for (final name in names) {
         expect(languageRow(name), findsOneWidget);
       }
       final tops = [
-        for (final name in ['Português', 'English', 'Español'])
-          tester.getTopLeft(find.text(name)).dy,
+        for (final name in names) tester.getTopLeft(find.text(name)).dy,
       ];
       expect(tops, orderedEquals([...tops]..sort()));
-      expect(tops.toSet(), hasLength(3));
+      expect(tops.toSet(), hasLength(4));
+      expect(find.byIcon(Icons.check), findsOneWidget);
+    });
+
+    testWidgets('Edge Case: marks Français on a French device', (tester) async {
+      // 1. Arrange / 2. Act: nothing was chosen.
+      final harness = LanguageHarness(
+        deviceLocales: const [Locale('fr', 'CA')],
+      );
+      await _open(tester, harness);
+
+      // 3. Assert: the sheet itself is in French.
+      expect(find.text(_fr.languageTitle), findsOneWidget);
+      expect(
+        find.descendant(
+          of: languageRow('Français'),
+          matching: find.byIcon(Icons.check),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.check), findsOneWidget);
+    });
+
+    testWidgets('Happy Path: marks Français when it is the choice, whatever '
+        'the device speaks', (tester) async {
+      // 1. Arrange / 2. Act
+      final harness = LanguageHarness(stored: AppLanguage.fr);
+      await _open(tester, harness);
+
+      // 3. Assert
+      expect(find.text(_fr.languageTitle), findsOneWidget);
+      expect(
+        find.descendant(
+          of: languageRow('Français'),
+          matching: find.byIcon(Icons.check),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: languageRow('Português'),
+          matching: find.byIcon(Icons.check),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('Happy Path: choosing Français stores it, redraws the sheet '
+        'in French and closes it', (tester) async {
+      // 1. Arrange
+      final harness = LanguageHarness();
+      await _open(tester, harness);
+
+      // 2. Act
+      await tester.tap(languageRow('Français'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // 3. Assert: the sheet, still leaving, is already in French.
+      expect(find.text(_fr.languageTitle), findsOneWidget);
+      expect(find.text('Idioma'), findsNothing);
+      await tester.pumpAndSettle();
+      expect(find.byType(LanguageSheet), findsNothing);
+      expect(harness.repository.stored, AppLanguage.fr);
+      expect(harness.controller.state.inUse, AppLanguage.fr);
+      expect(harness.repository.argumentsOf('choose'), [
+        [AppLanguage.fr],
+      ]);
     });
 
     testWidgets('Edge Case: marks Español on a Spanish device', (tester) async {
