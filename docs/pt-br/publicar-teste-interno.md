@@ -464,7 +464,8 @@ deve mostrar `main`.
 É o único passo manual de todo build. Antes do merge, confira no diff da PR as **notas da versão**, o
 texto "O que há de novo" que aparece no Play:
 
-- Ficam em `distribution/whatsnew/whatsnew-pt-BR` e `whatsnew-en-US`, com até 500 caracteres cada,
+- Ficam em `distribution/whatsnew/whatsnew-pt-BR`, `whatsnew-en-US`, `whatsnew-es-419` e
+  `whatsnew-fr-FR` (o nome do arquivo é o código de idioma da Play), com até 500 caracteres cada,
   o limite do Play por idioma.
 - Quem as escreve são os agentes de IA, na mesma PR da mudança (regra em `AGENTS.md`, seção
   *Releases*). Elas resumem, em linguagem de quem usa o app, tudo o que mudou desde a **última versão

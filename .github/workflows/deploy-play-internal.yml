@@ -149,8 +149,9 @@ jobs:
           status: completed
           # promote-play-closed.yml reads the versionName back from the name.
           releaseName: ${{ steps.version.outputs.name }}
-          # whatsnew-pt-BR and whatsnew-en-US, written in each PR (AGENTS.md,
-          # "Releases"). Promotion to closed testing copies them along.
+          # whatsnew-pt-BR, whatsnew-en-US, whatsnew-es-419 and whatsnew-fr-FR,
+          # written in each PR (AGENTS.md, "Releases"). Promotion to closed
+          # testing copies them along.
           whatsNewDirectory: distribution/whatsnew
 
   # Tags the commit vX.Y.Z once its version is on Play, in a job of its own so

@@ -455,7 +455,8 @@ must print `main`.
 This is the only manual step of every build. Before merging, check the **release notes** in the PR's
 diff, the "What's new" text shown in Play:
 
-- They live in `distribution/whatsnew/whatsnew-pt-BR` and `whatsnew-en-US`, at most 500 characters
+- They live in `distribution/whatsnew/whatsnew-pt-BR`, `whatsnew-en-US`, `whatsnew-es-419` and
+  `whatsnew-fr-FR` (the file name is Play's language code), at most 500 characters
   each, Play's limit per language.
 - The AI agents write them, in the same PR as the change (rule in `AGENTS.md`, *Releases*). They
   summarize, in the words of someone using the app, everything that changed since the **last version

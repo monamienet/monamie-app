@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Checks the Play release notes in distribution/whatsnew/ before a build is
 # uploaded (rules: AGENTS.md, "Releases"):
-#   1. whatsnew-pt-BR and whatsnew-en-US exist and are not empty;
+#   1. whatsnew-pt-BR, whatsnew-en-US, whatsnew-es-419 and whatsnew-fr-FR
+#      exist and are not empty, and the directory holds no other file: the
+#      deploy uploads one release note per file name, read as a Play language
+#      code, so a misspelled name would be uploaded as a language;
 #   2. each has at most 500 characters, the Play limit per language;
 #   3. if feat:/fix: commits touched the app (lib/, android/, assets/) since
 #      the last v* tag, the notes were also changed since that tag.
@@ -12,9 +15,10 @@ export LC_ALL=C.UTF-8
 
 dir=distribution/whatsnew
 max=500
+languages=(pt-BR en-US es-419 fr-FR)
 failed=0
 
-for lang in pt-BR en-US; do
+for lang in "${languages[@]}"; do
   file="$dir/whatsnew-$lang"
   if [ ! -s "$file" ]; then
     echo "::error file=$file::Release notes missing or empty: $file"
@@ -24,6 +28,18 @@ for lang in pt-BR en-US; do
   chars=$(wc -m < "$file")
   if [ "$chars" -gt "$max" ]; then
     echo "::error file=$file::$file has $chars characters; Play accepts at most $max."
+    failed=1
+  fi
+done
+
+for file in "$dir"/*; do
+  name=${file#"$dir"/whatsnew-}
+  known=0
+  for lang in "${languages[@]}"; do
+    if [ "$name" = "$lang" ]; then known=1; fi
+  done
+  if [ "$known" -eq 0 ]; then
+    echo "::error file=$file::Unexpected file in $dir: $file (expected whatsnew-<${languages[*]}>)."
     failed=1
   fi
 done
