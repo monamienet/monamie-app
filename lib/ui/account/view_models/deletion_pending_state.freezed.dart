@@ -17,7 +17,8 @@ mixin _$DeletionPendingState {
 
 /// The signed-in account's pending deletion.
  AccountDeletion? get accountDeletion;/// The deletion was cancelled: the screen says everything is back.
- bool get deletionRestored; String get deletionError;/// Whether a sign-out runs (this screen's or any other).
+ bool get deletionRestored;/// Why the last cancel failed; `null` when it did not.
+ Failure? get deletionFailure;/// Whether a sign-out runs (this screen's or any other).
  bool get isLoggingOut;
 /// Create a copy of DeletionPendingState
 /// with the given fields replaced by the non-null parameter values.
@@ -30,20 +31,20 @@ $DeletionPendingStateCopyWith<DeletionPendingState> get copyWith => _$DeletionPe
 @override
 bool operator ==(Object other) {
   final _this = this as DeletionPendingState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeletionPendingState&&(identical(other.accountDeletion, _this.accountDeletion) || other.accountDeletion == _this.accountDeletion)&&(identical(other.deletionRestored, _this.deletionRestored) || other.deletionRestored == _this.deletionRestored)&&(identical(other.deletionError, _this.deletionError) || other.deletionError == _this.deletionError)&&(identical(other.isLoggingOut, _this.isLoggingOut) || other.isLoggingOut == _this.isLoggingOut));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeletionPendingState&&(identical(other.accountDeletion, _this.accountDeletion) || other.accountDeletion == _this.accountDeletion)&&(identical(other.deletionRestored, _this.deletionRestored) || other.deletionRestored == _this.deletionRestored)&&(identical(other.deletionFailure, _this.deletionFailure) || other.deletionFailure == _this.deletionFailure)&&(identical(other.isLoggingOut, _this.isLoggingOut) || other.isLoggingOut == _this.isLoggingOut));
 }
 
 
 @override
 int get hashCode {
   final _this = this as DeletionPendingState;
-  return Object.hash(runtimeType,_this.accountDeletion,_this.deletionRestored,_this.deletionError,_this.isLoggingOut);
+  return Object.hash(runtimeType,_this.accountDeletion,_this.deletionRestored,_this.deletionFailure,_this.isLoggingOut);
 }
 
 @override
 String toString() {
   final _this = this as DeletionPendingState;
-  return 'DeletionPendingState(accountDeletion: ${_this.accountDeletion}, deletionRestored: ${_this.deletionRestored}, deletionError: ${_this.deletionError}, isLoggingOut: ${_this.isLoggingOut})';
+  return 'DeletionPendingState(accountDeletion: ${_this.accountDeletion}, deletionRestored: ${_this.deletionRestored}, deletionFailure: ${_this.deletionFailure}, isLoggingOut: ${_this.isLoggingOut})';
 }
 
 
@@ -54,11 +55,11 @@ abstract mixin class $DeletionPendingStateCopyWith<$Res>  {
   factory $DeletionPendingStateCopyWith(DeletionPendingState value, $Res Function(DeletionPendingState) _then) = _$DeletionPendingStateCopyWithImpl;
 @useResult
 $Res call({
- AccountDeletion? accountDeletion, bool deletionRestored, String deletionError, bool isLoggingOut
+ AccountDeletion? accountDeletion, bool deletionRestored, Failure? deletionFailure, bool isLoggingOut
 });
 
 
-$AccountDeletionCopyWith<$Res>? get accountDeletion;
+$AccountDeletionCopyWith<$Res>? get accountDeletion;$FailureCopyWith<$Res>? get deletionFailure;
 
 }
 /// @nodoc
@@ -71,12 +72,12 @@ class _$DeletionPendingStateCopyWithImpl<$Res>
 
 /// Create a copy of DeletionPendingState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? accountDeletion = freezed,Object? deletionRestored = null,Object? deletionError = null,Object? isLoggingOut = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? accountDeletion = freezed,Object? deletionRestored = null,Object? deletionFailure = freezed,Object? isLoggingOut = null,}) {
   return _then(DeletionPendingState(
 accountDeletion: freezed == accountDeletion ? _self.accountDeletion : accountDeletion // ignore: cast_nullable_to_non_nullable
 as AccountDeletion?,deletionRestored: null == deletionRestored ? _self.deletionRestored : deletionRestored // ignore: cast_nullable_to_non_nullable
-as bool,deletionError: null == deletionError ? _self.deletionError : deletionError // ignore: cast_nullable_to_non_nullable
-as String,isLoggingOut: null == isLoggingOut ? _self.isLoggingOut : isLoggingOut // ignore: cast_nullable_to_non_nullable
+as bool,deletionFailure: freezed == deletionFailure ? _self.deletionFailure : deletionFailure // ignore: cast_nullable_to_non_nullable
+as Failure?,isLoggingOut: null == isLoggingOut ? _self.isLoggingOut : isLoggingOut // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -91,6 +92,18 @@ $AccountDeletionCopyWith<$Res>? get accountDeletion {
 
   return $AccountDeletionCopyWith<$Res>(_self.accountDeletion!, (value) {
     return _then(_self.copyWith(accountDeletion: value));
+  });
+}/// Create a copy of DeletionPendingState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FailureCopyWith<$Res>? get deletionFailure {
+    if (_self.deletionFailure == null) {
+    return null;
+  }
+
+  return $FailureCopyWith<$Res>(_self.deletionFailure!, (value) {
+    return _then(_self.copyWith(deletionFailure: value));
   });
 }
 }
@@ -174,10 +187,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( AccountDeletion? accountDeletion,  bool deletionRestored,  String deletionError,  bool isLoggingOut)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( AccountDeletion? accountDeletion,  bool deletionRestored,  Failure? deletionFailure,  bool isLoggingOut)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DeletionPendingState() when $default != null:
-return $default(_that.accountDeletion,_that.deletionRestored,_that.deletionError,_that.isLoggingOut);case _:
+return $default(_that.accountDeletion,_that.deletionRestored,_that.deletionFailure,_that.isLoggingOut);case _:
   return orElse();
 
 }
@@ -195,10 +208,10 @@ return $default(_that.accountDeletion,_that.deletionRestored,_that.deletionError
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( AccountDeletion? accountDeletion,  bool deletionRestored,  String deletionError,  bool isLoggingOut)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( AccountDeletion? accountDeletion,  bool deletionRestored,  Failure? deletionFailure,  bool isLoggingOut)  $default,) {final _that = this;
 switch (_that) {
 case _DeletionPendingState():
-return $default(_that.accountDeletion,_that.deletionRestored,_that.deletionError,_that.isLoggingOut);case _:
+return $default(_that.accountDeletion,_that.deletionRestored,_that.deletionFailure,_that.isLoggingOut);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -215,10 +228,10 @@ return $default(_that.accountDeletion,_that.deletionRestored,_that.deletionError
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( AccountDeletion? accountDeletion,  bool deletionRestored,  String deletionError,  bool isLoggingOut)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( AccountDeletion? accountDeletion,  bool deletionRestored,  Failure? deletionFailure,  bool isLoggingOut)?  $default,) {final _that = this;
 switch (_that) {
 case _DeletionPendingState() when $default != null:
-return $default(_that.accountDeletion,_that.deletionRestored,_that.deletionError,_that.isLoggingOut);case _:
+return $default(_that.accountDeletion,_that.deletionRestored,_that.deletionFailure,_that.isLoggingOut);case _:
   return null;
 
 }
@@ -230,14 +243,15 @@ return $default(_that.accountDeletion,_that.deletionRestored,_that.deletionError
 
 
 class _DeletionPendingState implements DeletionPendingState {
-  const _DeletionPendingState({this.accountDeletion, this.deletionRestored = false, this.deletionError = '', this.isLoggingOut = false});
+  const _DeletionPendingState({this.accountDeletion, this.deletionRestored = false, this.deletionFailure, this.isLoggingOut = false});
   
 
 /// The signed-in account's pending deletion.
 @override final  AccountDeletion? accountDeletion;
 /// The deletion was cancelled: the screen says everything is back.
 @override@JsonKey() final  bool deletionRestored;
-@override@JsonKey() final  String deletionError;
+/// Why the last cancel failed; `null` when it did not.
+@override final  Failure? deletionFailure;
 /// Whether a sign-out runs (this screen's or any other).
 @override@JsonKey() final  bool isLoggingOut;
 
@@ -251,18 +265,18 @@ _$DeletionPendingStateCopyWith<_DeletionPendingState> get copyWith => __$Deletio
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeletionPendingState&&(identical(other.accountDeletion, accountDeletion) || other.accountDeletion == accountDeletion)&&(identical(other.deletionRestored, deletionRestored) || other.deletionRestored == deletionRestored)&&(identical(other.deletionError, deletionError) || other.deletionError == deletionError)&&(identical(other.isLoggingOut, isLoggingOut) || other.isLoggingOut == isLoggingOut));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeletionPendingState&&(identical(other.accountDeletion, accountDeletion) || other.accountDeletion == accountDeletion)&&(identical(other.deletionRestored, deletionRestored) || other.deletionRestored == deletionRestored)&&(identical(other.deletionFailure, deletionFailure) || other.deletionFailure == deletionFailure)&&(identical(other.isLoggingOut, isLoggingOut) || other.isLoggingOut == isLoggingOut));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,accountDeletion,deletionRestored,deletionError,isLoggingOut);
+    return Object.hash(runtimeType,accountDeletion,deletionRestored,deletionFailure,isLoggingOut);
 }
 
 @override
 String toString() {
-    return 'DeletionPendingState(accountDeletion: $accountDeletion, deletionRestored: $deletionRestored, deletionError: $deletionError, isLoggingOut: $isLoggingOut)';
+    return 'DeletionPendingState(accountDeletion: $accountDeletion, deletionRestored: $deletionRestored, deletionFailure: $deletionFailure, isLoggingOut: $isLoggingOut)';
 }
 
 
@@ -273,11 +287,11 @@ abstract mixin class _$DeletionPendingStateCopyWith<$Res> implements $DeletionPe
   factory _$DeletionPendingStateCopyWith(_DeletionPendingState value, $Res Function(_DeletionPendingState) _then) = __$DeletionPendingStateCopyWithImpl;
 @override @useResult
 $Res call({
- AccountDeletion? accountDeletion, bool deletionRestored, String deletionError, bool isLoggingOut
+ AccountDeletion? accountDeletion, bool deletionRestored, Failure? deletionFailure, bool isLoggingOut
 });
 
 
-@override $AccountDeletionCopyWith<$Res>? get accountDeletion;
+@override $AccountDeletionCopyWith<$Res>? get accountDeletion;@override $FailureCopyWith<$Res>? get deletionFailure;
 
 }
 /// @nodoc
@@ -290,12 +304,12 @@ class __$DeletionPendingStateCopyWithImpl<$Res>
 
 /// Create a copy of DeletionPendingState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? accountDeletion = freezed,Object? deletionRestored = null,Object? deletionError = null,Object? isLoggingOut = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? accountDeletion = freezed,Object? deletionRestored = null,Object? deletionFailure = freezed,Object? isLoggingOut = null,}) {
   return _then(_DeletionPendingState(
 accountDeletion: freezed == accountDeletion ? _self.accountDeletion : accountDeletion // ignore: cast_nullable_to_non_nullable
 as AccountDeletion?,deletionRestored: null == deletionRestored ? _self.deletionRestored : deletionRestored // ignore: cast_nullable_to_non_nullable
-as bool,deletionError: null == deletionError ? _self.deletionError : deletionError // ignore: cast_nullable_to_non_nullable
-as String,isLoggingOut: null == isLoggingOut ? _self.isLoggingOut : isLoggingOut // ignore: cast_nullable_to_non_nullable
+as bool,deletionFailure: freezed == deletionFailure ? _self.deletionFailure : deletionFailure // ignore: cast_nullable_to_non_nullable
+as Failure?,isLoggingOut: null == isLoggingOut ? _self.isLoggingOut : isLoggingOut // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -311,6 +325,18 @@ $AccountDeletionCopyWith<$Res>? get accountDeletion {
 
   return $AccountDeletionCopyWith<$Res>(_self.accountDeletion!, (value) {
     return _then(_self.copyWith(accountDeletion: value));
+  });
+}/// Create a copy of DeletionPendingState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FailureCopyWith<$Res>? get deletionFailure {
+    if (_self.deletionFailure == null) {
+    return null;
+  }
+
+  return $FailureCopyWith<$Res>(_self.deletionFailure!, (value) {
+    return _then(_self.copyWith(deletionFailure: value));
   });
 }
 }

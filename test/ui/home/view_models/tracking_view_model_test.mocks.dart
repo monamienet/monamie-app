@@ -10,7 +10,7 @@ import 'dart:ui' as _i18;
 import 'package:flutter/foundation.dart' as _i3;
 import 'package:latlong2/latlong.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i24;
+import 'package:mockito/src/dummies.dart' as _i25;
 import 'package:monamie_app/data/model/user_google_model.dart' as _i4;
 import 'package:monamie_app/data/repositories/membership/membership_repository.dart'
     as _i8;
@@ -21,7 +21,7 @@ import 'package:monamie_app/data/repositories/permissions/permissions_repository
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart'
     as _i19;
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart'
-    as _i25;
+    as _i26;
 import 'package:monamie_app/data/services/background_tracking_service.dart'
     as _i7;
 import 'package:monamie_app/data/services/device_location.dart' as _i5;
@@ -32,6 +32,7 @@ import 'package:monamie_app/domain/models/group_member.dart' as _i12;
 import 'package:monamie_app/domain/models/history_month.dart' as _i20;
 import 'package:monamie_app/domain/models/location_point.dart' as _i21;
 import 'package:monamie_app/domain/models/map_group.dart' as _i10;
+import 'package:monamie_app/domain/models/sharing_notification.dart' as _i24;
 import 'package:monamie_app/domain/models/user_model.dart' as _i11;
 import 'package:monamie_app/domain/use_cases/start_sharing.dart' as _i22;
 import 'package:monamie_app/utils/notice_presenter.dart' as _i14;
@@ -851,20 +852,30 @@ class MockStartSharing extends _i1.Mock implements _i22.StartSharing {
   @override
   _i6.Future<_i23.Result<_i22.SharingStart>> call({
     required void Function(_i2.LatLng)? onPosition,
+    required _i24.SharingNotification? notification,
   }) =>
       (super.noSuchMethod(
-            Invocation.method(#call, [], {#onPosition: onPosition}),
+            Invocation.method(#call, [], {
+              #onPosition: onPosition,
+              #notification: notification,
+            }),
             returnValue: _i6.Future<_i23.Result<_i22.SharingStart>>.value(
-              _i24.dummyValue<_i23.Result<_i22.SharingStart>>(
+              _i25.dummyValue<_i23.Result<_i22.SharingStart>>(
                 this,
-                Invocation.method(#call, [], {#onPosition: onPosition}),
+                Invocation.method(#call, [], {
+                  #onPosition: onPosition,
+                  #notification: notification,
+                }),
               ),
             ),
             returnValueForMissingStub:
                 _i6.Future<_i23.Result<_i22.SharingStart>>.value(
-                  _i24.dummyValue<_i23.Result<_i22.SharingStart>>(
+                  _i25.dummyValue<_i23.Result<_i22.SharingStart>>(
                     this,
-                    Invocation.method(#call, [], {#onPosition: onPosition}),
+                    Invocation.method(#call, [], {
+                      #onPosition: onPosition,
+                      #notification: notification,
+                    }),
                   ),
                 ),
           )
@@ -875,7 +886,7 @@ class MockStartSharing extends _i1.Mock implements _i22.StartSharing {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockUserGoogleRepository extends _i1.Mock
-    implements _i25.UserGoogleRepository {
+    implements _i26.UserGoogleRepository {
   @override
   _i6.Future<_i4.UserGoogleModel> saveGoogleProfile(
     String? email,
@@ -918,13 +929,13 @@ class MockUserGoogleRepository extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#saveUserGoogleModel, [user]),
             returnValue: _i6.Future<String>.value(
-              _i24.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
             ),
             returnValueForMissingStub: _i6.Future<String>.value(
-              _i24.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#saveUserGoogleModel, [user]),
               ),
@@ -946,13 +957,13 @@ class MockUserGoogleRepository extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#deleteUserGoogleModel, []),
             returnValue: _i6.Future<String>.value(
-              _i24.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
             ),
             returnValueForMissingStub: _i6.Future<String>.value(
-              _i24.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#deleteUserGoogleModel, []),
               ),
@@ -965,13 +976,13 @@ class MockUserGoogleRepository extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#clearAllUserGoogle, []),
             returnValue: _i6.Future<String>.value(
-              _i24.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),
             ),
             returnValueForMissingStub: _i6.Future<String>.value(
-              _i24.dummyValue<String>(
+              _i25.dummyValue<String>(
                 this,
                 Invocation.method(#clearAllUserGoogle, []),
               ),

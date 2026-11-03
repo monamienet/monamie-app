@@ -40,7 +40,8 @@ void main() {
     test('Sad Path: a failing method answers Err and changes nothing until '
         'it succeeds again', () async {
       // 1. Arrange
-      final fake = _Counter()..fail('increment', 'Sem conexão.');
+      final fake = _Counter()
+        ..fail('increment', const Failure.connection(FailedAction.save));
 
       // 2. Act
       final failed = await fake.increment(1);
@@ -49,7 +50,10 @@ void main() {
       final ok = await fake.increment(1);
 
       // 3. Assert
-      expect((failed as Err<int>).message, 'Sem conexão.');
+      expect(
+        (failed as Err<int>).failure,
+        const Failure.connection(FailedAction.save),
+      );
       expect(again, isA<Err<int>>());
       expect((ok as Ok<int>).value, 1);
       expect(fake.callCount('increment'), 3);
@@ -59,7 +63,12 @@ void main() {
       'Edge Case: a failure asked for once fails only the next call',
       () async {
         // 1. Arrange
-        final fake = _Counter()..fail('increment', 'Falhou.', once: true);
+        final fake = _Counter()
+          ..fail(
+            'increment',
+            const Failure.load(LoadTarget.groups),
+            once: true,
+          );
 
         // 2. Act
         final first = await fake.increment(1);
@@ -73,16 +82,20 @@ void main() {
 
     test('Sad Path: a throwing method throws FakeFailure', () async {
       // 1. Arrange
-      final fake = _Counter()..fail('incrementOrThrow', 'Indisponível.');
+      final fake = _Counter()
+        ..fail(
+          'incrementOrThrow',
+          const Failure.serverRefusal('Indisponível.'),
+        );
 
       // 2. Act & 3. Assert
       await expectLater(
         fake.incrementOrThrow(),
         throwsA(
           isA<FakeFailure>().having(
-            (f) => f.message,
-            'message',
-            'Indisponível.',
+            (f) => f.failure,
+            'failure',
+            const Failure.serverRefusal('Indisponível.'),
           ),
         ),
       );

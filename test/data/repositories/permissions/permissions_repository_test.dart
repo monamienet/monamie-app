@@ -109,13 +109,9 @@ PermissionsRepository _build({
 void _seed(ValueListenable<bool> listenable, bool value) =>
     (listenable as ValueNotifier<bool>).value = value;
 
-const String _noticeTitle = 'Uso em segundo plano ainda restrito';
-
 /// O aviso de que a restrição de bateria continua.
-final Matcher _stillRestrictedNotice = isA<UserNotice>().having(
-  (notice) => notice.title,
-  'title',
-  _noticeTitle,
+final Matcher _stillRestrictedNotice = equals(
+  const UserNotice.backgroundStillRestricted(),
 );
 
 /// Leva o usuário às configurações pelo fluxo do controller (a pergunta

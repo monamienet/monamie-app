@@ -1906,5 +1906,349 @@
   "trackingInUse": "Em uso",
   "@trackingInUse": {
     "description": "Tag next to the tracking profile saved now."
+  },
+  "failureConnectionConclude": "Não foi possível concluir agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionConclude": {
+    "description": "An operation failed, most likely for lack of connection."
+  },
+  "failureConnectionDelete": "Não foi possível excluir agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionDelete": {
+    "description": "Deleting failed, most likely for lack of connection."
+  },
+  "failureConnectionCancel": "Não foi possível cancelar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionCancel": {
+    "description": "Cancelling (e.g. the account deletion) failed, most likely for lack of connection."
+  },
+  "failureConnectionCreate": "Não foi possível criar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionCreate": {
+    "description": "Creating an organization failed, most likely for lack of connection."
+  },
+  "failureConnectionSend": "Não foi possível enviar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionSend": {
+    "description": "Sending invites failed, most likely for lack of connection."
+  },
+  "failureConnectionAccept": "Não foi possível aceitar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionAccept": {
+    "description": "Accepting an invite failed, most likely for lack of connection."
+  },
+  "failureConnectionSave": "Não foi possível salvar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionSave": {
+    "description": "Saving a change failed, most likely for lack of connection."
+  },
+  "failureConnectionSwitch": "Não foi possível trocar agora. Verifique a conexão e tente de novo.",
+  "@failureConnectionSwitch": {
+    "description": "Switching organization failed, most likely for lack of connection."
+  },
+  "failureConnectionLoadAccount": "Não foi possível carregar sua conta. Verifique a conexão e tente de novo.",
+  "@failureConnectionLoadAccount": {
+    "description": "The account screen could not read whether the person owns the organization."
+  },
+  "failureLoadAdministrators": "Não foi possível carregar os administradores.",
+  "@failureLoadAdministrators": {
+    "description": "The list of administrators could not be read."
+  },
+  "failureLoadInvites": "Não foi possível carregar os convites.",
+  "@failureLoadInvites": {
+    "description": "The invites could not be read."
+  },
+  "failureLoadGroups": "Não foi possível carregar os grupos.",
+  "@failureLoadGroups": {
+    "description": "The groups could not be read."
+  },
+  "failureLoadThemes": "Não foi possível carregar os temas.",
+  "@failureLoadThemes": {
+    "description": "The theme catalog could not be read."
+  },
+  "failureLoadCreations": "Não foi possível carregar as organizações em criação.",
+  "@failureLoadCreations": {
+    "description": "The organizations being created could not be read."
+  },
+  "failureLoadAccountDeletion": "Não foi possível ler a exclusão da conta.",
+  "@failureLoadAccountDeletion": {
+    "description": "The account's pending deletion could not be read."
+  },
+  "failureLoadOrganizationIdCheck": "Não foi possível verificar agora.",
+  "@failureLoadOrganizationIdCheck": {
+    "description": "Whether an organization identifier is free could not be checked."
+  },
+  "failureRefusedConclude": "Não foi possível concluir.",
+  "@failureRefusedConclude": {
+    "description": "The server refused an operation without saying why."
+  },
+  "failureRefusedAny": "Não foi possível agora.",
+  "@failureRefusedAny": {
+    "description": "The server refused an account operation without saying why."
+  },
+  "failureRefusedCreate": "Não foi possível criar.",
+  "@failureRefusedCreate": {
+    "description": "The server refused to create the organization without saying why."
+  },
+  "failureRefusedSave": "Não foi possível salvar.",
+  "@failureRefusedSave": {
+    "description": "The server refused to save the appearance without saying why."
+  },
+  "failureUnexpectedResponse": "Resposta inesperada do servidor.",
+  "@failureUnexpectedResponse": {
+    "description": "The server answered something the app cannot read."
+  },
+  "failureUnexpectedGroupResponse": "Resposta inesperada ao criar o grupo.",
+  "@failureUnexpectedGroupResponse": {
+    "description": "The server's answer to a group's creation could not be read."
+  },
+  "failureOrganizationIdNotPlain": "Use só letras minúsculas, sem acentos nem espaços.",
+  "@failureOrganizationIdNotPlain": {
+    "description": "An organization identifier with characters other than a to z."
+  },
+  "failureOrganizationIdTooLong": "Use no máximo {max} letras.",
+  "@failureOrganizationIdTooLong": {
+    "description": "An organization identifier that is too long.",
+    "placeholders": {
+      "max": {
+        "type": "int",
+        "example": "20"
+      }
+    }
+  },
+  "failureOrganizationIdReserved": "Esse identificador é reservado.",
+  "@failureOrganizationIdReserved": {
+    "description": "An organization identifier MonAmie keeps for itself."
+  },
+  "failureOrganizationIdUnusable": "Esse identificador não pode ser usado.",
+  "@failureOrganizationIdUnusable": {
+    "description": "The server says an organization identifier cannot be used, without saying why."
+  },
+  "failureGroupNameTooShort": "Use pelo menos 2 letras.",
+  "@failureGroupNameTooShort": {
+    "description": "A group name with fewer than 2 letters."
+  },
+  "failureGroupNameTooLong": "Use no máximo 40 caracteres.",
+  "@failureGroupNameTooLong": {
+    "description": "A group name longer than 40 characters."
+  },
+  "failureGroupNameTaken": "Já existe o grupo {name}.",
+  "@failureGroupNameTaken": {
+    "description": "A group name already taken by another group.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Equipe Sul"
+      }
+    }
+  },
+  "failureNoRoleChosen": "Marque pelo menos uma opção.",
+  "@failureNoRoleChosen": {
+    "description": "No role ticked for a person in a group."
+  },
+  "failureInvalidEmail": "Digite um e-mail válido.",
+  "@failureInvalidEmail": {
+    "description": "An invite's e-mail that is not an e-mail address."
+  },
+  "failureEmailAlreadyListed": "{email} já está na lista.",
+  "@failureEmailAlreadyListed": {
+    "description": "An invite's e-mail already in the list.",
+    "placeholders": {
+      "email": {
+        "type": "String",
+        "example": "ana@example.com"
+      }
+    }
+  },
+  "failureLogoTooLarge": "O arquivo tem {megabytes} MB. Envie um de até 10 MB.",
+  "@failureLogoTooLarge": {
+    "description": "A logo file over the 10 MB allowed.",
+    "placeholders": {
+      "megabytes": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "failureLogoUnreadable": "Não deu para abrir este arquivo. Envie em PNG, JPEG, WebP ou SVG.",
+  "@failureLogoUnreadable": {
+    "description": "A logo file no decoder could open."
+  },
+  "failureLogoNotConverted": "Não deu para gerar o PNG do logo.",
+  "@failureLogoNotConverted": {
+    "description": "The logo's PNG could not be produced."
+  },
+  "failureLogoNotOpened": "Não deu para abrir este arquivo.",
+  "@failureLogoNotOpened": {
+    "description": "A logo file that could not be opened for any other reason."
+  },
+  "failureEntryEnter": "Não foi possível entrar agora: {detail}",
+  "@failureEntryEnter": {
+    "description": "Entering an organization failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureEntryCheck": "Não foi possível verificar agora: {detail}",
+  "@failureEntryCheck": {
+    "description": "Asking again which organizations the person belongs to failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureEntryUnexpected": "Ocorreu um erro inesperado: {detail}",
+  "@failureEntryUnexpected": {
+    "description": "Signing in with Google failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureEntryLoadData": "Ocorreu um erro ao carregar seus dados: {detail}",
+  "@failureEntryLoadData": {
+    "description": "Entering after a web sign-in failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureEntryOrganization": "Não foi possível entrar em {organization}: {detail}",
+  "@failureEntryOrganization": {
+    "description": "Entering the organization picked failed; detail is the original error.",
+    "placeholders": {
+      "organization": {
+        "type": "String",
+        "example": "Rota Sul"
+      },
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureGoogleAuth": "Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.",
+  "@failureGoogleAuth": {
+    "description": "A web Google sign-in returned no account."
+  },
+  "failureGoogleRenewal": "Não foi possível renovar o acesso com o Google. Tente de novo.",
+  "@failureGoogleRenewal": {
+    "description": "Google did not renew the sign-in needed to switch organization."
+  },
+  "failureSignOut": "Não foi possível encerrar a sessão. Tente novamente.\nErro: {detail}",
+  "@failureSignOut": {
+    "description": "Signing out failed; detail is the original error.",
+    "placeholders": {
+      "detail": {
+        "type": "String",
+        "example": "timeout"
+      }
+    }
+  },
+  "failureAccessLost": "Sua conta não tem mais acesso à {organization}.",
+  "@failureAccessLost": {
+    "description": "Why the person is on the no-organization screen: no membership in the organization any more.",
+    "placeholders": {
+      "organization": {
+        "type": "String",
+        "example": "Rota Sul"
+      }
+    }
+  },
+  "failureRemovedFromOrganization": "Você não faz mais parte da {organization}.",
+  "@failureRemovedFromOrganization": {
+    "description": "Why the person is on the no-organization screen: removed from the organization.",
+    "placeholders": {
+      "organization": {
+        "type": "String",
+        "example": "Rota Sul"
+      }
+    }
+  },
+  "failureRemovedFromUnnamedOrganization": "Você não faz mais parte desta organização.",
+  "@failureRemovedFromUnnamedOrganization": {
+    "description": "Why the person is on the no-organization screen: removed from an organization whose name is unknown."
+  },
+  "failureSharingNotAllowed": "Você não está em campo em nenhum grupo. Peça a um administrador para liberar o compartilhamento da sua localização.",
+  "@failureSharingNotAllowed": {
+    "description": "Sharing cannot start: the person publishes in no group."
+  },
+  "failureSharingNotChanged": "Não foi possível alterar o compartilhamento agora. Tente de novo.",
+  "@failureSharingNotChanged": {
+    "description": "Turning sharing on or off failed."
+  },
+  "failureTitleSignIn": "Erro de Login",
+  "@failureTitleSignIn": {
+    "description": "Title of the messages about a failed sign-in or entry."
+  },
+  "failureTitleSwitchOrganization": "Trocar de organização",
+  "@failureTitleSwitchOrganization": {
+    "description": "Title of the messages about a failed switch of organization."
+  },
+  "failureTitleSignOut": "Erro ao sair",
+  "@failureTitleSignOut": {
+    "description": "Title of the message about a failed sign-out."
+  },
+  "failureTitleSharingNotAllowed": "Compartilhamento não autorizado",
+  "@failureTitleSharingNotAllowed": {
+    "description": "Title of the message saying the person may not share."
+  },
+  "failureTitleSharing": "Compartilhamento",
+  "@failureTitleSharing": {
+    "description": "Title of the message about a failed change of sharing."
+  },
+  "noticeWaitingForGpsTitle": "Aguardando sinal de GPS",
+  "@noticeWaitingForGpsTitle": {
+    "description": "Title of the remark shown when sharing started without a GPS fix."
+  },
+  "noticeWaitingForGps": "O monitoramento foi iniciado, mas a sua posição inicial ainda está sendo obtida pelos satélites.",
+  "@noticeWaitingForGps": {
+    "description": "Remark shown when sharing started without a GPS fix."
+  },
+  "noticeTrackingAtRiskTitle": "Rastreamento em risco",
+  "@noticeTrackingAtRiskTitle": {
+    "description": "Title of the warning that the device restricts the app in the background."
+  },
+  "noticeTrackingAtRisk": "O aparelho está restringindo o MonAmie em segundo plano. O rastreamento vai parar quando você sair do aplicativo.",
+  "@noticeTrackingAtRisk": {
+    "description": "Warning that the device started restricting the app in the background while sharing is on."
+  },
+  "noticeTrackingStopUnconfirmedTitle": "Rastreamento",
+  "@noticeTrackingStopUnconfirmedTitle": {
+    "description": "Title of the warning that the tracking did not confirm it stopped."
+  },
+  "noticeTrackingStopUnconfirmed": "Não foi possível confirmar o encerramento do rastreamento. Ele será encerrado automaticamente em instantes.",
+  "@noticeTrackingStopUnconfirmed": {
+    "description": "Warning that the tracking service did not confirm it stopped."
+  },
+  "noticeBackgroundStillRestrictedTitle": "Uso em segundo plano ainda restrito",
+  "@noticeBackgroundStillRestrictedTitle": {
+    "description": "Title of the warning shown back from the battery settings when the restriction is still on."
+  },
+  "noticeBackgroundStillRestricted": "A alteração não foi aplicada. Toque em 'Permitir uso em segundo plano' e, se o interruptor já estiver ativado, desative-o e ative-o novamente.",
+  "@noticeBackgroundStillRestricted": {
+    "description": "Warning shown back from the battery settings when the restriction is still on. The quoted text is the Android setting's name."
+  },
+  "sharingNotificationTitle": "Sua localização está sendo compartilhada",
+  "@sharingNotificationTitle": {
+    "description": "Title of the system notification shown while sharing is on."
+  },
+  "sharingNotificationContent": "O compartilhamento está ligado. Para preservar sua privacidade, certifique-se de desativá-lo assim que terminar suas atividades.",
+  "@sharingNotificationContent": {
+    "description": "Text of the system notification shown while sharing is on."
+  },
+  "groupUnnamed": "Grupo sem nome",
+  "@groupUnnamed": {
+    "description": "Name shown for a group whose name is blank."
+  },
+  "inviteGroupFallback": "Grupo",
+  "@inviteGroupFallback": {
+    "description": "Name shown for an invite's group when the server sent none."
+  },
+  "creationPreviewName": "Organização",
+  "@creationPreviewName": {
+    "description": "Placeholder name of the organization being created, before one is typed."
   }
 }

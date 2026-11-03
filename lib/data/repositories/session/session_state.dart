@@ -2,6 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/data/model/organization_binding.dart';
 import 'package:monamie_app/domain/models/account_deletion.dart';
 import 'package:monamie_app/domain/models/invite.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 part 'session_state.freezed.dart';
 
@@ -16,10 +17,11 @@ sealed class SessionState with _$SessionState {
   const factory SessionState.signedOut() = SessionSignedOut;
 
   /// Signed in, but in no organization (or just lost access to one):
-  /// *Sem organização*. [reason] says why the person lost access, `null`
-  /// otherwise; [invites] are the invites waiting for the account.
+  /// *Sem organização*. [reason] says why the person lost access (an
+  /// [AccessLost] or a [RemovedFromOrganization]), `null` otherwise;
+  /// [invites] are the invites waiting for the account.
   const factory SessionState.noOrganization({
-    String? reason,
+    Failure? reason,
     @Default([]) List<Invite> invites,
   }) = SessionNoOrganization;
 

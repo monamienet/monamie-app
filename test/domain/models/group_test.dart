@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/group.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 void main() {
   group('Group.fromJson - Unit Test Suite', () {
@@ -179,7 +180,7 @@ void main() {
         final problem = groupNameProblem(name, existing);
 
         // 3. Assert
-        expect(problem, 'Já existe o grupo Equipe Léste.');
+        expect(problem, const Failure.groupNameTaken('Equipe Léste'));
       });
     }
   });
@@ -229,7 +230,7 @@ void main() {
       final problem = rolesChoiceProblem(roles, byAdmin: false);
 
       // 3. Assert
-      expect(problem, 'Marque pelo menos uma opção.');
+      expect(problem, const Failure.noRoleChosen());
     });
 
     test('Happy Path: a maintainer may keep Gestor do grupo with an '
@@ -254,7 +255,7 @@ void main() {
         final problem = rolesChoiceProblem(roles, byAdmin: byAdmin);
 
         // 3. Assert
-        expect(problem, 'Marque pelo menos uma opção.');
+        expect(problem, const Failure.noRoleChosen());
       });
     }
   });

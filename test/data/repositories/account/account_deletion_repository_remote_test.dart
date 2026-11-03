@@ -27,8 +27,8 @@ Object? sentTo(String name) => verify(
   functions.call(name, captureAny, timeout: anyNamed('timeout')),
 ).captured.single;
 
-String messageOf(Result<Object?> result) => switch (result) {
-  Err(:final message) => message,
+Failure failureOf(Result<Object?> result) => switch (result) {
+  Err(:final failure) => failure,
   Ok() => fail('expected an Err, got $result'),
 };
 
@@ -91,7 +91,7 @@ void main() {
       final result = await repository.request();
 
       // 3. Assert
-      expect(messageOf(result), 'Resposta inesperada do servidor.');
+      expect(failureOf(result), const Failure.unexpectedResponse());
     });
 
     test('Sad Path: a failed-precondition refusal gives the server\'s own '
@@ -109,7 +109,12 @@ void main() {
       final result = await repository.request();
 
       // 3. Assert
-      expect(messageOf(result), 'Confirme a organização pelo identificador.');
+      expect(
+        failureOf(result),
+        const Failure.serverRefusal(
+          'Confirme a organização pelo identificador.',
+        ),
+      );
     });
 
     test('Edge Case: a failed-precondition refusal with no words gives the '
@@ -124,7 +129,10 @@ void main() {
       final result = await repository.request();
 
       // 3. Assert
-      expect(messageOf(result), 'Não foi possível agora.');
+      expect(
+        failureOf(result),
+        const Failure.unexplainedRefusal(RefusedAction.any),
+      );
     });
 
     test('Sad Path: an invalid-argument refusal is not explained to the '
@@ -140,8 +148,8 @@ void main() {
 
       // 3. Assert
       expect(
-        messageOf(result),
-        'Não foi possível concluir agora. Verifique a conexão e tente de novo.',
+        failureOf(result),
+        const Failure.connection(FailedAction.conclude),
       );
     });
 
@@ -153,10 +161,7 @@ void main() {
       final result = await repository.request();
 
       // 3. Assert
-      expect(
-        messageOf(result),
-        'Não foi possível excluir agora. Verifique a conexão e tente de novo.',
-      );
+      expect(failureOf(result), const Failure.connection(FailedAction.delete));
     });
   });
 
@@ -181,11 +186,7 @@ void main() {
       final result = await repository.cancel();
 
       // 3. Assert
-      expect(
-        messageOf(result),
-        'Não foi possível cancelar agora. Verifique a conexão e tente de '
-        'novo.',
-      );
+      expect(failureOf(result), const Failure.connection(FailedAction.cancel));
     });
   });
 
@@ -222,7 +223,7 @@ void main() {
       final result = await repository.pending();
 
       // 3. Assert
-      expect(messageOf(result), 'Não foi possível ler a exclusão da conta.');
+      expect(failureOf(result), const Failure.load(LoadTarget.accountDeletion));
       expect((result as Err).error, same(error));
     });
   });

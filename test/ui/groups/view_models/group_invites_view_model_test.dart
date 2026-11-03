@@ -61,7 +61,7 @@ void main() {
       expect(result, isA<Ok<void>>());
       verify(repository.listForGroup('rotasul', '01')).called(1);
       expect(viewModel.state.invites, [ana, bia]);
-      expect(viewModel.state.errorMessage, isEmpty);
+      expect(viewModel.state.failure, isNull);
     });
 
     test('Edge Case: no invites are known before the first load', () {
@@ -95,7 +95,7 @@ void main() {
       // 1. Arrange
       when(
         repository.listForGroup(any, any),
-      ).thenAnswer((_) async => const Err('boom'));
+      ).thenAnswer((_) async => const Err(Failure.serverRefusal('boom')));
       final viewModel = newViewModel();
       await viewModel.load.execute();
       when(
@@ -106,18 +106,18 @@ void main() {
       await viewModel.load.execute();
 
       // 3. Assert
-      expect(viewModel.state.errorMessage, isEmpty);
+      expect(viewModel.state.failure, isNull);
       expect(viewModel.state.invites, [ana]);
     });
 
-    test('Sad Path: a failed load keeps its message and the invites '
+    test('Sad Path: a failed load keeps its failure and the invites '
         'already read', () async {
       // 1. Arrange
       final viewModel = newViewModel();
       await viewModel.load.execute();
-      when(
-        repository.listForGroup(any, any),
-      ).thenAnswer((_) async => const Err('Sem conexão.'));
+      when(repository.listForGroup(any, any)).thenAnswer(
+        (_) async => const Err(Failure.serverRefusal('Sem conexão.')),
+      );
 
       // 2. Act
       final result = await viewModel.load.execute();
@@ -126,15 +126,12 @@ void main() {
       expect(
         result,
         isA<Err<void>>().having(
-          (e) => e.message,
-          'message',
-          'Não foi possível carregar os convites.',
+          (e) => e.failure,
+          'failure',
+          const Failure.load(LoadTarget.invites),
         ),
       );
-      expect(
-        viewModel.state.errorMessage,
-        'Não foi possível carregar os convites.',
-      );
+      expect(viewModel.state.failure, const Failure.load(LoadTarget.invites));
       expect(viewModel.state.invites, [ana, bia]);
     });
   });
@@ -167,7 +164,7 @@ void main() {
       await viewModel.load.execute();
       when(
         repository.listForGroup(any, any),
-      ).thenAnswer((_) async => const Err('boom'));
+      ).thenAnswer((_) async => const Err(Failure.serverRefusal('boom')));
 
       // 2. Act
       final result = await viewModel.resend.execute(bia);
@@ -184,9 +181,10 @@ void main() {
         final viewModel = newViewModel();
         await viewModel.load.execute();
         clearInteractions(repository);
-        when(
-          repository.resend(any, any),
-        ).thenAnswer((_) async => const Err('Convite não encontrado.'));
+        when(repository.resend(any, any)).thenAnswer(
+          (_) async =>
+              const Err(Failure.serverRefusal('Convite não encontrado.')),
+        );
 
         // 2. Act
         final result = await viewModel.resend.execute(bia);
@@ -195,9 +193,9 @@ void main() {
         expect(
           result,
           isA<Err<void>>().having(
-            (e) => e.message,
-            'message',
-            'Convite não encontrado.',
+            (e) => e.failure,
+            'failure',
+            const Failure.serverRefusal('Convite não encontrado.'),
           ),
         );
         verifyNever(repository.listForGroup(any, any));
@@ -249,9 +247,9 @@ void main() {
       () async {
         // 1. Arrange
         final viewModel = newViewModel();
-        when(
-          repository.cancel(any, any),
-        ).thenAnswer((_) async => const Err('Sem permissão.'));
+        when(repository.cancel(any, any)).thenAnswer(
+          (_) async => const Err(Failure.serverRefusal('Sem permissão.')),
+        );
 
         // 2. Act
         final result = await viewModel.cancel.execute(ana);

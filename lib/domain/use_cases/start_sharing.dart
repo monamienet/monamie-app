@@ -4,6 +4,7 @@ import 'package:monamie_app/data/repositories/membership/membership_repository.d
 import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
+import 'package:monamie_app/domain/models/sharing_notification.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
 
@@ -29,9 +30,11 @@ class SharingStart {
 ///    settings open instead.
 /// 2. With the GPS off the person hears so, and nothing starts.
 /// 3. The rules only accept positions from people who publish in a group
-///    (the service publishes in every one of them): [Err] otherwise.
+///    (the service publishes in every one of them): [Err] with
+///    [SharingNotAllowed] otherwise.
 /// 4. A first fix is asked for (5 s at most), so the map shows the person at
-///    once; without one the service still starts, with a [UserNotice].
+///    once; without one the service still starts, with a
+///    [WaitingForGpsNotice].
 /// 5. The tracking service starts, with its notification.
 ///
 /// The caller (the sharing switch) guards against a second call while one
@@ -49,10 +52,12 @@ class StartSharing {
   final MembershipRepository _memberships;
   final BackgroundTrackingService _service;
 
-  /// Runs the checks and starts the service. [onPosition] gets the first
-  /// fix, as soon as it arrives (before the service starts).
+  /// Runs the checks and starts the service, which shows [notification]
+  /// while it runs. [onPosition] gets the first fix, as soon as it arrives
+  /// (before the service starts).
   Future<Result<SharingStart>> call({
     required void Function(LatLng position) onPosition,
+    required SharingNotification notification,
   }) async {
     // No modo de bateria "Restrito" o Android remove o status de foreground
     // do serviço assim que o app sai da tela; não adianta iniciar.
@@ -73,11 +78,7 @@ class StartSharing {
     // the service publishes in every one of them.
     if (!_memberships.canPublish) {
       debugPrint('[StartSharing] The user publishes in no group.');
-      return const Err(
-        'Você não está em campo em nenhum grupo. Peça a um administrador '
-        'para liberar o compartilhamento da sua localização.',
-        title: 'Compartilhamento não autorizado',
-      );
+      return const Err(Failure.sharingNotAllowed());
     }
 
     // Tenta obter a posição GPS atual para sincronizar imediatamente
@@ -90,16 +91,12 @@ class StartSharing {
       debugPrint('[StartSharing] Erro ao obter posição atual imediata: $e');
       // The service still starts: the person hears that the satellites
       // are still syncing.
-      notice = const UserNotice(
-        'O monitoramento foi iniciado, mas a sua posição inicial ainda está sendo obtida pelos satélites.',
-        title: 'Aguardando sinal de GPS',
-      );
+      notice = const UserNotice.waitingForGps();
     }
 
     await _service.start(
-      notificationTitle: "Sua localização está sendo compartilhada",
-      notificationContent:
-          "O compartilhamento está ligado. Para preservar sua privacidade, certifique-se de desativá-lo assim que terminar suas atividades.",
+      notificationTitle: notification.title,
+      notificationContent: notification.content,
     );
     return Ok(SharingStart.started(notice: notice));
   }

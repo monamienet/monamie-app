@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
@@ -185,7 +186,12 @@ class HomeScreen extends StatelessWidget {
         if (!home.switchingGroup.value) {
           return const SizedBox.shrink();
         }
-        final group = home.selectedGroup.value?.name ?? '';
+        final group = switch (home.selectedGroup.value) {
+          final selected? => AppLocalizations.of(
+            context,
+          ).mapGroupName(selected),
+          null => '',
+        };
         return Positioned(
           top: 14,
           left: 0,

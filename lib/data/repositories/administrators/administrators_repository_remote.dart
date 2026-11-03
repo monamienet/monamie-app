@@ -22,8 +22,8 @@ class AdministratorsRepositoryRemote implements AdministratorsRepository {
             }),
           ),
         ),
-        refusal: functionsFailureMessage,
-        unexpected: 'Não foi possível carregar os administradores.',
+        refusal: functionsRefusal,
+        unexpected: const Failure.load(LoadTarget.administrators),
         logTag: 'Administrators',
       );
 
@@ -41,10 +41,8 @@ class AdministratorsRepositoryRemote implements AdministratorsRepository {
       });
       return const Ok(null);
     },
-    refusal: functionsFailureMessage,
-    unexpected:
-        'Não foi possível concluir agora. Verifique a conexão e tente de '
-        'novo.',
+    refusal: functionsRefusal,
+    unexpected: const Failure.connection(FailedAction.conclude),
     logTag: 'Administrators',
   );
 }

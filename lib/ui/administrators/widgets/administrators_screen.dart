@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 import 'package:monamie_app/domain/models/group.dart';
@@ -67,11 +68,11 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                if (c.state.errorMessage.isNotEmpty)
+                if (c.state.failure case final failure?)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Text(
-                      c.state.errorMessage,
+                      failure.message(l10n),
                       style: const TextStyle(
                         color: _error,
                         fontWeight: FontWeight.w800,

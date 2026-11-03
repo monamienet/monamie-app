@@ -18,9 +18,12 @@ void main() {
       expect(shown, isNull);
     });
 
-    test("Happy Path: an Err shows its message", () {
+    test("Happy Path: an Err shows its failure's message", () {
       // 1. Arrange & 2. Act
-      final shown = sheetFailureOf(l10n, const Err('Convite não encontrado.'));
+      final shown = sheetFailureOf(
+        l10n,
+        const Err(Failure.serverRefusal('Convite não encontrado.')),
+      );
 
       // 3. Assert
       expect(shown, 'Convite não encontrado.');
@@ -28,7 +31,7 @@ void main() {
 
     test('Edge Case: an Err with an empty message shows the generic one', () {
       // 1. Arrange & 2. Act
-      final shown = sheetFailureOf(l10n, const Err(''));
+      final shown = sheetFailureOf(l10n, const Err(Failure.serverRefusal('')));
 
       // 3. Assert
       expect(shown, _generic);

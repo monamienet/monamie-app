@@ -1,5 +1,6 @@
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/domain/models/invite.dart';
+import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
 
@@ -72,4 +73,12 @@ extension DomainLabels on AppLocalizations {
         if (loses > 0) groupDeletedLost(loses, organization),
         groupDeletedOthersStay,
       ].join(' ');
+
+  /// [invite]'s group name, or "Grupo" when the server sent none.
+  String inviteGroupName(Invite invite) =>
+      invite.groupName ?? inviteGroupFallback;
+
+  /// [group]'s name, or "Grupo sem nome" when it is blank.
+  String mapGroupName(MapGroup group) =>
+      group.name.isEmpty ? groupUnnamed : group.name;
 }

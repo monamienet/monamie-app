@@ -1304,7 +1304,6 @@ import 'package:monamie_app/data/repositories/x/x.dart';
         "import 'package:flutter/widgets.dart';\n"
             "Widget f() => const Text('Olá');\n",
       );
-      writeLib('ui/a/a_view_model.dart', "const String m = 'Olá';\n");
 
       // 2. Act
       final result = await runTool();
@@ -1315,11 +1314,49 @@ import 'package:monamie_app/data/repositories/x/x.dart';
         result.stderr,
         allOf(
           contains('${p.join('lib', 'ui', 'a', 'a_screen.dart')}:2:26'),
-          isNot(contains('a_view_model.dart')),
           contains(uiHardCodedText),
           contains('1 violation(s) found.'),
         ),
       );
+    });
+
+    test('exits 1 for a hard-coded text in a view model and in a state '
+        'file under lib/ui/', () async {
+      // 1. Arrange
+      writeLib('ui/a/a_view_model.dart', "const String m = 'Olá';\n");
+      writeLib(
+        'ui/a/a_state.dart',
+        "// check_layers: state_contract\nconst String t = 'Título';\n",
+      );
+
+      // 2. Act
+      final result = await runTool();
+
+      // 3. Assert
+      expect(result.exitCode, 1);
+      expect(
+        result.stderr,
+        allOf(
+          contains('${p.join('lib', 'ui', 'a', 'a_view_model.dart')}:1:18'),
+          contains('${p.join('lib', 'ui', 'a', 'a_state.dart')}:2:18'),
+          contains(uiHardCodedText),
+          contains('2 violation(s) found.'),
+        ),
+      );
+    });
+
+    test('exits 0 for a view model whose literals are never text', () async {
+      // 1. Arrange
+      writeLib(
+        'ui/a/a_view_model.dart',
+        "bool f(String n) => n.startsWith('Equipe ') || n.endsWith('.PNG');\n",
+      );
+
+      // 2. Act
+      final result = await runTool();
+
+      // 3. Assert
+      expect(result.exitCode, 0);
     });
   });
 }

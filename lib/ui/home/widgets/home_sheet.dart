@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
@@ -161,7 +162,7 @@ class _HomeSheetState extends State<HomeSheet> {
           children: [
             Expanded(
               child: Text(
-                group?.name ?? l10n.sheetNoGroup,
+                group == null ? l10n.sheetNoGroup : l10n.mapGroupName(group),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

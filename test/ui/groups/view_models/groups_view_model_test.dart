@@ -18,8 +18,8 @@ const serra = Group(id: '02', name: 'Equipe Serra', people: []);
 /// Stubs every write of [repository] to wait on [wait] before its result:
 /// `create` returns [serra] and `deletionImpact` says only ana@x.com
 /// leaves the organization; with [failure], every write returns an [Err]
-/// with that message instead.
-void stubWrites(Future<void> Function() wait, {String? failure}) {
+/// with that failure instead.
+void stubWrites(Future<void> Function() wait, {Failure? failure}) {
   Future<Result<T>> answer<T>(T value) async {
     await wait();
     return failure == null ? Ok(value) : Err(failure);
@@ -38,12 +38,11 @@ void stubWrites(Future<void> Function() wait, {String? failure}) {
 /// Makes every write wait on [gate].
 void writesWaitOn(Completer<void> gate) => stubWrites(() => gate.future);
 
-/// Makes every write return an [Err] with [message].
-void writesFail(String message) => stubWrites(() async {}, failure: message);
+/// Makes every write return an [Err] with [failure].
+void writesFail(Failure failure) => stubWrites(() async {}, failure: failure);
 
-/// The repository's message for an unexpected (non-Functions) error.
-const _generic =
-    'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
+/// The repository's failure for an unexpected (non-Functions) error.
+const _generic = Failure.connection(FailedAction.conclude);
 
 late MockGroupsRepository repository;
 
@@ -105,9 +104,9 @@ void main() {
       'Sad Path: a failed load shows the message and leaves no team',
       () async {
         // 1. Arrange
-        when(
-          repository.list(any),
-        ).thenAnswer((_) async => const Err('Sem permissão.'));
+        when(repository.list(any)).thenAnswer(
+          (_) async => const Err(Failure.serverRefusal('Sem permissão.')),
+        );
         final controller = GroupsViewModel(
           organizationId: 'rotasul',
           repository: repository,
@@ -118,7 +117,10 @@ void main() {
         await pumpEventQueue();
 
         // 3. Assert
-        expect(controller.state.errorMessage, 'Sem permissão.');
+        expect(
+          controller.state.failure,
+          const Failure.serverRefusal('Sem permissão.'),
+        );
         expect(controller.state.groups, isEmpty);
         expect(controller.load.running, isFalse);
       },
@@ -158,7 +160,7 @@ void main() {
         final problem = controller.nameProblem('Equipe Leste', renaming: '01');
 
         // 3. Assert
-        expect(problem, 'Já existe o grupo Equipe Léste.');
+        expect(problem, const Failure.groupNameTaken('Equipe Léste'));
       },
     );
   });
@@ -221,17 +223,22 @@ void main() {
       },
     );
 
-    test('Sad Path: an Err is returned with its message', () async {
+    test('Sad Path: an Err is returned with its failure', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail('Já existe a equipe Equipe Serra.');
+      writesFail(
+        const Failure.serverRefusal('Já existe a equipe Equipe Serra.'),
+      );
 
       // 2. Act
       final created = await controller.create.execute('Equipe Serra');
 
       // 3. Assert
       expect(created, isA<Err<Group>>());
-      expect(controller.state.errorMessage, 'Já existe a equipe Equipe Serra.');
+      expect(
+        controller.state.failure,
+        const Failure.serverRefusal('Já existe a equipe Equipe Serra.'),
+      );
       expect(controller.state.groups, [norte, leste]);
       expect(controller.isWorking, isFalse);
     });
@@ -392,7 +399,7 @@ void main() {
       // 3. Assert
       expect(result, isA<Err<void>>());
       verifyNoMoreInteractions(repository);
-      expect(controller.state.errorMessage, 'Marque pelo menos uma opção.');
+      expect(controller.state.failure, const Failure.noRoleChosen());
     });
   });
 
@@ -421,14 +428,14 @@ void main() {
 
       // 3. Assert
       expect(result, isA<Err<void>>());
-      expect(controller.state.errorMessage, isNotEmpty);
+      expect(controller.state.failure, isNotNull);
       expect(controller.isWorking, isFalse);
     });
 
     test('Sad Path: a failed delete keeps the team', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail('Equipe não encontrada.');
+      writesFail(const Failure.serverRefusal('Equipe não encontrada.'));
 
       // 2. Act
       final result = await controller.delete.execute('01');
@@ -436,7 +443,10 @@ void main() {
       // 3. Assert
       expect(result, isA<Err<void>>());
       expect(controller.state.groups, [norte, leste]);
-      expect(controller.state.errorMessage, 'Equipe não encontrada.');
+      expect(
+        controller.state.failure,
+        const Failure.serverRefusal('Equipe não encontrada.'),
+      );
       expect(controller.isWorking, isFalse);
     });
   });
@@ -513,7 +523,9 @@ void main() {
       () async {
         // 1. Arrange
         final controller = await loadedController();
-        writesFail('Já existe o grupo Equipe Léste.');
+        writesFail(
+          const Failure.serverRefusal('Já existe o grupo Equipe Léste.'),
+        );
 
         // 2. Act
         final result = await controller.rename.execute((
@@ -524,8 +536,8 @@ void main() {
         // 3. Assert
         expect(result, isA<Err<void>>());
         expect(
-          controller.state.errorMessage,
-          'Já existe o grupo Equipe Léste.',
+          controller.state.failure,
+          const Failure.serverRefusal('Já existe o grupo Equipe Léste.'),
         );
         verify(repository.rename('rotasul', '01', 'equipe leste')).called(1);
         verifyNoMoreInteractions(repository);
@@ -573,17 +585,20 @@ void main() {
       },
     );
 
-    test('Sad Path: a failure returns an Err with its message', () async {
+    test('Sad Path: a failure returns an Err with its failure', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail('Grupo não encontrado.');
+      writesFail(const Failure.serverRefusal('Grupo não encontrado.'));
 
       // 2. Act
       final impact = await controller.deletionImpact.execute('01');
 
       // 3. Assert
       expect(impact, isA<Err<Object?>>());
-      expect(controller.state.errorMessage, 'Grupo não encontrado.');
+      expect(
+        controller.state.failure,
+        const Failure.serverRefusal('Grupo não encontrado.'),
+      );
     });
   });
 
@@ -620,13 +635,13 @@ void main() {
 
       // 3. Assert
       expect(result, isA<Err<void>>());
-      expect(controller.state.errorMessage, contains('tente de novo'));
+      expect(controller.state.failure, _generic);
     });
 
     test('Sad Path: a refused removal does not reload the groups', () async {
       // 1. Arrange
       final controller = await loadedController();
-      writesFail('Essa pessoa não está no grupo.');
+      writesFail(const Failure.serverRefusal('Essa pessoa não está no grupo.'));
 
       // 2. Act
       final result = await controller.remove.execute((
@@ -638,7 +653,10 @@ void main() {
       expect(result, isA<Err<void>>());
       verify(repository.remove('rotasul', '01', 'vera@x.com')).called(1);
       verifyNoMoreInteractions(repository);
-      expect(controller.state.errorMessage, 'Essa pessoa não está no grupo.');
+      expect(
+        controller.state.failure,
+        const Failure.serverRefusal('Essa pessoa não está no grupo.'),
+      );
     });
   });
 
@@ -670,7 +688,7 @@ void main() {
 
       // 3. Assert
       expect(controller.state.groups, isEmpty);
-      expect(controller.state.errorMessage, isEmpty);
+      expect(controller.state.failure, isNull);
     });
 
     test('Edge Case: a second load while one runs reads nothing', () async {
@@ -693,7 +711,7 @@ void main() {
       // 1. Arrange
       when(repository.list(any)).thenAnswer(
         (_) async => Err(
-          'Não foi possível carregar os grupos.',
+          const Failure.load(LoadTarget.groups),
           error: StateError('offline'),
         ),
       );
@@ -703,8 +721,8 @@ void main() {
       await controller.load.execute();
 
       // 3. Assert
-      expect(controller.state.errorMessage, isNotEmpty);
-      expect(controller.state.errorMessage, isNot(contains('offline')));
+      expect(controller.state.failure, isNotNull);
+      expect(controller.state.failure, isNot(contains('offline')));
       expect(controller.load.running, isFalse);
     });
   });
@@ -885,7 +903,7 @@ void main() {
       // 1. Arrange
       final controller = await loadedController(isAdmin: true);
       await controller.deletionImpact.execute('01');
-      writesFail('Equipe não encontrada.');
+      writesFail(const Failure.serverRefusal('Equipe não encontrada.'));
 
       // 2. Act
       await controller.delete.execute('01');
@@ -924,11 +942,14 @@ void main() {
         final controller = await loadedController(isAdmin: true);
 
         // 2. Act & 3. Assert
-        expect(controller.newNameProblem('A'), 'Use pelo menos 2 letras.');
+        expect(
+          controller.newNameProblem('A'),
+          const Failure.groupNameTooShort(),
+        );
         expect(controller.canCreate('A'), isFalse);
         expect(
           controller.newNameProblem('equipe norte'),
-          'Já existe o grupo Equipe Norte.',
+          const Failure.groupNameTaken('Equipe Norte'),
         );
         expect(controller.canCreate('equipe norte'), isFalse);
       },
@@ -977,10 +998,13 @@ void main() {
       // 2. Act & 3. Assert
       expect(
         controller.renameProblem(norte, 'Equipe Leste'),
-        'Já existe o grupo Equipe Léste.',
+        const Failure.groupNameTaken('Equipe Léste'),
       );
       expect(controller.canRename(norte, 'Equipe Leste'), isFalse);
-      expect(controller.renameProblem(norte, 'X'), 'Use pelo menos 2 letras.');
+      expect(
+        controller.renameProblem(norte, 'X'),
+        const Failure.groupNameTooShort(),
+      );
       expect(controller.canRename(norte, 'X'), isFalse);
     });
   });
@@ -1014,7 +1038,7 @@ void main() {
       final controller = newController();
 
       // 2. Act & 3. Assert
-      expect(controller.rolesProblem({}), 'Marque pelo menos uma opção.');
+      expect(controller.rolesProblem({}), const Failure.noRoleChosen());
       expect(controller.canSetRoles(person, {}), isFalse);
     });
 
@@ -1033,7 +1057,7 @@ void main() {
       expect(admin.canSetRoles(person, {GroupRole.maintainer}), isTrue);
       expect(
         maintainer.rolesProblem({GroupRole.maintainer}),
-        'Marque pelo menos uma opção.',
+        const Failure.noRoleChosen(),
       );
       expect(maintainer.canSetRoles(person, {GroupRole.maintainer}), isFalse);
     });

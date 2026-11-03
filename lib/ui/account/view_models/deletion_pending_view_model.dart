@@ -64,7 +64,7 @@ class DeletionPendingViewModel extends ChangeNotifier {
 
   /// "Cancelar exclusão": signs in again if needed (the deletion signed the
   /// account out), then cancels it. The failure is also kept in
-  /// [DeletionPendingState.deletionError], which the screen shows. Ignored
+  /// [DeletionPendingState.deletionFailure], which the screen shows. Ignored
   /// while [enter] runs.
   late final Command0<void> cancelAccountDeletion = Command0(
     _cancelAccountDeletion,
@@ -81,25 +81,23 @@ class DeletionPendingViewModel extends ChangeNotifier {
   late final Command0<bool> logout = Command0(() => _signOut());
 
   Future<Result<void>> _cancelAccountDeletion() async {
-    _emit(_state.copyWith(deletionError: ''));
+    _emit(_state.copyWith(deletionFailure: null));
     try {
       if (await _session.keptOrSignIn() == null) return const Ok(null);
       final cancelled = await _repository.cancel();
       switch (cancelled) {
         case Ok():
           _emit(_state.copyWith(deletionRestored: true));
-        case Err(:final message):
-          _emit(_state.copyWith(deletionError: message));
+        case Err(:final failure):
+          _emit(_state.copyWith(deletionFailure: failure));
       }
       return cancelled;
     } catch (e, stackTrace) {
       // Signing in to Google again failed.
       debugPrint('[Account] Cancel failed: $e');
-      const message =
-          'Não foi possível cancelar agora. Verifique a conexão e tente '
-          'de novo.';
-      _emit(_state.copyWith(deletionError: message));
-      return Err(message, error: e, stackTrace: stackTrace);
+      const failure = Failure.connection(FailedAction.cancel);
+      _emit(_state.copyWith(deletionFailure: failure));
+      return Err(failure, error: e, stackTrace: stackTrace);
     }
   }
 
@@ -107,8 +105,7 @@ class DeletionPendingViewModel extends ChangeNotifier {
       .withKeptSignIn(checkDeletion: !_state.deletionRestored)) {
     Ok() => const Ok(null),
     Err(:final error, :final stackTrace) => Err(
-      "Não foi possível verificar agora: $error",
-      title: EnterOrganization.errorTitle,
+      Failure.entry(EntryStage.check, '$error'),
       error: error,
       stackTrace: stackTrace,
     ),

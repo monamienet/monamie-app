@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/ui/core/ui/admin_ui.dart';
@@ -68,7 +69,7 @@ class GroupPeopleTab extends StatelessWidget {
         )),
       ),
       content: (setSheet, busy) {
-        final problem = c.rolesProblem(roles);
+        final problem = c.rolesProblem(roles)?.message(l10n);
         Widget tappable(GroupRole role) => _RoleOption(
           role: role,
           on: roles.contains(role),

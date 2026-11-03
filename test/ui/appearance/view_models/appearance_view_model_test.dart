@@ -49,8 +49,8 @@ final pickedFile = Uint8List.fromList([9, 9, 9]);
 final convertedPng = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47]);
 
 /// Makes `saveBranding` wait on [wait], then succeed or, with [failure],
-/// return an [Err] with that message.
-void stubSave(Future<void> Function() wait, {String? failure}) {
+/// return an [Err] with that failure.
+void stubSave(Future<void> Function() wait, {Failure? failure}) {
   when(
     repository.saveBranding(
       any,
@@ -376,61 +376,77 @@ void main() {
       verifyNoMoreInteractions(repository);
     });
 
-    test('Sad Path: an Err from saveBranding lands in errorMessage and save '
+    test('Sad Path: an Err from saveBranding lands in failure and save '
         'returns an Err', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
-      stubSave(() async {}, failure: 'Nome inválido.');
+      stubSave(
+        () async {},
+        failure: const Failure.serverRefusal('Nome inválido.'),
+      );
 
       // 2. Act
       final result = await controller.save.execute();
 
       // 3. Assert
       expect(
-        [result, controller.state.errorMessage, onSavedWith],
-        [isA<Err<void>>(), 'Nome inválido.', isEmpty],
+        [result, controller.state.failure, onSavedWith],
+        [
+          isA<Err<void>>(),
+          const Failure.serverRefusal('Nome inválido.'),
+          isEmpty,
+        ],
       );
     });
 
-    test('Sad Path: a failed upload returns an Err with its message and '
+    test('Sad Path: a failed upload returns an Err with its failure and '
         'saves no branding', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       await pickAndUse(controller);
-      when(
-        repository.uploadLogo(any, any),
-      ).thenAnswer((_) async => const Err('Não foi possível salvar agora.'));
+      when(repository.uploadLogo(any, any)).thenAnswer(
+        (_) async =>
+            const Err(Failure.serverRefusal('Não foi possível salvar agora.')),
+      );
 
       // 2. Act
       final result = await controller.save.execute();
 
       // 3. Assert
       expect(
-        [result, controller.state.errorMessage, onSavedWith],
-        [isA<Err<void>>(), 'Não foi possível salvar agora.', isEmpty],
+        [result, controller.state.failure, onSavedWith],
+        [
+          isA<Err<void>>(),
+          const Failure.serverRefusal('Não foi possível salvar agora.'),
+          isEmpty,
+        ],
       );
       verify(repository.uploadLogo('rotasul', convertedPng)).called(1);
       verifyNoMoreInteractions(repository);
       expect(controller.save.running, isFalse);
     });
 
-    test('Sad Path: a failed logo delete returns an Err with its message and '
+    test('Sad Path: a failed logo delete returns an Err with its failure and '
         'saves no branding', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSulWithLogo);
       controller.removeLogo();
-      when(
-        repository.deleteLogo(any),
-      ).thenAnswer((_) async => const Err('Sem permissão.'));
+      when(repository.deleteLogo(any)).thenAnswer(
+        (_) async => const Err(Failure.serverRefusal('Sem permissão.')),
+      );
 
       // 2. Act
       final result = await controller.save.execute();
 
       // 3. Assert
       expect(
-        [result, controller.state.errorMessage, onSavedWith],
-        [isA<Err<void>>(), 'Sem permissão.', isEmpty],
+        [result, controller.state.failure, onSavedWith],
+        [
+          isA<Err<void>>(),
+          const Failure.serverRefusal('Sem permissão.'),
+          isEmpty,
+        ],
       );
       verify(repository.deleteLogo('rotasul')).called(1);
       verifyNoMoreInteractions(repository);
@@ -491,7 +507,10 @@ void main() {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
-      stubSave(() async {}, failure: 'Sem permissão.');
+      stubSave(
+        () async {},
+        failure: const Failure.serverRefusal('Sem permissão.'),
+      );
 
       // 2. Act
       await controller.save.execute();
@@ -624,15 +643,13 @@ void main() {
     );
 
     test(
-      'Sad Path: a LogoException shows the error with its message',
+      'Sad Path: a LogoException shows the error with its failure',
       () async {
         // 1. Arrange
         final controller = await controllerFor(
           rotaSul,
-          convert: (_) async => throw const LogoException(
-            'O arquivo tem 12 MB. Envie um de até '
-            '10 MB.',
-          ),
+          convert: (_) async =>
+              throw const LogoException(Failure.logoTooLarge(12)),
         );
 
         // 2. Act
@@ -641,8 +658,8 @@ void main() {
         // 3. Assert
         expect(result, isA<Ok<void>>());
         expect(
-          [controller.state.sheet, controller.state.sheetError],
-          [LogoSheet.error, 'O arquivo tem 12 MB. Envie um de até 10 MB.'],
+          [controller.state.sheet, controller.state.sheetFailure],
+          [LogoSheet.error, const Failure.logoTooLarge(12)],
         );
       },
     );
@@ -701,7 +718,7 @@ void main() {
       // 1. Arrange
       when(repository.pickableThemes()).thenAnswer(
         (_) async => Err(
-          'Não foi possível carregar os temas.',
+          const Failure.load(LoadTarget.themes),
           error: StateError('offline'),
         ),
       );

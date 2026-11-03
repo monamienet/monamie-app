@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/domain/models/invite.dart';
@@ -22,12 +23,16 @@ class GroupInvitesTab extends StatelessWidget {
     final state = invites.state;
     final list = state.invites;
     if (list == null) {
-      return state.errorMessage.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          : GroupListCard(rows: const [], empty: state.errorMessage);
+      return switch (state.failure) {
+        null => const Padding(
+          padding: EdgeInsets.all(24),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        final failure => GroupListCard(
+          rows: const [],
+          empty: failure.message(l10n),
+        ),
+      };
     }
     return GroupListCard(
       rows: [

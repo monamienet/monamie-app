@@ -226,7 +226,12 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: OrganizationIcon(organization: c.preview, size: 72),
+            child: OrganizationIcon(
+              organization: c.preview(
+                placeholderName: l10n.creationPreviewName,
+              ),
+              size: 72,
+            ),
           ),
           const SizedBox(height: 24),
           Text(

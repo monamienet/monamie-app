@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
@@ -67,7 +68,8 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                   const SizedBox(height: 22),
                   _note(),
                   const SizedBox(height: 22),
-                  if (controller.state.errorMessage.isNotEmpty) _error(),
+                  if (controller.state.failure case final failure?)
+                    _error(failure.message(l10n)),
                   _saveButton(context, theme),
                 ],
               ),
@@ -283,10 +285,10 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
     ),
   );
 
-  Widget _error() => Padding(
+  Widget _error(String message) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Text(
-      controller.state.errorMessage,
+      message,
       style: const TextStyle(
         color: Color(0xFFB3261E),
         fontWeight: FontWeight.w800,
@@ -488,7 +490,7 @@ class _LogoSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
-                        controller.state.sheetError,
+                        controller.state.sheetFailure?.message(l10n) ?? '',
                         style: const TextStyle(
                           color: Color(0xFFB3261E),
                           fontWeight: FontWeight.w800,

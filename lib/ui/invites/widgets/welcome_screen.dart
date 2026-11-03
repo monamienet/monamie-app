@@ -59,9 +59,9 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     invite.inviterName.isEmpty
-                        ? invite.groupName
+                        ? l10n.inviteGroupName(invite)
                         : l10n.welcomeInvitedBy(
-                            invite.groupName,
+                            l10n.inviteGroupName(invite),
                             invite.inviterName,
                           ),
                     style: TextStyle(fontSize: 16, color: palette.light),
@@ -117,7 +117,7 @@ class WelcomeScreen extends StatelessWidget {
                                   role == GroupRole.publisher
                                       ? l10n.welcomePublisher
                                       : l10n.welcomeSubscriber(
-                                          invite!.groupName,
+                                          l10n.inviteGroupName(invite!),
                                         ),
                                   style: TextStyle(color: palette.dark),
                                 ),

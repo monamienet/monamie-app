@@ -52,29 +52,27 @@ class MyAccountViewModel extends ChangeNotifier {
 
   /// Asks the server whether the person owns the organization, so the
   /// screen says what the deletion takes with it before it is confirmed.
-  /// The failure is also kept in [MyAccountState.errorMessage].
+  /// The failure is also kept in [MyAccountState.failure].
   late final Command0<void> loadOwnership = Command0(_loadOwnership);
 
   /// "Excluir conta" / "Excluir conta e organização". Ignored unless
-  /// [canDelete]; the failure is also kept in [MyAccountState.errorMessage].
+  /// [canDelete]; the failure is also kept in [MyAccountState.failure].
   late final Command0<void> deleteAccount = Command0(
     _deleteAccount,
     blocked: () => !canDelete,
   );
 
   Future<Result<void>> _loadOwnership() async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     try {
       final owner = await _directory.ownsOrganization(organizationId);
       _emit(_state.copyWith(isOwner: owner));
       return const Ok(null);
     } catch (e, stackTrace) {
       debugPrint('[Account] Could not read the ownership: $e');
-      const message =
-          'Não foi possível carregar sua conta. Verifique a conexão e '
-          'tente de novo.';
-      _emit(_state.copyWith(errorMessage: message));
-      return Err(message, error: e, stackTrace: stackTrace);
+      const failure = Failure.connection(FailedAction.loadAccount);
+      _emit(_state.copyWith(failure: failure));
+      return Err(failure, error: e, stackTrace: stackTrace);
     }
   }
 
@@ -92,7 +90,7 @@ class MyAccountViewModel extends ChangeNotifier {
   };
 
   Future<Result<void>> _deleteAccount() async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     try {
       final requested = await _repository.request(
         confirmIds: _state.isOwner == true ? [organizationId] : const [],
@@ -101,23 +99,16 @@ class MyAccountViewModel extends ChangeNotifier {
         case Ok(value: final deletion):
           await _signOut.afterAccountDeleted(deletion);
           return const Ok(null);
-        case Err(:final message, :final title, :final error, :final stackTrace):
-          _emit(_state.copyWith(errorMessage: message));
-          return Err(
-            message,
-            title: title,
-            error: error,
-            stackTrace: stackTrace,
-          );
+        case Err(:final failure, :final error, :final stackTrace):
+          _emit(_state.copyWith(failure: failure));
+          return Err(failure, error: error, stackTrace: stackTrace);
       }
     } catch (e, stackTrace) {
       // Signing out after the deletion was scheduled failed.
       debugPrint('[Account] Deletion failed: $e');
-      const message =
-          'Não foi possível excluir agora. Verifique a conexão e tente de '
-          'novo.';
-      _emit(_state.copyWith(errorMessage: message));
-      return Err(message, error: e, stackTrace: stackTrace);
+      const failure = Failure.connection(FailedAction.delete);
+      _emit(_state.copyWith(failure: failure));
+      return Err(failure, error: e, stackTrace: stackTrace);
     }
   }
 }

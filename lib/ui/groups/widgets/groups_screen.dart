@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
@@ -42,6 +43,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
             listenable: Listenable.merge([controller, controller.load]),
             builder: (context, _) {
               final state = controller.state;
+              final failure = state.failure?.message(
+                AppLocalizations.of(context),
+              );
               if (controller.load.running && state.groups.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -50,12 +54,12 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
                   children: [
-                    if (state.errorMessage.isNotEmpty)
+                    if (failure != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: adminErrorText(state.errorMessage),
+                        child: adminErrorText(failure),
                       ),
-                    if (state.groups.isEmpty && state.errorMessage.isEmpty)
+                    if (state.groups.isEmpty && failure == null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
                         child: Text(

@@ -3,6 +3,7 @@ import 'package:monamie_app/domain/models/group.dart';
 
 import 'package:monamie_app/domain/models/invite.dart';
 import 'package:monamie_app/domain/models/invite_send_result.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 part 'invite_state.freezed.dart';
 
@@ -22,11 +23,11 @@ abstract class InviteState with _$InviteState {
     /// The people to invite, with their roles.
     @Default([]) List<InviteDraft> people,
 
-    /// Why the last e-mail typed could not be added; empty when it could.
-    @Default('') String draftError,
+    /// Why the last e-mail typed could not be added; `null` when it could.
+    Failure? draftFailure,
 
-    /// Why the last send failed; empty when it did not.
-    @Default('') String errorMessage,
+    /// Why the last send failed; `null` when it did not.
+    Failure? failure,
 
     /// The outcome of the last send, until "Convidar mais pessoas".
     InviteSendResult? result,

@@ -125,7 +125,7 @@ class OrganizationChoiceViewModel extends ChangeNotifier {
 
   /// "Aceitar e entrar": joins the invite's group, then enters its
   /// organization and shows *Boas-vindas*. The failure is also kept in
-  /// [OrganizationChoiceState.inviteError], shown on the invite card.
+  /// [OrganizationChoiceState.inviteFailure], shown on the invite card.
   /// Ignored while an organization is being entered.
   late final Command1<void, Invite> acceptInvite = Command1(
     _acceptInvite,
@@ -140,8 +140,7 @@ class OrganizationChoiceViewModel extends ChangeNotifier {
       )) {
         Ok() => const Ok(null),
         Err(:final error, :final stackTrace) => Err(
-          "Não foi possível verificar agora: $error",
-          title: EnterOrganization.errorTitle,
+          Failure.entry(EntryStage.check, '$error'),
           error: error,
           stackTrace: stackTrace,
         ),
@@ -159,8 +158,7 @@ class OrganizationChoiceViewModel extends ChangeNotifier {
       )) {
         Ok() => const Ok(null),
         Err(:final error, :final stackTrace) => Err(
-          "Não foi possível entrar em ${binding.organization.name}: $error",
-          title: EnterOrganization.errorTitle,
+          Failure.organizationEntry(binding.organization.name, '$error'),
           error: error,
           stackTrace: stackTrace,
         ),
@@ -171,7 +169,7 @@ class OrganizationChoiceViewModel extends ChangeNotifier {
   }
 
   Future<Result<void>> _acceptInvite(Invite invite) async {
-    _emit(_state.copyWith(inviteError: ''));
+    _emit(_state.copyWith(inviteFailure: null));
     try {
       final accepted = await _invites.accept(invite);
       switch (accepted) {
@@ -184,15 +182,13 @@ class OrganizationChoiceViewModel extends ChangeNotifier {
           if (entered case Err(:final error, :final stackTrace)) {
             // Entering the organization after joining failed.
             debugPrint('[Invites] Accept failed: $error');
-            const message =
-                'Não foi possível aceitar agora. Verifique a conexão e '
-                'tente de novo.';
-            _emit(_state.copyWith(inviteError: message));
-            return Err(message, error: error, stackTrace: stackTrace);
+            const failure = Failure.connection(FailedAction.accept);
+            _emit(_state.copyWith(inviteFailure: failure));
+            return Err(failure, error: error, stackTrace: stackTrace);
           }
           return const Ok(null);
-        case Err(:final message):
-          _emit(_state.copyWith(inviteError: message));
+        case Err(:final failure):
+          _emit(_state.copyWith(inviteFailure: failure));
           return accepted;
       }
     } finally {

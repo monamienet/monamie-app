@@ -55,16 +55,18 @@ String suggestOrganizationId(String name) {
   return id.length > _maxIdLength ? id.substring(0, _maxIdLength) : id;
 }
 
-/// The id's format problem as the person sees it, or `null`.
-String? idFormatProblem(String id) {
-  if (id.isEmpty) return 'Mínimo 3 letras';
+/// The id's format problem (an [OrganizationIdFailure]), or `null`.
+Failure? idFormatProblem(String id) {
+  Failure problem(OrganizationIdProblem kind) =>
+      Failure.organizationId(kind, maxLength: _maxIdLength);
+  if (id.isEmpty) return problem(OrganizationIdProblem.tooShort);
   if (!RegExp(r'^[a-z]+$').hasMatch(id)) {
-    return 'Use só letras minúsculas, sem acentos nem espaços.';
+    return problem(OrganizationIdProblem.notPlainLowercase);
   }
-  if (id.length < 3) return 'Mínimo 3 letras';
-  if (id.length > _maxIdLength) return 'Use no máximo $_maxIdLength letras.';
+  if (id.length < 3) return problem(OrganizationIdProblem.tooShort);
+  if (id.length > _maxIdLength) return problem(OrganizationIdProblem.tooLong);
   if (organizationIdProblem(id) != null) {
-    return 'Esse identificador é reservado.';
+    return problem(OrganizationIdProblem.reserved);
   }
   return null;
 }
@@ -169,20 +171,22 @@ class CreateOrganizationViewModel extends ChangeNotifier {
   /// ("Mínimo 3 letras").
   bool get idTooShort => _state.id.isNotEmpty && _state.id.length < 3;
 
-  /// Why the identifier cannot be used, shown under the field; empty when it
-  /// can, is being checked, or is only [idTooShort].
-  String get idShownProblem =>
+  /// Why the identifier cannot be used, shown under the field; `null` when
+  /// it can, is being checked, or is only [idTooShort].
+  Failure? get idShownProblem =>
       _state.idCheck == IdCheck.unavailable && !idTooShort
       ? _state.idProblem
-      : '';
+      : null;
 
   /// The organization as the screens preview it, with placeholders for
-  /// what is not typed yet.
-  OrganizationConfig get preview => OrganizationConfig(
-    id: _state.id.length >= 3 ? _state.id : 'nova',
-    name: _state.name.trim().isEmpty ? 'Organização' : _state.name.trim(),
-    theme: pickedTheme,
-  );
+  /// what is not typed yet: [placeholderName] (the screen's word for
+  /// "Organização") while no name is typed.
+  OrganizationConfig preview({required String placeholderName}) =>
+      OrganizationConfig(
+        id: _state.id.length >= 3 ? _state.id : 'nova',
+        name: _state.name.trim().isEmpty ? placeholderName : _state.name.trim(),
+        theme: pickedTheme,
+      );
 
   @override
   void dispose() {
@@ -200,7 +204,7 @@ class CreateOrganizationViewModel extends ChangeNotifier {
 
   /// Creates the organization; [Ok] holds its status, also kept in
   /// [CreateOrganizationState.result]. The failure is also kept in
-  /// [CreateOrganizationState.errorMessage]. Ignored until
+  /// [CreateOrganizationState.failure]. Ignored until
   /// [canContinueFromName].
   late final Command0<String> create = Command0(
     _create,
@@ -257,7 +261,9 @@ class CreateOrganizationViewModel extends ChangeNotifier {
       );
       return;
     }
-    _emit(_state.copyWith(id: value, idCheck: IdCheck.checking, idProblem: ''));
+    _emit(
+      _state.copyWith(id: value, idCheck: IdCheck.checking, idProblem: null),
+    );
     _timer = Timer(debounce, () => _check(value));
   }
 
@@ -269,7 +275,7 @@ class CreateOrganizationViewModel extends ChangeNotifier {
         _emit(
           _state.copyWith(
             idCheck: problem == null ? IdCheck.available : IdCheck.unavailable,
-            idProblem: problem ?? '',
+            idProblem: problem,
           ),
         );
       case Err():
@@ -277,7 +283,7 @@ class CreateOrganizationViewModel extends ChangeNotifier {
         _emit(
           _state.copyWith(
             idCheck: IdCheck.unavailable,
-            idProblem: 'Não foi possível verificar agora.',
+            idProblem: const Failure.load(LoadTarget.organizationIdCheck),
           ),
         );
     }
@@ -294,7 +300,7 @@ class CreateOrganizationViewModel extends ChangeNotifier {
       nameValid && _state.idCheck == IdCheck.available;
 
   Future<Result<String>> _create() async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     final created = await _repository.create(
       id: _state.id,
       name: _state.name.trim(),
@@ -304,8 +310,8 @@ class CreateOrganizationViewModel extends ChangeNotifier {
     switch (created) {
       case Ok(value: final result):
         _emit(_state.copyWith(result: result));
-      case Err(:final message):
-        _emit(_state.copyWith(errorMessage: message));
+      case Err(:final failure):
+        _emit(_state.copyWith(failure: failure));
     }
     return created;
   }

@@ -1,7 +1,9 @@
 /// The text rule run by `dart run tool/check_layers.dart`: the screens'
 /// text lives in the ARB files (`lib/l10n/`), so a hand-written file under
-/// `lib/ui/` holds no string literal with a letter in it, except where the
-/// literal is not text the person reads.
+/// `lib/ui/` (screens, widgets, view models and their states alike) holds no
+/// string literal with a letter in it, except where the literal is not text
+/// the person reads. View models say what went wrong with a typed `Failure`
+/// or `UserNotice`, which the screens turn into words.
 ///
 /// The rule is deny by default: every literal with a letter is reported
 /// unless it sits in one of the contexts below, which carry identifiers,
@@ -12,21 +14,18 @@
 /// extensions, say) takes the [notUiTextMarker] at the end of its line or
 /// on the line above.
 ///
-/// Limits: it reads literals only, so text built elsewhere (a view model's
-/// message, a domain model's label) and reaching a widget as a value is not
-/// seen; view models and state contracts (see `isStateFile`) are left out,
-/// because their messages become typed failures in a later step; a literal
-/// without letters ("·", "—", "%") passes; and so does a single lowercase
-/// ASCII word, so a lone word such as 'agora' would slip through (accented
-/// words, capitals and sentences are still caught).
+/// Limits: it reads literals only, so text built outside `lib/ui/` (a
+/// server's explanation, a name published by another device) and reaching
+/// a widget as a value is not seen; a literal without letters ("·", "—",
+/// "%") passes; and so does a single lowercase ASCII word, so a lone word
+/// such as 'agora' would slip through (accented words, capitals and
+/// sentences are still caught).
 library;
 
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/source/line_info.dart';
-
-import 'state_layer_imports.dart' show isStateFile;
 
 /// The rule's name, printed with each violation.
 const String uiHardCodedText = 'ui_hard_coded_text';
@@ -46,8 +45,9 @@ const List<String> brandNames = [
 ];
 
 /// Invocations whose arguments are never text for people: developer logs
-/// and errors, patterns, keys, URIs and asset paths. Matched by the
-/// invoked name (`RegExp(...)`, `Uri.parse(...)`, `Image.asset(...)`).
+/// and errors, patterns, keys, URIs, asset paths and the prefixes a value
+/// is compared with. Matched by the invoked name (`RegExp(...)`,
+/// `Uri.parse(...)`, `Image.asset(...)`, `name.startsWith(...)`).
 const Set<String> nonTextInvocations = {
   'debugPrint',
   'print',
@@ -69,6 +69,8 @@ const Set<String> nonTextInvocations = {
   'UnsupportedError',
   'UnimplementedError',
   'Exception',
+  'startsWith',
+  'endsWith',
 };
 
 /// Named arguments that take identifiers or configuration, never text.
@@ -119,8 +121,8 @@ final _pathOrUrl = RegExp(r'^(assets/|https?://)');
 final _identifier = RegExp(r'^[a-z][a-zA-Z0-9_]*$');
 
 /// The hard-coded texts of the Dart file at [path] (relative to the package
-/// root, `/` or `\` separated) with [content]: none outside `lib/ui/`, in
-/// generated files or in state files.
+/// root, `/` or `\` separated) with [content]: none outside `lib/ui/` or
+/// in generated files.
 List<TextViolation> findHardCodedTexts(String path, String content) {
   final segments = path.split(RegExp(r'[/\\]'));
   final name = segments.last;
@@ -133,7 +135,6 @@ List<TextViolation> findHardCodedTexts(String path, String content) {
       name.endsWith('.mocks.dart')) {
     return const [];
   }
-  if (isStateFile(path, content)) return const [];
   final unit = parseString(
     content: content,
     path: path,

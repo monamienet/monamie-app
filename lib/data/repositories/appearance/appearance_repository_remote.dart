@@ -11,8 +11,7 @@ import 'package:monamie_app/utils/result.dart';
 
 import 'appearance_repository.dart';
 
-const _saveFailed =
-    'Não foi possível salvar agora. Verifique a conexão e tente de novo.';
+const _saveFailed = Failure.connection(FailedAction.save);
 
 /// [AppearanceRepository] over the organization's Storage and its
 /// `setBranding` function, with themes from the central catalog.
@@ -29,13 +28,13 @@ class AppearanceRepositoryRemote implements AppearanceRepository {
 
   Future<Result<T>> _run<T>(
     Future<Result<T>> Function() operation, {
-    String unexpected = _saveFailed,
+    Failure unexpected = _saveFailed,
   }) => functionsResult(
     operation,
-    refusal: (failure) => functionsFailureMessage(
+    refusal: (failure) => functionsRefusal(
       failure,
       explained: const {'invalid-argument', 'permission-denied'},
-      fallback: 'Não foi possível salvar.',
+      fallback: RefusedAction.save,
       otherwise: _saveFailed,
     ),
     unexpected: unexpected,
@@ -45,7 +44,7 @@ class AppearanceRepositoryRemote implements AppearanceRepository {
   @override
   Future<Result<List<theme.OrganizationTheme>>> pickableThemes() => _run(
     () async => Ok(theme.pickableThemes((await _themes.themes()).values)),
-    unexpected: 'Não foi possível carregar os temas.',
+    unexpected: const Failure.load(LoadTarget.themes),
   );
 
   @override

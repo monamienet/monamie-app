@@ -2089,6 +2089,408 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Em uso'**
   String get trackingInUse;
+
+  /// An operation failed, most likely for lack of connection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível concluir agora. Verifique a conexão e tente de novo.'**
+  String get failureConnectionConclude;
+
+  /// Deleting failed, most likely for lack of connection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível excluir agora. Verifique a conexão e tente de novo.'**
+  String get failureConnectionDelete;
+
+  /// Cancelling (e.g. the account deletion) failed, most likely for lack of connection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível cancelar agora. Verifique a conexão e tente de novo.'**
+  String get failureConnectionCancel;
+
+  /// Creating an organization failed, most likely for lack of connection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível criar agora. Verifique a conexão e tente de novo.'**
+  String get failureConnectionCreate;
+
+  /// Sending invites failed, most likely for lack of connection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível enviar agora. Verifique a conexão e tente de novo.'**
+  String get failureConnectionSend;
+
+  /// Accepting an invite failed, most likely for lack of connection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível aceitar agora. Verifique a conexão e tente de novo.'**
+  String get failureConnectionAccept;
+
+  /// Saving a change failed, most likely for lack of connection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível salvar agora. Verifique a conexão e tente de novo.'**
+  String get failureConnectionSave;
+
+  /// Switching organization failed, most likely for lack of connection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível trocar agora. Verifique a conexão e tente de novo.'**
+  String get failureConnectionSwitch;
+
+  /// The account screen could not read whether the person owns the organization.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível carregar sua conta. Verifique a conexão e tente de novo.'**
+  String get failureConnectionLoadAccount;
+
+  /// The list of administrators could not be read.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível carregar os administradores.'**
+  String get failureLoadAdministrators;
+
+  /// The invites could not be read.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível carregar os convites.'**
+  String get failureLoadInvites;
+
+  /// The groups could not be read.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível carregar os grupos.'**
+  String get failureLoadGroups;
+
+  /// The theme catalog could not be read.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível carregar os temas.'**
+  String get failureLoadThemes;
+
+  /// The organizations being created could not be read.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível carregar as organizações em criação.'**
+  String get failureLoadCreations;
+
+  /// The account's pending deletion could not be read.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível ler a exclusão da conta.'**
+  String get failureLoadAccountDeletion;
+
+  /// Whether an organization identifier is free could not be checked.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível verificar agora.'**
+  String get failureLoadOrganizationIdCheck;
+
+  /// The server refused an operation without saying why.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível concluir.'**
+  String get failureRefusedConclude;
+
+  /// The server refused an account operation without saying why.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível agora.'**
+  String get failureRefusedAny;
+
+  /// The server refused to create the organization without saying why.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível criar.'**
+  String get failureRefusedCreate;
+
+  /// The server refused to save the appearance without saying why.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível salvar.'**
+  String get failureRefusedSave;
+
+  /// The server answered something the app cannot read.
+  ///
+  /// In pt, this message translates to:
+  /// **'Resposta inesperada do servidor.'**
+  String get failureUnexpectedResponse;
+
+  /// The server's answer to a group's creation could not be read.
+  ///
+  /// In pt, this message translates to:
+  /// **'Resposta inesperada ao criar o grupo.'**
+  String get failureUnexpectedGroupResponse;
+
+  /// An organization identifier with characters other than a to z.
+  ///
+  /// In pt, this message translates to:
+  /// **'Use só letras minúsculas, sem acentos nem espaços.'**
+  String get failureOrganizationIdNotPlain;
+
+  /// An organization identifier that is too long.
+  ///
+  /// In pt, this message translates to:
+  /// **'Use no máximo {max} letras.'**
+  String failureOrganizationIdTooLong(int max);
+
+  /// An organization identifier MonAmie keeps for itself.
+  ///
+  /// In pt, this message translates to:
+  /// **'Esse identificador é reservado.'**
+  String get failureOrganizationIdReserved;
+
+  /// The server says an organization identifier cannot be used, without saying why.
+  ///
+  /// In pt, this message translates to:
+  /// **'Esse identificador não pode ser usado.'**
+  String get failureOrganizationIdUnusable;
+
+  /// A group name with fewer than 2 letters.
+  ///
+  /// In pt, this message translates to:
+  /// **'Use pelo menos 2 letras.'**
+  String get failureGroupNameTooShort;
+
+  /// A group name longer than 40 characters.
+  ///
+  /// In pt, this message translates to:
+  /// **'Use no máximo 40 caracteres.'**
+  String get failureGroupNameTooLong;
+
+  /// A group name already taken by another group.
+  ///
+  /// In pt, this message translates to:
+  /// **'Já existe o grupo {name}.'**
+  String failureGroupNameTaken(String name);
+
+  /// No role ticked for a person in a group.
+  ///
+  /// In pt, this message translates to:
+  /// **'Marque pelo menos uma opção.'**
+  String get failureNoRoleChosen;
+
+  /// An invite's e-mail that is not an e-mail address.
+  ///
+  /// In pt, this message translates to:
+  /// **'Digite um e-mail válido.'**
+  String get failureInvalidEmail;
+
+  /// An invite's e-mail already in the list.
+  ///
+  /// In pt, this message translates to:
+  /// **'{email} já está na lista.'**
+  String failureEmailAlreadyListed(String email);
+
+  /// A logo file over the 10 MB allowed.
+  ///
+  /// In pt, this message translates to:
+  /// **'O arquivo tem {megabytes} MB. Envie um de até 10 MB.'**
+  String failureLogoTooLarge(int megabytes);
+
+  /// A logo file no decoder could open.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não deu para abrir este arquivo. Envie em PNG, JPEG, WebP ou SVG.'**
+  String get failureLogoUnreadable;
+
+  /// The logo's PNG could not be produced.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não deu para gerar o PNG do logo.'**
+  String get failureLogoNotConverted;
+
+  /// A logo file that could not be opened for any other reason.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não deu para abrir este arquivo.'**
+  String get failureLogoNotOpened;
+
+  /// Entering an organization failed; detail is the original error.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível entrar agora: {detail}'**
+  String failureEntryEnter(String detail);
+
+  /// Asking again which organizations the person belongs to failed; detail is the original error.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível verificar agora: {detail}'**
+  String failureEntryCheck(String detail);
+
+  /// Signing in with Google failed; detail is the original error.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ocorreu um erro inesperado: {detail}'**
+  String failureEntryUnexpected(String detail);
+
+  /// Entering after a web sign-in failed; detail is the original error.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ocorreu um erro ao carregar seus dados: {detail}'**
+  String failureEntryLoadData(String detail);
+
+  /// Entering the organization picked failed; detail is the original error.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível entrar em {organization}: {detail}'**
+  String failureEntryOrganization(String organization, String detail);
+
+  /// A web Google sign-in returned no account.
+  ///
+  /// In pt, this message translates to:
+  /// **'Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.'**
+  String get failureGoogleAuth;
+
+  /// Google did not renew the sign-in needed to switch organization.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível renovar o acesso com o Google. Tente de novo.'**
+  String get failureGoogleRenewal;
+
+  /// Signing out failed; detail is the original error.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível encerrar a sessão. Tente novamente.\nErro: {detail}'**
+  String failureSignOut(String detail);
+
+  /// Why the person is on the no-organization screen: no membership in the organization any more.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sua conta não tem mais acesso à {organization}.'**
+  String failureAccessLost(String organization);
+
+  /// Why the person is on the no-organization screen: removed from the organization.
+  ///
+  /// In pt, this message translates to:
+  /// **'Você não faz mais parte da {organization}.'**
+  String failureRemovedFromOrganization(String organization);
+
+  /// Why the person is on the no-organization screen: removed from an organization whose name is unknown.
+  ///
+  /// In pt, this message translates to:
+  /// **'Você não faz mais parte desta organização.'**
+  String get failureRemovedFromUnnamedOrganization;
+
+  /// Sharing cannot start: the person publishes in no group.
+  ///
+  /// In pt, this message translates to:
+  /// **'Você não está em campo em nenhum grupo. Peça a um administrador para liberar o compartilhamento da sua localização.'**
+  String get failureSharingNotAllowed;
+
+  /// Turning sharing on or off failed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível alterar o compartilhamento agora. Tente de novo.'**
+  String get failureSharingNotChanged;
+
+  /// Title of the messages about a failed sign-in or entry.
+  ///
+  /// In pt, this message translates to:
+  /// **'Erro de Login'**
+  String get failureTitleSignIn;
+
+  /// Title of the messages about a failed switch of organization.
+  ///
+  /// In pt, this message translates to:
+  /// **'Trocar de organização'**
+  String get failureTitleSwitchOrganization;
+
+  /// Title of the message about a failed sign-out.
+  ///
+  /// In pt, this message translates to:
+  /// **'Erro ao sair'**
+  String get failureTitleSignOut;
+
+  /// Title of the message saying the person may not share.
+  ///
+  /// In pt, this message translates to:
+  /// **'Compartilhamento não autorizado'**
+  String get failureTitleSharingNotAllowed;
+
+  /// Title of the message about a failed change of sharing.
+  ///
+  /// In pt, this message translates to:
+  /// **'Compartilhamento'**
+  String get failureTitleSharing;
+
+  /// Title of the remark shown when sharing started without a GPS fix.
+  ///
+  /// In pt, this message translates to:
+  /// **'Aguardando sinal de GPS'**
+  String get noticeWaitingForGpsTitle;
+
+  /// Remark shown when sharing started without a GPS fix.
+  ///
+  /// In pt, this message translates to:
+  /// **'O monitoramento foi iniciado, mas a sua posição inicial ainda está sendo obtida pelos satélites.'**
+  String get noticeWaitingForGps;
+
+  /// Title of the warning that the device restricts the app in the background.
+  ///
+  /// In pt, this message translates to:
+  /// **'Rastreamento em risco'**
+  String get noticeTrackingAtRiskTitle;
+
+  /// Warning that the device started restricting the app in the background while sharing is on.
+  ///
+  /// In pt, this message translates to:
+  /// **'O aparelho está restringindo o MonAmie em segundo plano. O rastreamento vai parar quando você sair do aplicativo.'**
+  String get noticeTrackingAtRisk;
+
+  /// Title of the warning that the tracking did not confirm it stopped.
+  ///
+  /// In pt, this message translates to:
+  /// **'Rastreamento'**
+  String get noticeTrackingStopUnconfirmedTitle;
+
+  /// Warning that the tracking service did not confirm it stopped.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível confirmar o encerramento do rastreamento. Ele será encerrado automaticamente em instantes.'**
+  String get noticeTrackingStopUnconfirmed;
+
+  /// Title of the warning shown back from the battery settings when the restriction is still on.
+  ///
+  /// In pt, this message translates to:
+  /// **'Uso em segundo plano ainda restrito'**
+  String get noticeBackgroundStillRestrictedTitle;
+
+  /// Warning shown back from the battery settings when the restriction is still on. The quoted text is the Android setting's name.
+  ///
+  /// In pt, this message translates to:
+  /// **'A alteração não foi aplicada. Toque em \'Permitir uso em segundo plano\' e, se o interruptor já estiver ativado, desative-o e ative-o novamente.'**
+  String get noticeBackgroundStillRestricted;
+
+  /// Title of the system notification shown while sharing is on.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sua localização está sendo compartilhada'**
+  String get sharingNotificationTitle;
+
+  /// Text of the system notification shown while sharing is on.
+  ///
+  /// In pt, this message translates to:
+  /// **'O compartilhamento está ligado. Para preservar sua privacidade, certifique-se de desativá-lo assim que terminar suas atividades.'**
+  String get sharingNotificationContent;
+
+  /// Name shown for a group whose name is blank.
+  ///
+  /// In pt, this message translates to:
+  /// **'Grupo sem nome'**
+  String get groupUnnamed;
+
+  /// Name shown for an invite's group when the server sent none.
+  ///
+  /// In pt, this message translates to:
+  /// **'Grupo'**
+  String get inviteGroupFallback;
+
+  /// Placeholder name of the organization being created, before one is typed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Organização'**
+  String get creationPreviewName;
 }
 
 class _AppLocalizationsDelegate

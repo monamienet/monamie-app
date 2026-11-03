@@ -116,14 +116,10 @@ class LoginViewModel extends ChangeNotifier {
         onEntering: _onEntering,
       )) {
         Ok() => const Ok(null),
-        Err(:final error, :final stackTrace) => _loginError(
-          "Ocorreu um erro inesperado: $error",
-          error,
-          stackTrace,
-        ),
+        Err(:final error, :final stackTrace) => _loginError(error, stackTrace),
       };
     } catch (e, stackTrace) {
-      return _loginError("Ocorreu um erro inesperado: $e", e, stackTrace);
+      return _loginError(e, stackTrace);
     } finally {
       _emit(_state.copyWith(isLoading: false, enteringOrganizationName: null));
     }
@@ -131,12 +127,7 @@ class LoginViewModel extends ChangeNotifier {
 
   Future<void> _onWebGoogleSignIn(String? idToken) async {
     if (idToken == null) {
-      _notices.show(
-        const UserNotice(
-          "Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.",
-          title: EnterOrganization.errorTitle,
-        ),
-      );
+      _notices.show(const UserNotice.failure(Failure.googleAuth()));
       return;
     }
     if (_state.isLoading) return;
@@ -148,10 +139,7 @@ class LoginViewModel extends ChangeNotifier {
       );
       if (entered case Err(:final error)) {
         _notices.show(
-          UserNotice(
-            "Ocorreu um erro ao carregar seus dados: $error",
-            title: EnterOrganization.errorTitle,
-          ),
+          UserNotice.failure(Failure.entry(EntryStage.loadData, '$error')),
         );
       }
     } finally {
@@ -159,11 +147,11 @@ class LoginViewModel extends ChangeNotifier {
     }
   }
 
-  Err<void> _loginError(String message, Object? error, StackTrace? stack) =>
-      Err(
-        message,
-        title: EnterOrganization.errorTitle,
-        error: error,
-        stackTrace: stack,
-      );
+  /// The sign-in's failure: an [EntryFailure] of [EntryStage.unexpected]
+  /// quoting [error].
+  Err<void> _loginError(Object? error, StackTrace? stack) => Err(
+    Failure.entry(EntryStage.unexpected, '$error'),
+    error: error,
+    stackTrace: stack,
+  );
 }

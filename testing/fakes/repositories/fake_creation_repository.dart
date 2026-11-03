@@ -14,7 +14,9 @@ class FakeCreationRepository with FakeOutcomes implements CreationRepository {
       creations = [...?creations];
 
   /// Why a taken id cannot be used, as [idProblem] says it.
-  static const takenMessage = 'Este identificador já está em uso.';
+  static const takenFailure = Failure.serverRefusal(
+    'Este identificador já está em uso.',
+  );
 
   final Set<String> takenIds;
 
@@ -22,9 +24,9 @@ class FakeCreationRepository with FakeOutcomes implements CreationRepository {
   final List<Creation> creations;
 
   @override
-  Future<Result<String?>> idProblem(String id) => answer('idProblem', [
+  Future<Result<Failure?>> idProblem(String id) => answer('idProblem', [
     id,
-  ], () => takenIds.contains(id) ? takenMessage : null);
+  ], () => takenIds.contains(id) ? takenFailure : null);
 
   @override
   Future<Result<String>> create({

@@ -58,7 +58,7 @@ class InviteViewModel extends ChangeNotifier {
   bool get firstGroupMode => _state.groups.isEmpty && canCreateFirstGroup;
 
   /// Why the first group's name is not valid yet, or `null`.
-  String? get firstGroupProblem =>
+  Failure? get firstGroupProblem =>
       firstGroupMode ? groupNameProblem(_state.firstGroupName, const []) : null;
 
   /// The first group's name as typed (first-group mode).
@@ -74,12 +74,12 @@ class InviteViewModel extends ChangeNotifier {
     if (send.running) return false;
     final problem = inviteEmailProblem(email, _state.people);
     if (problem != null) {
-      _emit(_state.copyWith(draftError: problem));
+      _emit(_state.copyWith(draftFailure: problem));
       return false;
     }
     _emit(
       _state.copyWith(
-        draftError: '',
+        draftFailure: null,
         people: [..._state.people, InviteDraft(email.trim().toLowerCase())],
       ),
     );
@@ -129,14 +129,14 @@ class InviteViewModel extends ChangeNotifier {
 
   /// Sends the invites; [Ok] holds the outcome, also kept in
   /// [InviteState.result]. The failure is also kept in
-  /// [InviteState.errorMessage]. Ignored unless [canSend].
+  /// [InviteState.failure]. Ignored unless [canSend].
   late final Command0<InviteSendResult> send = Command0(
     _send,
     blocked: () => !canSend,
   );
 
   Future<Result<InviteSendResult>> _send() async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     final sent = await _repository.send(
       organizationId,
       organizationName: organizationName,
@@ -149,13 +149,13 @@ class InviteViewModel extends ChangeNotifier {
     switch (sent) {
       case Ok(value: final result):
         _emit(_state.copyWith(result: result));
-      case Err(:final message):
-        _emit(_state.copyWith(errorMessage: message));
+      case Err(:final failure):
+        _emit(_state.copyWith(failure: failure));
     }
     return sent;
   }
 
   /// "Convidar mais pessoas".
   void again() =>
-      _emit(_state.copyWith(people: const [], result: null, errorMessage: ''));
+      _emit(_state.copyWith(people: const [], result: null, failure: null));
 }

@@ -45,17 +45,17 @@ class AdministratorsViewModel extends ChangeNotifier {
   }
 
   /// Reads the administrators and the members. The failure is also kept in
-  /// [AdministratorsState.errorMessage].
+  /// [AdministratorsState.failure].
   late final Command0<void> load = Command0(_load);
 
   /// Makes `email` an administrator (`admin` true) or a member again, then
   /// reads the list again. The failure is also kept in
-  /// [AdministratorsState.errorMessage]. Ignored while [load] runs.
+  /// [AdministratorsState.failure]. Ignored while [load] runs.
   late final Command1<void, ({String email, bool admin})> setAdministrator =
       Command1(_setAdministrator, blocked: () => load.running);
 
   Future<Result<void>> _load() async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     return _list();
   }
 
@@ -65,8 +65,8 @@ class AdministratorsViewModel extends ChangeNotifier {
     switch (listed) {
       case Ok(value: final people):
         _emit(_state.copyWith(people: people));
-      case Err(:final message):
-        _emit(_state.copyWith(errorMessage: message));
+      case Err(:final failure):
+        _emit(_state.copyWith(failure: failure));
     }
     return listed;
   }
@@ -74,14 +74,14 @@ class AdministratorsViewModel extends ChangeNotifier {
   Future<Result<void>> _setAdministrator(
     ({String email, bool admin}) change,
   ) async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     final changed = await repository.setAdministrator(
       organizationId,
       change.email,
       admin: change.admin,
     );
-    if (changed case Err(:final message)) {
-      _emit(_state.copyWith(errorMessage: message));
+    if (changed case Err(:final failure)) {
+      _emit(_state.copyWith(failure: failure));
       return changed;
     }
     return _list();

@@ -132,7 +132,7 @@ return bound(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  signedOut,TResult Function( String? reason,  List<Invite> invites)?  noOrganization,TResult Function( List<OrganizationBinding> choices,  List<Invite> invites)?  picking,TResult Function( AccountDeletion deletion)?  deletionPending,TResult Function( Invite invite)?  welcome,TResult Function()?  bound,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  signedOut,TResult Function( Failure? reason,  List<Invite> invites)?  noOrganization,TResult Function( List<OrganizationBinding> choices,  List<Invite> invites)?  picking,TResult Function( AccountDeletion deletion)?  deletionPending,TResult Function( Invite invite)?  welcome,TResult Function()?  bound,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case SessionSignedOut() when signedOut != null:
 return signedOut();case SessionNoOrganization() when noOrganization != null:
@@ -158,7 +158,7 @@ return bound();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  signedOut,required TResult Function( String? reason,  List<Invite> invites)  noOrganization,required TResult Function( List<OrganizationBinding> choices,  List<Invite> invites)  picking,required TResult Function( AccountDeletion deletion)  deletionPending,required TResult Function( Invite invite)  welcome,required TResult Function()  bound,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  signedOut,required TResult Function( Failure? reason,  List<Invite> invites)  noOrganization,required TResult Function( List<OrganizationBinding> choices,  List<Invite> invites)  picking,required TResult Function( AccountDeletion deletion)  deletionPending,required TResult Function( Invite invite)  welcome,required TResult Function()  bound,}) {final _that = this;
 switch (_that) {
 case SessionSignedOut():
 return signedOut();case SessionNoOrganization():
@@ -180,7 +180,7 @@ return bound();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  signedOut,TResult? Function( String? reason,  List<Invite> invites)?  noOrganization,TResult? Function( List<OrganizationBinding> choices,  List<Invite> invites)?  picking,TResult? Function( AccountDeletion deletion)?  deletionPending,TResult? Function( Invite invite)?  welcome,TResult? Function()?  bound,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  signedOut,TResult? Function( Failure? reason,  List<Invite> invites)?  noOrganization,TResult? Function( List<OrganizationBinding> choices,  List<Invite> invites)?  picking,TResult? Function( AccountDeletion deletion)?  deletionPending,TResult? Function( Invite invite)?  welcome,TResult? Function()?  bound,}) {final _that = this;
 switch (_that) {
 case SessionSignedOut() when signedOut != null:
 return signedOut();case SessionNoOrganization() when noOrganization != null:
@@ -235,7 +235,7 @@ class SessionNoOrganization implements SessionState {
   const SessionNoOrganization({this.reason,  List<Invite> invites = const []}): _invites = invites;
   
 
- final  String? reason;
+ final  Failure? reason;
  final  List<Invite> _invites;
 @JsonKey() List<Invite> get invites {
   if (_invites is EqualUnmodifiableListView) return _invites;
@@ -276,11 +276,11 @@ abstract mixin class $SessionNoOrganizationCopyWith<$Res> implements $SessionSta
   factory $SessionNoOrganizationCopyWith(SessionNoOrganization value, $Res Function(SessionNoOrganization) _then) = _$SessionNoOrganizationCopyWithImpl;
 @useResult
 $Res call({
- String? reason, List<Invite> invites
+ Failure? reason, List<Invite> invites
 });
 
 
-
+$FailureCopyWith<$Res>? get reason;
 
 }
 /// @nodoc
@@ -296,12 +296,24 @@ class _$SessionNoOrganizationCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? reason = freezed,Object? invites = null,}) {
   return _then(SessionNoOrganization(
 reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as String?,invites: null == invites ? _self._invites : invites // ignore: cast_nullable_to_non_nullable
+as Failure?,invites: null == invites ? _self._invites : invites // ignore: cast_nullable_to_non_nullable
 as List<Invite>,
   ));
 }
 
+/// Create a copy of SessionState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FailureCopyWith<$Res>? get reason {
+    if (_self.reason == null) {
+    return null;
+  }
 
+  return $FailureCopyWith<$Res>(_self.reason!, (value) {
+    return _then(_self.copyWith(reason: value));
+  });
+}
 }
 
 /// @nodoc

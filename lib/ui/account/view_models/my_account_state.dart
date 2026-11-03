@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 part 'my_account_state.freezed.dart';
 
@@ -14,7 +15,7 @@ abstract class MyAccountState with _$MyAccountState {
     /// What the owner typed to confirm (the organization's id).
     @Default('') String confirmation,
 
-    /// Why the last load or deletion failed; empty when it did not.
-    @Default('') String errorMessage,
+    /// Why the last load or deletion failed; `null` when it did not.
+    Failure? failure,
   }) = _MyAccountState;
 }

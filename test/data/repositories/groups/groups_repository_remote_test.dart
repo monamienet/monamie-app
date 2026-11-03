@@ -9,8 +9,7 @@ import 'package:monamie_app/utils/result.dart';
 @GenerateNiceMocks([MockSpec<CentralFunctionsService>()])
 import 'groups_repository_remote_test.mocks.dart';
 
-const _connection =
-    'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
+const _connection = Failure.connection(FailedAction.conclude);
 
 late MockCentralFunctionsService functions;
 late GroupsRepositoryRemote repository;
@@ -30,9 +29,9 @@ Object? sentTo(String name) => verify(
   functions.call(name, captureAny, timeout: anyNamed('timeout')),
 ).captured.single;
 
-/// The message of [result], failing when it is an [Ok].
-String messageOf(Result<Object?> result) => switch (result) {
-  Err(:final message) => message,
+/// The failure of [result], failing when it is an [Ok].
+Failure failureOf(Result<Object?> result) => switch (result) {
+  Err(:final failure) => failure,
   Ok() => fail('expected an Err, got $result'),
 };
 
@@ -129,7 +128,7 @@ void main() {
       final result = await repository.list('rotasul');
 
       // 3. Assert
-      expect(messageOf(result), 'Sem permissão.');
+      expect(failureOf(result), const Failure.serverRefusal('Sem permissão.'));
     });
 
     test('Sad Path: an unexpected error gives the load message and keeps the '
@@ -142,7 +141,7 @@ void main() {
       final result = await repository.list('rotasul');
 
       // 3. Assert
-      expect(messageOf(result), 'Não foi possível carregar os grupos.');
+      expect(failureOf(result), const Failure.load(LoadTarget.groups));
       final err = result as Err;
       expect(err.error, same(error));
       expect(err.stackTrace, isNotNull);
@@ -202,7 +201,10 @@ void main() {
         final result = await repository.create('rotasul', 'Equipe Mar');
 
         // 3. Assert
-        expect(messageOf(result), 'Resposta inesperada ao criar o grupo.');
+        expect(
+          failureOf(result),
+          const Failure.unexpectedResponse(creatingGroup: true),
+        );
       },
     );
 
@@ -221,7 +223,10 @@ void main() {
       final result = await repository.create('rotasul', 'Equipe Mar');
 
       // 3. Assert
-      expect(messageOf(result), 'Já existe o grupo Equipe Mar.');
+      expect(
+        failureOf(result),
+        const Failure.serverRefusal('Já existe o grupo Equipe Mar.'),
+      );
     });
 
     test('Sad Path: an unexpected error gives the connection hint', () async {
@@ -232,7 +237,7 @@ void main() {
       final result = await repository.create('rotasul', 'Equipe Mar');
 
       // 3. Assert
-      expect(messageOf(result), _connection);
+      expect(failureOf(result), _connection);
     });
   });
 
@@ -285,7 +290,7 @@ void main() {
       final result = await repository.deletionImpact('rotasul', '01');
 
       // 3. Assert
-      expect(messageOf(result), _connection);
+      expect(failureOf(result), _connection);
     });
   });
 
@@ -346,7 +351,10 @@ void main() {
         final result = await write();
 
         // 3. Assert
-        expect(messageOf(result), 'Nome inválido.');
+        expect(
+          failureOf(result),
+          const Failure.serverRefusal('Nome inválido.'),
+        );
         expect((result as Err).error, isA<FunctionsFailure>());
       });
 
@@ -359,7 +367,7 @@ void main() {
         final result = await write();
 
         // 3. Assert
-        expect(messageOf(result), _connection);
+        expect(failureOf(result), _connection);
       });
     }
 
@@ -372,7 +380,10 @@ void main() {
       final result = await repository.remove('rotasul', '01', 'ana@x.com');
 
       // 3. Assert
-      expect(messageOf(result), 'Não foi possível concluir.');
+      expect(
+        failureOf(result),
+        const Failure.unexplainedRefusal(RefusedAction.conclude),
+      );
     });
   });
 }

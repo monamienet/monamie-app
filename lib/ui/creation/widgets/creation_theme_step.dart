@@ -52,7 +52,7 @@ class CreationThemeStep extends StatelessWidget {
   /// locate button.
   Widget _themePreview(AppLocalizations l10n) {
     final theme = c.pickedTheme;
-    final name = c.preview.name;
+    final name = c.preview(placeholderName: l10n.creationPreviewName).name;
     return Semantics(
       label: l10n.creationThemePreview,
       child: Container(

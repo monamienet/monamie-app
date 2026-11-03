@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 part 'appearance_state.freezed.dart';
 
@@ -28,12 +29,12 @@ abstract class AppearanceState with _$AppearanceState {
     @Default(LogoSheet.closed) LogoSheet sheet,
 
     /// Why the picked file cannot be used (with [LogoSheet.error]).
-    @Default('') String sheetError,
+    Failure? sheetFailure,
 
     /// The converted logo waiting for "Usar este logo".
     Uint8List? candidate,
 
-    /// Why the last save failed; empty when it did not.
-    @Default('') String errorMessage,
+    /// Why the last save failed; `null` when it did not.
+    Failure? failure,
   }) = _AppearanceState;
 }

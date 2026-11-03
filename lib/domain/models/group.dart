@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/domain/models/role_names.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 part 'group.freezed.dart';
 
@@ -43,14 +44,15 @@ enum GroupRole {
 List<GroupRole> assignableRolesFor({required bool byAdmin}) =>
     byAdmin ? GroupRole.values : GroupRole.everyday;
 
-/// Why [roles] cannot be saved for a person, or `null` when they can: an
-/// administrator ([byAdmin]) needs at least one role; a maintainer at least
-/// one everyday role (the person's *Gestor do grupo* stays as it is).
-String? rolesChoiceProblem(Set<GroupRole> roles, {required bool byAdmin}) {
+/// Why [roles] cannot be saved for a person ([NoRoleChosen]), or `null`
+/// when they can: an administrator ([byAdmin]) needs at least one role; a
+/// maintainer at least one everyday role (the person's *Gestor do grupo*
+/// stays as it is).
+Failure? rolesChoiceProblem(Set<GroupRole> roles, {required bool byAdmin}) {
   final counted = byAdmin
       ? roles
       : roles.where(GroupRole.everyday.contains).toSet();
-  return counted.isEmpty ? 'Marque pelo menos uma opção.' : null;
+  return counted.isEmpty ? const Failure.noRoleChosen() : null;
 }
 
 /// Whether someone may remove [person] from a group: an administrator
@@ -148,17 +150,20 @@ String normalizeGroupName(String name) {
 }
 
 /// Why [name] cannot be a new group name among [existing], or `null` when it
-/// can: at least 2 letters, at most 40 characters, unique ignoring case,
-/// accents and spaces. The server checks the same.
-String? groupNameProblem(String name, Iterable<String> existing) {
+/// can: at least 2 letters ([GroupNameTooShort]), at most 40 characters
+/// ([GroupNameTooLong]), unique ignoring case, accents and spaces
+/// ([GroupNameTaken]). The server checks the same.
+Failure? groupNameProblem(String name, Iterable<String> existing) {
   final clean = name.replaceAll(RegExp(r'\s+'), ' ').trim();
   // Letters in any script, like the server's `\p{L}`.
   final letters = RegExp(r'\p{L}', unicode: true).allMatches(clean).length;
-  if (letters < 2) return 'Use pelo menos 2 letras.';
-  if (clean.length > 40) return 'Use no máximo 40 caracteres.';
+  if (letters < 2) return const Failure.groupNameTooShort();
+  if (clean.length > 40) return const Failure.groupNameTooLong();
   final wanted = normalizeGroupName(clean);
   for (final other in existing) {
-    if (normalizeGroupName(other) == wanted) return 'Já existe o grupo $other.';
+    if (normalizeGroupName(other) == wanted) {
+      return Failure.groupNameTaken(other);
+    }
   }
   return null;
 }

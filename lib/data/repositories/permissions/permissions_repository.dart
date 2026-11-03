@@ -95,14 +95,7 @@ class PermissionsRepository {
     _awaitingBackgroundUsageReturn = false;
     if (!_isBackgroundRestricted.value) return;
 
-    _notices.show(
-      const UserNotice(
-        "A alteração não foi aplicada. Toque em 'Permitir uso em segundo "
-        "plano' e, se o interruptor já estiver ativado, desative-o e "
-        "ative-o novamente.",
-        title: 'Uso em segundo plano ainda restrito',
-      ),
-    );
+    _notices.show(const UserNotice.backgroundStillRestricted());
   }
 
   Future<void> _refreshStatuses() async {

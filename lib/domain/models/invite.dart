@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/domain/models/group.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 part 'invite.freezed.dart';
 
@@ -11,7 +12,10 @@ abstract class Invite with _$Invite {
     required String organizationId,
     required String organizationName,
     required String groupId,
-    required String groupName,
+
+    /// The group's name; `null` when the server sent none, and the screens
+    /// then name it ("Grupo") in the device's language.
+    required String? groupName,
     required String email,
     required Set<GroupRole> roles,
     required String inviterName,
@@ -50,7 +54,7 @@ abstract class Invite with _$Invite {
       organizationId: organizationId,
       organizationName: text('organizationName') ?? organizationId,
       groupId: groupId,
-      groupName: text('groupName') ?? 'Grupo',
+      groupName: text('groupName'),
       email: email,
       roles: roles,
       inviterName: text('inviterName') ?? '',
@@ -81,10 +85,13 @@ abstract class InviteDraft with _$InviteDraft {
 
 final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
-/// Why [email] cannot be added to the list of [drafts], or `null`.
-String? inviteEmailProblem(String email, Iterable<InviteDraft> drafts) {
+/// Why [email] cannot be added to the list of [drafts] (an [InvalidEmail]
+/// or an [EmailAlreadyListed]), or `null`.
+Failure? inviteEmailProblem(String email, Iterable<InviteDraft> drafts) {
   final clean = email.trim().toLowerCase();
-  if (!_emailPattern.hasMatch(clean)) return 'Digite um e-mail válido.';
-  if (drafts.any((d) => d.email == clean)) return '$clean já está na lista.';
+  if (!_emailPattern.hasMatch(clean)) return const Failure.invalidEmail();
+  if (drafts.any((d) => d.email == clean)) {
+    return Failure.emailAlreadyListed(clean);
+  }
   return null;
 }

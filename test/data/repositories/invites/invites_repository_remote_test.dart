@@ -11,8 +11,7 @@ import 'package:monamie_app/utils/result.dart';
 @GenerateNiceMocks([MockSpec<CentralFunctionsService>()])
 import 'invites_repository_remote_test.mocks.dart';
 
-const _connection =
-    'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
+const _connection = Failure.connection(FailedAction.conclude);
 
 late MockCentralFunctionsService functions;
 late InvitesRepositoryRemote repository;
@@ -32,8 +31,8 @@ Object? sentTo(String name) => verify(
   functions.call(name, captureAny, timeout: anyNamed('timeout')),
 ).captured.single;
 
-String messageOf(Result<Object?> result) => switch (result) {
-  Err(:final message) => message,
+Failure failureOf(Result<Object?> result) => switch (result) {
+  Err(:final failure) => failure,
   Ok() => fail('expected an Err, got $result'),
 };
 
@@ -183,7 +182,10 @@ void main() {
       final result = await sendToGroup();
 
       // 3. Assert
-      expect(messageOf(result), 'Escolha um grupo.');
+      expect(
+        failureOf(result),
+        const Failure.serverRefusal('Escolha um grupo.'),
+      );
     });
 
     test('Sad Path: an unexpected error gives the send hint', () async {
@@ -194,10 +196,7 @@ void main() {
       final result = await sendToGroup();
 
       // 3. Assert
-      expect(
-        messageOf(result),
-        'Não foi possível enviar agora. Verifique a conexão e tente de novo.',
-      );
+      expect(failureOf(result), const Failure.connection(FailedAction.send));
     });
   });
 
@@ -254,7 +253,7 @@ void main() {
       final result = await repository.listForGroup('rotasul', '01');
 
       // 3. Assert
-      expect(messageOf(result), 'Não foi possível carregar os convites.');
+      expect(failureOf(result), const Failure.load(LoadTarget.invites));
     });
 
     test('Sad Path: a refusal the code does not explain gives the connection '
@@ -269,7 +268,7 @@ void main() {
       final result = await repository.mine();
 
       // 3. Assert
-      expect(messageOf(result), _connection);
+      expect(failureOf(result), _connection);
     });
   });
 
@@ -316,7 +315,10 @@ void main() {
       final result = await repository.cancel('rotasul', 'inv1');
 
       // 3. Assert
-      expect(messageOf(result), 'Convite já aceito.');
+      expect(
+        failureOf(result),
+        const Failure.serverRefusal('Convite já aceito.'),
+      );
     });
 
     test('Sad Path: an unexpected error of resend gives the connection '
@@ -328,7 +330,7 @@ void main() {
       final result = await repository.resend('rotasul', 'inv1');
 
       // 3. Assert
-      expect(messageOf(result), _connection);
+      expect(failureOf(result), _connection);
     });
   });
 
@@ -360,7 +362,10 @@ void main() {
       final result = await repository.accept(_invite);
 
       // 3. Assert
-      expect(messageOf(result), 'Este convite expirou.');
+      expect(
+        failureOf(result),
+        const Failure.serverRefusal('Este convite expirou.'),
+      );
     });
 
     test('Sad Path: an unexpected error gives the accept hint', () async {
@@ -371,10 +376,7 @@ void main() {
       final result = await repository.accept(_invite);
 
       // 3. Assert
-      expect(
-        messageOf(result),
-        'Não foi possível aceitar agora. Verifique a conexão e tente de novo.',
-      );
+      expect(failureOf(result), const Failure.connection(FailedAction.accept));
     });
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/domain/models/sharing_notification.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_toggle_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/home_colors.dart';
 import 'package:monamie_app/ui/home/widgets/sheet_colors.dart';
@@ -106,7 +107,13 @@ class ShareCard extends StatelessWidget {
   /// start, or a remark on a start (e.g. no GPS fix yet).
   Future<void> _toggle(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final result = await _tracking.toggleService.execute();
+    final l10n = AppLocalizations.of(context);
+    final result = await _tracking.toggleService.execute(
+      SharingNotification(
+        title: l10n.sharingNotificationTitle,
+        content: l10n.sharingNotificationContent,
+      ),
+    );
     switch (result) {
       case Ok(value: final notice?):
         showNotice(messenger, notice);

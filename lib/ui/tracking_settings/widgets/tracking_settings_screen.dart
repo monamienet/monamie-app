@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
@@ -151,11 +152,11 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
                           ),
                         ),
                       ),
-                    if (controller.state.errorMessage.isNotEmpty)
+                    if (controller.state.failure case final failure?)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: Text(
-                          controller.state.errorMessage,
+                          failure.message(l10n),
                           style: const TextStyle(
                             color: Color(0xFFB3261E),
                             fontWeight: FontWeight.w800,

@@ -16,9 +16,9 @@ T _$identity<T>(T value) => value;
 mixin _$GroupInvitesState {
 
 /// The group's pending invites; `null` until the first load works.
- List<Invite>? get invites;/// Why the last load failed; empty when it did not. Shown only while
+ List<Invite>? get invites;/// Why the last load failed; `null` when it did not. Shown only while
 /// [invites] is `null`.
- String get errorMessage;
+ Failure? get failure;
 /// Create a copy of GroupInvitesState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $GroupInvitesStateCopyWith<GroupInvitesState> get copyWith => _$GroupInvitesStat
 @override
 bool operator ==(Object other) {
   final _this = this as GroupInvitesState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupInvitesState&&const DeepCollectionEquality().equals(other.invites, _this.invites)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupInvitesState&&const DeepCollectionEquality().equals(other.invites, _this.invites)&&(identical(other.failure, _this.failure) || other.failure == _this.failure));
 }
 
 
 @override
 int get hashCode {
   final _this = this as GroupInvitesState;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.invites),_this.errorMessage);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.invites),_this.failure);
 }
 
 @override
 String toString() {
   final _this = this as GroupInvitesState;
-  return 'GroupInvitesState(invites: ${_this.invites}, errorMessage: ${_this.errorMessage})';
+  return 'GroupInvitesState(invites: ${_this.invites}, failure: ${_this.failure})';
 }
 
 
@@ -54,11 +54,11 @@ abstract mixin class $GroupInvitesStateCopyWith<$Res>  {
   factory $GroupInvitesStateCopyWith(GroupInvitesState value, $Res Function(GroupInvitesState) _then) = _$GroupInvitesStateCopyWithImpl;
 @useResult
 $Res call({
- List<Invite>? invites, String errorMessage
+ List<Invite>? invites, Failure? failure
 });
 
 
-
+$FailureCopyWith<$Res>? get failure;
 
 }
 /// @nodoc
@@ -71,14 +71,26 @@ class _$GroupInvitesStateCopyWithImpl<$Res>
 
 /// Create a copy of GroupInvitesState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? invites = freezed,Object? errorMessage = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? invites = freezed,Object? failure = freezed,}) {
   return _then(GroupInvitesState(
 invites: freezed == invites ? _self.invites : invites // ignore: cast_nullable_to_non_nullable
-as List<Invite>?,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String,
+as List<Invite>?,failure: freezed == failure ? _self.failure : failure // ignore: cast_nullable_to_non_nullable
+as Failure?,
   ));
 }
+/// Create a copy of GroupInvitesState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FailureCopyWith<$Res>? get failure {
+    if (_self.failure == null) {
+    return null;
+  }
 
+  return $FailureCopyWith<$Res>(_self.failure!, (value) {
+    return _then(_self.copyWith(failure: value));
+  });
+}
 }
 
 
@@ -160,10 +172,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<Invite>? invites,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<Invite>? invites,  Failure? failure)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GroupInvitesState() when $default != null:
-return $default(_that.invites,_that.errorMessage);case _:
+return $default(_that.invites,_that.failure);case _:
   return orElse();
 
 }
@@ -181,10 +193,10 @@ return $default(_that.invites,_that.errorMessage);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<Invite>? invites,  String errorMessage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<Invite>? invites,  Failure? failure)  $default,) {final _that = this;
 switch (_that) {
 case _GroupInvitesState():
-return $default(_that.invites,_that.errorMessage);case _:
+return $default(_that.invites,_that.failure);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +213,10 @@ return $default(_that.invites,_that.errorMessage);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<Invite>? invites,  String errorMessage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<Invite>? invites,  Failure? failure)?  $default,) {final _that = this;
 switch (_that) {
 case _GroupInvitesState() when $default != null:
-return $default(_that.invites,_that.errorMessage);case _:
+return $default(_that.invites,_that.failure);case _:
   return null;
 
 }
@@ -216,7 +228,7 @@ return $default(_that.invites,_that.errorMessage);case _:
 
 
 class _GroupInvitesState implements GroupInvitesState {
-  const _GroupInvitesState({ List<Invite>? invites, this.errorMessage = ''}): _invites = invites;
+  const _GroupInvitesState({ List<Invite>? invites, this.failure}): _invites = invites;
   
 
 /// The group's pending invites; `null` until the first load works.
@@ -230,9 +242,9 @@ class _GroupInvitesState implements GroupInvitesState {
   return EqualUnmodifiableListView(value);
 }
 
-/// Why the last load failed; empty when it did not. Shown only while
+/// Why the last load failed; `null` when it did not. Shown only while
 /// [invites] is `null`.
-@override@JsonKey() final  String errorMessage;
+@override final  Failure? failure;
 
 /// Create a copy of GroupInvitesState
 /// with the given fields replaced by the non-null parameter values.
@@ -244,18 +256,18 @@ _$GroupInvitesStateCopyWith<_GroupInvitesState> get copyWith => __$GroupInvitesS
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupInvitesState&&const DeepCollectionEquality().equals(other.invites, _invites)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupInvitesState&&const DeepCollectionEquality().equals(other.invites, _invites)&&(identical(other.failure, failure) || other.failure == failure));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_invites),errorMessage);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_invites),failure);
 }
 
 @override
 String toString() {
-    return 'GroupInvitesState(invites: $invites, errorMessage: $errorMessage)';
+    return 'GroupInvitesState(invites: $invites, failure: $failure)';
 }
 
 
@@ -266,11 +278,11 @@ abstract mixin class _$GroupInvitesStateCopyWith<$Res> implements $GroupInvitesS
   factory _$GroupInvitesStateCopyWith(_GroupInvitesState value, $Res Function(_GroupInvitesState) _then) = __$GroupInvitesStateCopyWithImpl;
 @override @useResult
 $Res call({
- List<Invite>? invites, String errorMessage
+ List<Invite>? invites, Failure? failure
 });
 
 
-
+@override $FailureCopyWith<$Res>? get failure;
 
 }
 /// @nodoc
@@ -283,15 +295,27 @@ class __$GroupInvitesStateCopyWithImpl<$Res>
 
 /// Create a copy of GroupInvitesState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? invites = freezed,Object? errorMessage = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? invites = freezed,Object? failure = freezed,}) {
   return _then(_GroupInvitesState(
 invites: freezed == invites ? _self._invites : invites // ignore: cast_nullable_to_non_nullable
-as List<Invite>?,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String,
+as List<Invite>?,failure: freezed == failure ? _self.failure : failure // ignore: cast_nullable_to_non_nullable
+as Failure?,
   ));
 }
 
+/// Create a copy of GroupInvitesState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FailureCopyWith<$Res>? get failure {
+    if (_self.failure == null) {
+    return null;
+  }
 
+  return $FailureCopyWith<$Res>(_self.failure!, (value) {
+    return _then(_self.copyWith(failure: value));
+  });
+}
 }
 
 // dart format on

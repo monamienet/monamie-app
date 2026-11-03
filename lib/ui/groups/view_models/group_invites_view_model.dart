@@ -46,7 +46,8 @@ class GroupInvitesViewModel extends ChangeNotifier {
   }
 
   /// Reads the group's pending invites. A failure is kept in
-  /// [GroupInvitesState.errorMessage]; the invites already read stay.
+  /// [GroupInvitesState.failure] (always a [LoadFailure] of the invites);
+  /// the invites already read stay.
   late final Command0<void> load = Command0(_load);
 
   /// Sends the invite given again (a new e-mail, 14 more days), then reads
@@ -72,12 +73,12 @@ class GroupInvitesViewModel extends ChangeNotifier {
     final loaded = await _repository.listForGroup(organizationId, groupId);
     switch (loaded) {
       case Ok(value: final invites):
-        _emit(_state.copyWith(invites: invites, errorMessage: ''));
+        _emit(_state.copyWith(invites: invites, failure: null));
         return const Ok(null);
       case Err(:final error, :final stackTrace):
-        const message = 'Não foi possível carregar os convites.';
-        _emit(_state.copyWith(errorMessage: message));
-        return Err(message, error: error, stackTrace: stackTrace);
+        const failure = Failure.load(LoadTarget.invites);
+        _emit(_state.copyWith(failure: failure));
+        return Err(failure, error: error, stackTrace: stackTrace);
     }
   }
 

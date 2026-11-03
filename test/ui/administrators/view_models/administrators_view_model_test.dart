@@ -119,19 +119,22 @@ void main() {
       await first;
     });
 
-    test('Sad Path: an Err from the repository shows its message and stops '
+    test('Sad Path: an Err from the repository shows its failure and stops '
         'loading', () async {
       // 1. Arrange
       final controller = await loadedController();
-      when(
-        repository.list(any),
-      ).thenAnswer((_) async => const Err('Sem permissão.'));
+      when(repository.list(any)).thenAnswer(
+        (_) async => const Err(Failure.serverRefusal('Sem permissão.')),
+      );
 
       // 2. Act
       await controller.load.execute();
 
       // 3. Assert
-      expect(controller.state.errorMessage, 'Sem permissão.');
+      expect(
+        controller.state.failure,
+        const Failure.serverRefusal('Sem permissão.'),
+      );
       expect(controller.load.running, isFalse);
     });
 
@@ -141,7 +144,7 @@ void main() {
       final controller = await loadedController();
       when(repository.list(any)).thenAnswer(
         (_) async => Err(
-          'Não foi possível carregar os administradores.',
+          const Failure.load(LoadTarget.administrators),
           error: StateError('offline'),
         ),
       );
@@ -151,8 +154,8 @@ void main() {
 
       // 3. Assert
       expect(
-        controller.state.errorMessage,
-        'Não foi possível carregar os administradores.',
+        controller.state.failure,
+        const Failure.load(LoadTarget.administrators),
       );
       expect(controller.load.running, isFalse);
     });
@@ -261,7 +264,9 @@ void main() {
       when(
         repository.setAdministrator(any, any, admin: anyNamed('admin')),
       ).thenAnswer(
-        (_) async => const Err('Essa pessoa não faz parte da organização.'),
+        (_) async => const Err(
+          Failure.serverRefusal('Essa pessoa não faz parte da organização.'),
+        ),
       );
 
       // 2. Act
@@ -274,14 +279,18 @@ void main() {
       expect(
         result,
         isA<Err<void>>().having(
-          (err) => err.message,
-          'message',
-          'Essa pessoa não faz parte da organização.',
+          (err) => err.failure,
+          'failure',
+          const Failure.serverRefusal(
+            'Essa pessoa não faz parte da organização.',
+          ),
         ),
       );
       expect(
-        controller.state.errorMessage,
-        'Essa pessoa não faz parte da organização.',
+        controller.state.failure,
+        const Failure.serverRefusal(
+          'Essa pessoa não faz parte da organização.',
+        ),
       );
       expect(controller.setAdministrator.argument?.email, isNull);
       expect(controller.state.people, same(_before));
@@ -295,8 +304,7 @@ void main() {
         repository.setAdministrator(any, any, admin: anyNamed('admin')),
       ).thenAnswer(
         (_) async => Err(
-          'Não foi possível concluir agora. Verifique a conexão e tente de '
-          'novo.',
+          const Failure.connection(FailedAction.conclude),
           error: StateError('offline'),
         ),
       );
@@ -310,9 +318,8 @@ void main() {
       // 3. Assert
       expect(result, isA<Err<void>>());
       expect(
-        controller.state.errorMessage,
-        'Não foi possível concluir agora. Verifique a conexão e tente de '
-        'novo.',
+        controller.state.failure,
+        const Failure.connection(FailedAction.conclude),
       );
       expect(controller.setAdministrator.argument?.email, isNull);
     });
@@ -322,7 +329,7 @@ void main() {
       // 1. Arrange
       final controller = await loadedController();
       when(repository.list(any)).thenAnswer(
-        (_) async => const Err('Não foi possível carregar os administradores.'),
+        (_) async => const Err(Failure.load(LoadTarget.administrators)),
       );
 
       // 2. Act
@@ -335,9 +342,9 @@ void main() {
       expect(
         result,
         isA<Err<void>>().having(
-          (err) => err.message,
-          'message',
-          'Não foi possível carregar os administradores.',
+          (err) => err.failure,
+          'failure',
+          const Failure.load(LoadTarget.administrators),
         ),
       );
       verifyInOrder([
@@ -345,8 +352,8 @@ void main() {
         repository.list('rotasul'),
       ]);
       expect(
-        controller.state.errorMessage,
-        'Não foi possível carregar os administradores.',
+        controller.state.failure,
+        const Failure.load(LoadTarget.administrators),
       );
       expect(controller.state.people, same(_before));
       expect(controller.setAdministrator.argument?.email, isNull);
@@ -368,7 +375,7 @@ void main() {
       // 3. Assert
       expect(controller.state.people.administrators, isEmpty);
       expect(controller.state.people.members, isEmpty);
-      expect(controller.state.errorMessage, isEmpty);
+      expect(controller.state.failure, isNull);
     });
 
     test(

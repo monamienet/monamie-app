@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:monamie_app/domain/models/sharing_notification.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_toggle_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/share_card.dart';
 import 'package:monamie_app/utils/command.dart';
@@ -16,9 +17,10 @@ import 'package:monamie_app/ui/core/app_locales.dart';
 import 'share_card_test.mocks.dart';
 
 /// A [MockTrackingToggleViewModel] whose sharing flag starts at [enabled]
-/// and whose [toggleService] is a real [Command0] answering [result] (by
-/// default `Ok(null)`), counting the toggles in [calls]. With [loading] a
-/// toggle is already in flight, until [finishLoading].
+/// and whose [toggleService] is a real [Command1] answering [result] (by
+/// default `Ok(null)`), counting the toggles in [calls] and keeping the
+/// notification each one got in [notifications]. With [loading] a toggle is
+/// already in flight, until [finishLoading].
 class ToggleDouble {
   ToggleDouble({
     bool enabled = false,
@@ -36,10 +38,16 @@ class ToggleDouble {
 
   /// The toggles the card asked for (not the one [startLoading] began).
   int calls = 0;
+
+  /// The notification handed to each toggle the card asked for.
+  final List<SharingNotification> notifications = [];
   Completer<void>? _inFlight;
 
-  late final command = Command0<UserNotice?>(() async {
+  late final command = Command1<UserNotice?, SharingNotification>((
+    notification,
+  ) async {
     calls++;
+    notifications.add(notification);
     await _inFlight?.future;
     return result;
   });
@@ -48,8 +56,11 @@ class ToggleDouble {
   /// in flight.
   void startLoading() {
     _inFlight = Completer<void>();
-    command.execute();
+    command.execute(
+      const SharingNotification(title: 'in flight', content: 'in flight'),
+    );
     calls = 0;
+    notifications.clear();
   }
 
   /// Ends the toggle [startLoading] began.
@@ -59,8 +70,11 @@ class ToggleDouble {
   }
 }
 
-Widget buildApp(ToggleDouble toggle) => MaterialApp(
-  locale: const Locale('pt', 'BR'),
+Widget buildApp(
+  ToggleDouble toggle, {
+  Locale locale = const Locale('pt', 'BR'),
+}) => MaterialApp(
+  locale: locale,
   localizationsDelegates: AppLocalizations.localizationsDelegates,
   supportedLocales: appSupportedLocales,
   home: Scaffold(body: ShareCard(controller: toggle.mock)),
@@ -77,12 +91,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = ToggleDouble(
-        result: const Err(
-          'Você não está em campo em nenhum grupo.',
-          title: 'Compartilhamento não autorizado',
-        ),
-      );
+      final fake = ToggleDouble(result: const Err(Failure.sharingNotAllowed()));
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -92,7 +101,10 @@ void main() {
       // 3. Assert
       expect(find.byType(SnackBar), findsOneWidget);
       expect(
-        find.text('Você não está em campo em nenhum grupo.'),
+        find.text(
+          'Você não está em campo em nenhum grupo. Peça a um administrador '
+          'para liberar o compartilhamento da sua localização.',
+        ),
         findsOneWidget,
       );
       expect(find.text('Compartilhamento não autorizado'), findsOneWidget);
@@ -102,14 +114,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = ToggleDouble(
-        result: const Ok(
-          UserNotice(
-            'O monitoramento foi iniciado.',
-            title: 'Aguardando sinal de GPS',
-          ),
-        ),
-      );
+      final fake = ToggleDouble(result: const Ok(UserNotice.waitingForGps()));
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -118,7 +123,13 @@ void main() {
 
       // 3. Assert
       expect(find.byType(SnackBar), findsOneWidget);
-      expect(find.text('O monitoramento foi iniciado.'), findsOneWidget);
+      expect(
+        find.text(
+          'O monitoramento foi iniciado, mas a sua posição inicial ainda está '
+          'sendo obtida pelos satélites.',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Aguardando sinal de GPS'), findsOneWidget);
     });
 
@@ -133,6 +144,54 @@ void main() {
 
       // 3. Assert
       expect(find.byType(SnackBar), findsNothing);
+    });
+  });
+
+  group('ShareCard - notification words', () {
+    testWidgets('Happy Path: a toggle hands the pt-BR notification words to '
+        'toggleService', (tester) async {
+      // 1. Arrange
+      final fake = ToggleDouble();
+      await tester.pumpWidget(buildApp(fake));
+
+      // 2. Act
+      await tester.tap(find.byType(ShareCard));
+      await tester.pump();
+
+      // 3. Assert
+      expect(fake.notifications, const [
+        SharingNotification(
+          title: 'Sua localização está sendo compartilhada',
+          content:
+              'O compartilhamento está ligado. Para preservar sua '
+              'privacidade, certifique-se de desativá-lo assim que terminar '
+              'suas atividades.',
+        ),
+      ]);
+    });
+
+    testWidgets('Edge Case: in English the notification follows the '
+        "device's language", (tester) async {
+      // 1. Arrange
+      final fake = ToggleDouble();
+      await tester.pumpWidget(buildApp(fake, locale: const Locale('en')));
+
+      // 2. Act
+      await tester.tap(find.byType(ShareCard));
+      await tester.pump();
+
+      // 3. Assert
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      expect(fake.notifications, [
+        SharingNotification(
+          title: l10n.sharingNotificationTitle,
+          content: l10n.sharingNotificationContent,
+        ),
+      ]);
+      expect(
+        fake.notifications.single.title,
+        isNot('Sua localização está sendo compartilhada'),
+      );
     });
   });
 

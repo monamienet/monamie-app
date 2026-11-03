@@ -58,12 +58,12 @@ class AppearanceViewModel extends ChangeNotifier {
   late final Command0<void> load = Command0(_load);
 
   /// Converts a picked file into the square PNG and shows the preview, or
-  /// says in [AppearanceState.sheetError] why it cannot be used (so it
+  /// says in [AppearanceState.sheetFailure] why it cannot be used (so it
   /// always ends [Ok]).
   late final Command1<void, Uint8List> pickLogo = Command1(_pickLogo);
 
   /// Saves what changed. The failure is also kept in
-  /// [AppearanceState.errorMessage]. Ignored when nothing changed.
+  /// [AppearanceState.failure]. Ignored when nothing changed.
   late final Command0<void> save = Command0(_save, blocked: () => !hasChanges);
 
   /// The converted logo waiting for "Usar este logo".
@@ -108,11 +108,11 @@ class AppearanceViewModel extends ChangeNotifier {
       final png = await _convertLogo(bytes);
       _emit(_state.copyWith(candidate: png, sheet: LogoSheet.preview));
     } on LogoException catch (e) {
-      _emit(_state.copyWith(sheetError: e.message, sheet: LogoSheet.error));
+      _emit(_state.copyWith(sheetFailure: e.failure, sheet: LogoSheet.error));
     } catch (e) {
       _emit(
         _state.copyWith(
-          sheetError: 'Não deu para abrir este arquivo.',
+          sheetFailure: const Failure.logoNotOpened(),
           sheet: LogoSheet.error,
         ),
       );
@@ -138,7 +138,7 @@ class AppearanceViewModel extends ChangeNotifier {
   void removeLogo() => _emit(_state.copyWith(logoPng: null));
 
   Future<Result<void>> _save() async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     try {
       String? logo;
       if (_logoChanged) {
@@ -151,8 +151,8 @@ class AppearanceViewModel extends ChangeNotifier {
           stored = await _repository.uploadLogo(organization.id, png);
           logo = 'set';
         }
-        if (stored case Err(:final message)) {
-          _emit(_state.copyWith(errorMessage: message));
+        if (stored case Err(:final failure)) {
+          _emit(_state.copyWith(failure: failure));
           return stored;
         }
       }
@@ -164,8 +164,8 @@ class AppearanceViewModel extends ChangeNotifier {
         themeId: themeId != organization.effectiveTheme.id ? themeId : null,
         logo: logo,
       );
-      if (saved case Err(:final message)) {
-        _emit(_state.copyWith(errorMessage: message));
+      if (saved case Err(:final failure)) {
+        _emit(_state.copyWith(failure: failure));
         return saved;
       }
       await _onSaved?.call(
@@ -186,11 +186,9 @@ class AppearanceViewModel extends ChangeNotifier {
     } catch (e, stackTrace) {
       // Storing the saved branding on the device failed.
       debugPrint('[Appearance] Save failed: $e');
-      const message =
-          'Não foi possível salvar agora. Verifique a conexão e tente de '
-          'novo.';
-      _emit(_state.copyWith(errorMessage: message));
-      return Err(message, error: e, stackTrace: stackTrace);
+      const failure = Failure.connection(FailedAction.save);
+      _emit(_state.copyWith(failure: failure));
+      return Err(failure, error: e, stackTrace: stackTrace);
     }
   }
 }

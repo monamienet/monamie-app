@@ -5,8 +5,7 @@ import 'package:monamie_app/utils/result.dart';
 
 import 'groups_repository.dart';
 
-const _failed =
-    'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
+const _failed = Failure.connection(FailedAction.conclude);
 
 /// [GroupsRepository] over the central project's group functions, called
 /// with the MonAmie (central) session.
@@ -17,10 +16,10 @@ class GroupsRepositoryRemote implements GroupsRepository {
 
   Future<Result<T>> _run<T>(
     Future<Result<T>> Function() operation, {
-    String unexpected = _failed,
+    Failure unexpected = _failed,
   }) => functionsResult(
     operation,
-    refusal: functionsFailureMessage,
+    refusal: functionsRefusal,
     unexpected: unexpected,
     logTag: 'Groups',
   );
@@ -42,7 +41,7 @@ class GroupsRepositoryRemote implements GroupsRepository {
       for (final entry in groups is List ? groups : const [])
         ?Group.fromJson(entry),
     ]);
-  }, unexpected: 'Não foi possível carregar os grupos.');
+  }, unexpected: const Failure.load(LoadTarget.groups));
 
   @override
   Future<Result<Group>> create(String organizationId, String name) =>
@@ -56,7 +55,7 @@ class GroupsRepositoryRemote implements GroupsRepository {
           'people': const <Object?>[],
         });
         return group == null
-            ? const Err('Resposta inesperada ao criar o grupo.')
+            ? const Err(Failure.unexpectedResponse(creatingGroup: true))
             : Ok(group);
       });
 

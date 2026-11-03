@@ -76,13 +76,16 @@ final _kInvite = Invite(
 UserGoogleModel _storedUser() =>
     UserGoogleModel(id: 'uid-123', name: 'Ana Souza', email: _kStoredEmail);
 
-/// An [Err] titled [title].
-Matcher _errTitled(String title) =>
-    isA<Err<Object?>>().having((err) => err.title, 'title', title);
+/// An [Err] whose failure matches [failure].
+Matcher _errWith(Object failure) =>
+    isA<Err<Object?>>().having((err) => err.failure, 'failure', failure);
 
-/// A [UserNotice] titled [title].
-Matcher _noticeTitled(String title) =>
-    isA<UserNotice>().having((notice) => notice.title, 'title', title);
+/// The notice of a failed sign-out ("Erro ao sair" on screen).
+final Matcher _signOutFailedNotice = isA<FailureNotice>().having(
+  (notice) => notice.failure,
+  'failure',
+  isA<SignOutFailure>(),
+);
 
 /// The dependencies of a [SignOut] under test, starting on the map: the
 /// session double and mocks whose calls are written to [log] in order (each
@@ -333,7 +336,9 @@ void main() {
       // 3. Assert
       expect(harness.log, [..._kSignOutSteps, 'move:SessionSignedOut']);
       verify(
-        harness.notices.show(argThat(_noticeTitled('Rastreamento'))),
+        harness.notices.show(
+          argThat(equals(const UserNotice.trackingStopUnconfirmed())),
+        ),
       ).called(1);
     });
 
@@ -349,7 +354,7 @@ void main() {
       final result = await harness.signOut();
 
       // 3. Assert
-      expect(result, _errTitled('Erro ao sair'));
+      expect(result, _errWith(isA<SignOutFailure>()));
       verifyNever(harness.userRepository.deleteUserGoogleModel());
       expect(harness.session.session.value, const SessionState.bound());
       expect(harness.session.moves, isEmpty);
@@ -368,7 +373,7 @@ void main() {
       final result = await harness.signOut();
 
       // 3. Assert
-      expect(result, _errTitled('Erro ao sair'));
+      expect(result, _errWith(isA<SignOutFailure>()));
       expect(harness.session.leaving.value, isNull);
     });
   });
@@ -387,7 +392,7 @@ void main() {
       expect(
         harness.session.session.value,
         const SessionState.noOrganization(
-          reason: 'Você não faz mais parte da Rota Sul.',
+          reason: Failure.removedFromOrganization('Rota Sul'),
         ),
       );
     });
@@ -417,7 +422,7 @@ void main() {
       expect(
         harness.session.session.value,
         const SessionState.noOrganization(
-          reason: 'Você não faz mais parte desta organização.',
+          reason: Failure.removedFromOrganization(null),
         ),
       );
     });
@@ -450,9 +455,7 @@ void main() {
 
         // 3. Assert
         expect(harness.session.session.value, const SessionState.bound());
-        verify(
-          harness.notices.show(argThat(_noticeTitled('Erro ao sair'))),
-        ).called(1);
+        verify(harness.notices.show(argThat(_signOutFailedNotice))).called(1);
       },
     );
   });
@@ -533,9 +536,7 @@ void main() {
 
         // 3. Assert
         expect(harness.session.session.value, const SessionState.bound());
-        verify(
-          harness.notices.show(argThat(_noticeTitled('Erro ao sair'))),
-        ).called(1);
+        verify(harness.notices.show(argThat(_signOutFailedNotice))).called(1);
       },
     );
   });
@@ -662,7 +663,7 @@ void main() {
       final result = await harness.signOut.switchOrganization();
 
       // 3. Assert
-      expect(result, _errTitled('Trocar de organização'));
+      expect(result, _errWith(const Failure.googleRenewal()));
       expect(harness.log, ['freshIdToken']);
       expect(harness.session.leavingHistory, isEmpty);
       expect(harness.session.session.value, const SessionState.bound());
@@ -680,7 +681,10 @@ void main() {
       final result = await harness.signOut.switchOrganization();
 
       // 3. Assert
-      expect(result, _errTitled('Trocar de organização'));
+      expect(
+        result,
+        _errWith(const Failure.connection(FailedAction.switchOrganization)),
+      );
       expect(
         harness.log.where(
           (e) => e == 'stop' || e == 'signOutOfOrganization' || e == 'forget',

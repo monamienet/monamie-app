@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
@@ -93,7 +94,7 @@ class _InviteScreenState extends State<InviteScreen> {
                     border: const OutlineInputBorder(),
                     errorText: c.state.firstGroupName.isEmpty
                         ? null
-                        : c.firstGroupProblem,
+                        : c.firstGroupProblem?.message(l10n),
                   ),
                   onChanged: c.setFirstGroupName,
                 ),
@@ -147,9 +148,7 @@ class _InviteScreenState extends State<InviteScreen> {
                       decoration: InputDecoration(
                         hintText: l10n.inviteEmailHint,
                         border: const OutlineInputBorder(),
-                        errorText: c.state.draftError.isEmpty
-                            ? null
-                            : c.state.draftError,
+                        errorText: c.state.draftFailure?.message(l10n),
                       ),
                       onSubmitted: (_) => _add(),
                     ),
@@ -205,11 +204,11 @@ class _InviteScreenState extends State<InviteScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (c.state.errorMessage.isNotEmpty)
+              if (c.state.failure case final failure?)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Text(
-                    c.state.errorMessage,
+                    failure.message(l10n),
                     style: const TextStyle(
                       color: _error,
                       fontWeight: FontWeight.w800,

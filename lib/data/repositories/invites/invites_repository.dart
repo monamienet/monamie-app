@@ -4,7 +4,7 @@ import 'package:monamie_app/domain/models/invite_send_result.dart';
 import 'package:monamie_app/utils/result.dart';
 
 /// The central invite functions, behind a contract so the screens are
-/// tested with a fake. Every method returns an [Err] with a message instead
+/// tested with a fake. Every method returns an [Err] with a [Failure] instead
 /// of throwing.
 abstract interface class InvitesRepository {
   Future<Result<InviteSendResult>> send(

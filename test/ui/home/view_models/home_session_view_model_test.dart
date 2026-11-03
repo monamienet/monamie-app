@@ -136,7 +136,8 @@ void main() {
       // 1. Arrange
       final harness = _Harness();
       when(harness.signOut.switchOrganization()).thenAnswer(
-        (_) async => const Err('Sem rede.', title: 'Trocar de organização'),
+        (_) async =>
+            const Err(Failure.connection(FailedAction.switchOrganization)),
       );
 
       // 2. Act
@@ -146,9 +147,9 @@ void main() {
       expect(
         result,
         isA<Err<void>>().having(
-          (err) => err.title,
-          'title',
-          'Trocar de organização',
+          (err) => err.failure,
+          'failure',
+          const Failure.connection(FailedAction.switchOrganization),
         ),
       );
     });

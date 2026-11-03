@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 part 'tracking_settings_edit_state.freezed.dart';
 
@@ -20,7 +21,7 @@ abstract class TrackingSettingsEditState with _$TrackingSettingsEditState {
     @Default(0) int minPeriodMinutes,
     @Default(false) bool justSaved,
 
-    /// Why the last save failed; empty when it did not.
-    @Default('') String errorMessage,
+    /// Why the last save failed; `null` when it did not.
+    Failure? failure,
   }) = _TrackingSettingsEditState;
 }

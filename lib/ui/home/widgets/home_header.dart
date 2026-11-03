@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
@@ -119,9 +120,12 @@ class HomeHeader extends StatelessWidget {
     final label = groupChipLabel(
       l10n,
       canWatch: canWatch,
-      observedGroup: _home.selectedGroup.value?.name,
+      observedGroup: switch (_home.selectedGroup.value) {
+        final group? => l10n.mapGroupName(group),
+        null => null,
+      },
       publishGroups: [
-        for (final group in _home.publishGroups.value) group.name,
+        for (final group in _home.publishGroups.value) l10n.mapGroupName(group),
       ],
     );
     if (canWatch) return GroupMenuButton(home: _home, label: label);

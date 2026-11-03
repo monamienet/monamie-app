@@ -223,7 +223,10 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      repository.fail('create', 'Identificador já em uso.');
+      repository.fail(
+        'create',
+        const Failure.serverRefusal('Identificador já em uso.'),
+      );
       await goToReview(tester);
       await acceptTerms(tester);
 
@@ -266,7 +269,8 @@ void main() {
       // 1. Arrange
       await goToReview(
         tester,
-        entry: () async => const Err('Não foi possível entrar agora.'),
+        entry: () async =>
+            const Err(Failure.entry(EntryStage.enter, 'tempo esgotado')),
       );
       await acceptTerms(tester);
       await tester.tap(_createButton);
@@ -278,7 +282,10 @@ void main() {
 
       // 3. Assert
       expect(find.byType(SnackBar), findsOneWidget);
-      expect(find.text('Não foi possível entrar agora.'), findsOneWidget);
+      expect(
+        find.text('Não foi possível entrar agora: tempo esgotado'),
+        findsOneWidget,
+      );
     });
 
     testWidgets(

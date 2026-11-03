@@ -32,8 +32,8 @@ import 'package:monamie_app/utils/result.dart';
 ///
 /// One entry at a time, app-wide: a call made while another runs does
 /// nothing and returns [Ok]. Every method returns [Err] instead of throwing;
-/// its message is the generic "Não foi possível entrar agora", which callers
-/// may replace using [Err.error].
+/// its failure is an [EntryFailure] of [EntryStage.enter] ("Não foi possível
+/// entrar agora"), which callers may replace using [Err.error].
 class EnterOrganization {
   EnterOrganization({
     required this._session,
@@ -56,9 +56,6 @@ class EnterOrganization {
   final InvitesRepository _invites;
 
   bool _running = false;
-
-  /// Title of the entry's error messages.
-  static const errorTitle = 'Erro de Login';
 
   /// Continues the Google sign-in that returned [idToken]. [checkDeletion]
   /// false skips the pending deletion (it was just cancelled). [onEntering]
@@ -119,8 +116,7 @@ class EnterOrganization {
       return const Ok(null);
     } catch (e, stackTrace) {
       return Err(
-        'Não foi possível entrar agora: $e',
-        title: errorTitle,
+        Failure.entry(EntryStage.enter, '$e'),
         error: e,
         stackTrace: stackTrace,
       );
@@ -185,7 +181,7 @@ class EnterOrganization {
         await _binder.forget();
         _session.moveTo(
           SessionState.noOrganization(
-            reason: 'Sua conta não tem mais acesso à ${organization.name}.',
+            reason: Failure.accessLost(organization.name),
             invites: _shownInvites(),
           ),
         );

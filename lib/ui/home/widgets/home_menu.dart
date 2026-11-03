@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
@@ -161,7 +162,7 @@ class HomeMenu extends StatelessWidget {
                       canShare: _home.canPublish,
                       publishGroups: [
                         for (final group in _home.publishGroups.value)
-                          group.name,
+                          AppLocalizations.of(context).mapGroupName(group),
                       ],
                     ),
                     maxLines: 1,

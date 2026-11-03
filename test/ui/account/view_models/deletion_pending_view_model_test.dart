@@ -133,7 +133,7 @@ void main() {
       verify(harness.session.repository.keptOrSignIn()).called(1);
       verify(harness.repository.cancel()).called(1);
       expect(harness.controller.state.deletionRestored, isTrue);
-      expect(harness.controller.state.deletionError, isEmpty);
+      expect(harness.controller.state.deletionFailure, isNull);
       expect(harness.controller.cancelAccountDeletion.running, isFalse);
     });
 
@@ -189,10 +189,12 @@ void main() {
       expect(harness.controller.state.deletionRestored, isFalse);
     });
 
-    test('Sad Path: an Err from the cancel shows its message and restores '
+    test('Sad Path: an Err from the cancel shows its failure and restores '
         'nothing', () async {
       // 1. Arrange
-      final harness = _Harness(cancel: const Err('Prazo encerrado.'));
+      final harness = _Harness(
+        cancel: const Err(Failure.serverRefusal('Prazo encerrado.')),
+      );
 
       // 2. Act
       final result = await harness.controller.cancelAccountDeletion.execute();
@@ -201,12 +203,15 @@ void main() {
       expect(
         result,
         isA<Err<void>>().having(
-          (err) => err.message,
-          'message',
-          'Prazo encerrado.',
+          (err) => err.failure,
+          'failure',
+          const Failure.serverRefusal('Prazo encerrado.'),
         ),
       );
-      expect(harness.controller.state.deletionError, 'Prazo encerrado.');
+      expect(
+        harness.controller.state.deletionFailure,
+        const Failure.serverRefusal('Prazo encerrado.'),
+      );
       expect(harness.controller.state.deletionRestored, isFalse);
       expect(harness.controller.cancelAccountDeletion.running, isFalse);
     });
@@ -224,9 +229,8 @@ void main() {
       expect(harness.controller.cancelAccountDeletion.running, isFalse);
       verifyNever(harness.repository.cancel());
       expect(
-        harness.controller.state.deletionError,
-        'Não foi possível cancelar agora. Verifique a conexão e tente '
-        'de novo.',
+        harness.controller.state.deletionFailure,
+        const Failure.connection(FailedAction.cancel),
       );
       expect(harness.controller.state.deletionRestored, isFalse);
     });
@@ -286,7 +290,10 @@ void main() {
       () async {
         // 1. Arrange
         final harness = _Harness(
-          entry: Err('Não foi possível entrar agora', error: Exception('x')),
+          entry: Err(
+            const Failure.entry(EntryStage.enter, 'Exception: x'),
+            error: Exception('x'),
+          ),
         );
 
         // 2. Act
@@ -295,13 +302,11 @@ void main() {
         // 3. Assert
         expect(
           result,
-          isA<Err<void>>()
-              .having((err) => err.title, 'title', 'Erro de Login')
-              .having(
-                (err) => err.message,
-                'message',
-                startsWith('Não foi possível verificar agora'),
-              ),
+          isA<Err<void>>().having(
+            (err) => err.failure,
+            'failure',
+            const Failure.entry(EntryStage.check, 'Exception: x'),
+          ),
         );
         expect(harness.controller.enter.running, isFalse);
       },

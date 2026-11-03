@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/group.dart';
+import 'package:monamie_app/utils/failure.dart';
 import 'package:monamie_app/domain/models/invite.dart';
 
 /// A complete invite as `myInvites` returns it.
@@ -121,7 +122,7 @@ void main() {
         final problem = inviteEmailProblem(' Ana@X.com ', drafts);
 
         // 3. Assert
-        expect(problem, 'ana@x.com já está na lista.');
+        expect(problem, const Failure.emailAlreadyListed('ana@x.com'));
       },
     );
 
@@ -134,7 +135,7 @@ void main() {
         final problem = inviteEmailProblem(email, drafts);
 
         // 3. Assert
-        expect(problem, 'Digite um e-mail válido.');
+        expect(problem, const Failure.invalidEmail());
       });
     }
   });

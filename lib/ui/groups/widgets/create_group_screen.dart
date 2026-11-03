@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
@@ -64,8 +65,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   Widget _form() {
     final busy = c.isWorking;
     final typed = _name.text;
-    final problem = c.newNameProblem(typed);
     final l10n = AppLocalizations.of(context);
+    final problem = c.newNameProblem(typed)?.message(l10n);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -104,7 +105,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           ),
         ),
         const Spacer(),
-        adminErrorText(c.state.errorMessage),
+        adminErrorText(c.state.failure?.message(l10n) ?? ''),
         adminPrimaryButton(
           label: l10n.createGroupButton,
           busy: busy,

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
@@ -34,19 +36,27 @@ SnackBar noticeSnackBar(String message, {String? title}) => SnackBar(
         ),
 );
 
-/// Shows [notice] at the bottom of the screen through [messenger].
-void showNotice(ScaffoldMessengerState messenger, UserNotice notice) =>
-    messenger.showSnackBar(noticeSnackBar(notice.message, title: notice.title));
+/// Shows [notice] at the bottom of the screen through [messenger], in the
+/// language of the messenger's context.
+void showNotice(ScaffoldMessengerState messenger, UserNotice notice) {
+  final l10n = AppLocalizations.of(messenger.context);
+  messenger.showSnackBar(
+    noticeSnackBar(notice.message(l10n), title: notice.title(l10n)),
+  );
+}
 
-/// Shows [result]'s message through [messenger] when it failed; nothing when
-/// it succeeded.
+/// Shows [result]'s failure through [messenger] when it failed, in the
+/// language of the messenger's context; nothing when it succeeded.
 void showErrorOf(ScaffoldMessengerState messenger, Result<Object?> result) {
-  if (result case Err(:final message, :final title)) {
-    messenger.showSnackBar(noticeSnackBar(message, title: title));
+  if (result case Err(:final failure)) {
+    final l10n = AppLocalizations.of(messenger.context);
+    messenger.showSnackBar(
+      noticeSnackBar(failure.message(l10n), title: failure.title(l10n)),
+    );
   }
 }
 
-/// Runs [action] for a screen and shows its message when it fails.
+/// Runs [action] for a screen and shows its failure when it fails.
 ///
 /// The messenger is looked up before [action] starts, so the message still
 /// shows when the action replaces the screen (e.g. a sign-out). Returns the
@@ -75,7 +85,7 @@ class ScaffoldNoticePresenter implements NoticePresenter {
   void show(UserNotice notice) {
     final messenger = rootScaffoldMessengerKey.currentState;
     if (messenger == null) {
-      debugPrint('[Notice] No messenger to show "${notice.message}".');
+      debugPrint('[Notice] No messenger to show $notice.');
       return;
     }
     showNotice(messenger, notice);

@@ -1366,4 +1366,258 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get trackingInUse => 'Em uso';
+
+  @override
+  String get failureConnectionConclude =>
+      'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
+
+  @override
+  String get failureConnectionDelete =>
+      'Não foi possível excluir agora. Verifique a conexão e tente de novo.';
+
+  @override
+  String get failureConnectionCancel =>
+      'Não foi possível cancelar agora. Verifique a conexão e tente de novo.';
+
+  @override
+  String get failureConnectionCreate =>
+      'Não foi possível criar agora. Verifique a conexão e tente de novo.';
+
+  @override
+  String get failureConnectionSend =>
+      'Não foi possível enviar agora. Verifique a conexão e tente de novo.';
+
+  @override
+  String get failureConnectionAccept =>
+      'Não foi possível aceitar agora. Verifique a conexão e tente de novo.';
+
+  @override
+  String get failureConnectionSave =>
+      'Não foi possível salvar agora. Verifique a conexão e tente de novo.';
+
+  @override
+  String get failureConnectionSwitch =>
+      'Não foi possível trocar agora. Verifique a conexão e tente de novo.';
+
+  @override
+  String get failureConnectionLoadAccount =>
+      'Não foi possível carregar sua conta. Verifique a conexão e tente de novo.';
+
+  @override
+  String get failureLoadAdministrators =>
+      'Não foi possível carregar os administradores.';
+
+  @override
+  String get failureLoadInvites => 'Não foi possível carregar os convites.';
+
+  @override
+  String get failureLoadGroups => 'Não foi possível carregar os grupos.';
+
+  @override
+  String get failureLoadThemes => 'Não foi possível carregar os temas.';
+
+  @override
+  String get failureLoadCreations =>
+      'Não foi possível carregar as organizações em criação.';
+
+  @override
+  String get failureLoadAccountDeletion =>
+      'Não foi possível ler a exclusão da conta.';
+
+  @override
+  String get failureLoadOrganizationIdCheck =>
+      'Não foi possível verificar agora.';
+
+  @override
+  String get failureRefusedConclude => 'Não foi possível concluir.';
+
+  @override
+  String get failureRefusedAny => 'Não foi possível agora.';
+
+  @override
+  String get failureRefusedCreate => 'Não foi possível criar.';
+
+  @override
+  String get failureRefusedSave => 'Não foi possível salvar.';
+
+  @override
+  String get failureUnexpectedResponse => 'Resposta inesperada do servidor.';
+
+  @override
+  String get failureUnexpectedGroupResponse =>
+      'Resposta inesperada ao criar o grupo.';
+
+  @override
+  String get failureOrganizationIdNotPlain =>
+      'Use só letras minúsculas, sem acentos nem espaços.';
+
+  @override
+  String failureOrganizationIdTooLong(int max) {
+    return 'Use no máximo $max letras.';
+  }
+
+  @override
+  String get failureOrganizationIdReserved => 'Esse identificador é reservado.';
+
+  @override
+  String get failureOrganizationIdUnusable =>
+      'Esse identificador não pode ser usado.';
+
+  @override
+  String get failureGroupNameTooShort => 'Use pelo menos 2 letras.';
+
+  @override
+  String get failureGroupNameTooLong => 'Use no máximo 40 caracteres.';
+
+  @override
+  String failureGroupNameTaken(String name) {
+    return 'Já existe o grupo $name.';
+  }
+
+  @override
+  String get failureNoRoleChosen => 'Marque pelo menos uma opção.';
+
+  @override
+  String get failureInvalidEmail => 'Digite um e-mail válido.';
+
+  @override
+  String failureEmailAlreadyListed(String email) {
+    return '$email já está na lista.';
+  }
+
+  @override
+  String failureLogoTooLarge(int megabytes) {
+    return 'O arquivo tem $megabytes MB. Envie um de até 10 MB.';
+  }
+
+  @override
+  String get failureLogoUnreadable =>
+      'Não deu para abrir este arquivo. Envie em PNG, JPEG, WebP ou SVG.';
+
+  @override
+  String get failureLogoNotConverted => 'Não deu para gerar o PNG do logo.';
+
+  @override
+  String get failureLogoNotOpened => 'Não deu para abrir este arquivo.';
+
+  @override
+  String failureEntryEnter(String detail) {
+    return 'Não foi possível entrar agora: $detail';
+  }
+
+  @override
+  String failureEntryCheck(String detail) {
+    return 'Não foi possível verificar agora: $detail';
+  }
+
+  @override
+  String failureEntryUnexpected(String detail) {
+    return 'Ocorreu um erro inesperado: $detail';
+  }
+
+  @override
+  String failureEntryLoadData(String detail) {
+    return 'Ocorreu um erro ao carregar seus dados: $detail';
+  }
+
+  @override
+  String failureEntryOrganization(String organization, String detail) {
+    return 'Não foi possível entrar em $organization: $detail';
+  }
+
+  @override
+  String get failureGoogleAuth =>
+      'Falha ao autenticar o usuário. Verifique sua conta Google e tente novamente.';
+
+  @override
+  String get failureGoogleRenewal =>
+      'Não foi possível renovar o acesso com o Google. Tente de novo.';
+
+  @override
+  String failureSignOut(String detail) {
+    return 'Não foi possível encerrar a sessão. Tente novamente.\nErro: $detail';
+  }
+
+  @override
+  String failureAccessLost(String organization) {
+    return 'Sua conta não tem mais acesso à $organization.';
+  }
+
+  @override
+  String failureRemovedFromOrganization(String organization) {
+    return 'Você não faz mais parte da $organization.';
+  }
+
+  @override
+  String get failureRemovedFromUnnamedOrganization =>
+      'Você não faz mais parte desta organização.';
+
+  @override
+  String get failureSharingNotAllowed =>
+      'Você não está em campo em nenhum grupo. Peça a um administrador para liberar o compartilhamento da sua localização.';
+
+  @override
+  String get failureSharingNotChanged =>
+      'Não foi possível alterar o compartilhamento agora. Tente de novo.';
+
+  @override
+  String get failureTitleSignIn => 'Erro de Login';
+
+  @override
+  String get failureTitleSwitchOrganization => 'Trocar de organização';
+
+  @override
+  String get failureTitleSignOut => 'Erro ao sair';
+
+  @override
+  String get failureTitleSharingNotAllowed => 'Compartilhamento não autorizado';
+
+  @override
+  String get failureTitleSharing => 'Compartilhamento';
+
+  @override
+  String get noticeWaitingForGpsTitle => 'Aguardando sinal de GPS';
+
+  @override
+  String get noticeWaitingForGps =>
+      'O monitoramento foi iniciado, mas a sua posição inicial ainda está sendo obtida pelos satélites.';
+
+  @override
+  String get noticeTrackingAtRiskTitle => 'Rastreamento em risco';
+
+  @override
+  String get noticeTrackingAtRisk =>
+      'O aparelho está restringindo o MonAmie em segundo plano. O rastreamento vai parar quando você sair do aplicativo.';
+
+  @override
+  String get noticeTrackingStopUnconfirmedTitle => 'Rastreamento';
+
+  @override
+  String get noticeTrackingStopUnconfirmed =>
+      'Não foi possível confirmar o encerramento do rastreamento. Ele será encerrado automaticamente em instantes.';
+
+  @override
+  String get noticeBackgroundStillRestrictedTitle =>
+      'Uso em segundo plano ainda restrito';
+
+  @override
+  String get noticeBackgroundStillRestricted =>
+      'A alteração não foi aplicada. Toque em \'Permitir uso em segundo plano\' e, se o interruptor já estiver ativado, desative-o e ative-o novamente.';
+
+  @override
+  String get sharingNotificationTitle =>
+      'Sua localização está sendo compartilhada';
+
+  @override
+  String get sharingNotificationContent =>
+      'O compartilhamento está ligado. Para preservar sua privacidade, certifique-se de desativá-lo assim que terminar suas atividades.';
+
+  @override
+  String get groupUnnamed => 'Grupo sem nome';
+
+  @override
+  String get inviteGroupFallback => 'Grupo';
+
+  @override
+  String get creationPreviewName => 'Organização';
 }

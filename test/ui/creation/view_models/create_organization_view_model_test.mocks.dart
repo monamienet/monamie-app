@@ -42,23 +42,24 @@ import 'package:monamie_app/utils/result.dart' as _i4;
 class MockCreationRepository extends _i1.Mock
     implements _i2.CreationRepository {
   @override
-  _i3.Future<_i4.Result<String?>> idProblem(String? id) =>
+  _i3.Future<_i4.Result<_i4.Failure?>> idProblem(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#idProblem, [id]),
-            returnValue: _i3.Future<_i4.Result<String?>>.value(
-              _i5.dummyValue<_i4.Result<String?>>(
+            returnValue: _i3.Future<_i4.Result<_i4.Failure?>>.value(
+              _i5.dummyValue<_i4.Result<_i4.Failure?>>(
                 this,
                 Invocation.method(#idProblem, [id]),
               ),
             ),
-            returnValueForMissingStub: _i3.Future<_i4.Result<String?>>.value(
-              _i5.dummyValue<_i4.Result<String?>>(
-                this,
-                Invocation.method(#idProblem, [id]),
-              ),
-            ),
+            returnValueForMissingStub:
+                _i3.Future<_i4.Result<_i4.Failure?>>.value(
+                  _i5.dummyValue<_i4.Result<_i4.Failure?>>(
+                    this,
+                    Invocation.method(#idProblem, [id]),
+                  ),
+                ),
           )
-          as _i3.Future<_i4.Result<String?>>);
+          as _i3.Future<_i4.Result<_i4.Failure?>>);
 
   @override
   _i3.Future<_i4.Result<String>> create({

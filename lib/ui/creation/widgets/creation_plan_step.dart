@@ -25,8 +25,8 @@ class CreationPlanStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final community = c.state.plan == 'community';
-    final name = c.preview.name;
     final l10n = AppLocalizations.of(context);
+    final name = c.preview(placeholderName: l10n.creationPreviewName).name;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

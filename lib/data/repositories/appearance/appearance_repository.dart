@@ -5,7 +5,7 @@ import 'package:monamie_app/utils/result.dart';
 
 /// What the *Aparência* screen needs from the server, behind a contract so
 /// the screen and its view model are tested with a fake. Every method
-/// returns an [Err] with a message for an administrator instead of
+/// returns an [Err] with a [Failure] instead of
 /// throwing.
 abstract interface class AppearanceRepository {
   /// The catalog's themes an administrator may pick, in picker order.

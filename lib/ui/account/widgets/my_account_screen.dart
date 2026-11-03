@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
@@ -128,7 +129,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
             ListenableBuilder(
               listenable: controller,
               builder: (context, _) {
-                final error = controller.state.errorMessage;
+                final error = controller.state.failure?.message(l10n) ?? '';
                 return error.isEmpty
                     ? const SizedBox.shrink()
                     : Padding(

@@ -96,7 +96,34 @@ void main() {
       expect(groups.map((g) => g.id), ['a', 'b']);
     });
 
-    test('Sad Path: a blank name is shown as "Grupo sem nome"', () {
+    for (final (label, blankName) in <(String, String)>[
+      ('an empty name', ''),
+      ('a whitespace-only name', '   '),
+    ]) {
+      test('Edge Case: $label comes after every named group', () {
+        // 1. Arrange
+        final withBlank = {'a': blankName, 'z': 'Zeta'};
+
+        // 2. Act
+        final groups = namedGroups(withBlank.keys, withBlank);
+
+        // 3. Assert
+        expect(groups.map((g) => g.id), ['z', 'a']);
+      });
+    }
+
+    test('Edge Case: blank groups are ordered by id among themselves', () {
+      // 1. Arrange
+      const blanks = {'b': ' ', 'a': '', 'z': 'Zeta'};
+
+      // 2. Act
+      final groups = namedGroups(blanks.keys, blanks);
+
+      // 3. Assert
+      expect(groups.map((g) => g.id), ['z', 'a', 'b']);
+    });
+
+    test('Sad Path: a blank name stays empty (the screens name it)', () {
       // 1. Arrange
       const blank = {'g9': ''};
 
@@ -104,7 +131,7 @@ void main() {
       final groups = namedGroups(blank.keys, blank);
 
       // 3. Assert
-      expect(groups, [const MapGroup(id: 'g9', name: 'Grupo sem nome')]);
+      expect(groups, [const MapGroup(id: 'g9', name: '')]);
     });
   });
 

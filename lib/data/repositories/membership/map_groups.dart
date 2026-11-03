@@ -18,17 +18,20 @@ List<MapGroup> mapGroupsFor(
 }, names);
 
 /// [groupIds] with their names from [names], sorted by name (ignoring case)
-/// and then by id; ids without a name are skipped.
+/// and then by id, blank names last; ids without a name are skipped. A blank
+/// name stays empty: the screens name it ("Grupo sem nome") in the device's
+/// language.
 List<MapGroup> namedGroups(
   Iterable<String> groupIds,
   Map<String, String> names,
 ) {
   final groups = [
     for (final id in {...groupIds})
-      if (names[id] case final name?)
-        MapGroup(id: id, name: name.isEmpty ? 'Grupo sem nome' : name),
+      if (names[id] case final name?) MapGroup(id: id, name: name),
   ];
   groups.sort((a, b) {
+    final aBlank = a.name.trim().isEmpty, bBlank = b.name.trim().isEmpty;
+    if (aBlank != bBlank) return aBlank ? 1 : -1;
     final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
     return byName != 0 ? byName : a.id.compareTo(b.id);
   });

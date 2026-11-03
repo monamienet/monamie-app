@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/ui/core/ui/rich_message.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 
@@ -27,8 +28,8 @@ class CreationReviewStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = c.pickedTheme;
-    final name = c.preview.name;
     final l10n = AppLocalizations.of(context);
+    final name = c.preview(placeholderName: l10n.creationPreviewName).name;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -219,11 +220,11 @@ class CreationReviewStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        if (c.state.errorMessage.isNotEmpty)
+        if (c.state.failure case final failure?)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
-              c.state.errorMessage,
+              failure.message(l10n),
               style: const TextStyle(
                 fontSize: 13,
                 height: 19 / 13,

@@ -5,23 +5,24 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
 import 'dart:async' as _i10;
-import 'dart:ui' as _i17;
+import 'dart:ui' as _i18;
 
 import 'package:flutter/foundation.dart' as _i2;
 import 'package:flutter_map/flutter_map.dart' as _i4;
 import 'package:latlong2/latlong.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i16;
+import 'package:mockito/src/dummies.dart' as _i17;
 import 'package:monamie_app/data/services/call_service.dart' as _i9;
 import 'package:monamie_app/domain/models/history_month.dart' as _i8;
 import 'package:monamie_app/domain/models/location_point.dart' as _i13;
+import 'package:monamie_app/domain/models/sharing_notification.dart' as _i15;
 import 'package:monamie_app/domain/models/user_model.dart' as _i12;
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart'
     as _i7;
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart'
     as _i11;
 import 'package:monamie_app/ui/home/view_models/user_state.dart' as _i6;
-import 'package:monamie_app/ui/home/view_models/user_view_model.dart' as _i15;
+import 'package:monamie_app/ui/home/view_models/user_view_model.dart' as _i16;
 import 'package:monamie_app/utils/command.dart' as _i5;
 import 'package:monamie_app/utils/user_notice.dart' as _i14;
 
@@ -57,8 +58,9 @@ class _FakeMapController_2 extends _i1.SmartFake implements _i4.MapController {
     : super(parent, parentInvocation);
 }
 
-class _FakeCommand0_3<T> extends _i1.SmartFake implements _i5.Command0<T> {
-  _FakeCommand0_3(Object parent, Invocation parentInvocation)
+class _FakeCommand1_3<T, A> extends _i1.SmartFake
+    implements _i5.Command1<T, A> {
+  _FakeCommand1_3(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -355,19 +357,21 @@ class MockTrackingViewModel extends _i1.Mock implements _i11.TrackingViewModel {
           as _i2.ValueListenable<Map<String, List<_i13.LocationPoint>>>);
 
   @override
-  _i5.Command0<_i14.UserNotice?> get toggleService =>
+  _i5.Command1<_i14.UserNotice?, _i15.SharingNotification> get toggleService =>
       (super.noSuchMethod(
             Invocation.getter(#toggleService),
-            returnValue: _FakeCommand0_3<_i14.UserNotice?>(
-              this,
-              Invocation.getter(#toggleService),
-            ),
-            returnValueForMissingStub: _FakeCommand0_3<_i14.UserNotice?>(
-              this,
-              Invocation.getter(#toggleService),
-            ),
+            returnValue:
+                _FakeCommand1_3<_i14.UserNotice?, _i15.SharingNotification>(
+                  this,
+                  Invocation.getter(#toggleService),
+                ),
+            returnValueForMissingStub:
+                _FakeCommand1_3<_i14.UserNotice?, _i15.SharingNotification>(
+                  this,
+                  Invocation.getter(#toggleService),
+                ),
           )
-          as _i5.Command0<_i14.UserNotice?>);
+          as _i5.Command1<_i14.UserNotice?, _i15.SharingNotification>);
 
   @override
   set position(_i3.LatLng? value) => super.noSuchMethod(
@@ -433,7 +437,7 @@ class MockTrackingViewModel extends _i1.Mock implements _i11.TrackingViewModel {
 /// A class which mocks [UserViewModel].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockUserViewModel extends _i1.Mock implements _i15.UserViewModel {
+class MockUserViewModel extends _i1.Mock implements _i16.UserViewModel {
   @override
   _i6.UserState get state =>
       (super.noSuchMethod(
@@ -495,11 +499,11 @@ class MockUserViewModel extends _i1.Mock implements _i15.UserViewModel {
   String getUserName() =>
       (super.noSuchMethod(
             Invocation.method(#getUserName, []),
-            returnValue: _i16.dummyValue<String>(
+            returnValue: _i17.dummyValue<String>(
               this,
               Invocation.method(#getUserName, []),
             ),
-            returnValueForMissingStub: _i16.dummyValue<String>(
+            returnValueForMissingStub: _i17.dummyValue<String>(
               this,
               Invocation.method(#getUserName, []),
             ),
@@ -513,13 +517,13 @@ class MockUserViewModel extends _i1.Mock implements _i15.UserViewModel {
   );
 
   @override
-  void addListener(_i17.VoidCallback? listener) => super.noSuchMethod(
+  void addListener(_i18.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#addListener, [listener]),
     returnValueForMissingStub: null,
   );
 
   @override
-  void removeListener(_i17.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i18.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#removeListener, [listener]),
     returnValueForMissingStub: null,
   );

@@ -43,8 +43,8 @@ Future<Result<InviteSendResult>> anySend() => repository.send(
 );
 
 /// Makes `send` wait on [wait] before returning [_result] or, with
-/// [failure], an [Err] with that message.
-void stubSend(Future<void> Function() wait, {String? failure}) {
+/// [failure], an [Err] with that failure.
+void stubSend(Future<void> Function() wait, {Failure? failure}) {
   when(anySend()).thenAnswer((_) async {
     await wait();
     return failure == null ? const Ok(_result) : Err(failure);
@@ -227,7 +227,7 @@ void main() {
       expect(added, isTrue);
       expect(controller.state.people.map((p) => p.email), ['ana@x.com']);
       expect(controller.state.people.single.roles, {GroupRole.publisher});
-      expect(controller.state.draftError, isEmpty);
+      expect(controller.state.draftFailure, isNull);
     });
 
     test('Edge Case: a duplicate e-mail in another case is refused', () {
@@ -240,7 +240,7 @@ void main() {
       // 3. Assert
       expect(added, isFalse);
       expect(controller.state.people, hasLength(1));
-      expect(controller.state.draftError, isNotEmpty);
+      expect(controller.state.draftFailure, isNotNull);
     });
 
     test('Edge Case: adding is ignored while sending', () async {
@@ -260,7 +260,7 @@ void main() {
       await pending;
     });
 
-    test('Sad Path: a malformed e-mail is refused with draftError', () {
+    test('Sad Path: a malformed e-mail is refused with draftFailure', () {
       // 1. Arrange
       final controller = controllerWith();
 
@@ -270,7 +270,7 @@ void main() {
       // 3. Assert
       expect(added, isFalse);
       expect(controller.state.people, isEmpty);
-      expect(controller.state.draftError, 'Digite um e-mail válido.');
+      expect(controller.state.draftFailure, const Failure.invalidEmail());
     });
   });
 
@@ -377,11 +377,14 @@ void main() {
     );
 
     test(
-      'Sad Path: an Err is returned with its message and the send stops running',
+      'Sad Path: an Err is returned with its failure and the send stops running',
       () async {
         // 1. Arrange
         final controller = readyController();
-        stubSend(() async {}, failure: 'Escolha uma equipe.');
+        stubSend(
+          () async {},
+          failure: const Failure.serverRefusal('Escolha uma equipe.'),
+        );
 
         // 2. Act
         final sent = await controller.send.execute();
@@ -390,12 +393,15 @@ void main() {
         expect(
           sent,
           isA<Err<InviteSendResult>>().having(
-            (err) => err.message,
-            'message',
-            'Escolha uma equipe.',
+            (err) => err.failure,
+            'failure',
+            const Failure.serverRefusal('Escolha uma equipe.'),
           ),
         );
-        expect(controller.state.errorMessage, 'Escolha uma equipe.');
+        expect(
+          controller.state.failure,
+          const Failure.serverRefusal('Escolha uma equipe.'),
+        );
         expect(controller.state.result, isNull);
         expect(controller.send.running, isFalse);
       },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/ui/core/ui/admin_ui.dart';
@@ -366,7 +367,7 @@ class _GroupScreenState extends State<GroupScreen> {
         )),
       ),
       content: (setSheet, busy) {
-        final problem = c.renameProblem(group, field.text);
+        final problem = c.renameProblem(group, field.text)?.message(l10n);
         final invalid = problem != null;
         OutlineInputBorder border(Color color, double width) =>
             OutlineInputBorder(

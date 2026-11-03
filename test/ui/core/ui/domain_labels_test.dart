@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/domain/models/invite.dart';
+import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/ui/domain_labels.dart';
@@ -466,5 +467,79 @@ void main() {
         expect(text, expected);
       });
     }
+  });
+
+  group('DomainLabels.mapGroupName - Unit Test Suite', () {
+    test('Happy Path: a named group reads its own name', () {
+      // 1. Arrange
+      const group = MapGroup(id: 'g1', name: 'Equipe Norte');
+
+      // 2. Act
+      final texts = [pt.mapGroupName(group), en.mapGroupName(group)];
+
+      // 3. Assert
+      expect(texts, ['Equipe Norte', 'Equipe Norte']);
+    });
+
+    test('Sad Path: a blank name reads "Grupo sem nome"', () {
+      // 1. Arrange
+      const group = MapGroup(id: 'g9', name: '');
+
+      // 2. Act
+      final text = pt.mapGroupName(group);
+
+      // 3. Assert
+      expect(text, 'Grupo sem nome');
+    });
+
+    test('Edge Case: in English a blank name reads in English', () {
+      // 1. Arrange
+      const group = MapGroup(id: 'g9', name: '');
+
+      // 2. Act
+      final text = en.mapGroupName(group);
+
+      // 3. Assert
+      expect(text, isNotEmpty);
+      expect(text, isNot('Grupo sem nome'));
+    });
+  });
+
+  group('DomainLabels.inviteGroupName - Unit Test Suite', () {
+    test("Happy Path: an invite with a group name reads it", () {
+      // 1. Arrange
+      final invite = Invite.fromJson(_inviteJson())!;
+
+      // 2. Act
+      final text = pt.inviteGroupName(invite);
+
+      // 3. Assert
+      expect(text, 'Equipe Norte');
+    });
+
+    test('Sad Path: an invite the server sent without a group name reads '
+        '"Grupo"', () {
+      // 1. Arrange
+      final invite = Invite.fromJson(_inviteJson({'groupName': null}))!;
+
+      // 2. Act
+      final text = pt.inviteGroupName(invite);
+
+      // 3. Assert
+      expect(invite.groupName, isNull);
+      expect(text, 'Grupo');
+    });
+
+    test('Edge Case: in English the missing name reads in English', () {
+      // 1. Arrange
+      final invite = Invite.fromJson(_inviteJson({'groupName': 42}))!;
+
+      // 2. Act
+      final text = en.inviteGroupName(invite);
+
+      // 3. Assert
+      expect(text, isNotEmpty);
+      expect(text, isNot('Grupo'));
+    });
   });
 }

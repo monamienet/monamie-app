@@ -10,8 +10,10 @@ import 'package:monamie_app/data/repositories/membership/membership_repository.d
 import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
+import 'package:monamie_app/domain/models/sharing_notification.dart';
 import 'package:monamie_app/domain/use_cases/start_sharing.dart';
 import 'package:monamie_app/utils/result.dart';
+import 'package:monamie_app/utils/user_notice.dart';
 
 @GenerateNiceMocks([
   MockSpec<BackgroundTrackingService>(),
@@ -23,18 +25,26 @@ import 'start_sharing_test.mocks.dart';
 
 const _kFix = LatLng(-22.9, -43.1);
 
+/// The pt-BR words the sharing switch hands over for the notification.
+const _kNotification = SharingNotification(
+  title: 'Sua localização está sendo compartilhada',
+  content:
+      'O compartilhamento está ligado. Para preservar sua privacidade, '
+      'certifique-se de desativá-lo assim que terminar suas atividades.',
+);
+
 /// Starting the tracking service, whatever notification it shows.
 Future<bool> _start(MockBackgroundTrackingService service) => service.start(
   notificationTitle: anyNamed('notificationTitle'),
   notificationContent: anyNamed('notificationContent'),
 );
 
-/// An [Ok] holding a [SharingStart] that started ([started]) with a notice
-/// titled [noticeTitle] (or none).
-Matcher _okStarted({required bool started, String? noticeTitle}) =>
+/// An [Ok] holding a [SharingStart] that started ([started]) with [notice]
+/// (or none).
+Matcher _okStarted({required bool started, UserNotice? notice}) =>
     isA<Ok<SharingStart>>()
         .having((ok) => ok.value.started, 'started', started)
-        .having((ok) => ok.value.notice?.title, 'notice title', noticeTitle);
+        .having((ok) => ok.value.notice, 'notice', notice);
 
 /// The collaborators of a [StartSharing], stubbed as a person who
 /// publishes, with no battery restriction, the GPS on and a fix at hand.
@@ -68,11 +78,14 @@ class _Harness {
   final positions = <LatLng>[];
   late final StartSharing useCase;
 
-  Future<Result<SharingStart>> call() => useCase(
+  Future<Result<SharingStart>> call({
+    SharingNotification notification = _kNotification,
+  }) => useCase(
     onPosition: (position) {
       steps.add('position');
       positions.add(position);
     },
+    notification: notification,
   );
 }
 
@@ -98,6 +111,30 @@ void main() {
                 'O compartilhamento está ligado. Para preservar sua '
                 'privacidade, certifique-se de desativá-lo assim que '
                 'terminar suas atividades.',
+          ),
+        ).called(1);
+      },
+    );
+
+    test(
+      'Happy Path: Deve mostrar no serviço exatamente as palavras da notificação recebida, no idioma de quem a montou',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        const english = SharingNotification(
+          title: 'Your location is being shared',
+          content: 'Sharing is on.',
+        );
+
+        // 2. Act
+        final result = await harness.call(notification: english);
+
+        // 3. Assert
+        expect(result, _okStarted(started: true));
+        verify(
+          harness.service.start(
+            notificationTitle: 'Your location is being shared',
+            notificationContent: 'Sharing is on.',
           ),
         ).called(1);
       },
@@ -200,19 +237,11 @@ void main() {
         // 3. Assert
         expect(
           result,
-          isA<Err<SharingStart>>()
-              .having(
-                (err) => err.title,
-                'title',
-                'Compartilhamento não autorizado',
-              )
-              .having(
-                (err) => err.message,
-                'message',
-                'Você não está em campo em nenhum grupo. Peça a um '
-                    'administrador para liberar o compartilhamento da sua '
-                    'localização.',
-              ),
+          isA<Err<SharingStart>>().having(
+            (err) => err.failure,
+            'failure',
+            const Failure.sharingNotAllowed(),
+          ),
         );
         verifyNever(harness.location.currentPosition());
         verifyNever(_start(harness.service));
@@ -241,12 +270,7 @@ void main() {
           expect(before, isNull);
           expect(
             result,
-            _okStarted(started: true, noticeTitle: 'Aguardando sinal de GPS'),
-          );
-          expect(
-            (result! as Ok<SharingStart>).value.notice?.message,
-            'O monitoramento foi iniciado, mas a sua posição inicial ainda '
-            'está sendo obtida pelos satélites.',
+            _okStarted(started: true, notice: const UserNotice.waitingForGps()),
           );
           verify(_start(harness.service)).called(1);
           expect(harness.positions, isEmpty);
@@ -269,7 +293,7 @@ void main() {
         // 3. Assert
         expect(
           result,
-          _okStarted(started: true, noticeTitle: 'Aguardando sinal de GPS'),
+          _okStarted(started: true, notice: const UserNotice.waitingForGps()),
         );
         verify(_start(harness.service)).called(1);
         expect(harness.positions, isEmpty);

@@ -26,8 +26,6 @@ import 'organization_choice_view_model_test.mocks.dart';
 
 const _kCentralEmail = 'ana.souza@monamie.net';
 
-const _kLoginErrorTitle = 'Erro de Login';
-
 final _kRotaSul = OrganizationBinding(
   organization: const OrganizationConfig(id: 'rotasul', name: 'Rota Sul'),
   options: const FirebaseOptions(
@@ -50,10 +48,9 @@ final _kInvite = Invite(
   expiresAt: DateTime.utc(2026, 11, 9, 12),
 );
 
-/// An [Err] titled [title] whose message starts with [start].
-Matcher _err(String title, String start) => isA<Err<Object?>>()
-    .having((err) => err.title, 'title', title)
-    .having((err) => err.message, 'message', startsWith(start));
+/// An [Err] with [failure].
+Matcher _err(Failure failure) =>
+    isA<Err<Object?>>().having((err) => err.failure, 'failure', failure);
 
 /// The `onEntering` callback passed to the entry.
 void Function(String)? _onEntering(Invocation invocation) =>
@@ -140,7 +137,7 @@ void main() {
       // 2. Act
       final harness = _Harness(
         initial: SessionState.noOrganization(
-          reason: 'Sua conta não tem mais acesso à Rota Sul.',
+          reason: const Failure.accessLost('Rota Sul'),
           invites: [_kInvite],
         ),
       );
@@ -148,7 +145,7 @@ void main() {
       // 3. Assert
       final state = harness.controller.state;
       expect(state.signedInEmail, _kCentralEmail);
-      expect(state.noAccessReason, 'Sua conta não tem mais acesso à Rota Sul.');
+      expect(state.noAccessReason, const Failure.accessLost('Rota Sul'));
       expect(state.pendingInvites, [_kInvite]);
       expect(state.organizationChoices, isEmpty);
     });
@@ -172,7 +169,9 @@ void main() {
         'shows', () {
       // 1. Arrange
       final harness = _Harness(
-        initial: const SessionState.noOrganization(reason: 'Saiu.'),
+        initial: const SessionState.noOrganization(
+          reason: Failure.removedFromOrganization('Rota Sul'),
+        ),
       );
 
       // 2. Act
@@ -244,15 +243,15 @@ void main() {
     test('Sad Path: a failing sign-out returns its Err', () async {
       // 1. Arrange
       final harness = _Harness();
-      when(
-        harness.signOut.call(),
-      ).thenAnswer((_) async => const Err('Falhou.', title: 'Erro ao sair'));
+      when(harness.signOut.call()).thenAnswer(
+        (_) async => const Err(Failure.signOut('Exception: falhou')),
+      );
 
       // 2. Act
       final result = await harness.controller.logout.execute();
 
       // 3. Assert
-      expect(result, _err('Erro ao sair', 'Falhou.'));
+      expect(result, _err(const Failure.signOut('Exception: falhou')));
     });
   });
 
@@ -274,7 +273,9 @@ void main() {
       test('Happy Path: clears noAccessReason', () async {
         // 1. Arrange
         final harness = _Harness(
-          initial: const SessionState.noOrganization(reason: 'Saiu.'),
+          initial: const SessionState.noOrganization(
+            reason: Failure.removedFromOrganization('Rota Sul'),
+          ),
         );
 
         // 2. Act
@@ -328,7 +329,7 @@ void main() {
           // 1. Arrange
           final harness = _Harness(
             entry: Err(
-              'Não foi possível entrar agora',
+              const Failure.entry(EntryStage.enter, 'Exception: sem rede'),
               error: Exception('sem rede'),
             ),
           );
@@ -340,7 +341,7 @@ void main() {
           // 3. Assert
           expect(
             result,
-            _err(_kLoginErrorTitle, 'Não foi possível verificar agora'),
+            _err(const Failure.entry(EntryStage.check, 'Exception: sem rede')),
           );
           expect(harness.controller.isEntering, isFalse);
         },
@@ -463,7 +464,10 @@ void main() {
         'entered', () async {
       // 1. Arrange
       final harness = _Harness(
-        entry: Err('Não foi possível entrar agora', error: Exception('x')),
+        entry: Err(
+          const Failure.entry(EntryStage.enter, 'Exception: x'),
+          error: Exception('x'),
+        ),
       );
 
       // 2. Act
@@ -474,7 +478,7 @@ void main() {
       // 3. Assert
       expect(
         result,
-        _err(_kLoginErrorTitle, 'Não foi possível entrar em Rota Sul'),
+        _err(const Failure.organizationEntry('Rota Sul', 'Exception: x')),
       );
       expect(harness.controller.isEntering, isFalse);
     });
@@ -503,7 +507,7 @@ void main() {
       // 3. Assert
       expect(harness.keptSignInCalls(), ['rotasul', _kInvite]);
       expect(harness.controller.acceptingInvite, isNull);
-      expect(harness.controller.state.inviteError, isEmpty);
+      expect(harness.controller.state.inviteFailure, isNull);
     });
 
     test('Edge Case: acceptingInvite holds the invite while it runs', () async {
@@ -559,48 +563,60 @@ void main() {
       await choice;
     });
 
-    test('Sad Path: a refused invite sets inviteError, clears acceptingInvite '
-        'and enters nothing', () async {
-      // 1. Arrange
-      final harness = _Harness(
-        accept: const Err(
-          'Este convite expirou. Peça um novo a quem convidou você.',
-        ),
-      );
+    test(
+      'Sad Path: a refused invite sets inviteFailure, clears acceptingInvite '
+      'and enters nothing',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(
+          accept: const Err(
+            Failure.serverRefusal(
+              'Este convite expirou. Peça um novo a quem convidou você.',
+            ),
+          ),
+        );
 
-      // 2. Act
-      final result = await harness.controller.acceptInvite.execute(_kInvite);
+        // 2. Act
+        final result = await harness.controller.acceptInvite.execute(_kInvite);
 
-      // 3. Assert
-      expect(
-        result,
-        isA<Err<void>>().having(
-          (err) => err.message,
-          'message',
-          'Este convite expirou. Peça um novo a quem convidou você.',
-        ),
-      );
-      expect(
-        harness.controller.state.inviteError,
-        'Este convite expirou. Peça um novo a quem convidou você.',
-      );
-      expect(harness.controller.acceptingInvite, isNull);
-      verifyNever(
-        harness.enterOrganization.withKeptSignIn(
-          enter: anyNamed('enter'),
-          welcome: anyNamed('welcome'),
-          checkDeletion: anyNamed('checkDeletion'),
-          onEntering: anyNamed('onEntering'),
-        ),
-      );
-      expect(harness.session.moves, isEmpty);
-    });
+        // 3. Assert
+        expect(
+          result,
+          isA<Err<void>>().having(
+            (err) => err.failure,
+            'failure',
+            const Failure.serverRefusal(
+              'Este convite expirou. Peça um novo a quem convidou você.',
+            ),
+          ),
+        );
+        expect(
+          harness.controller.state.inviteFailure,
+          const Failure.serverRefusal(
+            'Este convite expirou. Peça um novo a quem convidou você.',
+          ),
+        );
+        expect(harness.controller.acceptingInvite, isNull);
+        verifyNever(
+          harness.enterOrganization.withKeptSignIn(
+            enter: anyNamed('enter'),
+            welcome: anyNamed('welcome'),
+            checkDeletion: anyNamed('checkDeletion'),
+            onEntering: anyNamed('onEntering'),
+          ),
+        );
+        expect(harness.session.moves, isEmpty);
+      },
+    );
 
     test('Sad Path: an entry failing after joining shows a generic '
         'message', () async {
       // 1. Arrange
       final harness = _Harness(
-        entry: Err('Não foi possível entrar agora', error: Exception('x')),
+        entry: Err(
+          const Failure.entry(EntryStage.enter, 'Exception: x'),
+          error: Exception('x'),
+        ),
       );
 
       // 2. Act
@@ -610,21 +626,23 @@ void main() {
       expect(
         result,
         isA<Err<void>>().having(
-          (err) => err.message,
-          'message',
-          'Não foi possível aceitar agora. Verifique a conexão e tente de novo.',
+          (err) => err.failure,
+          'failure',
+          const Failure.connection(FailedAction.accept),
         ),
       );
       expect(
-        harness.controller.state.inviteError,
-        'Não foi possível aceitar agora. Verifique a conexão e tente de novo.',
+        harness.controller.state.inviteFailure,
+        const Failure.connection(FailedAction.accept),
       );
       expect(harness.controller.acceptingInvite, isNull);
     });
 
     test('Sad Path: a new accept clears the last error', () async {
       // 1. Arrange
-      final harness = _Harness(accept: const Err('Este convite expirou.'));
+      final harness = _Harness(
+        accept: const Err(Failure.serverRefusal('Este convite expirou.')),
+      );
       await harness.controller.acceptInvite.execute(_kInvite);
       when(harness.invites.accept(any)).thenAnswer((_) async => Ok(_kInvite));
 
@@ -632,7 +650,7 @@ void main() {
       await harness.controller.acceptInvite.execute(_kInvite);
 
       // 3. Assert
-      expect(harness.controller.state.inviteError, isEmpty);
+      expect(harness.controller.state.inviteFailure, isNull);
     });
   });
 }

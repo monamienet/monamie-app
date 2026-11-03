@@ -49,7 +49,7 @@ class TrackingSettingsEditViewModel extends ChangeNotifier {
   late final Command0<void> load = Command0(_load);
 
   /// Saves the draft. The failure is also kept in
-  /// [TrackingSettingsEditState.errorMessage]. Ignored without changes.
+  /// [TrackingSettingsEditState.failure]. Ignored without changes.
   late final Command0<void> save = Command0(_save, blocked: () => !hasChanges);
 
   Future<Result<void>> _load() async {
@@ -114,18 +114,16 @@ class TrackingSettingsEditViewModel extends ChangeNotifier {
   }
 
   Future<Result<void>> _save() async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     try {
       await _repository.save(_state.draft);
       _emit(_state.copyWith(savedSettings: _state.draft, justSaved: true));
       return const Ok(null);
     } catch (e, stackTrace) {
       debugPrint('[TrackingSettings] Save failed: $e');
-      const message =
-          'Não foi possível salvar agora. Verifique a conexão e tente de '
-          'novo.';
-      _emit(_state.copyWith(errorMessage: message));
-      return Err(message, error: e, stackTrace: stackTrace);
+      const failure = Failure.connection(FailedAction.save);
+      _emit(_state.copyWith(failure: failure));
+      return Err(failure, error: e, stackTrace: stackTrace);
     }
   }
 }

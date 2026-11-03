@@ -349,7 +349,7 @@ void main() {
       verifyNever(repository.save(any));
     });
 
-    test('Sad Path: a failing repository sets errorMessage and save '
+    test('Sad Path: a failing repository sets failure and save '
         'returns an Err', () async {
       // 1. Arrange
       final controller = await changedController();
@@ -362,8 +362,12 @@ void main() {
 
       // 3. Assert
       expect(
-        [result, controller.state.errorMessage, controller.state.savedSettings],
-        [isA<Err<void>>(), isNotEmpty, equilibrio],
+        [result, controller.state.failure, controller.state.savedSettings],
+        [
+          isA<Err<void>>(),
+          const Failure.connection(FailedAction.save),
+          equilibrio,
+        ],
       );
     });
 

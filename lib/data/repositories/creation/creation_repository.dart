@@ -3,10 +3,11 @@ import 'package:monamie_app/utils/result.dart';
 
 /// Creating organizations (the central creation functions), behind a
 /// contract so the screens are tested with a fake. Every method returns an
-/// [Err] with a message for the person instead of throwing.
+/// [Err] with a [Failure] instead of throwing.
 abstract interface class CreationRepository {
-  /// Whether [id] can be used: `null` when available, else why not.
-  Future<Result<String?>> idProblem(String id);
+  /// Whether [id] can be used: `null` when available, else why not (the
+  /// server's own words as a [ServerRefusal], when it gives them).
+  Future<Result<Failure?>> idProblem(String id);
 
   /// Creates the organization; returns its status after the call
   /// (`active` for Community, `awaiting_billing` for Standard, or

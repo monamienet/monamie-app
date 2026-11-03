@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/utils/result.dart';
 
 /// The administration screens' colors (*Grupos*, *Grupo*, *Administradores*).
@@ -109,13 +110,16 @@ Widget adminErrorText(String message) => message.isEmpty
       );
 
 /// What [adminActionSheet] shows after an operation: nothing when it
-/// worked, else its message (a generic one when the call was ignored, see
-/// `Command`), in [l10n]'s language.
+/// worked, else its failure's message (a generic one when the call was
+/// ignored, see `Command`, or the message is empty), in [l10n]'s language.
 String? sheetFailureOf(AppLocalizations l10n, Result<Object?>? result) =>
     switch (result) {
       Ok() => null,
-      Err(:final message) when message.isNotEmpty => message,
-      _ => l10n.commonGenericFailure,
+      Err(:final failure) => switch (failure.message(l10n)) {
+        '' => l10n.commonGenericFailure,
+        final message => message,
+      },
+      null => l10n.commonGenericFailure,
     };
 
 /// A bottom sheet with [title], optional [content] and [lines], and a

@@ -16,8 +16,8 @@ T _$identity<T>(T value) => value;
 mixin _$GroupsState {
 
 /// The groups the person manages (every group for an administrator).
- List<Group> get groups;/// Why the last load or operation failed; empty when it did not.
- String get errorMessage;/// The group deleted last, for *Grupo excluído*; `null` before one is.
+ List<Group> get groups;/// Why the last load or operation failed; `null` when it did not.
+ Failure? get failure;/// The group deleted last, for *Grupo excluído*; `null` before one is.
  DeletedGroup? get deleted;
 /// Create a copy of GroupsState
 /// with the given fields replaced by the non-null parameter values.
@@ -30,20 +30,20 @@ $GroupsStateCopyWith<GroupsState> get copyWith => _$GroupsStateCopyWithImpl<Grou
 @override
 bool operator ==(Object other) {
   final _this = this as GroupsState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupsState&&const DeepCollectionEquality().equals(other.groups, _this.groups)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage)&&(identical(other.deleted, _this.deleted) || other.deleted == _this.deleted));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupsState&&const DeepCollectionEquality().equals(other.groups, _this.groups)&&(identical(other.failure, _this.failure) || other.failure == _this.failure)&&(identical(other.deleted, _this.deleted) || other.deleted == _this.deleted));
 }
 
 
 @override
 int get hashCode {
   final _this = this as GroupsState;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.groups),_this.errorMessage,_this.deleted);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.groups),_this.failure,_this.deleted);
 }
 
 @override
 String toString() {
   final _this = this as GroupsState;
-  return 'GroupsState(groups: ${_this.groups}, errorMessage: ${_this.errorMessage}, deleted: ${_this.deleted})';
+  return 'GroupsState(groups: ${_this.groups}, failure: ${_this.failure}, deleted: ${_this.deleted})';
 }
 
 
@@ -54,11 +54,11 @@ abstract mixin class $GroupsStateCopyWith<$Res>  {
   factory $GroupsStateCopyWith(GroupsState value, $Res Function(GroupsState) _then) = _$GroupsStateCopyWithImpl;
 @useResult
 $Res call({
- List<Group> groups, String errorMessage, DeletedGroup? deleted
+ List<Group> groups, Failure? failure, DeletedGroup? deleted
 });
 
 
-$DeletedGroupCopyWith<$Res>? get deleted;
+$FailureCopyWith<$Res>? get failure;$DeletedGroupCopyWith<$Res>? get deleted;
 
 }
 /// @nodoc
@@ -71,15 +71,27 @@ class _$GroupsStateCopyWithImpl<$Res>
 
 /// Create a copy of GroupsState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? groups = null,Object? errorMessage = null,Object? deleted = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? groups = null,Object? failure = freezed,Object? deleted = freezed,}) {
   return _then(GroupsState(
 groups: null == groups ? _self.groups : groups // ignore: cast_nullable_to_non_nullable
-as List<Group>,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String,deleted: freezed == deleted ? _self.deleted : deleted // ignore: cast_nullable_to_non_nullable
+as List<Group>,failure: freezed == failure ? _self.failure : failure // ignore: cast_nullable_to_non_nullable
+as Failure?,deleted: freezed == deleted ? _self.deleted : deleted // ignore: cast_nullable_to_non_nullable
 as DeletedGroup?,
   ));
 }
 /// Create a copy of GroupsState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FailureCopyWith<$Res>? get failure {
+    if (_self.failure == null) {
+    return null;
+  }
+
+  return $FailureCopyWith<$Res>(_self.failure!, (value) {
+    return _then(_self.copyWith(failure: value));
+  });
+}/// Create a copy of GroupsState
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
@@ -173,10 +185,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<Group> groups,  String errorMessage,  DeletedGroup? deleted)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<Group> groups,  Failure? failure,  DeletedGroup? deleted)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GroupsState() when $default != null:
-return $default(_that.groups,_that.errorMessage,_that.deleted);case _:
+return $default(_that.groups,_that.failure,_that.deleted);case _:
   return orElse();
 
 }
@@ -194,10 +206,10 @@ return $default(_that.groups,_that.errorMessage,_that.deleted);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<Group> groups,  String errorMessage,  DeletedGroup? deleted)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<Group> groups,  Failure? failure,  DeletedGroup? deleted)  $default,) {final _that = this;
 switch (_that) {
 case _GroupsState():
-return $default(_that.groups,_that.errorMessage,_that.deleted);case _:
+return $default(_that.groups,_that.failure,_that.deleted);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -214,10 +226,10 @@ return $default(_that.groups,_that.errorMessage,_that.deleted);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<Group> groups,  String errorMessage,  DeletedGroup? deleted)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<Group> groups,  Failure? failure,  DeletedGroup? deleted)?  $default,) {final _that = this;
 switch (_that) {
 case _GroupsState() when $default != null:
-return $default(_that.groups,_that.errorMessage,_that.deleted);case _:
+return $default(_that.groups,_that.failure,_that.deleted);case _:
   return null;
 
 }
@@ -229,7 +241,7 @@ return $default(_that.groups,_that.errorMessage,_that.deleted);case _:
 
 
 class _GroupsState implements GroupsState {
-  const _GroupsState({ List<Group> groups = const [], this.errorMessage = '', this.deleted}): _groups = groups;
+  const _GroupsState({ List<Group> groups = const [], this.failure, this.deleted}): _groups = groups;
   
 
 /// The groups the person manages (every group for an administrator).
@@ -241,8 +253,8 @@ class _GroupsState implements GroupsState {
   return EqualUnmodifiableListView(_groups);
 }
 
-/// Why the last load or operation failed; empty when it did not.
-@override@JsonKey() final  String errorMessage;
+/// Why the last load or operation failed; `null` when it did not.
+@override final  Failure? failure;
 /// The group deleted last, for *Grupo excluído*; `null` before one is.
 @override final  DeletedGroup? deleted;
 
@@ -256,18 +268,18 @@ _$GroupsStateCopyWith<_GroupsState> get copyWith => __$GroupsStateCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupsState&&const DeepCollectionEquality().equals(other.groups, _groups)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.deleted, deleted) || other.deleted == deleted));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupsState&&const DeepCollectionEquality().equals(other.groups, _groups)&&(identical(other.failure, failure) || other.failure == failure)&&(identical(other.deleted, deleted) || other.deleted == deleted));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_groups),errorMessage,deleted);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_groups),failure,deleted);
 }
 
 @override
 String toString() {
-    return 'GroupsState(groups: $groups, errorMessage: $errorMessage, deleted: $deleted)';
+    return 'GroupsState(groups: $groups, failure: $failure, deleted: $deleted)';
 }
 
 
@@ -278,11 +290,11 @@ abstract mixin class _$GroupsStateCopyWith<$Res> implements $GroupsStateCopyWith
   factory _$GroupsStateCopyWith(_GroupsState value, $Res Function(_GroupsState) _then) = __$GroupsStateCopyWithImpl;
 @override @useResult
 $Res call({
- List<Group> groups, String errorMessage, DeletedGroup? deleted
+ List<Group> groups, Failure? failure, DeletedGroup? deleted
 });
 
 
-@override $DeletedGroupCopyWith<$Res>? get deleted;
+@override $FailureCopyWith<$Res>? get failure;@override $DeletedGroupCopyWith<$Res>? get deleted;
 
 }
 /// @nodoc
@@ -295,16 +307,28 @@ class __$GroupsStateCopyWithImpl<$Res>
 
 /// Create a copy of GroupsState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? groups = null,Object? errorMessage = null,Object? deleted = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? groups = null,Object? failure = freezed,Object? deleted = freezed,}) {
   return _then(_GroupsState(
 groups: null == groups ? _self._groups : groups // ignore: cast_nullable_to_non_nullable
-as List<Group>,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
-as String,deleted: freezed == deleted ? _self.deleted : deleted // ignore: cast_nullable_to_non_nullable
+as List<Group>,failure: freezed == failure ? _self.failure : failure // ignore: cast_nullable_to_non_nullable
+as Failure?,deleted: freezed == deleted ? _self.deleted : deleted // ignore: cast_nullable_to_non_nullable
 as DeletedGroup?,
   ));
 }
 
 /// Create a copy of GroupsState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FailureCopyWith<$Res>? get failure {
+    if (_self.failure == null) {
+    return null;
+  }
+
+  return $FailureCopyWith<$Res>(_self.failure!, (value) {
+    return _then(_self.copyWith(failure: value));
+  });
+}/// Create a copy of GroupsState
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')

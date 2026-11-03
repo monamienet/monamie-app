@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/ui/home/widgets/home_colors.dart';
@@ -331,7 +332,7 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        group.name,
+                        AppLocalizations.of(context).mapGroupName(group),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

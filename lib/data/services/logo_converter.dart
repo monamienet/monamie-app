@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 /// Side of the square logo PNG the app uploads.
 const logoSide = 512;
@@ -10,14 +11,15 @@ const logoSide = 512;
 /// Largest file an administrator may pick (the canvas promises 10 MB).
 const maxLogoInputBytes = 10 * 1024 * 1024;
 
-/// Why a picked file cannot become the logo, in words for an administrator.
+/// Why a picked file cannot become the logo: [failure], which the screen
+/// names (a [LogoTooLarge], [LogoUnreadable] or [LogoNotConverted]).
 class LogoException implements Exception {
-  const LogoException(this.message);
+  const LogoException(this.failure);
 
-  final String message;
+  final Failure failure;
 
   @override
-  String toString() => message;
+  String toString() => 'LogoException($failure)';
 }
 
 /// Whether [bytes] look like an SVG document rather than a bitmap.
@@ -43,7 +45,7 @@ Rect containRect(Size size, double side) {
 Future<Uint8List> toSquareLogoPng(Uint8List bytes) async {
   if (bytes.length > maxLogoInputBytes) {
     final mb = (bytes.length / (1024 * 1024)).ceil();
-    throw LogoException('O arquivo tem $mb MB. Envie um de até 10 MB.');
+    throw LogoException(Failure.logoTooLarge(mb));
   }
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
@@ -79,9 +81,7 @@ Future<Uint8List> toSquareLogoPng(Uint8List bytes) async {
       image.dispose();
     }
   } catch (_) {
-    throw const LogoException(
-      'Não deu para abrir este arquivo. Envie em PNG, JPEG, WebP ou SVG.',
-    );
+    throw const LogoException(Failure.logoUnreadable());
   }
   final picture = recorder.endRecording();
   final image = await picture.toImage(logoSide, logoSide);
@@ -89,7 +89,7 @@ Future<Uint8List> toSquareLogoPng(Uint8List bytes) async {
   picture.dispose();
   image.dispose();
   if (data == null) {
-    throw const LogoException('Não deu para gerar o PNG do logo.');
+    throw const LogoException(Failure.logoNotConverted());
   }
   return data.buffer.asUint8List();
 }

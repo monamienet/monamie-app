@@ -43,8 +43,6 @@ const _kIdToken = 'google-id-token';
 
 const _kCentralEmail = 'ana.souza@monamie.net';
 
-const _kLoginErrorTitle = 'Erro de Login';
-
 const _kOptions = FirebaseOptions(
   apiKey: 'api-key',
   appId: '1:111:android:abc',
@@ -99,9 +97,13 @@ final _kOtherInvite = Invite(
   expiresAt: DateTime.utc(2026, 11, 10, 12),
 );
 
-/// An [Err] titled [title].
-Matcher _errTitled(String title) =>
-    isA<Err<Object?>>().having((err) => err.title, 'title', title);
+/// An [Err] with the entry's failure ("Não foi possível entrar agora"),
+/// titled "Erro de Login" on screen.
+final Matcher _entryErr = isA<Err<Object?>>().having(
+  (err) => err.failure,
+  'failure',
+  isA<EntryFailure>().having((f) => f.stage, 'stage', EntryStage.enter),
+);
 
 /// The dependencies of an [EnterOrganization] under test: the session
 /// double and mocks whose calls are written to [log] in order.
@@ -386,7 +388,7 @@ void main() {
       final harness = _Harness(organizations: [_kRotaSul]);
       when(harness.deletions.pending()).thenAnswer(
         (_) async => Err(
-          'Não foi possível ler a exclusão da conta.',
+          const Failure.load(LoadTarget.accountDeletion),
           error: Exception('offline'),
         ),
       );
@@ -405,7 +407,7 @@ void main() {
       final harness = _Harness(organizations: [_kRotaSul]);
       when(harness.invites.mine()).thenAnswer(
         (_) async => Err(
-          'Não foi possível carregar os convites.',
+          const Failure.load(LoadTarget.invites),
           error: Exception('sem rede'),
         ),
       );
@@ -432,13 +434,13 @@ void main() {
       final result = await harness.enterOrganization.afterSignIn(_kIdToken);
 
       // 3. Assert
-      expect(result, _errTitled(_kLoginErrorTitle));
+      expect(result, _entryErr);
       expect(
         result,
         isA<Err<void>>().having(
-          (err) => err.message,
-          'message',
-          startsWith('Não foi possível entrar agora'),
+          (err) => err.failure,
+          'failure',
+          const Failure.entry(EntryStage.enter, 'Exception: sem rede'),
         ),
       );
       expect(harness.session.session.value, const SessionState.signedOut());
@@ -612,7 +614,7 @@ void main() {
         final result = await harness.enterOrganization.withKeptSignIn();
 
         // 3. Assert
-        expect(result, _errTitled(_kLoginErrorTitle));
+        expect(result, _entryErr);
         verifyNever(harness.directory.organizationsOfSignedInUser());
       },
     );
@@ -689,7 +691,7 @@ void main() {
       expect(
         harness.session.session.value,
         SessionState.noOrganization(
-          reason: 'Sua conta não tem mais acesso à Rota Sul.',
+          reason: const Failure.accessLost('Rota Sul'),
           invites: [_kInvite],
         ),
       );
@@ -774,7 +776,7 @@ void main() {
       );
 
       // 3. Assert
-      expect(result, _errTitled(_kLoginErrorTitle));
+      expect(result, _entryErr);
       expect(
         harness.session.session.value,
         SessionState.picking([_binding(_kRotaSul)]),
@@ -797,7 +799,7 @@ void main() {
       );
 
       // 3. Assert
-      expect(result, _errTitled(_kLoginErrorTitle));
+      expect(result, _entryErr);
       verify(harness.binder.forget()).called(1);
       expect(harness.session.moves, isEmpty);
     });

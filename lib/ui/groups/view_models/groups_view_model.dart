@@ -67,14 +67,14 @@ class GroupsViewModel extends ChangeNotifier {
       _state.groups.where((g) => g.id == groupId).firstOrNull;
 
   /// Why [name] cannot be a new group (or the new name of group [renaming]).
-  String? nameProblem(String name, {String? renaming}) => groupNameProblem(
+  Failure? nameProblem(String name, {String? renaming}) => groupNameProblem(
     name,
     _state.groups.where((g) => g.id != renaming).map((g) => g.name),
   );
 
   /// What *Criar grupo* says about the name [typed]: nothing while it is
   /// empty, else [nameProblem].
-  String? newNameProblem(String typed) {
+  Failure? newNameProblem(String typed) {
     final name = typed.trim();
     return name.isEmpty ? null : nameProblem(name);
   }
@@ -88,7 +88,7 @@ class GroupsViewModel extends ChangeNotifier {
 
   /// What the rename sheet says about the name [typed] for [group]: nothing
   /// while it is empty, else [nameProblem].
-  String? renameProblem(Group group, String typed) {
+  Failure? renameProblem(Group group, String typed) {
     final name = tidyName(typed);
     return name.isEmpty ? null : nameProblem(name, renaming: group.id);
   }
@@ -102,7 +102,7 @@ class GroupsViewModel extends ChangeNotifier {
   }
 
   /// Why [roles] cannot be given (see [rolesChoiceProblem]), or `null`.
-  String? rolesProblem(Set<GroupRole> roles) =>
+  Failure? rolesProblem(Set<GroupRole> roles) =>
       rolesChoiceProblem(roles, byAdmin: isAdmin);
 
   /// Whether [roles] may replace [person]'s: valid and different.
@@ -111,7 +111,7 @@ class GroupsViewModel extends ChangeNotifier {
       !(roles.length == person.roles.length && roles.containsAll(person.roles));
 
   /// Reads the groups. The failure is also kept in
-  /// [GroupsState.errorMessage], as are the operations' below.
+  /// [GroupsState.failure], as are the operations' below.
   late final Command0<void> load = Command0(_load);
 
   /// Creates a group with the name given; [Ok] holds it.
@@ -205,36 +205,36 @@ class GroupsViewModel extends ChangeNotifier {
   bool get isWorking => _operations.any((command) => command.running);
 
   Future<Result<void>> _load() async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     final listed = await _repository.list(organizationId);
     switch (listed) {
       case Ok(value: final groups):
         _emit(_state.copyWith(groups: groups));
-      case Err(:final message):
-        _emit(_state.copyWith(errorMessage: message));
+      case Err(:final failure):
+        _emit(_state.copyWith(failure: failure));
     }
     return listed;
   }
 
-  /// Runs [operation], keeping its failure in [GroupsState.errorMessage],
+  /// Runs [operation], keeping its failure in [GroupsState.failure],
   /// then [onDone] with its value.
   Future<Result<T>> _guarded<T>(
     Future<Result<T>> Function() operation, {
     void Function(T value)? onDone,
   }) async {
-    _emit(_state.copyWith(errorMessage: ''));
+    _emit(_state.copyWith(failure: null));
     final result = await operation();
     switch (result) {
       case Ok(:final value):
         onDone?.call(value);
-      case Err(:final message):
-        _emit(_state.copyWith(errorMessage: message));
+      case Err(:final failure):
+        _emit(_state.copyWith(failure: failure));
     }
     return result;
   }
 
   /// Runs [operation] and reads the groups again after it worked (a failed
-  /// reload shows in [GroupsState.errorMessage] but does not fail it).
+  /// reload shows in [GroupsState.failure] but does not fail it).
   Future<Result<void>> _changeAndReload(
     Future<Result<void>> Function() operation,
   ) async {
@@ -248,7 +248,7 @@ class GroupsViewModel extends ChangeNotifier {
   ) async {
     final problem = rolesProblem(change.roles);
     if (problem != null) {
-      _emit(_state.copyWith(errorMessage: problem));
+      _emit(_state.copyWith(failure: problem));
       return Err(problem);
     }
     return _changeAndReload(

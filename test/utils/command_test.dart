@@ -145,7 +145,9 @@ void main() {
       'Edge Case: a new call clears the last result while it runs',
       () async {
         // 1. Arrange
-        final action = _GatedAction<int>(const Err('Falhou.'));
+        final action = _GatedAction<int>(
+          const Err(Failure.connection(FailedAction.save)),
+        );
         final command = Command0<int>(action.call);
         action.gate.complete();
         await command.execute();
@@ -228,7 +230,7 @@ void main() {
     test('Sad Path: an Err is returned, kept and marks it as error', () async {
       // 1. Arrange
       final command = Command0<void>(
-        () async => const Err('Sem rede.', title: 'Erro'),
+        () async => const Err(Failure.googleAuth()),
       );
 
       // 2. Act
@@ -237,9 +239,11 @@ void main() {
       // 3. Assert
       expect(
         result,
-        isA<Err<void>>()
-            .having((err) => err.message, 'message', 'Sem rede.')
-            .having((err) => err.title, 'title', 'Erro'),
+        isA<Err<void>>().having(
+          (err) => err.failure,
+          'failure',
+          const Failure.googleAuth(),
+        ),
       );
       expect(command.result, same(result));
       expect(command.error, isTrue);
@@ -305,7 +309,9 @@ void main() {
 
     test('Edge Case: clears an error too', () async {
       // 1. Arrange
-      final command = Command0<int>(() async => const Err('Falhou.'));
+      final command = Command0<int>(
+        () async => const Err(Failure.connection(FailedAction.save)),
+      );
       await command.execute();
 
       // 2. Act
@@ -506,7 +512,7 @@ void main() {
     test('Sad Path: an Err keeps the error and clears the argument', () async {
       // 1. Arrange
       final command = Command1<void, String>(
-        (_) async => const Err('Recusado.'),
+        (_) async => const Err(Failure.serverRefusal('Recusado.')),
       );
 
       // 2. Act

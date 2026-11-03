@@ -18,8 +18,7 @@ import 'package:monamie_app/utils/result.dart';
 ])
 import 'appearance_repository_remote_test.mocks.dart';
 
-const _saveFailed =
-    'Não foi possível salvar agora. Verifique a conexão e tente de novo.';
+const _saveFailed = Failure.connection(FailedAction.save);
 
 const _logoPath = 'organizations/rotasul/logo.png';
 
@@ -53,8 +52,8 @@ Object? sentBranding() => verify(
   functions.call('setBranding', captureAny, timeout: anyNamed('timeout')),
 ).captured.single;
 
-String messageOf(Result<Object?> result) => switch (result) {
-  Err(:final message) => message,
+Failure failureOf(Result<Object?> result) => switch (result) {
+  Err(:final failure) => failure,
   Ok() => fail('expected an Err, got $result'),
 };
 
@@ -104,7 +103,7 @@ void main() {
       final result = await repository.pickableThemes();
 
       // 3. Assert
-      expect(messageOf(result), 'Não foi possível carregar os temas.');
+      expect(failureOf(result), const Failure.load(LoadTarget.themes));
     });
   });
 
@@ -146,7 +145,7 @@ void main() {
       final result = await repository.uploadLogo('rotasul', _png);
 
       // 3. Assert
-      expect(messageOf(result), _saveFailed);
+      expect(failureOf(result), _saveFailed);
     });
 
     test('Sad Path: a failed delete gives the save hint', () async {
@@ -159,7 +158,7 @@ void main() {
       final result = await repository.deleteLogo('rotasul');
 
       // 3. Assert
-      expect(messageOf(result), _saveFailed);
+      expect(failureOf(result), _saveFailed);
     });
   });
 
@@ -207,7 +206,10 @@ void main() {
         final result = await repository.saveBranding('rotasul', name: 'X');
 
         // 3. Assert
-        expect(messageOf(result), 'Nome inválido.');
+        expect(
+          failureOf(result),
+          const Failure.serverRefusal('Nome inválido.'),
+        );
       });
     }
 
@@ -220,7 +222,10 @@ void main() {
       final result = await repository.saveBranding('rotasul', name: 'X');
 
       // 3. Assert
-      expect(messageOf(result), 'Não foi possível salvar.');
+      expect(
+        failureOf(result),
+        const Failure.unexplainedRefusal(RefusedAction.save),
+      );
     });
 
     test('Sad Path: a failed-precondition refusal is not explained here: it '
@@ -232,7 +237,7 @@ void main() {
       final result = await repository.saveBranding('rotasul', name: 'X');
 
       // 3. Assert
-      expect(messageOf(result), _saveFailed);
+      expect(failureOf(result), _saveFailed);
     });
 
     test('Sad Path: an unexpected error gives the save hint', () async {
@@ -243,7 +248,7 @@ void main() {
       final result = await repository.saveBranding('rotasul', name: 'X');
 
       // 3. Assert
-      expect(messageOf(result), _saveFailed);
+      expect(failureOf(result), _saveFailed);
     });
   });
 }

@@ -14,6 +14,7 @@ import 'package:monamie_app/ui/home/view_models/live_users.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/ui/home/widgets/animated_user_marker.dart';
 import 'package:monamie_app/domain/models/location_point.dart';
+import 'package:monamie_app/domain/models/sharing_notification.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
@@ -268,13 +269,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
   /// jornada ativa: o rastreamento vai parar quando o app sair da tela.
   void _onBackgroundRestrictedChanged() {
     if (_permissions.isBackgroundRestricted.value && _isTrackingEnabled.value) {
-      _notices.show(
-        const UserNotice(
-          'O aparelho está restringindo o MonAmie em segundo plano. '
-          'O rastreamento vai parar quando você sair do aplicativo.',
-          title: 'Rastreamento em risco',
-        ),
-      );
+      _notices.show(const UserNotice.trackingAtRisk());
     }
   }
 
@@ -706,13 +701,18 @@ class TrackingViewModel implements TrackingToggleViewModel {
     _setMarkerPositions(next);
   }
 
-  /// Starts or stops sharing. Completes with [Ok] (holding a [UserNotice]
-  /// when sharing started without a GPS fix yet), or [Err] when sharing could
-  /// not start; ignores a call while another toggle is running.
+  /// Starts or stops sharing; a start shows the [SharingNotification]
+  /// given while the service runs. Completes with [Ok] (holding a
+  /// [UserNotice] when sharing started without a GPS fix yet), or [Err] when
+  /// sharing could not start; ignores a call while another toggle is
+  /// running.
   @override
-  late final Command0<UserNotice?> toggleService = Command0(_toggleService);
+  late final Command1<UserNotice?, SharingNotification> toggleService =
+      Command1(_toggleService);
 
-  Future<Result<UserNotice?>> _toggleService() async {
+  Future<Result<UserNotice?>> _toggleService(
+    SharingNotification notification,
+  ) async {
     try {
       final isRunning = await _service.isRunning();
 
@@ -723,34 +723,33 @@ class TrackingViewModel implements TrackingToggleViewModel {
       // The home closed (sign-out, leaving the organization) while asking:
       // nothing may start publishing for an organization that is gone.
       if (_disposed) return const Ok(null);
-      return await _startService();
+      return await _startService(notification);
     } catch (e, stackTrace) {
       debugPrint(
         '[TrackingViewModel] Erro ao alternar serviço de rastreamento: $e\n$stackTrace',
       );
       return Err(
-        'Não foi possível alterar o compartilhamento agora. Tente de novo.',
-        title: 'Compartilhamento',
+        const Failure.sharingNotChanged(),
         error: e,
         stackTrace: stackTrace,
       );
     }
   }
 
-  Future<Result<UserNotice?>> _startService() async {
+  Future<Result<UserNotice?>> _startService(
+    SharingNotification notification,
+  ) async {
     // Without the profile the service would have no one to publish as:
     // refuse before starting it.
-    if (_user == null) {
-      return const Err(
-        'Não foi possível alterar o compartilhamento agora. Tente de novo.',
-        title: 'Compartilhamento',
-      );
-    }
-    final result = await _startSharing(onPosition: _setPosition);
+    if (_user == null) return const Err(Failure.sharingNotChanged());
+    final result = await _startSharing(
+      onPosition: _setPosition,
+      notification: notification,
+    );
     final SharingStart started;
     switch (result) {
-      case Err(:final message, :final title, :final error, :final stackTrace):
-        return Err(message, title: title, error: error, stackTrace: stackTrace);
+      case Err(:final failure, :final error, :final stackTrace):
+        return Err(failure, error: error, stackTrace: stackTrace);
       case Ok(:final value) when !value.started:
         return const Ok(null);
       case Ok(:final value):

@@ -6,6 +6,7 @@
 
 import 'package:flutter/foundation.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
+import 'package:monamie_app/domain/models/sharing_notification.dart' as _i6;
 import 'package:monamie_app/ui/home/view_models/tracking_toggle_view_model.dart'
     as _i4;
 import 'package:monamie_app/utils/command.dart' as _i3;
@@ -33,8 +34,9 @@ class _FakeValueListenable_0<T> extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
-class _FakeCommand0_1<T> extends _i1.SmartFake implements _i3.Command0<T> {
-  _FakeCommand0_1(Object parent, Invocation parentInvocation)
+class _FakeCommand1_1<T, A> extends _i1.SmartFake
+    implements _i3.Command1<T, A> {
+  _FakeCommand1_1(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -59,17 +61,19 @@ class MockTrackingToggleViewModel extends _i1.Mock
           as _i2.ValueListenable<bool>);
 
   @override
-  _i3.Command0<_i5.UserNotice?> get toggleService =>
+  _i3.Command1<_i5.UserNotice?, _i6.SharingNotification> get toggleService =>
       (super.noSuchMethod(
             Invocation.getter(#toggleService),
-            returnValue: _FakeCommand0_1<_i5.UserNotice?>(
-              this,
-              Invocation.getter(#toggleService),
-            ),
-            returnValueForMissingStub: _FakeCommand0_1<_i5.UserNotice?>(
-              this,
-              Invocation.getter(#toggleService),
-            ),
+            returnValue:
+                _FakeCommand1_1<_i5.UserNotice?, _i6.SharingNotification>(
+                  this,
+                  Invocation.getter(#toggleService),
+                ),
+            returnValueForMissingStub:
+                _FakeCommand1_1<_i5.UserNotice?, _i6.SharingNotification>(
+                  this,
+                  Invocation.getter(#toggleService),
+                ),
           )
-          as _i3.Command0<_i5.UserNotice?>);
+          as _i3.Command1<_i5.UserNotice?, _i6.SharingNotification>);
 }

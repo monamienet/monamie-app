@@ -200,6 +200,14 @@ void main() {
       ('an Exception', "void f() => throw Exception('Algo deu errado');"),
       ('a StateError', "void f() => throw StateError('Estado ruim');"),
       ('an ArgumentError', "void f() => throw ArgumentError('Valor ruim');"),
+      (
+        'a prefix compared with startsWith',
+        "bool f(String s) => s.startsWith('Equipe ');",
+      ),
+      (
+        'a suffix compared with endsWith',
+        "bool f(String s) => s.endsWith(' Ltda.');",
+      ),
       ('a comparison with ==', "bool f(String s) => s == 'Administrador';"),
       ('a comparison with !=', "bool f(String s) => s != 'Membro';"),
       (
@@ -264,18 +272,109 @@ void main() {
     });
   });
 
+  group('findHardCodedTexts - view models and their states', () {
+    const viewModelPath = 'lib/ui/x/view_models/x_view_model.dart';
+    const statePath = 'lib/ui/x/view_models/x_state.dart';
+    const stateContractPath = 'lib/ui/x/x_toggle_view_model.dart';
+
+    final reportedCases = <(String, String, String, String)>[
+      (
+        'a message kept by a view model',
+        viewModelPath,
+        "const String m = 'Não foi possível salvar.';",
+        "'Não foi possível salvar.'",
+      ),
+      (
+        'a title handed by a view model',
+        viewModelPath,
+        "String f(bool ok) => ok ? '' : 'Erro ao sair';",
+        "'Erro ao sair'",
+      ),
+      (
+        'a default text in a state file',
+        statePath,
+        "class S {\n  const S({this.m = 'Mínimo 3 letras'});\n"
+            '  final String m;\n}',
+        "'Mínimo 3 letras'",
+      ),
+      (
+        'a text in a state contract',
+        stateContractPath,
+        "// check_layers: state_contract\n"
+            "const String m = 'Compartilhamento';",
+        "'Compartilhamento'",
+      ),
+    ];
+    for (final (label, path, body, expected) in reportedCases) {
+      test('$label is reported', () {
+        // 1. Arrange
+        final source = body;
+
+        // 2. Act
+        final texts = reported(source, path: path);
+
+        // 3. Assert
+        expect(texts, [expected]);
+      });
+    }
+
+    final exemptCases = <(String, String, String)>[
+      (
+        'a debugPrint in a view model',
+        viewModelPath,
+        "void f(Object e) => debugPrint('[XViewModel] Falhou ao ler: \$e');",
+      ),
+      (
+        'a startsWith in a view model',
+        viewModelPath,
+        "bool f(String n) => n.startsWith('Equipe ');",
+      ),
+      (
+        'an endsWith in a view model',
+        viewModelPath,
+        "bool f(String n) => n.endsWith('.PNG');",
+      ),
+      (
+        'a toString in a state file',
+        statePath,
+        "class S {\n  @override\n  String toString() => 'S de exemplo';\n}",
+      ),
+      (
+        'an id compared in a state contract',
+        stateContractPath,
+        "// check_layers: state_contract\n"
+            "bool f(String s) => s == 'Administrador';",
+      ),
+    ];
+    for (final (label, path, body) in exemptCases) {
+      test('$label is not reported', () {
+        // 1. Arrange
+        final source = body;
+
+        // 2. Act
+        final texts = reported(source, path: path);
+
+        // 3. Assert
+        expect(texts, isEmpty);
+      });
+    }
+
+    test('a startsWith next to a text keeps reporting the text', () {
+      // 1. Arrange
+      const source =
+          "String f(String n) => n.startsWith('Equipe ') ? 'Nome reservado' "
+          ": '';";
+
+      // 2. Act
+      final texts = reported(source, path: viewModelPath);
+
+      // 3. Assert
+      expect(texts, ["'Nome reservado'"]);
+    });
+  });
+
   group('findHardCodedTexts - files outside the rule', () {
     final cases = <(String, String, String)>[
-      (
-        'a view model',
-        'lib/ui/x/view_models/x_view_model.dart',
-        "const String m = 'Não foi possível';",
-      ),
-      (
-        'a state contract',
-        'lib/ui/x/x_state.dart',
-        "// check_layers: state_contract\nconst String m = 'Não foi possível';",
-      ),
       (
         'a generated freezed file',
         'lib/ui/x/x_state.freezed.dart',

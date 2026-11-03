@@ -27,8 +27,8 @@ Object? sentTo(String name) => verify(
   functions.call(name, captureAny, timeout: anyNamed('timeout')),
 ).captured.single;
 
-String messageOf(Result<Object?> result) => switch (result) {
-  Err(:final message) => message,
+Failure failureOf(Result<Object?> result) => switch (result) {
+  Err(:final failure) => failure,
   Ok() => fail('expected an Err, got $result'),
 };
 
@@ -100,7 +100,10 @@ void main() {
       final result = await repository.list('rotasul');
 
       // 3. Assert
-      expect(messageOf(result), 'Só o titular escolhe os administradores.');
+      expect(
+        failureOf(result),
+        const Failure.serverRefusal('Só o titular escolhe os administradores.'),
+      );
     });
 
     test('Sad Path: an unexpected error gives the load message', () async {
@@ -111,10 +114,7 @@ void main() {
       final result = await repository.list('rotasul');
 
       // 3. Assert
-      expect(
-        messageOf(result),
-        'Não foi possível carregar os administradores.',
-      );
+      expect(failureOf(result), const Failure.load(LoadTarget.administrators));
     });
   });
 
@@ -161,7 +161,12 @@ void main() {
       );
 
       // 3. Assert
-      expect(messageOf(result), 'Essa pessoa não faz parte da organização.');
+      expect(
+        failureOf(result),
+        const Failure.serverRefusal(
+          'Essa pessoa não faz parte da organização.',
+        ),
+      );
     });
 
     test('Sad Path: a deadline-exceeded refusal gives the connection '
@@ -181,9 +186,8 @@ void main() {
 
       // 3. Assert
       expect(
-        messageOf(result),
-        'Não foi possível concluir agora. Verifique a conexão e tente de '
-        'novo.',
+        failureOf(result),
+        const Failure.connection(FailedAction.conclude),
       );
     });
 
@@ -200,9 +204,8 @@ void main() {
 
       // 3. Assert
       expect(
-        messageOf(result),
-        'Não foi possível concluir agora. Verifique a conexão e tente de '
-        'novo.',
+        failureOf(result),
+        const Failure.connection(FailedAction.conclude),
       );
     });
   });

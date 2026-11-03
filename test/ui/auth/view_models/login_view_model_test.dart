@@ -22,8 +22,6 @@ import 'login_view_model_test.mocks.dart';
 
 const _kIdToken = 'google-id-token';
 
-const _kLoginErrorTitle = 'Erro de Login';
-
 /// A [MockGoogleBondCheck] whose `hasActiveBond` answers [hasBond], throws
 /// [error] or waits for [pending].
 MockGoogleBondCheck _bondCheck({
@@ -40,14 +38,17 @@ MockGoogleBondCheck _bondCheck({
   return check;
 }
 
-/// An [Err] titled [title].
-Matcher _errTitled(String title) =>
-    isA<Err<Object?>>().having((err) => err.title, 'title', title);
+/// The sign-in's [Err] ("Ocorreu um erro inesperado", titled "Erro de
+/// Login" on screen).
+final Matcher _loginErr = isA<Err<Object?>>().having(
+  (err) => err.failure,
+  'failure',
+  isA<EntryFailure>().having((f) => f.stage, 'stage', EntryStage.unexpected),
+);
 
-/// A [UserNotice] titled [title] whose message starts with [start].
-Matcher _notice(String title, String start) => isA<UserNotice>()
-    .having((notice) => notice.title, 'title', title)
-    .having((notice) => notice.message, 'message', startsWith(start));
+/// A [UserNotice] of [failure].
+Matcher _failureNotice(Object failure) =>
+    isA<FailureNotice>().having((notice) => notice.failure, 'failure', failure);
 
 /// The `onEntering` callback passed to the entry.
 void Function(String)? _onEntering(Invocation invocation) =>
@@ -365,7 +366,7 @@ void main() {
           final result = await login;
 
           // 3. Assert
-          expect(result, _errTitled(_kLoginErrorTitle));
+          expect(result, _loginErr);
           expect(loadingEverTrue, isFalse);
           expect(controller.state.isLoading, isFalse);
           expect(controller.loginGoogle.running, isFalse);
@@ -461,7 +462,7 @@ void main() {
       // 1. Arrange
       final harness = _Harness(
         entry: Err(
-          'Não foi possível entrar agora',
+          const Failure.entry(EntryStage.enter, 'Exception: sem rede'),
           error: Exception('sem rede'),
         ),
       );
@@ -470,13 +471,13 @@ void main() {
       final result = await harness.controller.loginGoogle.execute();
 
       // 3. Assert
-      expect(result, _errTitled(_kLoginErrorTitle));
+      expect(result, _loginErr);
       expect(
         result,
         isA<Err<void>>().having(
-          (err) => err.message,
-          'message',
-          startsWith('Ocorreu um erro inesperado'),
+          (err) => err.failure,
+          'failure',
+          const Failure.entry(EntryStage.unexpected, 'Exception: sem rede'),
         ),
       );
       expect(harness.controller.state.isLoading, isFalse);
@@ -579,7 +580,7 @@ void main() {
       expect(harness.session.moves, isEmpty);
       verify(
         harness.notices.show(
-          argThat(_notice(_kLoginErrorTitle, 'Falha ao autenticar')),
+          argThat(_failureNotice(const Failure.googleAuth())),
         ),
       ).called(1);
       verifyNever(
@@ -594,7 +595,10 @@ void main() {
     test('Sad Path: a failed web entry shows the login error', () async {
       // 1. Arrange
       final harness = _Harness(
-        entry: Err('Não foi possível entrar agora', error: Exception('x')),
+        entry: Err(
+          const Failure.entry(EntryStage.enter, 'Exception: x'),
+          error: Exception('x'),
+        ),
       );
 
       // 2. Act
@@ -604,7 +608,11 @@ void main() {
       // 3. Assert
       verify(
         harness.notices.show(
-          argThat(_notice(_kLoginErrorTitle, 'Ocorreu um erro ao carregar')),
+          argThat(
+            _failureNotice(
+              const Failure.entry(EntryStage.loadData, 'Exception: x'),
+            ),
+          ),
         ),
       ).called(1);
     });

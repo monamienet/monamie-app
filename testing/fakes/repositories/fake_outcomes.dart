@@ -19,7 +19,7 @@ mixin FakeOutcomes {
   /// Every call received, in order.
   final List<FakeCall> calls = [];
 
-  final Map<String, ({String message, bool once})> _failures = {};
+  final Map<String, ({Failure failure, bool once})> _failures = {};
   final Map<String, Completer<void>> _holds = {};
 
   /// How many times [method] was called.
@@ -31,11 +31,12 @@ mixin FakeOutcomes {
       if (call.method == method) call.arguments,
   ];
 
-  /// Makes [method] fail with [message]: an [Err] for the methods that
-  /// return a [Result], a [FakeFailure] for those that throw. It fails
-  /// until [succeed], or only on its next call when [once] is true.
-  void fail(String method, String message, {bool once = false}) =>
-      _failures[method] = (message: message, once: once);
+  /// Makes [method] fail with [failure]: an [Err] carrying it for the
+  /// methods that return a [Result], a [FakeFailure] carrying it for those
+  /// that throw. It fails until [succeed], or only on its next call when
+  /// [once] is true.
+  void fail(String method, Failure failure, {bool once = false}) =>
+      _failures[method] = (failure: failure, once: once);
 
   /// Makes [method] answer normally again.
   void succeed(String method) => _failures.remove(method);
@@ -69,24 +70,25 @@ mixin FakeOutcomes {
   }
 
   /// Records the call synchronously (before any wait), then returns the
-  /// failure message for [method], if any.
-  Future<String?> _arrive(String method, List<Object?> arguments) async {
+  /// failure asked for [method], if any.
+  Future<Failure?> _arrive(String method, List<Object?> arguments) async {
     calls.add((method: method, arguments: arguments));
     final hold = _holds[method];
     if (hold != null) await hold.future;
     final failure = _failures[method];
     if (failure == null) return null;
     if (failure.once) _failures.remove(method);
-    return failure.message;
+    return failure.failure;
   }
 }
 
 /// What a fake throws when a test made one of its throwing methods fail.
 class FakeFailure implements Exception {
-  const FakeFailure(this.message);
+  const FakeFailure(this.failure);
 
-  final String message;
+  /// The [Failure] the test asked for.
+  final Failure failure;
 
   @override
-  String toString() => 'FakeFailure: $message';
+  String toString() => 'FakeFailure: $failure';
 }

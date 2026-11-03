@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:flutter/services.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
@@ -58,7 +59,7 @@ class NoOrganizationScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 32),
                   if (reason != null) ...[
-                    _Notice(text: reason),
+                    _Notice(text: reason.message(l10n)),
                     const SizedBox(height: 24),
                   ],
                   // Membership starts on acceptance, so an invited person has

@@ -3,7 +3,7 @@ import 'package:monamie_app/utils/result.dart';
 
 /// The administrators' and maintainers' group operations (central
 /// functions), behind a contract so the screens are tested with a fake.
-/// Every method returns an [Err] with a message for an administrator
+/// Every method returns an [Err] with a [Failure] for an administrator
 /// instead of throwing.
 abstract interface class GroupsRepository {
   Future<Result<List<Group>>> list(String organizationId);

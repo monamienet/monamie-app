@@ -24,8 +24,8 @@ final _deletion = AccountDeletion(
 );
 
 /// Makes `request` wait on [wait] before returning [_deletion] or, with
-/// [failure], an [Err] with that message.
-void stubRequest(Future<void> Function() wait, {String? failure}) {
+/// [failure], an [Err] with that failure.
+void stubRequest(Future<void> Function() wait, {Failure? failure}) {
   when(repository.request(confirmIds: anyNamed('confirmIds'))).thenAnswer((
     _,
   ) async {
@@ -117,7 +117,7 @@ void main() {
         // 3. Assert
         expect(controller.state.isOwner, owner);
         expect(controller.loadOwnership.running, isFalse);
-        expect(controller.state.errorMessage, isEmpty);
+        expect(controller.state.failure, isNull);
       });
     }
 
@@ -184,7 +184,7 @@ void main() {
 
       // 3. Assert
       expect(controller.state.isOwner, isFalse);
-      expect(controller.state.errorMessage, isEmpty);
+      expect(controller.state.failure, isNull);
     });
 
     test('Sad Path: a failed read leaves the ownership unknown with a '
@@ -198,8 +198,8 @@ void main() {
 
       // 3. Assert
       expect(controller.state.isOwner, isNull);
-      expect(controller.state.errorMessage, isNotEmpty);
-      expect(controller.state.errorMessage, isNot(contains('offline')));
+      expect(controller.state.failure, isNotNull);
+      expect(controller.state.failure, isNot(contains('offline')));
       expect(controller.loadOwnership.running, isFalse);
     });
   });
@@ -308,7 +308,7 @@ void main() {
       // 3. Assert
       expect(requestedConfirmIds(), [<String>[]]);
       expect(deleted, [_deletion]);
-      expect(controller.state.errorMessage, isEmpty);
+      expect(controller.state.failure, isNull);
       expect(controller.deleteAccount.running, isFalse);
     });
 
@@ -392,7 +392,10 @@ void main() {
     test('Sad Path: a refusal shows its own message', () async {
       // 1. Arrange
       final controller = await controllerFor(isOwner: false);
-      stubRequest(() async {}, failure: 'Recusado.');
+      stubRequest(
+        () async {},
+        failure: const Failure.serverRefusal('Recusado.'),
+      );
 
       // 2. Act
       final result = await controller.deleteAccount.execute();
@@ -400,9 +403,16 @@ void main() {
       // 3. Assert
       expect(
         result,
-        isA<Err<void>>().having((err) => err.message, 'message', 'Recusado.'),
+        isA<Err<void>>().having(
+          (err) => err.failure,
+          'failure',
+          const Failure.serverRefusal('Recusado.'),
+        ),
       );
-      expect(controller.state.errorMessage, 'Recusado.');
+      expect(
+        controller.state.failure,
+        const Failure.serverRefusal('Recusado.'),
+      );
       expect(deleted, isEmpty);
       expect(controller.deleteAccount.running, isFalse);
     });
@@ -410,9 +420,7 @@ void main() {
     test('Sad Path: the repository\'s generic message for an unexpected '
         'error is shown as it came', () async {
       // 1. Arrange
-      const generic =
-          'Não foi possível excluir agora. Verifique a conexão e tente de '
-          'novo.';
+      const generic = Failure.connection(FailedAction.delete);
       final controller = await controllerFor(isOwner: false);
       stubRequest(() async {}, failure: generic);
 
@@ -420,7 +428,7 @@ void main() {
       await controller.deleteAccount.execute();
 
       // 3. Assert
-      expect(controller.state.errorMessage, generic);
+      expect(controller.state.failure, generic);
       expect(deleted, isEmpty);
       expect(controller.deleteAccount.running, isFalse);
     });
@@ -437,8 +445,8 @@ void main() {
       await controller.deleteAccount.execute();
 
       // 3. Assert
-      expect(controller.state.errorMessage, isNotEmpty);
-      expect(controller.state.errorMessage, isNot(contains('offline')));
+      expect(controller.state.failure, isNotNull);
+      expect(controller.state.failure, isNot(contains('offline')));
       expect(controller.deleteAccount.running, isFalse);
     });
   });

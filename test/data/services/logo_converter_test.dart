@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/data/services/logo_converter.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 /// A valid 2x1 RGBA PNG (two red pixels).
 final tinyPng = base64Decode(
@@ -158,9 +159,9 @@ void main() {
         result,
         throwsA(
           isA<LogoException>().having(
-            (e) => e.message,
-            'message',
-            isNot(startsWith('O arquivo tem')),
+            (e) => e.failure,
+            'failure',
+            isNot(isA<LogoTooLarge>()),
           ),
         ),
       );
@@ -178,9 +179,9 @@ void main() {
         result,
         throwsA(
           isA<LogoException>().having(
-            (e) => e.message,
-            'message',
-            startsWith('O arquivo tem'),
+            (e) => e.failure,
+            'failure',
+            const Failure.logoTooLarge(11),
           ),
         ),
       );

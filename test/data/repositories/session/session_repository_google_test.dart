@@ -8,6 +8,7 @@ import 'package:monamie_app/data/model/user_google_model.dart';
 import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/data/repositories/session/session_repository_google.dart';
 import 'package:monamie_app/data/services/auth/auth_google_service.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 @GenerateNiceMocks([MockSpec<AuthGoogleService>()])
 import 'session_repository_google_test.mocks.dart';
@@ -221,12 +222,20 @@ void main() {
     test('Sad Path: an equal session with the same data does not notify', () {
       // 1. Arrange
       final session = SessionRepositoryGoogle(auth: _auth())
-        ..moveTo(const SessionState.noOrganization(reason: 'Saiu.'));
+        ..moveTo(
+          const SessionState.noOrganization(
+            reason: Failure.removedFromOrganization('Rota Sul'),
+          ),
+        );
       var notifications = 0;
       session.session.addListener(() => notifications++);
 
       // 2. Act
-      session.moveTo(const SessionState.noOrganization(reason: 'Saiu.'));
+      session.moveTo(
+        const SessionState.noOrganization(
+          reason: Failure.removedFromOrganization('Rota Sul'),
+        ),
+      );
 
       // 3. Assert
       expect(notifications, 0);

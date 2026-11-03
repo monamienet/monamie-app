@@ -16,30 +16,30 @@ class CreationRepositoryRemote implements CreationRepository {
 
   Future<Result<T>> _run<T>(
     Future<Result<T>> Function() operation, {
-    required String unexpected,
+    required Failure unexpected,
   }) => functionsResult(
     operation,
-    refusal: (failure) => functionsFailureMessage(
+    refusal: (failure) => functionsRefusal(
       failure,
       explained: const {'invalid-argument', 'failed-precondition'},
-      fallback: 'Não foi possível criar.',
+      fallback: RefusedAction.create,
     ),
     unexpected: unexpected,
     logTag: 'Creation',
   );
 
   @override
-  Future<Result<String?>> idProblem(String id) => _run(() async {
+  Future<Result<Failure?>> idProblem(String id) => _run(() async {
     final data = await _functions.call('checkOrganizationId', {
       'id': id,
     }, timeout: _timeout);
     if (data is Map && data['available'] == true) return const Ok(null);
     return Ok(
       data is Map && data['problem'] is String
-          ? data['problem'] as String
-          : 'Esse identificador não pode ser usado.',
+          ? Failure.serverRefusal(data['problem'] as String)
+          : const Failure.organizationId(OrganizationIdProblem.unusable),
     );
-  }, unexpected: 'Não foi possível verificar agora.');
+  }, unexpected: const Failure.load(LoadTarget.organizationIdCheck));
 
   @override
   Future<Result<String>> create({
@@ -47,23 +47,19 @@ class CreationRepositoryRemote implements CreationRepository {
     required String name,
     required String themeId,
     required String plan,
-  }) => _run(
-    () async {
-      final data = await _functions.call('createOrganization', {
-        'id': id,
-        'name': name,
-        'themeId': themeId,
-        'plan': plan,
-      }, timeout: _timeout);
-      return Ok(
-        data is Map && data['status'] is String
-            ? data['status'] as String
-            : 'failed',
-      );
-    },
-    unexpected:
-        'Não foi possível criar agora. Verifique a conexão e tente de novo.',
-  );
+  }) => _run(() async {
+    final data = await _functions.call('createOrganization', {
+      'id': id,
+      'name': name,
+      'themeId': themeId,
+      'plan': plan,
+    }, timeout: _timeout);
+    return Ok(
+      data is Map && data['status'] is String
+          ? data['status'] as String
+          : 'failed',
+    );
+  }, unexpected: const Failure.connection(FailedAction.create));
 
   @override
   Future<Result<List<Creation>>> mine() => _run(() async {
@@ -77,5 +73,5 @@ class CreationRepositoryRemote implements CreationRepository {
           in (data is Map ? data['creations'] : null) as List? ?? const [])
         ?Creation.fromJson(entry),
     ]);
-  }, unexpected: 'Não foi possível carregar as organizações em criação.');
+  }, unexpected: const Failure.load(LoadTarget.creations));
 }

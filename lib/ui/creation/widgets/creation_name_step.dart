@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/ui/core/ui/rich_message.dart';
 
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
@@ -43,7 +44,7 @@ class CreationNameStep extends StatelessWidget {
     // "Mínimo 3 letras" is the field's own status; any other problem goes
     // under it, in red.
     final isShort = c.idTooShort;
-    final problem = c.idShownProblem;
+    final problem = c.idShownProblem?.message(l10n) ?? '';
     final ring = isShort || problem.isNotEmpty ? _danger : _ring;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

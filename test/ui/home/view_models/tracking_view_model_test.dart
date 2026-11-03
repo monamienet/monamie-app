@@ -23,6 +23,7 @@ import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/location_point.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
+import 'package:monamie_app/domain/models/sharing_notification.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 import 'package:monamie_app/utils/notice_presenter.dart';
@@ -66,16 +67,19 @@ UserModel _live(String email, double lat, double lng, DateTime seen) =>
       capturedAt: seen,
     );
 
-/// An [Err] titled [title].
-Matcher _errTitled(String title) =>
-    isA<Err<Object?>>().having((err) => err.title, 'title', title);
-
-/// An [Ok] holding a [UserNotice] titled [title].
-Matcher _okWithNoticeTitled(String title) => isA<Ok<UserNotice?>>().having(
-  (ok) => ok.value?.title,
-  'notice title',
-  title,
+/// The notification words the sharing switch hands to `toggleService`.
+const _kNotification = SharingNotification(
+  title: 'Sua localização está sendo compartilhada',
+  content: 'O compartilhamento está ligado.',
 );
+
+/// An [Err] with [failure].
+Matcher _errWith(Failure failure) =>
+    isA<Err<Object?>>().having((err) => err.failure, 'failure', failure);
+
+/// An [Ok] holding [notice].
+Matcher _okWithNotice(UserNotice notice) =>
+    isA<Ok<UserNotice?>>().having((ok) => ok.value, 'notice', notice);
 
 /// An [Ok] holding no notice.
 final _okWithoutNotice = isA<Ok<UserNotice?>>().having(
@@ -86,7 +90,10 @@ final _okWithoutNotice = isA<Ok<UserNotice?>>().having(
 
 /// Turning sharing on through the use case, whatever `onPosition` is.
 Future<Result<SharingStart>> _startSharing(MockStartSharing startSharing) =>
-    startSharing(onPosition: anyNamed('onPosition'));
+    startSharing(
+      onPosition: anyNamed('onPosition'),
+      notification: anyNamed('notification'),
+    );
 
 /// Makes [startSharing] answer [result], handing [fix] to `onPosition`
 /// first when given (as the use case does before starting the service).
@@ -223,10 +230,12 @@ void main() {
         await harness.started();
 
         // 2. Act
-        final result = await harness.controller.toggleService.execute();
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
-        expect(result, _errTitled('Compartilhamento'));
+        expect(result, _errWith(const Failure.sharingNotChanged()));
         verifyNever(_startSharing(harness.startSharing));
         verifyNever(
           harness.service.start(
@@ -247,10 +256,12 @@ void main() {
         await harness.started();
         final running = Completer<bool>();
         when(harness.service.isRunning()).thenAnswer((_) => running.future);
-        final first = harness.controller.toggleService.execute();
+        final first = harness.controller.toggleService.execute(_kNotification);
 
         // 2. Act
-        final second = await harness.controller.toggleService.execute();
+        final second = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
         expect(second, isNull);
@@ -271,7 +282,9 @@ void main() {
         when(harness.service.isRunning()).thenAnswer((_) => running.future);
 
         // 2. Act
-        final pending = harness.controller.toggleService.execute();
+        final pending = harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
         expect(harness.controller.toggleService.running, isTrue);
@@ -291,7 +304,9 @@ void main() {
         _seed(harness.controller.isTrackingEnabled, true);
 
         // 2. Act
-        final result = await harness.controller.toggleService.execute();
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
         expect(result, isA<Ok<UserNotice?>>());
@@ -317,7 +332,9 @@ void main() {
         _seed(harness.controller.isTrackingEnabled, true);
 
         // 2. Act
-        final result = await harness.controller.toggleService.execute();
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
         expect(result, isA<Ok<UserNotice?>>());
@@ -334,11 +351,18 @@ void main() {
         await harness.started();
 
         // 2. Act
-        final result = await harness.controller.toggleService.execute();
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
         expect(result, _okWithoutNotice);
-        verify(_startSharing(harness.startSharing)).called(1);
+        verify(
+          harness.startSharing(
+            onPosition: anyNamed('onPosition'),
+            notification: _kNotification,
+          ),
+        ).called(1);
         expect(harness.controller.isTrackingEnabled.value, isTrue);
         expect(harness.controller.ownPosition.value, _kFix);
         expect(
@@ -358,7 +382,7 @@ void main() {
         final ready = StreamController<void>();
         when(harness.service.ready).thenAnswer((_) => ready.stream);
         await harness.started();
-        await harness.controller.toggleService.execute();
+        await harness.controller.toggleService.execute(_kNotification);
 
         // 2. Act
         ready.add(null);
@@ -382,7 +406,7 @@ void main() {
         final ready = StreamController<void>();
         when(harness.service.ready).thenAnswer((_) => ready.stream);
         await harness.started();
-        await harness.controller.toggleService.execute();
+        await harness.controller.toggleService.execute(_kNotification);
 
         // 2. Act
         ready.add(null);
@@ -411,7 +435,9 @@ void main() {
         await harness.started();
 
         // 2. Act
-        final result = await harness.controller.toggleService.execute();
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
         expect(result, _okWithoutNotice);
@@ -430,16 +456,17 @@ void main() {
         final harness = _Harness();
         _answerStartSharing(
           harness.startSharing,
-          const Err('Sem grupo.', title: 'Compartilhamento não autorizado'),
+          const Err(Failure.sharingNotAllowed()),
         );
         await harness.started();
 
         // 2. Act
-        final result = await harness.controller.toggleService.execute();
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
-        expect(result, _errTitled('Compartilhamento não autorizado'));
-        expect((result as Err).message, 'Sem grupo.');
+        expect(result, _errWith(const Failure.sharingNotAllowed()));
         expect(harness.controller.isTrackingEnabled.value, isFalse);
         expect(harness.controller.toggleService.running, isFalse);
         harness.controller.dispose();
@@ -453,22 +480,17 @@ void main() {
         final harness = _Harness();
         _answerStartSharing(
           harness.startSharing,
-          const Ok(
-            SharingStart.started(
-              notice: UserNotice(
-                'Satélites.',
-                title: 'Aguardando sinal de GPS',
-              ),
-            ),
-          ),
+          const Ok(SharingStart.started(notice: UserNotice.waitingForGps())),
         );
         await harness.started();
 
         // 2. Act
-        final result = await harness.controller.toggleService.execute();
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
-        expect(result, _okWithNoticeTitled('Aguardando sinal de GPS'));
+        expect(result, _okWithNotice(const UserNotice.waitingForGps()));
         expect(harness.controller.isTrackingEnabled.value, isTrue);
         expect(harness.controller.ownPosition.value, isNull);
         harness.controller.dispose();
@@ -486,10 +508,12 @@ void main() {
         ).thenAnswer((_) async => throw StateError('canal fechado'));
 
         // 2. Act
-        final result = await harness.controller.toggleService.execute();
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
-        expect(result, _errTitled('Compartilhamento'));
+        expect(result, _errWith(const Failure.sharingNotChanged()));
         expect(harness.controller.toggleService.running, isFalse);
         harness.controller.dispose();
       },
@@ -506,10 +530,12 @@ void main() {
         await harness.started();
 
         // 2. Act
-        final result = await harness.controller.toggleService.execute();
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
 
         // 3. Assert
-        expect(result, _errTitled('Compartilhamento'));
+        expect(result, _errWith(const Failure.sharingNotChanged()));
         expect(harness.controller.isTrackingEnabled.value, isFalse);
         expect(harness.controller.toggleService.running, isFalse);
         harness.controller.dispose();
@@ -699,7 +725,7 @@ void main() {
         final notice =
             verify(harness.notices.show(captureAny)).captured.single
                 as UserNotice;
-        expect(notice.title, 'Rastreamento em risco');
+        expect(notice, const UserNotice.trackingAtRisk());
         harness.controller.dispose();
       },
     );
@@ -1422,7 +1448,7 @@ void main() {
         when(harness.service.ready).thenAnswer((_) => ready.stream);
         when(harness.service.localPositions).thenAnswer((_) => located.stream);
         await harness.started();
-        await harness.controller.toggleService.execute();
+        await harness.controller.toggleService.execute(_kNotification);
         expect(ready.hasListener, isTrue);
 
         // 2. Act
@@ -1563,7 +1589,9 @@ void main() {
         final harness = _Harness();
         final running = Completer<bool>();
         when(harness.service.isRunning()).thenAnswer((_) => running.future);
-        final toggling = harness.controller.toggleService.execute();
+        final toggling = harness.controller.toggleService.execute(
+          _kNotification,
+        );
         harness.controller.dispose();
 
         // 2. Act
@@ -1585,7 +1613,9 @@ void main() {
         when(harness.service.isRunning()).thenAnswer((_) => running.future);
         when(harness.service.ready).thenAnswer((_) => ready.stream);
         when(harness.service.localPositions).thenAnswer((_) => located.stream);
-        final toggling = harness.controller.toggleService.execute();
+        final toggling = harness.controller.toggleService.execute(
+          _kNotification,
+        );
         harness.controller.dispose();
 
         // 2. Act
@@ -1858,7 +1888,7 @@ void main() {
         // 1. Arrange
         final harness = _Harness();
         await harness.started();
-        await harness.controller.toggleService.execute();
+        await harness.controller.toggleService.execute(_kNotification);
 
         // 2. Act
         void act() =>

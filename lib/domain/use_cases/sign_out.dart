@@ -51,8 +51,6 @@ class SignOut {
   final InvitesRepository _invites;
   final NoticePresenter _notices;
 
-  static const _switchTitle = 'Trocar de organização';
-
   /// "Sair". [Ok] holds whether the sign-out finished (`false` while
   /// another one runs); [Err] says why it failed.
   Future<Result<bool>> call() => _signOut(const SessionState.signedOut());
@@ -64,9 +62,7 @@ class SignOut {
     _showFailure(
       await _signOut(
         SessionState.noOrganization(
-          reason: name == null
-              ? 'Você não faz mais parte desta organização.'
-              : 'Você não faz mais parte da $name.',
+          reason: Failure.removedFromOrganization(name),
         ),
       ),
     );
@@ -107,10 +103,7 @@ class SignOut {
     final idToken = await _session.freshIdToken();
     if (idToken == null) {
       // Nothing was changed: the person stays where they are.
-      return const Err(
-        'Não foi possível renovar o acesso com o Google. Tente de novo.',
-        title: _switchTitle,
-      );
+      return const Err(Failure.googleRenewal());
     }
 
     _session.setLeaving(SessionExit.switchOrganization);
@@ -133,8 +126,7 @@ class SignOut {
     } catch (e, stackTrace) {
       debugPrint('Erro ao trocar de organização: $e');
       return Err(
-        'Não foi possível trocar agora. Verifique a conexão e tente de novo.',
-        title: _switchTitle,
+        const Failure.connection(FailedAction.switchOrganization),
         error: e,
         stackTrace: stackTrace,
       );
@@ -162,12 +154,7 @@ class SignOut {
       return const Ok(true);
     } catch (e, stackTrace) {
       debugPrint("Erro ao sair: $e");
-      return Err(
-        "Não foi possível encerrar a sessão. Tente novamente.\nErro: $e",
-        title: "Erro ao sair",
-        error: e,
-        stackTrace: stackTrace,
-      );
+      return Err(Failure.signOut('$e'), error: e, stackTrace: stackTrace);
     } finally {
       _session.setLeaving(null);
     }
@@ -189,13 +176,7 @@ class SignOut {
   Future<void> _stopTracking() async {
     final stopped = await _trackingStopper.stop(email: await _currentEmail());
     if (!stopped) {
-      _notices.show(
-        const UserNotice(
-          "Não foi possível confirmar o encerramento do rastreamento. "
-          "Ele será encerrado automaticamente em instantes.",
-          title: "Rastreamento",
-        ),
-      );
+      _notices.show(const UserNotice.trackingStopUnconfirmed());
     }
   }
 
@@ -222,11 +203,11 @@ class SignOut {
     }
   }
 
-  /// Shows [result]'s message through [_notices] when it failed: for the
+  /// Shows [result]'s failure through [_notices] when it failed: for the
   /// sign-outs no screen waits for.
   void _showFailure(Result<Object?> result) {
-    if (result case Err(:final message, :final title)) {
-      _notices.show(UserNotice(message, title: title));
+    if (result case Err(:final failure)) {
+      _notices.show(UserNotice.failure(failure));
     }
   }
 }

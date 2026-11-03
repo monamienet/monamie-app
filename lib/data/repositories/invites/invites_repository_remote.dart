@@ -7,9 +7,8 @@ import 'package:monamie_app/utils/result.dart';
 
 import 'invites_repository.dart';
 
-const _failed =
-    'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
-const _loadFailed = 'Não foi possível carregar os convites.';
+const _failed = Failure.connection(FailedAction.conclude);
+const _loadFailed = Failure.load(LoadTarget.invites);
 
 /// [InvitesRepository] over the central project's invite functions.
 class InvitesRepositoryRemote implements InvitesRepository {
@@ -19,10 +18,10 @@ class InvitesRepositoryRemote implements InvitesRepository {
 
   Future<Result<T>> _run<T>(
     Future<Result<T>> Function() operation, {
-    String unexpected = _failed,
+    Failure unexpected = _failed,
   }) => functionsResult(
     operation,
-    refusal: functionsFailureMessage,
+    refusal: functionsRefusal,
     unexpected: unexpected,
     logTag: 'Invites',
   );
@@ -40,46 +39,42 @@ class InvitesRepositoryRemote implements InvitesRepository {
     String? groupId,
     String? firstGroupName,
     required List<({String email, Set<GroupRole> roles})> invites,
-  }) => _run(
-    () async {
-      final data = await _functions.call('sendInvites', {
-        'organizationId': organizationId,
-        'organizationName': organizationName,
-        'groupId': ?groupId,
-        'firstGroupName': ?firstGroupName,
-        'invites': [
-          for (final i in invites)
-            {
-              'email': i.email,
-              'roles': [for (final r in i.roles) r.id],
-            },
-        ],
-      });
-      final map = data is Map ? data : const <Object?, Object?>{};
-      final sent = [
-        for (final s in (map['sent'] as List?) ?? const [])
-          if (s is Map && s['email'] is String) s,
-      ];
-      return Ok(
-        InviteSendResult(
-          groupId: '${map['groupId'] ?? groupId ?? ''}',
-          groupName: '${map['groupName'] ?? firstGroupName ?? ''}',
-          sent: [for (final s in sent) s['email'] as String],
-          notEmailed: [
-            for (final s in sent)
-              if (s['emailed'] != true) s['email'] as String,
-          ],
-          skipped: {
-            for (final s in (map['skipped'] as List?) ?? const [])
-              if (s case {'email': final String e, 'reason': final String r})
-                e: r,
+  }) => _run(() async {
+    final data = await _functions.call('sendInvites', {
+      'organizationId': organizationId,
+      'organizationName': organizationName,
+      'groupId': ?groupId,
+      'firstGroupName': ?firstGroupName,
+      'invites': [
+        for (final i in invites)
+          {
+            'email': i.email,
+            'roles': [for (final r in i.roles) r.id],
           },
-        ),
-      );
-    },
-    unexpected:
-        'Não foi possível enviar agora. Verifique a conexão e tente de novo.',
-  );
+      ],
+    });
+    final map = data is Map ? data : const <Object?, Object?>{};
+    final sent = [
+      for (final s in (map['sent'] as List?) ?? const [])
+        if (s is Map && s['email'] is String) s,
+    ];
+    return Ok(
+      InviteSendResult(
+        groupId: '${map['groupId'] ?? groupId ?? ''}',
+        groupName: '${map['groupName'] ?? firstGroupName ?? ''}',
+        sent: [for (final s in sent) s['email'] as String],
+        notEmailed: [
+          for (final s in sent)
+            if (s['emailed'] != true) s['email'] as String,
+        ],
+        skipped: {
+          for (final s in (map['skipped'] as List?) ?? const [])
+            if (s case {'email': final String e, 'reason': final String r})
+              e: r,
+        },
+      ),
+    );
+  }, unexpected: const Failure.connection(FailedAction.send));
 
   @override
   Future<Result<List<Invite>>> listForGroup(
@@ -124,12 +119,8 @@ class InvitesRepositoryRemote implements InvitesRepository {
   );
 
   @override
-  Future<Result<Invite>> accept(Invite invite) => _run(
-    () async {
-      await _functions.call('acceptInvite', {'inviteId': invite.id});
-      return Ok(invite);
-    },
-    unexpected:
-        'Não foi possível aceitar agora. Verifique a conexão e tente de novo.',
-  );
+  Future<Result<Invite>> accept(Invite invite) => _run(() async {
+    await _functions.call('acceptInvite', {'inviteId': invite.id});
+    return Ok(invite);
+  }, unexpected: const Failure.connection(FailedAction.accept));
 }

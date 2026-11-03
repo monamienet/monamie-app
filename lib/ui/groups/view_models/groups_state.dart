@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
+import 'package:monamie_app/utils/failure.dart';
 
 part 'groups_state.freezed.dart';
 
@@ -11,8 +12,8 @@ abstract class GroupsState with _$GroupsState {
     /// The groups the person manages (every group for an administrator).
     @Default([]) List<Group> groups,
 
-    /// Why the last load or operation failed; empty when it did not.
-    @Default('') String errorMessage,
+    /// Why the last load or operation failed; `null` when it did not.
+    Failure? failure,
 
     /// The group deleted last, for *Grupo excluído*; `null` before one is.
     DeletedGroup? deleted,

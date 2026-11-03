@@ -72,15 +72,15 @@ void main() {
     test('Sad Path: a failing create adds no group', () async {
       // 1. Arrange
       final fake = FakeGroupsRepository()
-        ..fail('create', 'Já existe um grupo com esse nome.');
+        ..fail('create', const Failure.groupNameTaken('Guias'));
 
       // 2. Act
       final created = await fake.create('rotasul', 'Guias');
 
       // 3. Assert
       expect(
-        (created as Err<Group>).message,
-        'Já existe um grupo com esse nome.',
+        (created as Err<Group>).failure,
+        const Failure.groupNameTaken('Guias'),
       );
       expect(fake.groups['rotasul'] ?? const [], isEmpty);
     });

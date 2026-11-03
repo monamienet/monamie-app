@@ -13,13 +13,13 @@ class AccountDeletionRepositoryRemote implements AccountDeletionRepository {
 
   Future<Result<T>> _run<T>(
     Future<Result<T>> Function() operation, {
-    required String unexpected,
+    required Failure unexpected,
   }) => functionsResult(
     operation,
-    refusal: (failure) => functionsFailureMessage(
+    refusal: (failure) => functionsRefusal(
       failure,
       explained: const {'failed-precondition'},
-      fallback: 'Não foi possível agora.',
+      fallback: RefusedAction.any,
     ),
     unexpected: unexpected,
     logTag: 'Account',
@@ -28,34 +28,26 @@ class AccountDeletionRepositoryRemote implements AccountDeletionRepository {
   @override
   Future<Result<AccountDeletion>> request({
     List<String> confirmIds = const [],
-  }) => _run(
-    () async {
-      final deletion = AccountDeletion.fromJson(
-        await _functions.call('requestAccountDeletion', {
-          'confirmIds': confirmIds,
-        }),
-      );
-      return deletion == null
-          ? const Err('Resposta inesperada do servidor.')
-          : Ok(deletion);
-    },
-    unexpected:
-        'Não foi possível excluir agora. Verifique a conexão e tente de novo.',
-  );
+  }) => _run(() async {
+    final deletion = AccountDeletion.fromJson(
+      await _functions.call('requestAccountDeletion', {
+        'confirmIds': confirmIds,
+      }),
+    );
+    return deletion == null
+        ? const Err(Failure.unexpectedResponse())
+        : Ok(deletion);
+  }, unexpected: const Failure.connection(FailedAction.delete));
 
   @override
-  Future<Result<void>> cancel() => _run(
-    () async {
-      await _functions.call('cancelAccountDeletion', const {});
-      return const Ok(null);
-    },
-    unexpected:
-        'Não foi possível cancelar agora. Verifique a conexão e tente de novo.',
-  );
+  Future<Result<void>> cancel() => _run(() async {
+    await _functions.call('cancelAccountDeletion', const {});
+    return const Ok(null);
+  }, unexpected: const Failure.connection(FailedAction.cancel));
 
   @override
   Future<Result<AccountDeletion?>> pending() => _run(() async {
     final data = await _functions.call('myAccountDeletion', const {});
     return Ok(AccountDeletion.fromJson(data is Map ? data['deletion'] : null));
-  }, unexpected: 'Não foi possível ler a exclusão da conta.');
+  }, unexpected: const Failure.load(LoadTarget.accountDeletion));
 }

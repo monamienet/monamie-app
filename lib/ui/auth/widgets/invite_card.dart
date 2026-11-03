@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/domain/models/invite.dart';
@@ -70,7 +72,7 @@ class InviteCard extends StatelessWidget {
                   invite.inviterName.isEmpty
                       ? l10n.inviteSomeone
                       : invite.inviterName,
-                  invite.groupName,
+                  l10n.inviteGroupName(invite),
                   role,
                 ),
                 if (expiresAt != null)
@@ -83,10 +85,10 @@ class InviteCard extends StatelessWidget {
                 color: MonAmieBrand.mutedInk,
               ),
             ),
-            if (state.inviteError.isNotEmpty && !busy) ...[
+            if (state.inviteFailure case final failure? when !busy) ...[
               const SizedBox(height: 16),
               Text(
-                state.inviteError,
+                failure.message(l10n),
                 style: const TextStyle(
                   fontSize: 13,
                   height: 19 / 13,

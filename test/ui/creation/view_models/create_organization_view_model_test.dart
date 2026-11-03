@@ -50,11 +50,11 @@ Future<Result<String>> anyCreate() => repository.create(
 );
 
 /// Makes `create` wait on [wait] before returning [status] or, with
-/// [failure], an [Err] with that message.
+/// [failure], an [Err] with that failure.
 void stubCreate(
   Future<void> Function() wait, {
   String status = 'active',
-  String? failure,
+  Failure? failure,
 }) {
   when(anyCreate()).thenAnswer((_) async {
     await wait();
@@ -111,7 +111,7 @@ Future<CreateOrganizationViewModel> readyController() async {
 }
 
 void main() {
-  provideDummy<Result<String?>>(const Ok(null));
+  provideDummy<Result<Failure?>>(const Ok(null));
   provideDummy<Result<String>>(const Ok('active'));
   provideDummy<Result<void>>(const Ok(null));
 
@@ -174,7 +174,10 @@ void main() {
         final problem = idFormatProblem(candidate);
 
         // 3. Assert
-        expect(problem, 'Mínimo 3 letras');
+        expect(
+          problem,
+          const Failure.organizationId(OrganizationIdProblem.tooShort),
+        );
       });
     }
 
@@ -271,7 +274,9 @@ void main() {
       () async {
         // 1. Arrange
         when(repository.idProblem('rotasul')).thenAnswer(
-          (_) async => const Ok('Esse identificador já está em uso.'),
+          (_) async => const Ok(
+            Failure.serverRefusal('Esse identificador já está em uso.'),
+          ),
         );
         final controller = startedController()..setId('rotasul');
 
@@ -282,7 +287,7 @@ void main() {
         expect(controller.state.idCheck, IdCheck.unavailable);
         expect(
           controller.state.idProblem,
-          'Esse identificador já está em uso.',
+          const Failure.serverRefusal('Esse identificador já está em uso.'),
         );
       },
     );
@@ -299,7 +304,7 @@ void main() {
 
         // 3. Assert
         expect(controller.state.idCheck, IdCheck.unavailable);
-        expect(controller.state.idProblem, isNotEmpty);
+        expect(controller.state.idProblem, isNotNull);
         verifyNever(repository.idProblem(any));
       },
     );
@@ -307,9 +312,9 @@ void main() {
     test('Sad Path: a check that could not run is unavailable with a hint, '
         'whatever the repository said', () async {
       // 1. Arrange
-      when(
-        repository.idProblem('rotasul'),
-      ).thenAnswer((_) async => const Err('Sem conexão.'));
+      when(repository.idProblem('rotasul')).thenAnswer(
+        (_) async => const Err(Failure.serverRefusal('Sem conexão.')),
+      );
       final controller = startedController()..setId('rotasul');
 
       // 2. Act
@@ -317,15 +322,18 @@ void main() {
 
       // 3. Assert
       expect(controller.state.idCheck, IdCheck.unavailable);
-      expect(controller.state.idProblem, 'Não foi possível verificar agora.');
+      expect(
+        controller.state.idProblem,
+        const Failure.load(LoadTarget.organizationIdCheck),
+      );
     });
 
     test(
       'Edge Case: an answer for an id changed meanwhile is ignored',
       () async {
         // 1. Arrange
-        final rotasulCheck = Completer<String?>();
-        final rotanorteCheck = Completer<String?>();
+        final rotasulCheck = Completer<Failure?>();
+        final rotanorteCheck = Completer<Failure?>();
         when(
           repository.idProblem('rotasul'),
         ).thenAnswer((_) async => Ok(await rotasulCheck.future));
@@ -395,7 +403,9 @@ void main() {
         () async {
           // 1. Arrange
           when(repository.idProblem('rotasul')).thenAnswer(
-            (_) async => const Ok('Esse identificador já está em uso.'),
+            (_) async => const Ok(
+              Failure.serverRefusal('Esse identificador já está em uso.'),
+            ),
           );
           final controller = startedController()..setName('Rota Sul');
           await settle();
@@ -495,9 +505,14 @@ void main() {
       },
     );
 
-    test('Sad Path: an Err is returned and its message kept', () async {
+    test('Sad Path: an Err is returned and its failure kept', () async {
       // 1. Arrange
-      stubCreate(() async {}, failure: 'Esse identificador já está em uso.');
+      stubCreate(
+        () async {},
+        failure: const Failure.serverRefusal(
+          'Esse identificador já está em uso.',
+        ),
+      );
       final controller = await readyController();
 
       // 2. Act
@@ -507,20 +522,20 @@ void main() {
       expect(
         result,
         isA<Err<String>>().having(
-          (err) => err.message,
-          'message',
-          'Esse identificador já está em uso.',
+          (err) => err.failure,
+          'failure',
+          const Failure.serverRefusal('Esse identificador já está em uso.'),
         ),
       );
       expect(
-        controller.state.errorMessage,
-        'Esse identificador já está em uso.',
+        controller.state.failure,
+        const Failure.serverRefusal('Esse identificador já está em uso.'),
       );
     });
 
     test('Sad Path: create stops running after a failure', () async {
       // 1. Arrange
-      stubCreate(() async {}, failure: 'Falhou.');
+      stubCreate(() async {}, failure: const Failure.serverRefusal('Falhou.'));
       final controller = await readyController();
 
       // 2. Act
@@ -692,7 +707,7 @@ void main() {
     test('Sad Path: an id answer arriving after dispose notifies nobody and '
         'does not throw', () async {
       // 1. Arrange
-      final answer = Completer<String?>();
+      final answer = Completer<Failure?>();
       when(
         repository.idProblem('rotasul'),
       ).thenAnswer((_) async => Ok(await answer.future));
@@ -960,14 +975,15 @@ void main() {
 
       // 3. Assert
       expect(controller.idTooShort, isTrue);
-      expect(controller.idShownProblem, isEmpty);
+      expect(controller.idShownProblem, isNull);
     });
 
     test('Sad Path: an unavailable id shows its problem', () async {
       // 1. Arrange
-      when(
-        repository.idProblem(any),
-      ).thenAnswer((_) async => const Ok('Esse identificador já existe.'));
+      when(repository.idProblem(any)).thenAnswer(
+        (_) async =>
+            const Ok(Failure.serverRefusal('Esse identificador já existe.')),
+      );
       final controller = startedController();
 
       // 2. Act
@@ -976,7 +992,10 @@ void main() {
 
       // 3. Assert
       expect(controller.idTooShort, isFalse);
-      expect(controller.idShownProblem, 'Esse identificador já existe.');
+      expect(
+        controller.idShownProblem,
+        const Failure.serverRefusal('Esse identificador já existe.'),
+      );
     });
 
     test('Happy Path: an available id shows no problem', () async {
@@ -984,7 +1003,7 @@ void main() {
       final controller = await readyController();
 
       // 3. Assert
-      expect(controller.idShownProblem, isEmpty);
+      expect(controller.idShownProblem, isNull);
     });
   });
 
@@ -998,7 +1017,7 @@ void main() {
 
         // 2. Act
         controller.pickTheme('oceano');
-        final preview = controller.preview;
+        final preview = controller.preview(placeholderName: 'Organização');
 
         // 3. Assert
         expect(preview.id, 'rotasul');
@@ -1012,11 +1031,11 @@ void main() {
       final controller = startedController()..setId('ro');
 
       // 2. Act
-      final preview = controller.preview;
+      final preview = controller.preview(placeholderName: 'Organization');
 
       // 3. Assert
       expect(preview.id, 'nova');
-      expect(preview.name, 'Organização');
+      expect(preview.name, 'Organization');
       expect(preview.theme, defaultOrganizationTheme);
     });
   });
@@ -1065,7 +1084,9 @@ void main() {
 
     test('Sad Path: a failed entry returns its Err', () async {
       // 1. Arrange
-      when(anyEntry()).thenAnswer((_) async => const Err('Sem conexão.'));
+      when(anyEntry()).thenAnswer(
+        (_) async => const Err(Failure.serverRefusal('Sem conexão.')),
+      );
       final controller = await readyController();
 
       // 2. Act
@@ -1074,7 +1095,11 @@ void main() {
       // 3. Assert
       expect(
         result,
-        isA<Err<void>>().having((e) => e.message, 'message', 'Sem conexão.'),
+        isA<Err<void>>().having(
+          (e) => e.failure,
+          'failure',
+          const Failure.serverRefusal('Sem conexão.'),
+        ),
       );
       expect(controller.enter.running, isFalse);
     });

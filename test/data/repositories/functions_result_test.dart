@@ -3,21 +3,21 @@ import 'package:monamie_app/data/repositories/functions_result.dart';
 import 'package:monamie_app/data/services/functions/functions_service.dart';
 import 'package:monamie_app/utils/result.dart';
 
-const _otherwise =
-    'Não foi possível concluir agora. Verifique a conexão e tente de novo.';
+const _otherwise = Failure.connection(FailedAction.conclude);
+const _unexpected = Failure.unexpectedResponse();
 
 /// Runs [operation] through [functionsResult] with a refusal that prefixes
-/// the code, so the test can tell which branch produced the message.
+/// the code, so the test can tell which branch produced the failure.
 Future<Result<int>> run(Future<Result<int>> Function() operation) =>
     functionsResult(
       operation,
-      refusal: (failure) => 'refused: ${failure.code}',
-      unexpected: 'unexpected',
+      refusal: (failure) => Failure.serverRefusal('refused: ${failure.code}'),
+      unexpected: _unexpected,
       logTag: 'Test',
     );
 
 void main() {
-  group('functionsFailureMessage - Unit Test Suite', () {
+  group('functionsRefusal - Unit Test Suite', () {
     for (final code in [
       'invalid-argument',
       'failed-precondition',
@@ -28,10 +28,10 @@ void main() {
         final failure = FunctionsFailure(code, 'Nome inválido.');
 
         // 2. Act
-        final message = functionsFailureMessage(failure);
+        final refusal = functionsRefusal(failure);
 
         // 3. Assert
-        expect(message, 'Nome inválido.');
+        expect(refusal, const Failure.serverRefusal('Nome inválido.'));
       });
     }
 
@@ -41,10 +41,10 @@ void main() {
       const failure = FunctionsFailure('invalid-argument', null);
 
       // 2. Act
-      final message = functionsFailureMessage(failure);
+      final refusal = functionsRefusal(failure);
 
       // 3. Assert
-      expect(message, 'Não foi possível concluir.');
+      expect(refusal, const Failure.unexplainedRefusal(RefusedAction.conclude));
     });
 
     test('Edge Case: custom explained codes, fallback and otherwise are '
@@ -54,15 +54,21 @@ void main() {
       const other = FunctionsFailure('invalid-argument', 'raw');
 
       // 2. Act
-      String message(FunctionsFailure f) => functionsFailureMessage(
+      Failure refusal(FunctionsFailure f) => functionsRefusal(
         f,
         explained: const {'failed-precondition'},
-        fallback: 'fallback',
-        otherwise: 'otherwise',
+        fallback: RefusedAction.save,
+        otherwise: const Failure.connection(FailedAction.save),
       );
 
       // 3. Assert
-      expect([message(explained), message(other)], ['fallback', 'otherwise']);
+      expect(
+        [refusal(explained), refusal(other)],
+        const [
+          Failure.unexplainedRefusal(RefusedAction.save),
+          Failure.connection(FailedAction.save),
+        ],
+      );
     });
 
     for (final code in ['unavailable', 'internal', 'not-found', 'unknown']) {
@@ -72,10 +78,10 @@ void main() {
         final failure = FunctionsFailure(code, 'stack trace text');
 
         // 2. Act
-        final message = functionsFailureMessage(failure);
+        final refusal = functionsRefusal(failure);
 
         // 3. Assert
-        expect(message, _otherwise);
+        expect(refusal, _otherwise);
       });
     }
   });
@@ -94,7 +100,7 @@ void main() {
 
     test('Edge Case: the operation\'s own Err is returned as it is', () async {
       // 1. Arrange
-      const err = Err<int>('Resposta inesperada.');
+      const err = Err<int>(Failure.load(LoadTarget.groups));
 
       // 2. Act
       final result = await run(() async => err);
@@ -104,7 +110,7 @@ void main() {
     });
 
     test('Sad Path: a FunctionsFailure becomes an Err with the refusal\'s '
-        'message, keeping the failure', () async {
+        'failure, keeping the original error', () async {
       // 1. Arrange
       const failure = FunctionsFailure('permission-denied', 'Sem permissão.');
 
@@ -114,13 +120,16 @@ void main() {
       // 3. Assert
       expect(result, isA<Err<int>>());
       final err = result as Err<int>;
-      expect(err.message, 'refused: permission-denied');
+      expect(
+        err.failure,
+        const Failure.serverRefusal('refused: permission-denied'),
+      );
       expect(err.error, same(failure));
       expect(err.stackTrace, isNotNull);
     });
 
     test('Sad Path: any other error becomes an Err with the unexpected '
-        'message, keeping the error', () async {
+        'failure, keeping the error', () async {
       // 1. Arrange
       final error = StateError('offline');
 
@@ -129,7 +138,7 @@ void main() {
 
       // 3. Assert
       final err = result as Err<int>;
-      expect(err.message, 'unexpected');
+      expect(err.failure, _unexpected);
       expect(err.error, same(error));
       expect(err.stackTrace, isNotNull);
     });
@@ -143,7 +152,7 @@ void main() {
       final result = await run(throwsAtOnce);
 
       // 3. Assert
-      expect((result as Err<int>).message, 'unexpected');
+      expect((result as Err<int>).failure, _unexpected);
     });
   });
 }

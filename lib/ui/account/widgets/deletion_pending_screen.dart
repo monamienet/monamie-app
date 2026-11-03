@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/failure_text.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/ui/account/view_models/deletion_pending_view_model.dart';
@@ -58,7 +59,7 @@ class DeletionPendingScreen extends StatelessWidget {
                       deletion.deleteAt.toLocal(),
                       name,
                     );
-              final error = state.deletionError;
+              final error = state.deletionFailure?.message(l10n) ?? '';
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

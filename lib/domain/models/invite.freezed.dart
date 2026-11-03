@@ -15,7 +15,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Invite {
 
- String get id; String get organizationId; String get organizationName; String get groupId; String get groupName; String get email; Set<GroupRole> get roles; String get inviterName; DateTime? get expiresAt;/// Past its 14 days: shown as *Expirado* with *Reenviar*.
+ String get id; String get organizationId; String get organizationName; String get groupId;/// The group's name; `null` when the server sent none, and the screens
+/// then name it ("Grupo") in the device's language.
+ String? get groupName; String get email; Set<GroupRole> get roles; String get inviterName; DateTime? get expiresAt;/// Past its 14 days: shown as *Expirado* with *Reenviar*.
  bool get expired;
 /// Create a copy of Invite
 /// with the given fields replaced by the non-null parameter values.
@@ -52,7 +54,7 @@ abstract mixin class $InviteCopyWith<$Res>  {
   factory $InviteCopyWith(Invite value, $Res Function(Invite) _then) = _$InviteCopyWithImpl;
 @useResult
 $Res call({
- String id, String organizationId, String organizationName, String groupId, String groupName, String email, Set<GroupRole> roles, String inviterName, DateTime? expiresAt, bool expired
+ String id, String organizationId, String organizationName, String groupId, String? groupName, String email, Set<GroupRole> roles, String inviterName, DateTime? expiresAt, bool expired
 });
 
 
@@ -69,14 +71,14 @@ class _$InviteCopyWithImpl<$Res>
 
 /// Create a copy of Invite
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? organizationId = null,Object? organizationName = null,Object? groupId = null,Object? groupName = null,Object? email = null,Object? roles = null,Object? inviterName = null,Object? expiresAt = freezed,Object? expired = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? organizationId = null,Object? organizationName = null,Object? groupId = null,Object? groupName = freezed,Object? email = null,Object? roles = null,Object? inviterName = null,Object? expiresAt = freezed,Object? expired = null,}) {
   return _then(Invite(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,organizationId: null == organizationId ? _self.organizationId : organizationId // ignore: cast_nullable_to_non_nullable
 as String,organizationName: null == organizationName ? _self.organizationName : organizationName // ignore: cast_nullable_to_non_nullable
 as String,groupId: null == groupId ? _self.groupId : groupId // ignore: cast_nullable_to_non_nullable
-as String,groupName: null == groupName ? _self.groupName : groupName // ignore: cast_nullable_to_non_nullable
-as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
+as String,groupName: freezed == groupName ? _self.groupName : groupName // ignore: cast_nullable_to_non_nullable
+as String?,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,roles: null == roles ? _self.roles : roles // ignore: cast_nullable_to_non_nullable
 as Set<GroupRole>,inviterName: null == inviterName ? _self.inviterName : inviterName // ignore: cast_nullable_to_non_nullable
 as String,expiresAt: freezed == expiresAt ? _self.expiresAt : expiresAt // ignore: cast_nullable_to_non_nullable
@@ -166,7 +168,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String organizationId,  String organizationName,  String groupId,  String groupName,  String email,  Set<GroupRole> roles,  String inviterName,  DateTime? expiresAt,  bool expired)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String organizationId,  String organizationName,  String groupId,  String? groupName,  String email,  Set<GroupRole> roles,  String inviterName,  DateTime? expiresAt,  bool expired)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Invite() when $default != null:
 return $default(_that.id,_that.organizationId,_that.organizationName,_that.groupId,_that.groupName,_that.email,_that.roles,_that.inviterName,_that.expiresAt,_that.expired);case _:
@@ -187,7 +189,7 @@ return $default(_that.id,_that.organizationId,_that.organizationName,_that.group
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String organizationId,  String organizationName,  String groupId,  String groupName,  String email,  Set<GroupRole> roles,  String inviterName,  DateTime? expiresAt,  bool expired)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String organizationId,  String organizationName,  String groupId,  String? groupName,  String email,  Set<GroupRole> roles,  String inviterName,  DateTime? expiresAt,  bool expired)  $default,) {final _that = this;
 switch (_that) {
 case _Invite():
 return $default(_that.id,_that.organizationId,_that.organizationName,_that.groupId,_that.groupName,_that.email,_that.roles,_that.inviterName,_that.expiresAt,_that.expired);case _:
@@ -207,7 +209,7 @@ return $default(_that.id,_that.organizationId,_that.organizationName,_that.group
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String organizationId,  String organizationName,  String groupId,  String groupName,  String email,  Set<GroupRole> roles,  String inviterName,  DateTime? expiresAt,  bool expired)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String organizationId,  String organizationName,  String groupId,  String? groupName,  String email,  Set<GroupRole> roles,  String inviterName,  DateTime? expiresAt,  bool expired)?  $default,) {final _that = this;
 switch (_that) {
 case _Invite() when $default != null:
 return $default(_that.id,_that.organizationId,_that.organizationName,_that.groupId,_that.groupName,_that.email,_that.roles,_that.inviterName,_that.expiresAt,_that.expired);case _:
@@ -229,7 +231,9 @@ class _Invite extends Invite {
 @override final  String organizationId;
 @override final  String organizationName;
 @override final  String groupId;
-@override final  String groupName;
+/// The group's name; `null` when the server sent none, and the screens
+/// then name it ("Grupo") in the device's language.
+@override final  String? groupName;
 @override final  String email;
  final  Set<GroupRole> _roles;
 @override Set<GroupRole> get roles {
@@ -275,7 +279,7 @@ abstract mixin class _$InviteCopyWith<$Res> implements $InviteCopyWith<$Res> {
   factory _$InviteCopyWith(_Invite value, $Res Function(_Invite) _then) = __$InviteCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String organizationId, String organizationName, String groupId, String groupName, String email, Set<GroupRole> roles, String inviterName, DateTime? expiresAt, bool expired
+ String id, String organizationId, String organizationName, String groupId, String? groupName, String email, Set<GroupRole> roles, String inviterName, DateTime? expiresAt, bool expired
 });
 
 
@@ -292,14 +296,14 @@ class __$InviteCopyWithImpl<$Res>
 
 /// Create a copy of Invite
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? organizationId = null,Object? organizationName = null,Object? groupId = null,Object? groupName = null,Object? email = null,Object? roles = null,Object? inviterName = null,Object? expiresAt = freezed,Object? expired = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? organizationId = null,Object? organizationName = null,Object? groupId = null,Object? groupName = freezed,Object? email = null,Object? roles = null,Object? inviterName = null,Object? expiresAt = freezed,Object? expired = null,}) {
   return _then(_Invite(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,organizationId: null == organizationId ? _self.organizationId : organizationId // ignore: cast_nullable_to_non_nullable
 as String,organizationName: null == organizationName ? _self.organizationName : organizationName // ignore: cast_nullable_to_non_nullable
 as String,groupId: null == groupId ? _self.groupId : groupId // ignore: cast_nullable_to_non_nullable
-as String,groupName: null == groupName ? _self.groupName : groupName // ignore: cast_nullable_to_non_nullable
-as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
+as String,groupName: freezed == groupName ? _self.groupName : groupName // ignore: cast_nullable_to_non_nullable
+as String?,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,roles: null == roles ? _self._roles : roles // ignore: cast_nullable_to_non_nullable
 as Set<GroupRole>,inviterName: null == inviterName ? _self.inviterName : inviterName // ignore: cast_nullable_to_non_nullable
 as String,expiresAt: freezed == expiresAt ? _self.expiresAt : expiresAt // ignore: cast_nullable_to_non_nullable

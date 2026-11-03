@@ -34,8 +34,8 @@ void fails(String name, Object error) => when(
   return (data: captured[0], timeout: captured[1]);
 }
 
-String messageOf(Result<Object?> result) => switch (result) {
-  Err(:final message) => message,
+Failure failureOf(Result<Object?> result) => switch (result) {
+  Err(:final failure) => failure,
   Ok() => fail('expected an Err, got $result'),
 };
 
@@ -84,7 +84,10 @@ void main() {
       final result = await repository.idProblem('rotasul');
 
       // 3. Assert
-      expect(valueOf(result), 'Esse identificador já está em uso.');
+      expect(
+        valueOf(result),
+        const Failure.serverRefusal('Esse identificador já está em uso.'),
+      );
     });
 
     test('Edge Case: an unavailable id with no problem gets a generic '
@@ -96,7 +99,10 @@ void main() {
       final result = await repository.idProblem('rotasul');
 
       // 3. Assert
-      expect(valueOf(result), 'Esse identificador não pode ser usado.');
+      expect(
+        valueOf(result),
+        const Failure.organizationId(OrganizationIdProblem.unusable),
+      );
     });
 
     test('Sad Path: an unexpected error gives the check message', () async {
@@ -107,7 +113,10 @@ void main() {
       final result = await repository.idProblem('rotasul');
 
       // 3. Assert
-      expect(messageOf(result), 'Não foi possível verificar agora.');
+      expect(
+        failureOf(result),
+        const Failure.load(LoadTarget.organizationIdCheck),
+      );
     });
   });
 
@@ -155,7 +164,10 @@ void main() {
         final result = await createRotaSul();
 
         // 3. Assert
-        expect(messageOf(result), 'Esse identificador já está em uso.');
+        expect(
+          failureOf(result),
+          const Failure.serverRefusal('Esse identificador já está em uso.'),
+        );
       });
     }
 
@@ -171,7 +183,10 @@ void main() {
       final result = await createRotaSul();
 
       // 3. Assert
-      expect(messageOf(result), 'Não foi possível criar.');
+      expect(
+        failureOf(result),
+        const Failure.unexplainedRefusal(RefusedAction.create),
+      );
     });
 
     test('Sad Path: a permission-denied refusal is not explained here: it '
@@ -187,8 +202,8 @@ void main() {
 
       // 3. Assert
       expect(
-        messageOf(result),
-        'Não foi possível concluir agora. Verifique a conexão e tente de novo.',
+        failureOf(result),
+        const Failure.connection(FailedAction.conclude),
       );
     });
 
@@ -200,10 +215,7 @@ void main() {
       final result = await createRotaSul();
 
       // 3. Assert
-      expect(
-        messageOf(result),
-        'Não foi possível criar agora. Verifique a conexão e tente de novo.',
-      );
+      expect(failureOf(result), const Failure.connection(FailedAction.create));
     });
   });
 
@@ -251,10 +263,7 @@ void main() {
       final result = await repository.mine();
 
       // 3. Assert
-      expect(
-        messageOf(result),
-        'Não foi possível carregar as organizações em criação.',
-      );
+      expect(failureOf(result), const Failure.load(LoadTarget.creations));
     });
   });
 }

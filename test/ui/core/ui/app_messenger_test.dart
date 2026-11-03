@@ -64,7 +64,7 @@ void main() {
       int? value = -1;
       await _pumpApp(
         tester,
-        action: () async => const Err('Tente de novo.', title: 'Erro de Login'),
+        action: () async => const Err(Failure.googleAuth()),
         returned: (v) => value = v,
       );
 
@@ -74,7 +74,13 @@ void main() {
 
       // 3. Assert
       expect(value, isNull);
-      expect(find.text('Tente de novo.'), findsOneWidget);
+      expect(
+        find.text(
+          'Falha ao autenticar o usuário. Verifique sua conta Google e tente '
+          'novamente.',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Erro de Login'), findsOneWidget);
     });
 
@@ -82,7 +88,10 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      await _pumpApp(tester, action: () async => const Err('Sem rede.'));
+      await _pumpApp(
+        tester,
+        action: () async => const Err(Failure.load(LoadTarget.groups)),
+      );
 
       // 2. Act
       await tester.tap(find.text('run'));
@@ -91,7 +100,7 @@ void main() {
       // 3. Assert
       final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
       expect(snackBar.content, isA<Text>());
-      expect(find.text('Sem rede.'), findsOneWidget);
+      expect(find.text('Não foi possível carregar os grupos.'), findsOneWidget);
     });
   });
 
@@ -104,12 +113,18 @@ void main() {
 
       // 2. Act
       const ScaffoldNoticePresenter().show(
-        const UserNotice('Ele será encerrado.', title: 'Rastreamento'),
+        const UserNotice.trackingStopUnconfirmed(),
       );
       await tester.pump();
 
       // 3. Assert
-      expect(find.text('Ele será encerrado.'), findsOneWidget);
+      expect(
+        find.text(
+          'Não foi possível confirmar o encerramento do rastreamento. Ele '
+          'será encerrado automaticamente em instantes.',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Rastreamento'), findsOneWidget);
     });
 
@@ -120,8 +135,9 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
 
       // 2. Act
-      void act() =>
-          const ScaffoldNoticePresenter().show(const UserNotice('Aviso.'));
+      void act() => const ScaffoldNoticePresenter().show(
+        const UserNotice.waitingForGps(),
+      );
 
       // 3. Assert
       expect(act, returnsNormally);
