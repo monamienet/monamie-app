@@ -94,8 +94,8 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
-    Locale('pt'),
     Locale('en'),
+    Locale('pt'),
   ];
 
   /// MonAmie's tagline under its logo on the sign-in screen.
@@ -2383,6 +2383,12 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Não foi possível alterar o compartilhamento agora. Tente de novo.'**
   String get failureSharingNotChanged;
+
+  /// The language the person chose could not be stored on the device.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível guardar o idioma. Tente de novo.'**
+  String get failureLanguageNotSaved;
 
   /// Title of the messages about a failed sign-in or entry.
   ///

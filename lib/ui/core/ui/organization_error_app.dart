@@ -18,6 +18,7 @@ class OrganizationErrorApp extends StatelessWidget {
       title: MonAmieBrand.name,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: appSupportedLocales,
+      localeListResolutionCallback: resolveAppLocale,
       home: Scaffold(
         body: Center(
           child: Padding(

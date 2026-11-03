@@ -83,6 +83,7 @@ extension FailureText on Failure {
           : l10n.failureRemovedFromOrganization(organizationName),
     SharingNotAllowed() => l10n.failureSharingNotAllowed,
     SharingNotChanged() => l10n.failureSharingNotChanged,
+    LanguageNotSaved() => l10n.failureLanguageNotSaved,
   };
 
   /// The bold line above [message] in a `SnackBar`, or `null` for none.

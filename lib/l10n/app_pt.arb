@@ -2179,6 +2179,10 @@
   "@failureSharingNotChanged": {
     "description": "Turning sharing on or off failed."
   },
+  "failureLanguageNotSaved": "Não foi possível guardar o idioma. Tente de novo.",
+  "@failureLanguageNotSaved": {
+    "description": "The language the person chose could not be stored on the device."
+  },
   "failureTitleSignIn": "Erro de Login",
   "@failureTitleSignIn": {
     "description": "Title of the messages about a failed sign-in or entry."

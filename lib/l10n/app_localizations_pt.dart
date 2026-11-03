@@ -1561,6 +1561,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Não foi possível alterar o compartilhamento agora. Tente de novo.';
 
   @override
+  String get failureLanguageNotSaved =>
+      'Não foi possível guardar o idioma. Tente de novo.';
+
+  @override
   String get failureTitleSignIn => 'Erro de Login';
 
   @override

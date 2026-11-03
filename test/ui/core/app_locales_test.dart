@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:monamie_app/domain/models/app_language.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/app_locales.dart';
 
@@ -47,12 +48,20 @@ Locale _resolved(WidgetTester tester) =>
 
 void main() {
   group('appSupportedLocales - Unit Test Suite', () {
-    test('Happy Path: Brazilian Portuguese comes first, then English', () {
+    test('Happy Path: English comes first, then Brazilian Portuguese', () {
       // 1. Arrange / 2. Act
       const locales = appSupportedLocales;
 
       // 3. Assert
-      expect(locales, const [Locale('pt', 'BR'), Locale('en')]);
+      expect(locales, const [Locale('en'), Locale('pt', 'BR')]);
+    });
+
+    test('Edge Case: they are the locales of the AppLanguages', () {
+      // 1. Arrange / 2. Act
+      final locales = {for (final l in AppLanguage.values) l.locale};
+
+      // 3. Assert
+      expect(locales, appSupportedLocales.toSet());
     });
 
     test('Edge Case: every supported language has the app texts', () {
@@ -84,19 +93,104 @@ void main() {
       expect(_resolved(tester).languageCode, 'en');
     });
 
-    testWidgets('Edge Case: a Spanish device falls back to pt_BR', (
+    testWidgets('Edge Case: a Spanish device falls back to English', (
       tester,
     ) async {
       // 1. Arrange / 2. Act
       await _pumpApp(tester, deviceLocales: const [Locale('es', 'ES')]);
 
       // 3. Assert
+      expect(_resolved(tester), const Locale('en'));
+    });
+
+    testWidgets('Edge Case: a German device falls back to English', (
+      tester,
+    ) async {
+      // 1. Arrange / 2. Act
+      await _pumpApp(tester, deviceLocales: const [Locale('de', 'DE')]);
+
+      // 3. Assert
+      expect(_resolved(tester), const Locale('en'));
+    });
+
+    testWidgets('Edge Case: a pt_PT device gets pt_BR', (tester) async {
+      // 1. Arrange / 2. Act
+      await _pumpApp(tester, deviceLocales: const [Locale('pt', 'PT')]);
+
+      // 3. Assert
       expect(_resolved(tester), const Locale('pt', 'BR'));
+    });
+
+    testWidgets('Edge Case: [de, pt_BR] skips German and gets pt_BR', (
+      tester,
+    ) async {
+      // 1. Arrange / 2. Act
+      await _pumpApp(
+        tester,
+        deviceLocales: const [Locale('de'), Locale('pt', 'BR')],
+      );
+
+      // 3. Assert
+      expect(_resolved(tester), const Locale('pt', 'BR'));
+    });
+  });
+
+  group('resolveAppLocale - Unit Test Suite', () {
+    test('Happy Path: the first device language the app has wins', () {
+      // 1. Arrange
+      const preferred = [Locale('de'), Locale('pt', 'PT'), Locale('en')];
+
+      // 2. Act
+      final locale = resolveAppLocale(preferred, appSupportedLocales);
+
+      // 3. Assert
+      expect(locale, const Locale('pt', 'BR'));
+    });
+
+    test('Edge Case: a null list resolves to English', () {
+      // 1. Arrange / 2. Act
+      final locale = resolveAppLocale(null, appSupportedLocales);
+
+      // 3. Assert
+      expect(locale, const Locale('en'));
+    });
+
+    test('Edge Case: an empty list resolves to English', () {
+      // 1. Arrange / 2. Act
+      final locale = resolveAppLocale(const [], appSupportedLocales);
+
+      // 3. Assert
+      expect(locale, const Locale('en'));
+    });
+
+    test('Edge Case: a language the app does not have resolves to English', () {
+      // 1. Arrange / 2. Act
+      final locale = resolveAppLocale(const [
+        Locale('es', 'ES'),
+      ], appSupportedLocales);
+
+      // 3. Assert
+      expect(locale, const Locale('en'));
     });
   });
 
   // #84: Material's own widgets followed English before the app declared
   // the delegates.
+  group('Date picker on a Spanish device - Widget Test Suite', () {
+    testWidgets('Edge Case: the picker is in English', (tester) async {
+      // 1. Arrange
+      await _pumpApp(tester, deviceLocales: const [Locale('es', 'ES')]);
+
+      // 2. Act
+      await _openPicker(tester);
+
+      // 3. Assert
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Cancelar'), findsNothing);
+      expect(find.textContaining('November'), findsWidgets);
+    });
+  });
+
   group('Date picker on a pt_BR device - Widget Test Suite', () {
     testWidgets('Happy Path: the buttons and the month are in Portuguese', (
       tester,

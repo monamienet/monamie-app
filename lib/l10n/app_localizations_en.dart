@@ -1556,6 +1556,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not change sharing right now. Try again.';
 
   @override
+  String get failureLanguageNotSaved =>
+      'Could not save the language. Try again.';
+
+  @override
   String get failureTitleSignIn => 'Sign-in error';
 
   @override

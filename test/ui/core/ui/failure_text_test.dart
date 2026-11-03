@@ -333,6 +333,12 @@ final List<(String, Failure, String, String?)> _failureCases = [
     'Não foi possível alterar o compartilhamento agora. Tente de novo.',
     'Compartilhamento',
   ),
+  (
+    'languageNotSaved',
+    const Failure.languageNotSaved(),
+    'Não foi possível guardar o idioma. Tente de novo.',
+    null,
+  ),
 ];
 
 /// Every [UserNotice] case other than [FailureNotice], with the pt-BR
@@ -433,6 +439,7 @@ void main() {
         'AccessLost',
         'SharingNotAllowed',
         'SharingNotChanged',
+        'LanguageNotSaved',
       };
 
       // 2. Act

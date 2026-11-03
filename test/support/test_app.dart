@@ -9,6 +9,7 @@ import 'package:monamie_app/data/repositories/appearance/appearance_repository.d
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
 import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
+import 'package:monamie_app/data/repositories/language/language_repository.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
@@ -41,6 +42,7 @@ import '../../testing/fakes/repositories/fake_appearance_repository.dart';
 import '../../testing/fakes/repositories/fake_creation_repository.dart';
 import '../../testing/fakes/repositories/fake_groups_repository.dart';
 import '../../testing/fakes/repositories/fake_invites_repository.dart';
+import '../../testing/fakes/repositories/fake_language_repository.dart';
 import '../../testing/fakes/repositories/fake_organization_branding_loader.dart';
 import '../../testing/fakes/repositories/fake_organization_directory.dart';
 import '../../testing/fakes/repositories/fake_organization_local_data.dart';
@@ -124,6 +126,7 @@ class TestApp {
   final creation = FakeCreationRepository();
   final positions = FakePositionsRepository();
   final themes = FakeThemeRepository();
+  final language = FakeLanguageRepository();
 
   // The services, mocks.
   final stopper = MockBackgroundTrackingStopper();
@@ -142,6 +145,7 @@ class TestApp {
     Provider<UserGoogleRepository>.value(value: userRepository),
     Provider<SessionRepository>.value(value: session),
     Provider<OrganizationSession>.value(value: organizationSession),
+    Provider<LanguageRepository>.value(value: language),
     Provider<ThemeRepository>.value(value: themes),
     Provider<OrganizationBrandingLoader>.value(value: brandingLoader),
     Provider<OrganizationDirectory>.value(value: directory),

@@ -381,6 +381,7 @@
   "failureRemovedFromUnnamedOrganization": "You are no longer part of this organization.",
   "failureSharingNotAllowed": "You are not in the field in any group. Ask an administrator to allow sharing your location.",
   "failureSharingNotChanged": "Could not change sharing right now. Try again.",
+  "failureLanguageNotSaved": "Could not save the language. Try again.",
   "failureTitleSignIn": "Sign-in error",
   "failureTitleSwitchOrganization": "Switch organization",
   "failureTitleSignOut": "Sign-out error",
