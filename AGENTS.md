@@ -101,6 +101,7 @@ Follow `docs/en-us/run-web-locally.md`. Serve `build/web` on `http://localhost:5
 ## Git Workflow
 
 - **Keep local `main` in sync**: Local `main` is a mirror of `origin/main` and must never receive direct commits. Before starting a task, fast-forward it: `git fetch origin main:main` from any other branch, or `git pull --ff-only` when `main` is checked out. If the fast-forward fails, local `main` has diverged; stop and report it instead of merging or resetting.
+- **Check the remote before stating what was merged or released**: before saying a branch, PR or release is (or is not) on `main`, run `git fetch origin --tags` and check `origin/main`, the PR on GitHub and the tags. The local checkout, the session's start snapshot and agent notes are not evidence.
 - **One branch per task**: Whenever a new task is assigned, create its issue first (see *Tracking Work in Issues*), then a new branch from the freshly synced `main` before making any changes (`git switch -c <type>/<short-description> main`). Never work directly on `main` or reuse a branch from a previous task.
 - **Branch naming**: Prefix the branch with the change type, matching the commit convention (e.g. `feat/`, `fix/`, `chore/`, `docs/`, `build/`).
 - **Pull request after human approval**: When the task is finished, wait for explicit human approval before opening a pull request to merge the branch into `main`. Do not open the PR, or merge it, without that approval. The PR description closes the task's issue (`Closes #<n>`).
