@@ -303,3 +303,8 @@ Registro das escolhas feitas sem parada de revisão (A5, revisão 2).
 - `UserModel.noName` ("Nome não informado") ficou como está: ele não é texto de tela, é o nome que o serviço publica na posição, e os aparelhos dos outros o leem e mostram. Se cada aparelho publicasse na sua língua, o mesmo grupo misturaria "Nome não informado" e "No name"; a versão já instalada também só conhece o texto em pt-BR.
 - A regra `ui_hard_coded_text` passou a valer para os ViewModels e estados em `lib/ui/`, e não só para as telas. `startsWith` e `endsWith` entraram nos contextos que nunca são texto (o "monamie " que o nome da organização não pode ter no começo).
 - 67 chaves novas no ARB, com o texto em pt-BR exatamente igual ao anterior (conferido por script contra o `HEAD`); "Mínimo 3 letras" reusa a chave que a tela já tinha. Mudanças de comportamento: um grupo de nome vazio agora vai para o começo da lista do mapa, porque a ordenação é feita antes de a tela nomeá-lo (antes ele ficava entre os "G"); os logs de desenvolvimento mostram o tipo da falha em vez da frase.
+
+**Fase 8:**
+- `usePathUrlStrategy()` no `main`: no web, as rotas são `/login` e `/monamie`, sem `#`. No Android e no iOS a chamada não faz nada.
+- O servidor local passou a ser `tool/serve_web.dart` (Dart puro, sem dependência nova), ainda em `http://localhost:5000` e só no `127.0.0.1`. Ele devolve o `index.html` para qualquer caminho que não seja arquivo do build, e nunca um arquivo fora de `build/web`. O `python3 -m http.server` dos guias responderia 404 ao recarregar uma tela.
+- O `firebase.json` continua sem `hosting`: o ganho é só local até o app web ser publicado. Quem publicar precisa da mesma regra (no Firebase Hosting, um `rewrites` de `**` para `/index.html`).

@@ -34,7 +34,7 @@ flutter build web --release
 ## 2. Servir em `localhost:5000`
 
 ```bash
-python3 -m http.server 5000 --bind 127.0.0.1 -d build/web
+dart run tool/serve_web.dart
 ```
 
 - **Por que a porta 5000:** o login do Google na web usa o cliente OAuth web do projeto Firebase
@@ -44,9 +44,11 @@ python3 -m http.server 5000 --bind 127.0.0.1 -d build/web
 - **Para conferir ou adicionar origens:** Google Cloud Console do projeto `monamienet-app` → *APIs e
   serviços* → *Credenciais* → cliente OAuth "Web client (auto created by Google Service)" → *Origens
   JavaScript autorizadas*.
-- **Rotas:** o app usa rotas com `#` (`/#/login`, `/#/monamie`). Por isso um servidor estático simples
-  basta, sem regra de rewrite.
-- `--bind 127.0.0.1` deixa o servidor acessível só na sua máquina.
+- **Rotas:** o app usa URLs sem `#` (`/login`, `/monamie`). Recarregar uma tela pede ao servidor um
+  caminho que não é arquivo, então o servidor precisa responder `index.html` para esses caminhos (o
+  retorno de um app de página única). O `tool/serve_web.dart` faz isso; um servidor estático simples
+  (`python3 -m http.server`) responderia 404.
+- O servidor escuta só em `127.0.0.1`, então só a sua máquina o alcança.
 
 ## 3. Abrir em um perfil real do Chrome
 
@@ -88,7 +90,7 @@ Protocol (CDP).
   (CanvasKit) desenhar, e o resultado sai em branco. Espere de verdade e capture pelo CDP.
 
 ```bash
-python3 -m http.server 5000 --bind 127.0.0.1 -d build/web &
+dart run tool/serve_web.dart &
 SERVER=$!
 PROFILE=$(mktemp -d)
 google-chrome --headless=new --no-sandbox --enable-unsafe-swiftshader \

@@ -95,7 +95,7 @@ Dev laptops have 8 GB of RAM shared with the IDE and a browser. Run heavy comman
 
 ## Running the Web App Locally
 
-Follow `docs/en-us/run-web-locally.md`. Serve `build/web` on `http://localhost:5000`: it is the only local origin the OAuth web client accepts for Google sign-in. For unattended checks, capture the screenshot through CDP after Flutter paints, never with `--screenshot`.
+Follow `docs/en-us/run-web-locally.md`. Serve `build/web` on `http://localhost:5000` with `dart run tool/serve_web.dart`: it is the only local origin the OAuth web client accepts for Google sign-in, and the app uses path URLs (`usePathUrlStrategy`, no `#`), so the server answers every path that is not a file with `index.html`. For unattended checks, capture the screenshot through CDP after Flutter paints, never with `--screenshot`.
 
 
 ## Git Workflow

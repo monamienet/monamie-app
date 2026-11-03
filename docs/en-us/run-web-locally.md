@@ -34,7 +34,7 @@ flutter build web --release
 ## 2. Serve on `localhost:5000`
 
 ```bash
-python3 -m http.server 5000 --bind 127.0.0.1 -d build/web
+dart run tool/serve_web.dart
 ```
 
 - **Why port 5000:** web Google sign-in uses the OAuth web client of the central Firebase project
@@ -44,9 +44,11 @@ python3 -m http.server 5000 --bind 127.0.0.1 -d build/web
 - **To check or add origins:** Google Cloud Console for project `monamienet-app` → *APIs & Services* →
   *Credentials* → OAuth client "Web client (auto created by Google Service)" → *Authorized JavaScript
   origins*.
-- **Routing:** the app uses hash routes (`/#/login`, `/#/monamie`), so a plain static server works
-  without any rewrite rule.
-- `--bind 127.0.0.1` keeps the server reachable from your machine only.
+- **Routing:** the app uses path URLs (`/login`, `/monamie`, no `#`). Reloading a screen asks the server
+  for a path that is not a file, so the server must answer every such path with `index.html` (a
+  single-page app's fallback); `tool/serve_web.dart` does that, a plain static server
+  (`python3 -m http.server`) would answer 404.
+- The server listens on `127.0.0.1` only, so it is reachable from your machine alone.
 
 ## 3. Open it in a real Chrome profile
 
@@ -89,7 +91,7 @@ DevTools Protocol (CDP).
   (CanvasKit) has painted anything, so the image comes out blank. Wait for real, then capture through CDP.
 
 ```bash
-python3 -m http.server 5000 --bind 127.0.0.1 -d build/web &
+dart run tool/serve_web.dart &
 SERVER=$!
 PROFILE=$(mktemp -d)
 google-chrome --headless=new --no-sandbox --enable-unsafe-swiftshader \

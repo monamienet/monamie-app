@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:monamie_app/ui/core/ui/organization_error_app.dart';
 import 'package:monamie_app/data/services/firebase/central_firebase.dart';
@@ -9,6 +10,9 @@ import 'package:provider/provider.dart';
 import 'ui/core/monamie_app.dart';
 
 Future<void> main() async {
+  // Web URLs without `#`: the server answers every path with index.html
+  // (tool/serve_web.dart locally). Does nothing on Android and iOS.
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
 
   await Hive.initFlutter();
