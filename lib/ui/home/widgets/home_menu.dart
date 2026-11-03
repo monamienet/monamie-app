@@ -16,6 +16,9 @@ import 'package:monamie_app/ui/home/widgets/home_layout.dart';
 import 'package:monamie_app/ui/home/widgets/initials.dart';
 import 'package:monamie_app/routing/routes.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
+import 'package:monamie_app/ui/language/view_models/language_view_model.dart';
+import 'package:monamie_app/ui/language/widgets/language_scheme.dart';
+import 'package:monamie_app/ui/language/widgets/language_sheet.dart';
 import 'package:monamie_app/ui/core/themes/color_palette.dart';
 import 'package:monamie_app/utils/result.dart';
 
@@ -28,6 +31,7 @@ class HomeMenu extends StatelessWidget {
     required this.user,
     required this.session,
     required this.tracking,
+    required this.language,
   });
 
   final HomeViewModel home;
@@ -36,6 +40,9 @@ class HomeMenu extends StatelessWidget {
   /// The session: sign-out, switching organization, ownership.
   final HomeSessionViewModel session;
   final TrackingViewModel tracking;
+
+  /// The language picker.
+  final LanguageViewModel language;
 
   HomeViewModel get _home => home;
   UserViewModel get _user => user;
@@ -49,6 +56,15 @@ class HomeMenu extends StatelessWidget {
     final router = GoRouter.of(context);
     Navigator.pop(context);
     router.push<void>(route);
+  }
+
+  /// Closes the menu, then opens the language picker over the map, on the
+  /// root navigator (the menu's own context is gone once it closes).
+  void _openLanguage(BuildContext context) {
+    final root = rootNavigatorKey.currentContext;
+    Navigator.pop(context);
+    if (root == null) return;
+    showLanguageSheet(root, controller: language, scheme: LanguageScheme.menu);
   }
 
   /// Closes the menu, then runs [action] and shows its message when it fails.
@@ -87,6 +103,15 @@ class HomeMenu extends StatelessWidget {
                 label: l10n.menuSwitchOrganization,
                 onTap: () =>
                     _closeAndRun(context, _auth.switchOrganization.execute),
+              ),
+              ListenableBuilder(
+                listenable: language,
+                builder: (context, _) => _MenuItem(
+                  icon: Icons.language,
+                  label: l10n.languageTitle,
+                  trailing: languageName(language.state.inUse),
+                  onTap: () => _openLanguage(context),
+                ),
               ),
               ListenableBuilder(
                 listenable: _home.capabilities,
@@ -351,10 +376,18 @@ class HomeMenu extends StatelessWidget {
 }
 
 class _MenuItem extends StatelessWidget {
-  const _MenuItem({required this.icon, required this.label, this.onTap});
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    this.trailing,
+    this.onTap,
+  });
 
   final IconData icon;
   final String label;
+
+  /// A short value shown at the end of the row (the language in use).
+  final String? trailing;
 
   /// `null` greys the item out.
   final VoidCallback? onTap;
@@ -383,6 +416,15 @@ class _MenuItem extends StatelessWidget {
                   ),
                 ),
               ),
+              if (trailing != null)
+                Text(
+                  trailing!,
+                  style: const TextStyle(
+                    color: HomeColors.muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
             ],
           ),
         ),

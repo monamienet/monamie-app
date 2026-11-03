@@ -710,6 +710,25 @@ class TrackingViewModel implements TrackingToggleViewModel {
   late final Command1<UserNotice?, SharingNotification> toggleService =
       Command1(_toggleService);
 
+  /// Gives the running service the sharing notification's texts in a new
+  /// language, [notification] built by the screen; does nothing while
+  /// sharing is off.
+  late final Command1<void, SharingNotification> refreshNotification = Command1(
+    _refreshNotification,
+  );
+
+  Future<Result<void>> _refreshNotification(
+    SharingNotification notification,
+  ) async {
+    if (_isTrackingEnabled.value) {
+      _service.updateNotification(
+        title: notification.title,
+        content: notification.content,
+      );
+    }
+    return const Ok(null);
+  }
+
   Future<Result<UserNotice?>> _toggleService(
     SharingNotification notification,
   ) async {

@@ -543,6 +543,81 @@ void main() {
     );
   });
 
+  group('TrackingViewModel.refreshNotification - Unit Test Suite', () {
+    const english = SharingNotification(
+      title: 'Your location is being shared',
+      content: 'Sharing is on.',
+    );
+
+    test(
+      'Happy Path: hands the service the new texts while sharing is on',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        await harness.started();
+        _seed(harness.controller.isTrackingEnabled, true);
+
+        // 2. Act
+        final result = await harness.controller.refreshNotification.execute(
+          english,
+        );
+
+        // 3. Assert
+        expect(result, isA<Ok<void>>());
+        verify(
+          harness.service.updateNotification(
+            title: english.title,
+            content: english.content,
+          ),
+        ).called(1);
+        harness.controller.dispose();
+      },
+    );
+
+    test('Edge Case: does nothing while sharing is off', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      await harness.started();
+
+      // 2. Act
+      final result = await harness.controller.refreshNotification.execute(
+        english,
+      );
+
+      // 3. Assert
+      expect(result, isA<Ok<void>>());
+      verifyNever(
+        harness.service.updateNotification(
+          title: anyNamed('title'),
+          content: anyNamed('content'),
+        ),
+      );
+      harness.controller.dispose();
+    });
+
+    test('Edge Case: follows sharing being turned off again', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      await harness.started();
+      _seed(harness.controller.isTrackingEnabled, true);
+      await harness.controller.refreshNotification.execute(english);
+      clearInteractions(harness.service);
+
+      // 2. Act
+      _seed(harness.controller.isTrackingEnabled, false);
+      await harness.controller.refreshNotification.execute(english);
+
+      // 3. Assert
+      verifyNever(
+        harness.service.updateNotification(
+          title: anyNamed('title'),
+          content: anyNamed('content'),
+        ),
+      );
+      harness.controller.dispose();
+    });
+  });
+
   group('TrackingViewModel.start', () {
     test(
       'Happy Path: Deve começar com isTrackingEnabled true quando o serviço já está rodando',

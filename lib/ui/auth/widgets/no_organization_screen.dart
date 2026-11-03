@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/ui/auth/view_models/organization_choice_view_model.dart';
+import 'package:monamie_app/ui/language/view_models/language_view_model.dart';
 
 import 'invite_card.dart';
 import 'monamie_account_header.dart';
@@ -16,10 +17,14 @@ class NoOrganizationScreen extends StatelessWidget {
   const NoOrganizationScreen({
     super.key,
     required this.controller,
+    required this.language,
     required this.onCreateOrganization,
   });
 
   final OrganizationChoiceViewModel controller;
+
+  /// The language picker, opened by the globe in the header.
+  final LanguageViewModel language;
 
   /// "Criar minha organização": opens the creation flow over this screen.
   final VoidCallback onCreateOrganization;
@@ -49,6 +54,7 @@ class NoOrganizationScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   MonAmieAccountHeader(
+                    language: language,
                     email: state.signedInEmail,
                     onSwitch: busy || state.isLoggingOut
                         ? null

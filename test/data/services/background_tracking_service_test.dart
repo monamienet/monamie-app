@@ -218,6 +218,41 @@ void main() {
     });
   });
 
+  group('BackgroundTrackingService.updateNotification - Unit Test Suite', () {
+    test('Happy Path: sends setNotificationInfo with title and content', () {
+      // 1. Arrange
+      final harness = _Plugin();
+
+      // 2. Act
+      harness.service.updateNotification(title: _title, content: _content);
+
+      // 3. Assert
+      verify(
+        harness.plugin.invoke('setNotificationInfo', {
+          'title': _title,
+          'content': _content,
+        }),
+      ).called(1);
+    });
+
+    test('Edge Case: sends nothing else to the isolate', () {
+      // 1. Arrange
+      final harness = _Plugin();
+
+      // 2. Act
+      harness.service.updateNotification(title: 'Sharing', content: '');
+
+      // 3. Assert
+      verify(
+        harness.plugin.invoke('setNotificationInfo', {
+          'title': 'Sharing',
+          'content': '',
+        }),
+      ).called(1);
+      verifyNoMoreInteractions(harness.plugin);
+    });
+  });
+
   group('BackgroundTrackingService.ready - Unit Test Suite', () {
     test('Happy Path: each ready event of the isolate is one event', () async {
       // 1. Arrange

@@ -1604,6 +1604,24 @@ abstract class AppLocalizations {
   /// **'{group} · em campo'**
   String menuInTheField(String group);
 
+  /// The language's own name, in the language picker and on the menu item: each ARB file writes its own language here, so it never changes with the app's language.
+  ///
+  /// In pt, this message translates to:
+  /// **'Português'**
+  String get languageName;
+
+  /// Title of the language picker and label of the menu item that opens it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Idioma'**
+  String get languageTitle;
+
+  /// Accessibility label of the globe button on the entry screens, which opens the language picker; {language} is the language in use.
+  ///
+  /// In pt, this message translates to:
+  /// **'Idioma: {language}'**
+  String languageButtonLabel(String language);
+
   /// Menu item that goes back to the organization picker.
   ///
   /// In pt, this message translates to:

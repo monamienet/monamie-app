@@ -374,6 +374,22 @@ class MockTrackingViewModel extends _i1.Mock implements _i11.TrackingViewModel {
           as _i5.Command1<_i14.UserNotice?, _i15.SharingNotification>);
 
   @override
+  _i5.Command1<void, _i15.SharingNotification> get refreshNotification =>
+      (super.noSuchMethod(
+            Invocation.getter(#refreshNotification),
+            returnValue: _FakeCommand1_3<void, _i15.SharingNotification>(
+              this,
+              Invocation.getter(#refreshNotification),
+            ),
+            returnValueForMissingStub:
+                _FakeCommand1_3<void, _i15.SharingNotification>(
+                  this,
+                  Invocation.getter(#refreshNotification),
+                ),
+          )
+          as _i5.Command1<void, _i15.SharingNotification>);
+
+  @override
   set position(_i3.LatLng? value) => super.noSuchMethod(
     Invocation.setter(#position, value),
     returnValueForMissingStub: null,

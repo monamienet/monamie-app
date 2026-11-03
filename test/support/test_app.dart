@@ -27,6 +27,7 @@ import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/services/permissions_service.dart';
+import 'package:monamie_app/domain/models/app_language.dart';
 import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/routing/router.dart';
@@ -180,8 +181,12 @@ class TestApp {
   String get location => router.state.uri.path;
 
   /// Opens the app as `main` and `MonAmieApp` do (the data layer, the
-  /// session and the use cases provided above the router), on *Login*, in
-  /// [locale] (Brazilian Portuguese unless a test checks another language).
+  /// session and the use cases provided above the router), on *Login*.
+  ///
+  /// The language is the one in [language] (chosen or stored, restored here)
+  /// and, when none, [locale]'s (Brazilian Portuguese unless a test checks
+  /// another one), which stands for the device's language: the app's locale
+  /// follows [language] as `MonAmieApp`'s does.
   Future<void> pump(
     WidgetTester tester, {
     Locale locale = const Locale('pt', 'BR'),
@@ -191,16 +196,24 @@ class TestApp {
     tester.view.physicalSize = const Size(1600, 4000);
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
+    // The device's language, which the language picker marks while the
+    // person has not chosen one.
+    tester.platformDispatcher.localesTestValue = [locale];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
     addTearDown(router.dispose);
     addTearDown(session.dispose);
+    await language.restore();
     await tester.pumpWidget(
       MultiProvider(
         providers: dependencies,
-        child: MaterialApp.router(
-          locale: locale,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: appSupportedLocales,
-          routerConfig: router,
+        child: ValueListenableBuilder<AppLanguage?>(
+          valueListenable: language.language,
+          builder: (context, chosen, _) => MaterialApp.router(
+            locale: chosen?.locale ?? locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: appSupportedLocales,
+            routerConfig: router,
+          ),
         ),
       ),
     );

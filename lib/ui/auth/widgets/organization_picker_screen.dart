@@ -6,6 +6,7 @@ import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/data/model/organization_binding.dart';
 import 'package:monamie_app/ui/auth/view_models/organization_choice_view_model.dart';
+import 'package:monamie_app/ui/language/view_models/language_view_model.dart';
 
 import 'invite_card.dart';
 import 'monamie_account_header.dart';
@@ -15,10 +16,14 @@ class OrganizationPickerScreen extends StatelessWidget {
   const OrganizationPickerScreen({
     super.key,
     required this.controller,
+    required this.language,
     required this.onCreateOrganization,
   });
 
   final OrganizationChoiceViewModel controller;
+
+  /// The language picker, opened by the globe in the header.
+  final LanguageViewModel language;
 
   /// "Criar nova organização": opens the creation flow over this screen.
   final VoidCallback onCreateOrganization;
@@ -49,6 +54,7 @@ class OrganizationPickerScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   MonAmieAccountHeader(
+                    language: language,
                     email: state.signedInEmail,
                     onSwitch: busy
                         ? null

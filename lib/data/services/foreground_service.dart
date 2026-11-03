@@ -125,6 +125,17 @@ void onStart(ServiceInstance service) async {
     _stopTracking(service);
   });
 
+  // The app's language changed while sharing: the notification's texts too.
+  service.on('setNotificationInfo').listen((event) {
+    if (service is! AndroidServiceInstance) return;
+    if (event case {
+      'title': final String title,
+      'content': final String body,
+    }) {
+      service.setForegroundNotificationInfo(title: title, content: body);
+    }
+  });
+
   service.on('setUserInfo').listen((event) async {
     if (event case {'email': final String email, 'name': final String name}) {
       await updateLocation(service, email, name);

@@ -5,6 +5,9 @@ import 'package:monamie_app/ui/core/ui/monamie_mark.dart';
 import 'package:monamie_app/ui/core/ui/monamie_wordmark.dart';
 import 'package:monamie_app/ui/auth/view_models/login_view_model.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
+import 'package:monamie_app/ui/language/view_models/language_view_model.dart';
+import 'package:monamie_app/ui/language/widgets/language_button.dart';
+import 'package:monamie_app/ui/language/widgets/language_scheme.dart';
 
 import 'google_button.dart';
 
@@ -13,9 +16,16 @@ import 'google_button.dart';
 ///
 /// Restores a remembered session after its first frame.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.controller});
+  const LoginScreen({
+    super.key,
+    required this.controller,
+    required this.language,
+  });
 
   final LoginViewModel controller;
+
+  /// The language picker, opened by the globe in the corner.
+  final LanguageViewModel language;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -36,37 +46,49 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: MonAmieBrand.navy,
     body: SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const MonAmieMark(width: 150, color: MonAmieBrand.cream),
-                  const SizedBox(height: 28),
-                  const MonAmieWordmark(color: MonAmieBrand.cream),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    width: 280,
-                    child: Text(
-                      AppLocalizations.of(context).loginTagline,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        height: 1.5,
-                        color: MonAmieBrand.mutedCream,
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const MonAmieMark(width: 150, color: MonAmieBrand.cream),
+                      const SizedBox(height: 28),
+                      const MonAmieWordmark(color: MonAmieBrand.cream),
+                      const SizedBox(height: 28),
+                      SizedBox(
+                        width: 280,
+                        child: Text(
+                          AppLocalizations.of(context).loginTagline,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            height: 1.5,
+                            color: MonAmieBrand.mutedCream,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                _action(context),
+              ],
             ),
-            _action(context),
-          ],
-        ),
+          ),
+          Positioned(
+            top: 16,
+            right: 20,
+            child: LanguageButton(
+              controller: widget.language,
+              scheme: LanguageScheme.login,
+            ),
+          ),
+        ],
       ),
     ),
   );
@@ -113,6 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         return buildGoogleButton(
           () => runReportingErrors(context, controller.loginGoogle.execute),
+          locale: Localizations.localeOf(context),
         );
       },
     );

@@ -1030,6 +1030,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get languageName => 'English';
+
+  @override
+  String get languageTitle => 'Language';
+
+  @override
+  String languageButtonLabel(String language) {
+    return 'Language: $language';
+  }
+
+  @override
   String get menuSwitchOrganization => 'Switch organization';
 
   @override
