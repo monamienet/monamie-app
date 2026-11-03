@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
-import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
@@ -22,20 +22,20 @@ import 'package:monamie_app/utils/result.dart';
 class HomeMenu extends StatelessWidget {
   const HomeMenu({
     super.key,
-    required this.groups,
+    required this.home,
     required this.user,
     required this.session,
     required this.tracking,
   });
 
-  final MembershipRepository groups;
+  final HomeViewModel home;
   final UserViewModel user;
 
   /// The session: sign-out, switching organization, ownership.
   final HomeSessionViewModel session;
   final TrackingViewModel tracking;
 
-  MembershipRepository get _groups => groups;
+  HomeViewModel get _home => home;
   UserViewModel get _user => user;
   HomeSessionViewModel get _auth => session;
   TrackingViewModel get _tracking => tracking;
@@ -86,11 +86,11 @@ class HomeMenu extends StatelessWidget {
                     _closeAndRun(context, _auth.switchOrganization.execute),
               ),
               ListenableBuilder(
-                listenable: _groups.capabilities,
+                listenable: _home.capabilities,
                 builder: (context, _) {
-                  if (_groups.isAdmin) return _admin(context);
+                  if (_home.isAdmin) return _admin(context);
                   // A group's maintainer manages only their groups.
-                  if (_groups.capabilities.value.canManageGroups) {
+                  if (_home.capabilities.value.canManageGroups) {
                     return _maintainer(context);
                   }
                   return const SizedBox.shrink();
@@ -148,16 +148,16 @@ class HomeMenu extends StatelessWidget {
                 const SizedBox(height: 2),
                 ListenableBuilder(
                   listenable: Listenable.merge([
-                    _groups.capabilities,
-                    _groups.publishGroups,
+                    _home.capabilities,
+                    _home.publishGroups,
                   ]),
                   builder: (context, _) => Text(
                     menuSubtitle(
-                      isAdmin: _groups.isAdmin,
-                      canWatch: _groups.canWatch,
-                      canShare: _groups.canPublish,
+                      isAdmin: _home.isAdmin,
+                      canWatch: _home.canWatch,
+                      canShare: _home.canPublish,
                       publishGroups: [
-                        for (final group in _groups.publishGroups.value)
+                        for (final group in _home.publishGroups.value)
                           group.name,
                       ],
                     ),

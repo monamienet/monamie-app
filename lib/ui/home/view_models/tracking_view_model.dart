@@ -162,6 +162,35 @@ class TrackingViewModel implements TrackingToggleViewModel {
   /// Indica se o dia observado no calendário é o dia atual.
   bool get isObservingToday => _observedDay.isObservingToday;
 
+  /// The people with a marker on the map: those of [firebaseUsers] in the
+  /// observed group; on a past day, only those with a historical position
+  /// in [animatedMarkerPositions].
+  List<UserModel> get markedUsers {
+    final observed = {
+      for (final member in _memberships.observedMembers.value) member.email,
+    };
+    return [
+      for (final user in _firebaseUsers.value)
+        if (observed.contains(user.email) &&
+            (isObservingToday ||
+                _animatedMarkerPositions.value.containsKey(user.email)))
+          user,
+    ];
+  }
+
+  /// Whether [email]'s place already shows among the group's markers (they
+  /// share in a group they watch), so their own marker is not drawn.
+  bool isDrawnWithTheGroup(String email) =>
+      _memberships.observedMembers.value.any((m) => m.email == email) &&
+      _firebaseUsers.value.any((u) => u.email == email);
+
+  /// Whether [user]'s marker is faded at [now]: they stopped sharing, or
+  /// their position is older than the validity.
+  bool isFaded(UserModel user, DateTime now) =>
+      user.isPublishing == false ||
+      user.capturedAt == null ||
+      now.difference(user.capturedAt!) >= validity;
+
   /// Mapa de usuários com suas posições animadas para renderização suave.
   final Map<String, AnimatedUserMarker> _animatedMarkers =
       <String, AnimatedUserMarker>{};

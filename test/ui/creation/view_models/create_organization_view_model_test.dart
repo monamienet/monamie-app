@@ -9,10 +9,15 @@ import 'package:monamie_app/domain/models/organization/organization_theme.dart';
 import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
+import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/utils/result.dart';
+
+import '../../../support/session_double.dart';
 
 @GenerateNiceMocks([
   MockSpec<CreationRepository>(),
+  MockSpec<EnterOrganization>(),
   MockSpec<ThemeRepository>(),
 ])
 import 'create_organization_view_model_test.mocks.dart';
@@ -71,11 +76,23 @@ MockThemeRepository mockCatalog({bool failing = false}) {
 }
 
 late MockCreationRepository repository;
+late MockEnterOrganization enterOrganization;
+late SessionDouble session;
+
+/// The `withKeptSignIn` stub of [enterOrganization], with any arguments.
+Future<Result<void>> anyEntry() => enterOrganization.withKeptSignIn(
+  enter: anyNamed('enter'),
+  welcome: anyNamed('welcome'),
+  checkDeletion: anyNamed('checkDeletion'),
+  onEntering: anyNamed('onEntering'),
+);
 
 CreateOrganizationViewModel startedController({ThemeRepository? themes}) =>
     CreateOrganizationViewModel(
       repository: repository,
       themes: themes ?? mockCatalog(),
+      enterOrganization: enterOrganization,
+      session: session.repository,
       debounce: Duration.zero,
     )..load.execute();
 
@@ -96,12 +113,18 @@ Future<CreateOrganizationViewModel> readyController() async {
 void main() {
   provideDummy<Result<String?>>(const Ok(null));
   provideDummy<Result<String>>(const Ok('active'));
+  provideDummy<Result<void>>(const Ok(null));
 
   setUp(() {
     repository = MockCreationRepository();
+    enterOrganization = MockEnterOrganization();
+    when(anyEntry()).thenAnswer((_) async => const Ok(null));
+    session = SessionDouble(signedInEmail: 'ana@example.com');
     when(repository.idProblem(any)).thenAnswer((_) async => const Ok(null));
     stubCreate(() async {});
   });
+
+  tearDown(() => session.dispose());
 
   group('suggestOrganizationId - Unit Test Suite', () {
     final cases = [
@@ -633,6 +656,8 @@ void main() {
       final controller = CreateOrganizationViewModel(
         repository: repository,
         themes: catalog,
+        enterOrganization: enterOrganization,
+        session: session.repository,
       );
 
       // 2. Act
@@ -651,6 +676,8 @@ void main() {
         final controller = CreateOrganizationViewModel(
           repository: repository,
           themes: mockCatalog(),
+          enterOrganization: enterOrganization,
+          session: session.repository,
         )..setId('rotasul');
 
         // 2. Act
@@ -742,6 +769,338 @@ void main() {
 
       // 3. Assert
       expect(notifications, 0);
+    });
+  });
+
+  group('CreateOrganizationViewModel (wizard steps) - Unit Test Suite', () {
+    test('Happy Path: next walks the steps once the name and id are '
+        'ready', () async {
+      // 1. Arrange
+      final controller = await readyController();
+
+      // 2. Act
+      final steps = <int>[controller.state.step];
+      for (var i = 0; i < 3; i++) {
+        controller.next();
+        steps.add(controller.state.step);
+      }
+
+      // 3. Assert
+      expect(CreateOrganizationViewModel.stepCount, 4);
+      expect(steps, [0, 1, 2, 3]);
+    });
+
+    test('Edge Case: next stays on the last step', () async {
+      // 1. Arrange
+      final controller = await readyController()
+        ..goToStep(3);
+
+      // 2. Act
+      controller.next();
+
+      // 3. Assert
+      expect(controller.state.step, 3);
+    });
+
+    test('Sad Path: next stays on Nome while the name or id are not '
+        'ready', () async {
+      // 1. Arrange
+      final controller = startedController()..setName('R');
+      await settle();
+
+      // 2. Act
+      controller.next();
+
+      // 3. Assert
+      expect(controller.canContinueFromName, isFalse);
+      expect(controller.state.step, 0);
+    });
+
+    test('Happy Path: back goes back one step', () async {
+      // 1. Arrange
+      final controller = await readyController()
+        ..goToStep(2);
+
+      // 2. Act
+      final handled = controller.back();
+
+      // 3. Assert
+      expect(handled, isTrue);
+      expect(controller.state.step, 1);
+    });
+
+    test('Edge Case: back on the first step leaves it to the screen', () async {
+      // 1. Arrange
+      final controller = await readyController();
+
+      // 2. Act
+      final handled = controller.back();
+
+      // 3. Assert
+      expect(handled, isFalse);
+      expect(controller.state.step, 0);
+    });
+
+    test('Happy Path: goToStep jumps to a step from the review', () async {
+      // 1. Arrange
+      final controller = await readyController()
+        ..goToStep(3);
+
+      // 2. Act
+      controller.goToStep(1);
+
+      // 3. Assert
+      expect(controller.state.step, 1);
+    });
+
+    test('Sad Path: goToStep ignores a step out of range', () async {
+      // 1. Arrange
+      final controller = await readyController()
+        ..goToStep(2);
+
+      // 2. Act
+      controller
+        ..goToStep(-1)
+        ..goToStep(4);
+
+      // 3. Assert
+      expect(controller.state.step, 2);
+    });
+
+    test('Sad Path: steps and terms do not move while creating', () async {
+      // 1. Arrange
+      final gate = Completer<void>();
+      stubCreate(() => gate.future);
+      final controller = await readyController()
+        ..goToStep(3)
+        ..acceptTerms(true);
+      final pending = controller.create.execute();
+
+      // 2. Act
+      controller.next();
+      final handled = controller.back();
+      controller
+        ..goToStep(0)
+        ..acceptTerms(false);
+
+      // 3. Assert
+      expect(handled, isTrue);
+      expect(controller.state.step, 3);
+      expect(controller.state.acceptedTerms, isTrue);
+      gate.complete();
+      await pending;
+    });
+  });
+
+  group('CreateOrganizationViewModel (terms) - Unit Test Suite', () {
+    test('Happy Path: ticking the terms allows creating', () async {
+      // 1. Arrange
+      final controller = await readyController();
+
+      // 2. Act
+      controller.acceptTerms(true);
+
+      // 3. Assert
+      expect(controller.state.acceptedTerms, isTrue);
+      expect(controller.canCreate, isTrue);
+    });
+
+    test('Edge Case: unticking the terms forbids creating again', () async {
+      // 1. Arrange
+      final controller = await readyController()
+        ..acceptTerms(true);
+
+      // 2. Act
+      controller.acceptTerms(false);
+
+      // 3. Assert
+      expect(controller.canCreate, isFalse);
+    });
+
+    test('Sad Path: the terms start unticked', () async {
+      // 1. Arrange & 2. Act
+      final controller = await readyController();
+
+      // 3. Assert
+      expect(controller.state.acceptedTerms, isFalse);
+      expect(controller.canCreate, isFalse);
+    });
+  });
+
+  group('CreateOrganizationViewModel (identifier field) - Unit Test '
+      'Suite', () {
+    test('Happy Path: markIdAdjusted records the adjustment', () {
+      // 1. Arrange
+      final controller = startedController();
+
+      // 2. Act
+      controller.markIdAdjusted(true);
+
+      // 3. Assert
+      expect(controller.state.idAdjusted, isTrue);
+    });
+
+    test('Edge Case: typing the name forgets the adjustment', () {
+      // 1. Arrange
+      final controller = startedController()..markIdAdjusted(true);
+
+      // 2. Act
+      controller.setName('Rota Sul');
+
+      // 3. Assert
+      expect(controller.state.idAdjusted, isFalse);
+    });
+
+    test('Edge Case: a short id is only too short, not a shown problem', () {
+      // 1. Arrange
+      final controller = startedController();
+
+      // 2. Act
+      controller.setId('ro');
+
+      // 3. Assert
+      expect(controller.idTooShort, isTrue);
+      expect(controller.idShownProblem, isEmpty);
+    });
+
+    test('Sad Path: an unavailable id shows its problem', () async {
+      // 1. Arrange
+      when(
+        repository.idProblem(any),
+      ).thenAnswer((_) async => const Ok('Esse identificador já existe.'));
+      final controller = startedController();
+
+      // 2. Act
+      controller.setId('rotasul');
+      await settle();
+
+      // 3. Assert
+      expect(controller.idTooShort, isFalse);
+      expect(controller.idShownProblem, 'Esse identificador já existe.');
+    });
+
+    test('Happy Path: an available id shows no problem', () async {
+      // 1. Arrange & 2. Act
+      final controller = await readyController();
+
+      // 3. Assert
+      expect(controller.idShownProblem, isEmpty);
+    });
+  });
+
+  group('CreateOrganizationViewModel.preview - Unit Test Suite', () {
+    test(
+      'Happy Path: the preview shows the name, id and theme typed',
+      () async {
+        // 1. Arrange
+        final controller = await readyController();
+        await settle();
+
+        // 2. Act
+        controller.pickTheme('oceano');
+        final preview = controller.preview;
+
+        // 3. Assert
+        expect(preview.id, 'rotasul');
+        expect(preview.name, 'Rota Sul');
+        expect(preview.theme, oceano);
+      },
+    );
+
+    test('Edge Case: placeholders stand in for what is not typed yet', () {
+      // 1. Arrange
+      final controller = startedController()..setId('ro');
+
+      // 2. Act
+      final preview = controller.preview;
+
+      // 3. Assert
+      expect(preview.id, 'nova');
+      expect(preview.name, 'Organização');
+      expect(preview.theme, defaultOrganizationTheme);
+    });
+  });
+
+  group('CreateOrganizationViewModel (owner and entering) - Unit Test '
+      'Suite', () {
+    test('Happy Path: the owner is the signed-in account', () {
+      // 1. Arrange & 2. Act
+      final controller = startedController();
+
+      // 3. Assert
+      expect(controller.ownerEmail, 'ana@example.com');
+    });
+
+    test('Edge Case: nobody signed in gives an empty owner', () {
+      // 1. Arrange
+      session.dispose();
+      session = SessionDouble();
+
+      // 2. Act
+      final controller = startedController();
+
+      // 3. Assert
+      expect(controller.ownerEmail, isEmpty);
+    });
+
+    test('Happy Path: enter enters the organization just created', () async {
+      // 1. Arrange
+      final controller = await readyController();
+
+      // 2. Act
+      final result = await controller.enter.execute();
+
+      // 3. Assert
+      expect(result, isA<Ok<void>>());
+      final entered = verify(
+        enterOrganization.withKeptSignIn(
+          enter: captureAnyNamed('enter'),
+          welcome: anyNamed('welcome'),
+          checkDeletion: anyNamed('checkDeletion'),
+          onEntering: anyNamed('onEntering'),
+        ),
+      ).captured;
+      expect(entered, ['rotasul']);
+    });
+
+    test('Sad Path: a failed entry returns its Err', () async {
+      // 1. Arrange
+      when(anyEntry()).thenAnswer((_) async => const Err('Sem conexão.'));
+      final controller = await readyController();
+
+      // 2. Act
+      final result = await controller.enter.execute();
+
+      // 3. Assert
+      expect(
+        result,
+        isA<Err<void>>().having((e) => e.message, 'message', 'Sem conexão.'),
+      );
+      expect(controller.enter.running, isFalse);
+    });
+
+    test('Happy Path: landedOnPicker follows the session', () {
+      // 1. Arrange
+      final controller = startedController();
+      final before = controller.landedOnPicker;
+
+      // 2. Act
+      session.session.value = const SessionState.picking([]);
+
+      // 3. Assert
+      expect(before, isFalse);
+      expect(controller.landedOnPicker, isTrue);
+    });
+
+    test('Edge Case: a bound session is not the picker', () {
+      // 1. Arrange
+      final controller = startedController();
+
+      // 2. Act
+      session.session.value = const SessionState.bound();
+
+      // 3. Assert
+      expect(controller.landedOnPicker, isFalse);
     });
   });
 }

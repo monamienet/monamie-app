@@ -13,5 +13,20 @@ abstract class GroupsState with _$GroupsState {
 
     /// Why the last load or operation failed; empty when it did not.
     @Default('') String errorMessage,
+
+    /// The group deleted last, for *Grupo excluído*; `null` before one is.
+    DeletedGroup? deleted,
   }) = _GroupsState;
+}
+
+/// A group just deleted: what *Grupo excluído* says about it.
+@freezed
+abstract class DeletedGroup with _$DeletedGroup {
+  const factory DeletedGroup({
+    required String id,
+    required String name,
+
+    /// How many people lost access to the organization with it.
+    required int loses,
+  }) = _DeletedGroup;
 }

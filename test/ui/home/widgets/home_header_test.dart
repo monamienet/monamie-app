@@ -15,7 +15,7 @@ Future<void> pumpHeader(WidgetTester tester, HomeDoubles doubles) async {
     MaterialApp(
       home: Scaffold(
         body: HomeHeader(
-          groups: doubles.groups,
+          home: doubles.home,
           user: doubles.user,
           calendar: doubles.calendar,
         ),

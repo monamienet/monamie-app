@@ -6,6 +6,8 @@ import 'package:monamie_app/domain/models/capabilities.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
+import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
@@ -16,15 +18,18 @@ import 'package:monamie_app/domain/models/user_model.dart';
   MockSpec<CalendarViewModel>(),
   MockSpec<CallService>(),
   MockSpec<MembershipRepository>(),
+  MockSpec<PermissionsRepository>(),
   MockSpec<TrackingViewModel>(),
   MockSpec<UserViewModel>(),
 ])
 import 'home_doubles.mocks.dart';
 
-/// The home view models and the memberships repository as mocks, handed to the widgets by the tests. The
-/// [MembershipRepository], calendar and tracking values are plain [ValueNotifier]s the test
-/// changes to drive the widgets; the capability getters follow
-/// [capabilities].
+/// The home view models and the repositories under [home] as mocks, handed
+/// to the widgets by the tests. [home] is a real [HomeViewModel] over the
+/// [MembershipRepository], [PermissionsRepository] and [CallService] mocks
+/// (it only passes their values through). The repositories', calendar and
+/// tracking values are plain [ValueNotifier]s the test changes to drive the
+/// widgets; the capability getters follow [capabilities].
 class HomeDoubles {
   HomeDoubles() {
     when(groups.capabilities).thenReturn(capabilities);
@@ -47,6 +52,14 @@ class HomeDoubles {
     );
     when(groups.loadGroupSizes()).thenAnswer((_) async {});
     when(groups.pickGroup(any)).thenAnswer((_) async {});
+    when(groups.switchingGroup).thenReturn(switchingGroup);
+
+    when(permissions.hasWhenInUseLocationPermission).thenReturn(hasWhenInUse);
+    when(permissions.hasAlwaysLocationPermission).thenReturn(hasAlways);
+    when(permissions.hasNotificationPermission).thenReturn(hasNotification);
+    when(permissions.isBackgroundRestricted).thenReturn(backgroundRestricted);
+
+    when(calls.launchGoogleMeet(any)).thenAnswer((_) async {});
 
     when(calendar.observedDay).thenReturn(observedDay);
     when(calendar.isObservingToday).thenReturn(true);
@@ -57,10 +70,18 @@ class HomeDoubles {
   }
 
   final groups = MockMembershipRepository();
+  final permissions = MockPermissionsRepository();
   final calendar = MockCalendarViewModel();
   final tracking = MockTrackingViewModel();
   final calls = MockCallService();
   final user = MockUserViewModel();
+
+  /// The map screen's view model over [groups], [permissions] and [calls].
+  late final home = HomeViewModel(
+    membership: groups,
+    permissions: permissions,
+    calls: calls,
+  );
 
   final capabilities = ValueNotifier<Capabilities>(const Capabilities());
   final mapGroups = ValueNotifier<List<MapGroup>>(const []);
@@ -71,6 +92,11 @@ class HomeDoubles {
   final groupSizes = ValueNotifier<Map<String, int>>(const {});
   final highlighted = ValueNotifier<List<GroupMember>>(const []);
   final selectedMemberEmail = ValueNotifier<String?>(null);
+  final switchingGroup = ValueNotifier<bool>(false);
+  final hasWhenInUse = ValueNotifier<bool>(false);
+  final hasAlways = ValueNotifier<bool>(false);
+  final hasNotification = ValueNotifier<bool>(false);
+  final backgroundRestricted = ValueNotifier<bool>(false);
   final observedDay = ValueNotifier<DateTime>(DateTime(2026, 11, 2));
   final groupUsers = ValueNotifier<List<UserModel>>(const []);
   final usersWithPoints = ValueNotifier<Set<String>>(const {});

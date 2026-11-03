@@ -91,8 +91,13 @@ class AppearanceViewModel extends ChangeNotifier {
       _state.themeId != organization.effectiveTheme.id ||
       _logoChanged;
 
-  /// The name being edited (saved with the other changes).
-  void setName(String name) => _emit(_state.copyWith(name: name));
+  /// The name being edited (saved with the other changes): [name] trimmed;
+  /// a name shorter than 2 characters is ignored.
+  void setName(String name) {
+    final clean = name.trim();
+    if (clean.length < 2) return;
+    _emit(_state.copyWith(name: clean));
+  }
 
   /// Picks theme [themeId] (saved with the other changes).
   void pickTheme(String themeId) => _emit(_state.copyWith(themeId: themeId));

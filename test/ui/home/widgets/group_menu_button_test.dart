@@ -13,7 +13,7 @@ Future<void> pumpOpenMenu(WidgetTester tester, HomeDoubles doubles) async {
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
-        body: GroupMenuButton(groups: doubles.groups, label: 'Guias'),
+        body: GroupMenuButton(home: doubles.home, label: 'Guias'),
       ),
     ),
   );

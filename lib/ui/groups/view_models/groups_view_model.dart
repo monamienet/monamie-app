@@ -72,6 +72,44 @@ class GroupsViewModel extends ChangeNotifier {
     _state.groups.where((g) => g.id != renaming).map((g) => g.name),
   );
 
+  /// What *Criar grupo* says about the name [typed]: nothing while it is
+  /// empty, else [nameProblem].
+  String? newNameProblem(String typed) {
+    final name = typed.trim();
+    return name.isEmpty ? null : nameProblem(name);
+  }
+
+  /// Whether *Criar grupo* may create a group named [typed].
+  bool canCreate(String typed) =>
+      typed.trim().isNotEmpty && newNameProblem(typed) == null;
+
+  /// [typed] as a group name: single spaces, trimmed.
+  String tidyName(String typed) => typed.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  /// What the rename sheet says about the name [typed] for [group]: nothing
+  /// while it is empty, else [nameProblem].
+  String? renameProblem(Group group, String typed) {
+    final name = tidyName(typed);
+    return name.isEmpty ? null : nameProblem(name, renaming: group.id);
+  }
+
+  /// Whether [group] may be renamed to [typed]: a new, valid name.
+  bool canRename(Group group, String typed) {
+    final name = tidyName(typed);
+    return name.isNotEmpty &&
+        name != group.name &&
+        renameProblem(group, typed) == null;
+  }
+
+  /// Why [roles] cannot be given (see [rolesChoiceProblem]), or `null`.
+  String? rolesProblem(Set<GroupRole> roles) =>
+      rolesChoiceProblem(roles, byAdmin: isAdmin);
+
+  /// Whether [roles] may replace [person]'s: valid and different.
+  bool canSetRoles(GroupPerson person, Set<GroupRole> roles) =>
+      rolesProblem(roles) == null &&
+      !(roles.length == person.roles.length && roles.containsAll(person.roles));
+
   /// Reads the groups. The failure is also kept in
   /// [GroupsState.errorMessage], as are the operations' below.
   late final Command0<void> load = Command0(_load);
@@ -102,14 +140,23 @@ class GroupsViewModel extends ChangeNotifier {
   /// and who stays in it through another group.
   late final Command1<({List<String> loses, List<String> stays}), String>
   deletionImpact = Command1(
-    (groupId) =>
-        _guarded(() => _repository.deletionImpact(organizationId, groupId)),
+    (groupId) => _guarded(
+      () => _repository.deletionImpact(organizationId, groupId),
+      onDone: (impact) =>
+          _lastImpact = (groupId: groupId, loses: impact.loses.length),
+    ),
     blocked: () => isWorking,
   );
 
-  /// Deletes the group given and takes it off the list.
-  late final Command1<void, String> delete = Command1(
-    (groupId) => _guarded(
+  /// The group whose [deletionImpact] was read last and how many it loses.
+  ({String groupId, int loses})? _lastImpact;
+
+  /// Deletes the group given, takes it off the list and keeps it in
+  /// [GroupsState.deleted] (with the count its [deletionImpact] read).
+  late final Command1<void, String> delete = Command1((groupId) {
+    final name = byId(groupId)?.name ?? '';
+    final impact = _lastImpact;
+    return _guarded(
       () => _repository.delete(organizationId, groupId),
       onDone: (_) => _emit(
         _state.copyWith(
@@ -117,11 +164,15 @@ class GroupsViewModel extends ChangeNotifier {
             for (final g in _state.groups)
               if (g.id != groupId) g,
           ],
+          deleted: DeletedGroup(
+            id: groupId,
+            name: name,
+            loses: impact?.groupId == groupId ? impact!.loses : 0,
+          ),
         ),
       ),
-    ),
-    blocked: () => isWorking,
-  );
+    );
+  }, blocked: () => isWorking);
 
   /// Sets a person's roles in a group, never none (see
   /// [rolesChoiceProblem]), then reads the groups again.
@@ -195,7 +246,7 @@ class GroupsViewModel extends ChangeNotifier {
   Future<Result<void>> _setRoles(
     ({String groupId, String email, Set<GroupRole> roles}) change,
   ) async {
-    final problem = rolesChoiceProblem(change.roles, byAdmin: isAdmin);
+    final problem = rolesProblem(change.roles);
     if (problem != null) {
       _emit(_state.copyWith(errorMessage: problem));
       return Err(problem);

@@ -19,10 +19,9 @@ Future<void> pumpList(WidgetTester tester, HomeDoubles doubles) async {
       home: Scaffold(
         body: SingleChildScrollView(
           child: PeopleList(
-            groups: doubles.groups,
+            home: doubles.home,
             tracking: doubles.tracking,
             calendar: doubles.calendar,
-            calls: doubles.calls,
             user: doubles.user,
           ),
         ),

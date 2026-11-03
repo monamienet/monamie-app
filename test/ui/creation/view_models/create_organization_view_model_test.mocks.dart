@@ -8,13 +8,16 @@ import 'dart:async' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i5;
+import 'package:monamie_app/data/model/organization_binding.dart' as _i9;
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart'
     as _i2;
 import 'package:monamie_app/data/repositories/theme/theme_repository.dart'
-    as _i7;
+    as _i10;
 import 'package:monamie_app/domain/models/creation.dart' as _i6;
+import 'package:monamie_app/domain/models/invite.dart' as _i8;
 import 'package:monamie_app/domain/models/organization/organization_theme.dart'
-    as _i8;
+    as _i11;
+import 'package:monamie_app/domain/use_cases/enter_organization.dart' as _i7;
 import 'package:monamie_app/utils/result.dart' as _i4;
 
 // ignore_for_file: type=lint
@@ -117,21 +120,130 @@ class MockCreationRepository extends _i1.Mock
           as _i3.Future<_i4.Result<List<_i6.Creation>>>);
 }
 
+/// A class which mocks [EnterOrganization].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockEnterOrganization extends _i1.Mock implements _i7.EnterOrganization {
+  @override
+  _i3.Future<_i4.Result<void>> afterSignIn(
+    String? idToken, {
+    bool? checkDeletion = true,
+    void Function(String)? onEntering,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #afterSignIn,
+              [idToken],
+              {#checkDeletion: checkDeletion, #onEntering: onEntering},
+            ),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #afterSignIn,
+                  [idToken],
+                  {#checkDeletion: checkDeletion, #onEntering: onEntering},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #afterSignIn,
+                  [idToken],
+                  {#checkDeletion: checkDeletion, #onEntering: onEntering},
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<_i4.Result<void>>);
+
+  @override
+  _i3.Future<_i4.Result<void>> withKeptSignIn({
+    String? enter,
+    _i8.Invite? welcome,
+    bool? checkDeletion = true,
+    void Function(String)? onEntering,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#withKeptSignIn, [], {
+              #enter: enter,
+              #welcome: welcome,
+              #checkDeletion: checkDeletion,
+              #onEntering: onEntering,
+            }),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#withKeptSignIn, [], {
+                  #enter: enter,
+                  #welcome: welcome,
+                  #checkDeletion: checkDeletion,
+                  #onEntering: onEntering,
+                }),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(#withKeptSignIn, [], {
+                  #enter: enter,
+                  #welcome: welcome,
+                  #checkDeletion: checkDeletion,
+                  #onEntering: onEntering,
+                }),
+              ),
+            ),
+          )
+          as _i3.Future<_i4.Result<void>>);
+
+  @override
+  _i3.Future<_i4.Result<void>> choose(
+    _i9.OrganizationBinding? binding, {
+    void Function(String)? onEntering,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#choose, [binding], {#onEntering: onEntering}),
+            returnValue: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #choose,
+                  [binding],
+                  {#onEntering: onEntering},
+                ),
+              ),
+            ),
+            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
+              _i5.dummyValue<_i4.Result<void>>(
+                this,
+                Invocation.method(
+                  #choose,
+                  [binding],
+                  {#onEntering: onEntering},
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<_i4.Result<void>>);
+}
+
 /// A class which mocks [ThemeRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockThemeRepository extends _i1.Mock implements _i7.ThemeRepository {
+class MockThemeRepository extends _i1.Mock implements _i10.ThemeRepository {
   @override
-  _i3.Future<Map<String, _i8.OrganizationTheme>> themes() =>
+  _i3.Future<Map<String, _i11.OrganizationTheme>> themes() =>
       (super.noSuchMethod(
             Invocation.method(#themes, []),
-            returnValue: _i3.Future<Map<String, _i8.OrganizationTheme>>.value(
-              <String, _i8.OrganizationTheme>{},
+            returnValue: _i3.Future<Map<String, _i11.OrganizationTheme>>.value(
+              <String, _i11.OrganizationTheme>{},
             ),
             returnValueForMissingStub:
-                _i3.Future<Map<String, _i8.OrganizationTheme>>.value(
-                  <String, _i8.OrganizationTheme>{},
+                _i3.Future<Map<String, _i11.OrganizationTheme>>.value(
+                  <String, _i11.OrganizationTheme>{},
                 ),
           )
-          as _i3.Future<Map<String, _i8.OrganizationTheme>>);
+          as _i3.Future<Map<String, _i11.OrganizationTheme>>);
 }

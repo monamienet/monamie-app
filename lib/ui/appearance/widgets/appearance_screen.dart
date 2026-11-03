@@ -376,9 +376,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
         ],
       ),
     );
-    if (name != null && name.trim().length >= 2) {
-      controller.setName(name.trim());
-    }
+    if (name != null) controller.setName(name);
   }
 }
 

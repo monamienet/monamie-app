@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/ui/home/widgets/home_colors.dart';
 import 'package:monamie_app/ui/core/themes/color_palette.dart';
@@ -13,10 +13,10 @@ const _openCurve = Cubic(0.2, 0.8, 0.2, 1);
 /// the person can watch with its people in the field, the observed one
 /// tinted and checked. Tapping outside, or the chip again, closes it.
 class GroupMenuButton extends StatefulWidget {
-  const GroupMenuButton({super.key, required this.groups, required this.label});
+  const GroupMenuButton({super.key, required this.home, required this.label});
 
   /// The person's groups and the one on the map.
-  final MembershipRepository groups;
+  final HomeViewModel home;
 
   /// The text of the chip: the observed group, or a prompt to pick one.
   final String label;
@@ -35,7 +35,7 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
     reverseDuration: const Duration(milliseconds: 140),
   );
 
-  MembershipRepository get _groups => widget.groups;
+  HomeViewModel get _home => widget.home;
 
   bool get _open => _portal.isShowing && _animation.status.isForwardOrCompleted;
 
@@ -45,7 +45,7 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
     _portal.show();
     _animation.forward(from: 0);
     setState(() {});
-    _groups.loadGroupSizes();
+    _home.loadGroupSizes();
   }
 
   Future<void> _close() async {
@@ -57,7 +57,7 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
 
   void _pick(MapGroup group) {
     _close();
-    _groups.pickGroup(group);
+    _home.pickGroup(group);
   }
 
   @override
@@ -178,9 +178,9 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
               },
               child: ListenableBuilder(
                 listenable: Listenable.merge([
-                  _groups.mapGroups,
-                  _groups.selectedGroup,
-                  _groups.groupSizes,
+                  _home.mapGroups,
+                  _home.selectedGroup,
+                  _home.groupSizes,
                 ]),
                 builder: (context, _) => _card(),
               ),
@@ -192,11 +192,11 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
   }
 
   Widget _card() {
-    final groups = _groups.mapGroups.value;
-    final selected = _groups.selectedGroup.value?.id;
+    final groups = _home.mapGroups.value;
+    final selected = _home.selectedGroup.value?.id;
     // Read here, not in the item builder, so every row of one build shows
     // the same counts.
-    final sizes = _groups.groupSizes.value;
+    final sizes = _home.groupSizes.value;
     return Container(
       width: 272,
       clipBehavior: Clip.antiAlias,

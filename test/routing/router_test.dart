@@ -33,6 +33,8 @@ import 'package:monamie_app/data/repositories/organization/organization_local_da
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
+import 'package:monamie_app/ui/groups/widgets/create_group_screen.dart';
+import 'package:monamie_app/ui/groups/widgets/group_screen.dart';
 import 'package:monamie_app/ui/groups/widgets/groups_screen.dart';
 import 'package:monamie_app/ui/creation/widgets/create_organization_screen.dart';
 import 'package:monamie_app/data/repositories/session/session_repository.dart';

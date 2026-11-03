@@ -4,10 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
-import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
-import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
@@ -18,30 +16,26 @@ import 'package:monamie_app/ui/core/ui/logout_progress_overlay.dart';
 import 'package:monamie_app/ui/core/themes/color_palette.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:url_launcher/url_launcher.dart';
-import 'package:monamie_app/domain/models/sharing_times.dart';
 
 /// The map of the bound organization, with its header, sheet and menu. The
-/// organization's route hands it the view models and shared state
-/// ([MembershipRepository], [PermissionsRepository]) of the organization's
-/// scope and its own [HomeSessionViewModel].
+/// organization's route hands it the view models of the organization's
+/// scope and its own [HomeViewModel] and [HomeSessionViewModel].
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
     required this.userCtrl,
-    required this.permissions,
+    required this.home,
     required this.trackingCtrl,
-    required this.groupMap,
     required this.calendar,
-    required this.calls,
     required this.session,
   });
 
   final UserViewModel userCtrl;
-  final PermissionsRepository permissions;
+
+  /// The memberships, the group on the map, the permissions and calls.
+  final HomeViewModel home;
   final TrackingViewModel trackingCtrl;
-  final MembershipRepository groupMap;
   final CalendarViewModel calendar;
-  final CallService calls;
 
   /// The session: the menu's sign-out and switch, and their overlay.
   final HomeSessionViewModel session;
@@ -53,7 +47,7 @@ class HomeScreen extends StatelessWidget {
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         drawer: HomeMenu(
-          groups: groupMap,
+          home: home,
           user: userCtrl,
           session: session,
           tracking: trackingCtrl,
@@ -63,11 +57,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             Column(
               children: [
-                HomeHeader(
-                  groups: groupMap,
-                  user: userCtrl,
-                  calendar: calendar,
-                ),
+                HomeHeader(home: home, user: userCtrl, calendar: calendar),
                 Expanded(child: _body(context)),
               ],
             ),
@@ -89,21 +79,20 @@ class HomeScreen extends StatelessWidget {
 
   /// What [UserViewModel.isTrackable] reads: the profile and the
   /// capabilities.
-  Listenable get _trackable =>
-      Listenable.merge([userCtrl, groupMap.capabilities]);
+  Listenable get _trackable => Listenable.merge([userCtrl, home.capabilities]);
 
-  /// What [PermissionsRepository.arePermissionsGranted] reads.
+  /// What [HomeViewModel.arePermissionsGranted] reads.
   Listenable get _granted => Listenable.merge([
-    permissions.hasAlwaysLocationPermission,
-    permissions.hasNotificationPermission,
-    permissions.isBackgroundRestricted,
+    home.hasAlwaysLocationPermission,
+    home.hasNotificationPermission,
+    home.isBackgroundRestricted,
   ]);
 
   Widget _centralizeButton() {
     return ListenableBuilder(
       listenable: Listenable.merge([_trackable, _granted]),
       builder: (context, _) =>
-          permissions.arePermissionsGranted() && userCtrl.isTrackable()
+          home.arePermissionsGranted() && userCtrl.isTrackable()
           ? Positioned(
               bottom: 16,
               right: 16,
@@ -122,7 +111,7 @@ class HomeScreen extends StatelessWidget {
     return ListenableBuilder(
       listenable: Listenable.merge([_trackable, _granted]),
       builder: (context, _) {
-        final granted = permissions.arePermissionsGranted();
+        final granted = home.arePermissionsGranted();
         if (userCtrl.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -135,10 +124,9 @@ class HomeScreen extends StatelessWidget {
           children: [
             Expanded(child: mapa(context)),
             HomeSheet(
-              groups: groupMap,
+              home: home,
               tracking: trackingCtrl,
               calendar: calendar,
-              calls: calls,
               user: userCtrl,
             ),
           ],
@@ -162,11 +150,11 @@ class HomeScreen extends StatelessWidget {
             ),
             // A person who only shares has no group on the map: start on them.
             onMapReady: () {
-              if (!groupMap.canWatch) {
+              if (!home.canWatch) {
                 trackingCtrl.centerMapOnCurrentLocation();
               }
             },
-            onTap: (_, _) => groupMap.clearSelected(),
+            onTap: (_, _) => home.clearSelected(),
             minZoom: 3.0,
             maxZoom: 19.0,
             cameraConstraint: CameraConstraint.contain(
@@ -191,15 +179,12 @@ class HomeScreen extends StatelessWidget {
   /// menu loads, as on the design canvas.
   Widget _switchingGroupPill() {
     return ListenableBuilder(
-      listenable: Listenable.merge([
-        groupMap.switchingGroup,
-        groupMap.selectedGroup,
-      ]),
+      listenable: Listenable.merge([home.switchingGroup, home.selectedGroup]),
       builder: (context, _) {
-        if (!groupMap.switchingGroup.value) {
+        if (!home.switchingGroup.value) {
           return const SizedBox.shrink();
         }
-        final group = groupMap.selectedGroup.value?.name ?? '';
+        final group = home.selectedGroup.value?.name ?? '';
         return Positioned(
           top: 14,
           left: 0,
@@ -319,10 +304,10 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(gradient: AppColors.appBarBottomGradient()),
       child: ListenableBuilder(
         listenable: Listenable.merge([
-          permissions.hasNotificationPermission,
-          permissions.hasWhenInUseLocationPermission,
-          permissions.hasAlwaysLocationPermission,
-          permissions.isBackgroundRestricted,
+          home.hasNotificationPermission,
+          home.hasWhenInUseLocationPermission,
+          home.hasAlwaysLocationPermission,
+          home.isBackgroundRestricted,
         ]),
         builder: (context, _) => Align(
           alignment: Alignment.center,
@@ -340,13 +325,13 @@ class HomeScreen extends StatelessWidget {
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.darkBlue(),
                         ),
-                        onPressed: permissions.requestNotificationPermission,
+                        onPressed: home.requestNotificationPermission,
                         child: const Text("Permitir notificação"),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      permissions.hasNotificationPermission.value
+                      home.hasNotificationPermission.value
                           ? Icons.check_box
                           : Icons.check_box_outline_blank,
                       color: Colors.white,
@@ -363,13 +348,13 @@ class HomeScreen extends StatelessWidget {
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.darkBlue(),
                         ),
-                        onPressed: permissions.requestWhenInUsePermission,
+                        onPressed: home.requestWhenInUsePermission,
                         child: const Text("Permitir localização (durante uso)"),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      permissions.hasWhenInUseLocationPermission.value
+                      home.hasWhenInUseLocationPermission.value
                           ? Icons.check_box
                           : Icons.check_box_outline_blank,
                       color: Colors.white,
@@ -386,13 +371,13 @@ class HomeScreen extends StatelessWidget {
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.darkBlue(),
                         ),
-                        onPressed: permissions.requestAlwaysPermission,
+                        onPressed: home.requestAlwaysPermission,
                         child: const Text("Permitir localização (sempre)"),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      permissions.hasAlwaysLocationPermission.value
+                      home.hasAlwaysLocationPermission.value
                           ? Icons.check_box
                           : Icons.check_box_outline_blank,
                       color: Colors.white,
@@ -409,13 +394,13 @@ class HomeScreen extends StatelessWidget {
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.darkBlue(),
                         ),
-                        onPressed: permissions.openBackgroundUsageSettings,
+                        onPressed: home.openBackgroundUsageSettings,
                         child: const Text("Permitir uso em segundo plano"),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      permissions.isBackgroundRestricted.value
+                      home.isBackgroundRestricted.value
                           ? Icons.check_box_outline_blank
                           : Icons.check_box,
                       color: Colors.white,
@@ -470,7 +455,7 @@ class HomeScreen extends StatelessWidget {
     return ListenableBuilder(
       listenable: Listenable.merge([
         _trackable,
-        groupMap.observedMembers,
+        home.observedMembers,
         trackingCtrl.ownPosition,
         trackingCtrl.isTrackingEnabled,
         trackingCtrl.firebaseUsers,
@@ -484,10 +469,9 @@ class HomeScreen extends StatelessWidget {
             !trackingCtrl.isTrackingEnabled.value) {
           return const SizedBox.shrink();
         }
-        final drawnWithTheGroup =
-            groupMap.observedMembers.value.any((m) => m.email == me) &&
-            trackingCtrl.firebaseUsers.value.any((u) => u.email == me);
-        if (drawnWithTheGroup) return const SizedBox.shrink();
+        if (trackingCtrl.isDrawnWithTheGroup(me)) {
+          return const SizedBox.shrink();
+        }
         return MarkerLayer(
           markers: [
             Marker(
@@ -521,107 +505,76 @@ class HomeScreen extends StatelessWidget {
 
     return ListenableBuilder(
       listenable: Listenable.merge([
-        groupMap.observedMembers,
+        home.observedMembers,
         calendar.observedDay,
         userCtrl,
         trackingCtrl.firebaseUsers,
         trackingCtrl.animatedMarkerPositions,
       ]),
       builder: (context, _) => MarkerLayer(
-        markers: trackingCtrl.firebaseUsers.value
-            .where((user) {
-              final isObservingToday = trackingCtrl.isObservingToday;
-              final observedMembersEmails = groupMap.observedMembers.value.map(
-                (member) => member.email,
-              );
-              final isObservedMember = observedMembersEmails.contains(
-                user.email,
-              );
+        markers: trackingCtrl.markedUsers.map((user) {
+          final isCurrentUser = user.email == userCtrl.user?.email;
+          // The signed-in person's pin has a colour of its own.
+          final markerColor = isCurrentUser ? Colors.indigo : Colors.lightBlue;
+          // Usa a posição animada se disponível, caso contrário usa a posição atual
+          final animatedPos =
+              trackingCtrl.animatedMarkerPositions.value[user.email];
+          final position =
+              animatedPos ?? LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
 
-              if (!isObservingToday) {
-                // Em dia passado, mantém o comportamento atual: exibe apenas quem
-                // tem posição histórica carregada em `animatedMarkerPositions`.
-                final hasHistoricalPosition = trackingCtrl
-                    .animatedMarkerPositions
-                    .value
-                    .containsKey(user.email);
-                return isObservedMember && hasHistoricalPosition;
-              }
-
-              // Hoje: exibe usuários observados transmitindo ativamente no grupo
-              return isObservedMember;
-            })
-            .map((user) {
-              final isCurrentUser = user.email == userCtrl.user?.email;
-              // The signed-in person's pin has a colour of its own.
-              final markerColor = isCurrentUser
-                  ? Colors.indigo
-                  : Colors.lightBlue;
-              // Usa a posição animada se disponível, caso contrário usa a posição atual
-              final animatedPos =
-                  trackingCtrl.animatedMarkerPositions.value[user.email];
-              final position =
-                  animatedPos ?? LatLng(user.lat ?? 0.0, user.lng ?? 0.0);
-
-              return Marker(
-                point: position,
-                width: isCurrentUser ? markerSize * 3 : markerSize,
-                height: isCurrentUser ? markerSize * 3 : markerSize,
+          return Marker(
+            point: position,
+            width: isCurrentUser ? markerSize * 3 : markerSize,
+            height: isCurrentUser ? markerSize * 3 : markerSize,
+            alignment: Alignment.center,
+            child: GestureDetector(
+              onTap: () => home.toggleSelected(user.email),
+              child: Stack(
                 alignment: Alignment.center,
-                child: GestureDetector(
-                  onTap: () => groupMap.toggleSelected(user.email),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: Clip.none,
-                    children: [
-                      if (isCurrentUser)
-                        ValueListenableBuilder(
-                          valueListenable: trackingCtrl.heading,
-                          builder: (context, heading, _) {
-                            if (heading == null) return const SizedBox.shrink();
+                clipBehavior: Clip.none,
+                children: [
+                  if (isCurrentUser)
+                    ValueListenableBuilder(
+                      valueListenable: trackingCtrl.heading,
+                      builder: (context, heading, _) {
+                        if (heading == null) return const SizedBox.shrink();
 
-                            return Transform.rotate(
-                              angle: heading * (math.pi / 180),
-                              child: SizedBox(
-                                width: markerSize * 3,
-                                height: markerSize * 3,
-                                child: CustomPaint(painter: _BeamPainter()),
-                              ),
-                            );
-                          },
-                        ),
-                      SizedBox(
-                        width: markerSize,
-                        height: markerSize,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color:
-                                user.isPublishing == false ||
-                                    DateTime.now().difference(
-                                          user.capturedAt!,
-                                        ) >=
-                                        validity
-                                ? markerColor.withAlpha(100)
-                                : markerColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
+                        return Transform.rotate(
+                          angle: heading * (math.pi / 180),
+                          child: SizedBox(
+                            width: markerSize * 3,
+                            height: markerSize * 3,
+                            child: CustomPaint(painter: _BeamPainter()),
                           ),
-                          margin: const EdgeInsets.all(10),
-                        ),
+                        );
+                      },
+                    ),
+                  SizedBox(
+                    width: markerSize,
+                    height: markerSize,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: trackingCtrl.isFaded(user, DateTime.now())
+                            ? markerColor.withAlpha(100)
+                            : markerColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ],
+                      margin: const EdgeInsets.all(10),
+                    ),
                   ),
-                ),
-              );
-            })
-            .toList(),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

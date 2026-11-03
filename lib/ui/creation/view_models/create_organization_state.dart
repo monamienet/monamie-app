@@ -11,6 +11,9 @@ enum IdCheck { idle, checking, available, unavailable }
 @freezed
 abstract class CreateOrganizationState with _$CreateOrganizationState {
   const factory CreateOrganizationState({
+    /// The wizard's step: 0 Nome, 1 Tema, 2 Plano, 3 Revisão.
+    @Default(0) int step,
+
     @Default('') String name,
     @Default('') String id,
     @Default(IdCheck.idle) IdCheck idCheck,
@@ -18,10 +21,17 @@ abstract class CreateOrganizationState with _$CreateOrganizationState {
     /// Why [id] cannot be used; empty when it can or is being checked.
     @Default('') String idProblem,
 
+    /// Whether the identifier field changed what the person typed (case,
+    /// accents, anything but a to z), which the screen says.
+    @Default(false) bool idAdjusted,
+
     /// The themes that can be picked.
     @Default([]) List<OrganizationTheme> themes,
     required String themeId,
     @Default('community') String plan,
+
+    /// Whether the person ticked "Li e aceito os Termos para organizações".
+    @Default(false) bool acceptedTerms,
 
     /// Why the last creation failed; empty when it did not.
     @Default('') String errorMessage,

@@ -5,7 +5,7 @@ import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
-import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/history/widgets/history_calendar_sheet.dart';
 import 'package:monamie_app/ui/home/widgets/home_chip.dart';
@@ -22,16 +22,16 @@ import 'package:monamie_app/ui/core/themes/color_palette.dart';
 class HomeHeader extends StatelessWidget {
   const HomeHeader({
     super.key,
-    required this.groups,
+    required this.home,
     required this.user,
     required this.calendar,
   });
 
-  final MembershipRepository groups;
+  final HomeViewModel home;
   final UserViewModel user;
   final CalendarViewModel calendar;
 
-  MembershipRepository get _groups => groups;
+  HomeViewModel get _home => home;
   UserViewModel get _user => user;
   CalendarViewModel get _calendar => calendar;
 
@@ -90,9 +90,9 @@ class HomeHeader extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
                 child: ListenableBuilder(
                   listenable: Listenable.merge([
-                    _groups.capabilities,
-                    _groups.selectedGroup,
-                    _groups.publishGroups,
+                    _home.capabilities,
+                    _home.selectedGroup,
+                    _home.publishGroups,
                     _calendar.observedDay,
                   ]),
                   builder: (context, _) => Wrap(
@@ -100,7 +100,7 @@ class HomeHeader extends StatelessWidget {
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _groupChip(),
-                      if (_groups.canWatch) ..._dayChips(),
+                      if (_home.canWatch) ..._dayChips(),
                     ],
                   ),
                 ),
@@ -113,15 +113,15 @@ class HomeHeader extends StatelessWidget {
   }
 
   Widget _groupChip() {
-    final canWatch = _groups.canWatch;
+    final canWatch = _home.canWatch;
     final label = groupChipLabel(
       canWatch: canWatch,
-      observedGroup: _groups.selectedGroup.value?.name,
+      observedGroup: _home.selectedGroup.value?.name,
       publishGroups: [
-        for (final group in _groups.publishGroups.value) group.name,
+        for (final group in _home.publishGroups.value) group.name,
       ],
     );
-    if (canWatch) return GroupMenuButton(groups: _groups, label: label);
+    if (canWatch) return GroupMenuButton(home: _home, label: label);
     return HomeChip(label: label, semanticsLabel: 'Grupo: $label');
   }
 

@@ -208,6 +208,49 @@ void main() {
     );
   });
 
+  group('AppearanceViewModel.setName - Unit Test Suite', () {
+    test('Happy Path: the name is kept trimmed', () async {
+      // 1. Arrange
+      final controller = await controllerFor(rotaSul);
+
+      // 2. Act
+      controller.setName('  Rota Norte  ');
+
+      // 3. Assert
+      expect(controller.state.name, 'Rota Norte');
+    });
+
+    test('Edge Case: a name of exactly 2 characters is kept', () async {
+      // 1. Arrange
+      final controller = await controllerFor(rotaSul);
+
+      // 2. Act
+      controller.setName(' RN ');
+
+      // 3. Assert
+      expect(controller.state.name, 'RN');
+      expect(controller.hasChanges, isTrue);
+    });
+
+    test('Sad Path: a name shorter than 2 characters is ignored', () async {
+      // 1. Arrange
+      final controller = await controllerFor(rotaSul);
+      var notifications = 0;
+      controller.addListener(() => notifications++);
+
+      // 2. Act
+      controller
+        ..setName('R')
+        ..setName('   ')
+        ..setName(' X ');
+
+      // 3. Assert
+      expect(controller.state.name, 'Rota Sul');
+      expect(controller.hasChanges, isFalse);
+      expect(notifications, 0);
+    });
+  });
+
   group('AppearanceViewModel.save - Unit Test Suite', () {
     test('Happy Path: a new name alone sends only the name', () async {
       // 1. Arrange

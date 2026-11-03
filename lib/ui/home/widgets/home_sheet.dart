@@ -2,8 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
-import 'package:monamie_app/data/services/call_service.dart';
-import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
+import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/home_layout.dart';
@@ -22,17 +21,15 @@ import 'package:monamie_app/ui/core/themes/color_palette.dart';
 class HomeSheet extends StatefulWidget {
   const HomeSheet({
     super.key,
-    required this.groups,
+    required this.home,
     required this.tracking,
     required this.calendar,
-    required this.calls,
     required this.user,
   });
 
-  final MembershipRepository groups;
+  final HomeViewModel home;
   final TrackingViewModel tracking;
   final CalendarViewModel calendar;
-  final CallService calls;
   final UserViewModel user;
 
   @override
@@ -40,7 +37,7 @@ class HomeSheet extends StatefulWidget {
 }
 
 class _HomeSheetState extends State<HomeSheet> {
-  MembershipRepository get _groups => widget.groups;
+  HomeViewModel get _home => widget.home;
 
   /// Whether the group's list is hidden.
   bool _collapsed = false;
@@ -63,14 +60,14 @@ class _HomeSheetState extends State<HomeSheet> {
     final maxHeight = MediaQuery.sizeOf(context).height * 0.45;
     return ListenableBuilder(
       listenable: Listenable.merge([
-        _groups.capabilities,
-        _groups.selectedGroup,
-        _groups.observedMembers,
+        _home.capabilities,
+        _home.selectedGroup,
+        _home.observedMembers,
       ]),
       builder: (context, _) {
         final layout = HomeLayout.of(
-          canShare: _groups.canPublish,
-          canWatch: _groups.canWatch,
+          canShare: _home.canPublish,
+          canWatch: _home.canWatch,
           isWeb: kIsWeb,
         );
         if (!layout.showShareCard && !layout.showGroup) {
@@ -150,8 +147,8 @@ class _HomeSheetState extends State<HomeSheet> {
   /// The observed group's header and people. [afterCard] keeps the design's
   /// 12 px under the share card; right under the grabber it needs only 4.
   List<Widget> _group({required bool afterCard}) {
-    final group = _groups.selectedGroup.value;
-    final count = _groups.observedMembers.value.length;
+    final group = _home.selectedGroup.value;
+    final count = _home.observedMembers.value.length;
     return [
       SizedBox(height: afterCard ? 12 : 4),
       Padding(
@@ -188,10 +185,9 @@ class _HomeSheetState extends State<HomeSheet> {
         _emptyGroup()
       else if (group != null)
         PeopleList(
-          groups: _groups,
+          home: _home,
           tracking: widget.tracking,
           calendar: widget.calendar,
-          calls: widget.calls,
           user: widget.user,
         ),
     ];
@@ -213,7 +209,7 @@ class _HomeSheetState extends State<HomeSheet> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          if (_groups.isAdmin) ...[
+          if (_home.isAdmin) ...[
             const SizedBox(height: 12),
             FilledButton(
               style: FilledButton.styleFrom(

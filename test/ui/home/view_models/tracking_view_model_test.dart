@@ -23,6 +23,7 @@ import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/location_point.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
+import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:monamie_app/utils/result.dart';
@@ -1601,10 +1602,7 @@ void main() {
         verifyNever(_startSharing(harness.startSharing));
         expect(ready.hasListener, isFalse);
         expect(located.hasListener, isFalse);
-        expect(
-          () => harness.controller.toggleService.running,
-          returnsNormally,
-        );
+        expect(() => harness.controller.toggleService.running, returnsNormally);
       },
     );
   });
@@ -1938,6 +1936,208 @@ void main() {
         expect(act, throwsUnsupportedError);
         harness.controller.dispose();
       });
+    });
+  });
+
+  group('TrackingViewModel.markedUsers - Unit Test Suite', () {
+    test(
+      'Happy Path: today marks the live people of the observed group',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        final now = DateTime.now();
+        harness.observedMembers.value = const [_kBia];
+        harness.groupPositions.value = [
+          _live(_kBia.email, -22.8, -43.0, now),
+          _live('caio@example.com', -22.7, -43.2, now),
+        ];
+
+        // 2. Act
+        await harness.controller.start();
+
+        // 3. Assert
+        expect(harness.controller.markedUsers.map((u) => u.email), [
+          _kBia.email,
+        ]);
+        harness.controller.dispose();
+      },
+    );
+
+    test(
+      'Edge Case: nobody is marked while nobody of the group is live',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        harness.observedMembers.value = const [_kBia];
+
+        // 2. Act
+        await harness.controller.start();
+
+        // 3. Assert
+        expect(harness.controller.markedUsers, isEmpty);
+        harness.controller.dispose();
+      },
+    );
+
+    test('Happy Path: a past day marks who has a position that day', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      harness.observedMembers.value = const [_kBia];
+      harness.groupPositions.value = [
+        _live(_kBia.email, -22.8, -43.0, DateTime.now()),
+      ];
+      when(harness.days.isObservingToday).thenReturn(false);
+      when(
+        harness.groupMap.loadHistoryMembers(),
+      ).thenAnswer((_) async => const [_kBia]);
+      when(
+        harness.positions.getLastKnownPositionForDate(
+          _kGroup.id,
+          _kBia.email,
+          day: _kPastDay,
+        ),
+      ).thenAnswer((_) async => _point(-22.8, -43.0));
+      await harness.controller.start();
+
+      // 2. Act
+      harness.observedDay.value = _kPastDay;
+      await pumpEventQueue();
+
+      // 3. Assert
+      expect(harness.controller.markedUsers.map((u) => u.email), [_kBia.email]);
+      harness.controller.dispose();
+    });
+
+    test(
+      'Sad Path: a past day marks nobody without a position that day',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        harness.observedMembers.value = const [_kBia];
+        harness.groupPositions.value = [
+          _live(_kBia.email, -22.8, -43.0, DateTime.now()),
+        ];
+        when(harness.days.isObservingToday).thenReturn(false);
+        when(
+          harness.groupMap.loadHistoryMembers(),
+        ).thenAnswer((_) async => const [_kBia]);
+        await harness.controller.start();
+
+        // 2. Act
+        harness.observedDay.value = _kPastDay;
+        await pumpEventQueue();
+
+        // 3. Assert
+        expect(harness.controller.markedUsers, isEmpty);
+        harness.controller.dispose();
+      },
+    );
+  });
+
+  group('TrackingViewModel.isDrawnWithTheGroup - Unit Test Suite', () {
+    test('Happy Path: a live member of the observed group is drawn with '
+        'it', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      harness.observedMembers.value = const [
+        GroupMember(name: 'Ana', email: _kEmail),
+      ];
+      harness.groupPositions.value = [
+        _live(_kEmail, -22.8, -43.0, DateTime.now()),
+      ];
+
+      // 2. Act
+      await harness.controller.start();
+
+      // 3. Assert
+      expect(harness.controller.isDrawnWithTheGroup(_kEmail), isTrue);
+      harness.controller.dispose();
+    });
+
+    test('Edge Case: a member who is not live is not drawn with the '
+        'group', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      harness.observedMembers.value = const [
+        GroupMember(name: 'Ana', email: _kEmail),
+      ];
+
+      // 2. Act
+      await harness.controller.start();
+
+      // 3. Assert
+      expect(harness.controller.isDrawnWithTheGroup(_kEmail), isFalse);
+      harness.controller.dispose();
+    });
+
+    test('Sad Path: someone live but outside the observed group is not '
+        'drawn with it', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      harness.observedMembers.value = const [_kBia];
+      harness.groupPositions.value = [
+        _live(_kEmail, -22.8, -43.0, DateTime.now()),
+      ];
+
+      // 2. Act
+      await harness.controller.start();
+
+      // 3. Assert
+      expect(harness.controller.isDrawnWithTheGroup(_kEmail), isFalse);
+      harness.controller.dispose();
+    });
+  });
+
+  group('TrackingViewModel.isFaded - Unit Test Suite', () {
+    final now = DateTime(2026, 11, 2, 12);
+
+    test('Happy Path: a fresh position of someone sharing is not faded', () {
+      // 1. Arrange
+      final harness = _Harness();
+      final user = _live(
+        _kBia.email,
+        0,
+        0,
+        now.subtract(const Duration(minutes: 1)),
+      );
+
+      // 2. Act & 3. Assert
+      expect(harness.controller.isFaded(user, now), isFalse);
+      harness.controller.dispose();
+    });
+
+    test('Edge Case: a position exactly the validity old is faded', () {
+      // 1. Arrange
+      final harness = _Harness();
+      final user = _live(_kBia.email, 0, 0, now.subtract(validity));
+
+      // 2. Act & 3. Assert
+      expect(harness.controller.isFaded(user, now), isTrue);
+      harness.controller.dispose();
+    });
+
+    test('Edge Case: a user without a capture time is faded, not an error', () {
+      // 1. Arrange
+      final harness = _Harness();
+      final user = UserModel(email: _kBia.email, isPublishing: true);
+
+      // 2. Act & 3. Assert
+      expect(harness.controller.isFaded(user, now), isTrue);
+      harness.controller.dispose();
+    });
+
+    test('Sad Path: someone who stopped sharing is faded', () {
+      // 1. Arrange
+      final harness = _Harness();
+      final user = UserModel(
+        email: _kBia.email,
+        isPublishing: false,
+        capturedAt: now,
+      );
+
+      // 2. Act & 3. Assert
+      expect(harness.controller.isFaded(user, now), isTrue);
+      harness.controller.dispose();
     });
   });
 }

@@ -820,4 +820,222 @@ void main() {
       expect(notifications, 0);
     });
   });
+
+  group('GroupsViewModel.deleted - Unit Test Suite', () {
+    test('Happy Path: deleting keeps the group and the count its impact '
+        'read', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+      await controller.deletionImpact.execute('01');
+
+      // 2. Act
+      await controller.delete.execute('01');
+
+      // 3. Assert
+      expect(
+        controller.state.deleted,
+        const DeletedGroup(id: '01', name: 'Equipe Norte', loses: 1),
+      );
+    });
+
+    test('Edge Case: no deleted group before one is deleted', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+
+      // 2. Act
+      await controller.deletionImpact.execute('01');
+
+      // 3. Assert
+      expect(controller.state.deleted, isNull);
+    });
+
+    test('Edge Case: an impact read for another group counts nobody', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+      await controller.deletionImpact.execute('03');
+
+      // 2. Act
+      await controller.delete.execute('01');
+
+      // 3. Assert
+      expect(
+        controller.state.deleted,
+        const DeletedGroup(id: '01', name: 'Equipe Norte', loses: 0),
+      );
+    });
+
+    test(
+      'Edge Case: deleting without reading the impact counts nobody',
+      () async {
+        // 1. Arrange
+        final controller = await loadedController(isAdmin: true);
+
+        // 2. Act
+        await controller.delete.execute('03');
+
+        // 3. Assert
+        expect(
+          controller.state.deleted,
+          const DeletedGroup(id: '03', name: 'Equipe Léste', loses: 0),
+        );
+      },
+    );
+
+    test('Sad Path: a failed delete leaves no deleted group', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+      await controller.deletionImpact.execute('01');
+      writesFail('Equipe não encontrada.');
+
+      // 2. Act
+      await controller.delete.execute('01');
+
+      // 3. Assert
+      expect(controller.state.deleted, isNull);
+    });
+  });
+
+  group('GroupsViewModel (name helpers) - Unit Test Suite', () {
+    test('Happy Path: a new valid name may be created', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+
+      // 2. Act & 3. Assert
+      expect(controller.newNameProblem('Equipe Serra'), isNull);
+      expect(controller.canCreate('  Equipe Serra  '), isTrue);
+    });
+
+    test('Edge Case: an empty or blank name says nothing but cannot be '
+        'created', () async {
+      // 1. Arrange
+      final controller = await loadedController(isAdmin: true);
+
+      // 2. Act & 3. Assert
+      expect(controller.newNameProblem(''), isNull);
+      expect(controller.newNameProblem('   '), isNull);
+      expect(controller.canCreate(''), isFalse);
+      expect(controller.canCreate('   '), isFalse);
+    });
+
+    test(
+      'Sad Path: a short or taken name says why and cannot be created',
+      () async {
+        // 1. Arrange
+        final controller = await loadedController(isAdmin: true);
+
+        // 2. Act & 3. Assert
+        expect(controller.newNameProblem('A'), 'Use pelo menos 2 letras.');
+        expect(controller.canCreate('A'), isFalse);
+        expect(
+          controller.newNameProblem('equipe norte'),
+          'Já existe o grupo Equipe Norte.',
+        );
+        expect(controller.canCreate('equipe norte'), isFalse);
+      },
+    );
+
+    test('Happy Path: tidyName keeps single spaces and trims', () async {
+      // 1. Arrange
+      final controller = newController();
+
+      // 2. Act & 3. Assert
+      expect(controller.tidyName('  Equipe \t  Sul \n'), 'Equipe Sul');
+      expect(controller.tidyName('   '), '');
+    });
+
+    test('Happy Path: a group may be renamed to a new valid name', () async {
+      // 1. Arrange
+      final controller = await loadedController();
+
+      // 2. Act & 3. Assert
+      expect(controller.renameProblem(norte, 'Equipe  Sul'), isNull);
+      expect(controller.canRename(norte, ' Equipe  Sul '), isTrue);
+    });
+
+    test('Edge Case: its own name has no problem but is no rename', () async {
+      // 1. Arrange
+      final controller = await loadedController();
+
+      // 2. Act & 3. Assert
+      expect(controller.renameProblem(norte, ' Equipe   Norte '), isNull);
+      expect(controller.canRename(norte, ' Equipe   Norte '), isFalse);
+    });
+
+    test('Edge Case: an empty name says nothing and is no rename', () async {
+      // 1. Arrange
+      final controller = await loadedController();
+
+      // 2. Act & 3. Assert
+      expect(controller.renameProblem(norte, '  '), isNull);
+      expect(controller.canRename(norte, '  '), isFalse);
+    });
+
+    test("Sad Path: another group's name or a short one says why", () async {
+      // 1. Arrange
+      final controller = await loadedController();
+
+      // 2. Act & 3. Assert
+      expect(
+        controller.renameProblem(norte, 'Equipe Leste'),
+        'Já existe o grupo Equipe Léste.',
+      );
+      expect(controller.canRename(norte, 'Equipe Leste'), isFalse);
+      expect(controller.renameProblem(norte, 'X'), 'Use pelo menos 2 letras.');
+      expect(controller.canRename(norte, 'X'), isFalse);
+    });
+  });
+
+  group('GroupsViewModel (roles helpers) - Unit Test Suite', () {
+    const person = GroupPerson(
+      email: 'ana@x.com',
+      roles: {GroupRole.publisher},
+    );
+
+    test('Happy Path: different valid roles may be set', () async {
+      // 1. Arrange
+      final controller = newController();
+
+      // 2. Act & 3. Assert
+      final roles = {GroupRole.publisher, GroupRole.subscriber};
+      expect(controller.rolesProblem(roles), isNull);
+      expect(controller.canSetRoles(person, roles), isTrue);
+    });
+
+    test('Edge Case: the same roles are no change', () async {
+      // 1. Arrange
+      final controller = newController();
+
+      // 2. Act & 3. Assert
+      expect(controller.canSetRoles(person, {GroupRole.publisher}), isFalse);
+    });
+
+    test('Sad Path: no roles says why and cannot be set', () async {
+      // 1. Arrange
+      final controller = newController();
+
+      // 2. Act & 3. Assert
+      expect(controller.rolesProblem({}), 'Marque pelo menos uma opção.');
+      expect(controller.canSetRoles(person, {}), isFalse);
+    });
+
+    test('Sad Path: only Gestor do grupo is enough for an administrator, '
+        'not for a maintainer', () async {
+      // 1. Arrange
+      final admin = GroupsViewModel(
+        organizationId: 'rotasul',
+        repository: repository,
+        isAdmin: true,
+      );
+      final maintainer = newController();
+
+      // 2. Act & 3. Assert
+      expect(admin.rolesProblem({GroupRole.maintainer}), isNull);
+      expect(admin.canSetRoles(person, {GroupRole.maintainer}), isTrue);
+      expect(
+        maintainer.rolesProblem({GroupRole.maintainer}),
+        'Marque pelo menos uma opção.',
+      );
+      expect(maintainer.canSetRoles(person, {GroupRole.maintainer}), isFalse);
+    });
+  });
 }

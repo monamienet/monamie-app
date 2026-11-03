@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
@@ -10,10 +11,16 @@ import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
 import 'package:monamie_app/ui/creation/widgets/create_organization_screen.dart';
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
+import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/domain/use_cases/enter_organization.dart';
+import 'package:monamie_app/routing/routes.dart';
 import 'package:monamie_app/utils/result.dart';
+
+import '../../../support/session_double.dart';
 
 @GenerateNiceMocks([
   MockSpec<CreationRepository>(),
+  MockSpec<EnterOrganization>(),
   MockSpec<ThemeRepository>(),
 ])
 import 'create_organization_screen_test.mocks.dart';
@@ -51,6 +58,31 @@ void stubCreate(Future<void> Function() wait, {String? failure}) {
 
 late MockCreationRepository repository;
 late MockThemeRepository catalog;
+late MockEnterOrganization enterOrganization;
+late SessionDouble session;
+
+/// The `withKeptSignIn` stub of [enterOrganization], with any arguments.
+Future<Result<void>> anyEntry() => enterOrganization.withKeptSignIn(
+  enter: anyNamed('enter'),
+  welcome: anyNamed('welcome'),
+  checkDeletion: anyNamed('checkDeletion'),
+  onEntering: anyNamed('onEntering'),
+);
+
+/// Makes entering the new organization answer with [entry].
+void stubEntry(Future<Result<void>> Function() entry) =>
+    when(anyEntry()).thenAnswer((_) => entry());
+
+/// A controller over the test doubles.
+CreateOrganizationViewModel newController({
+  Duration debounce = const Duration(milliseconds: 500),
+}) => CreateOrganizationViewModel(
+  repository: repository,
+  themes: catalog,
+  enterOrganization: enterOrganization,
+  session: session.repository,
+  debounce: debounce,
+);
 
 final _createButton = find.widgetWithText(FilledButton, 'Criar organização');
 final _enterButton = find.widgetWithText(FilledButton, 'Entrar na Rota Sul');
@@ -62,24 +94,15 @@ final _planFooter = find.widgetWithText(
 /// Shows the view on a screen tall enough for every step without scrolling.
 Future<void> pumpView(
   WidgetTester tester, {
-  Future<Result<void>> Function()? onReady,
+  Future<Result<void>> Function()? entry,
 }) async {
   tester.view.physicalSize = const Size(1080, 4000);
   tester.view.devicePixelRatio = 2;
   addTearDown(tester.view.reset);
-  final controller = CreateOrganizationViewModel(
-    repository: repository,
-    themes: catalog,
-    debounce: Duration.zero,
-  );
+  if (entry != null) stubEntry(entry);
+  final controller = newController(debounce: Duration.zero);
   await tester.pumpWidget(
-    MaterialApp(
-      home: CreateOrganizationScreen(
-        controller: controller,
-        ownerEmail: 'ana@example.com',
-        onReady: onReady ?? () async => const Ok(null),
-      ),
-    ),
+    MaterialApp(home: CreateOrganizationScreen(controller: controller)),
   );
   await tester.pump();
 }
@@ -88,9 +111,9 @@ Future<void> pumpView(
 /// leaves the view on the Review.
 Future<void> goToReview(
   WidgetTester tester, {
-  Future<Result<void>> Function()? onReady,
+  Future<Result<void>> Function()? entry,
 }) async {
-  await pumpView(tester, onReady: onReady);
+  await pumpView(tester, entry: entry);
   await tester.enterText(find.byType(TextField).first, 'Rota Sul');
   // Lets the zero debounce fire and the availability answer arrive.
   await tester.pump();
@@ -113,9 +136,14 @@ Future<void> acceptTerms(WidgetTester tester) async {
 void main() {
   provideDummy<Result<String?>>(const Ok(null));
   provideDummy<Result<String>>(const Ok('active'));
+  provideDummy<Result<void>>(const Ok(null));
 
   setUp(() {
     repository = MockCreationRepository();
+    enterOrganization = MockEnterOrganization();
+    stubEntry(() async => const Ok(null));
+    session = SessionDouble(signedInEmail: 'ana@example.com');
+    addTearDown(session.dispose);
     when(repository.idProblem(any)).thenAnswer((_) async => const Ok(null));
     stubCreate(() async {});
     catalog = MockThemeRepository();
@@ -264,13 +292,13 @@ void main() {
       },
     );
 
-    testWidgets('Sad Path: Entrar shows the message of an Err from onReady', (
+    testWidgets('Sad Path: Entrar shows the message of an Err from entering', (
       tester,
     ) async {
       // 1. Arrange
       await goToReview(
         tester,
-        onReady: () async => const Err('Não foi possível entrar agora.'),
+        entry: () async => const Err('Não foi possível entrar agora.'),
       );
       await acceptTerms(tester);
       await tester.tap(_createButton);
@@ -285,18 +313,96 @@ void main() {
       expect(find.text('Não foi possível entrar agora.'), findsOneWidget);
     });
 
-    testWidgets('Happy Path: Entrar calls onReady and shows nothing on Ok', (
-      tester,
-    ) async {
-      // 1. Arrange
-      var entered = 0;
-      await goToReview(
-        tester,
-        onReady: () async {
-          entered++;
-          return const Ok(null);
-        },
+    testWidgets(
+      'Happy Path: Entrar enters the organization and shows nothing on Ok',
+      (tester) async {
+        // 1. Arrange
+        var entered = 0;
+        await goToReview(
+          tester,
+          entry: () async {
+            entered++;
+            return const Ok(null);
+          },
+        );
+        await acceptTerms(tester);
+        await tester.tap(_createButton);
+        await tester.pump();
+
+        // 2. Act
+        await tester.tap(_enterButton);
+        await tester.pump();
+
+        // 3. Assert
+        expect(entered, 1);
+        expect(find.byType(SnackBar), findsNothing);
+      },
+    );
+
+    testWidgets('Happy Path: the Review names the signed-in account as '
+        'the owner', (tester) async {
+      // 1. Arrange & 2. Act
+      await goToReview(tester);
+
+      // 3. Assert
+      expect(
+        find.textContaining('ana@example.com vai administrar a organização'),
+        findsOneWidget,
       );
+    });
+
+    testWidgets('Edge Case: Entrar goes back to the picker when the session '
+        'lands on it', (tester) async {
+      // 1. Arrange
+      tester.view.physicalSize = const Size(1080, 4000);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      stubEntry(() async {
+        session.session.value = const SessionState.picking([]);
+        return const Ok(null);
+      });
+      final controller = newController(debounce: Duration.zero);
+      final router = GoRouter(
+        initialLocation: '/create',
+        routes: [
+          GoRoute(
+            path: '/create',
+            builder: (_, _) => CreateOrganizationScreen(controller: controller),
+          ),
+          GoRoute(
+            path: Routes.organizationPicker,
+            builder: (_, _) => const Text('Seletor'),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField).first, 'Rota Sul');
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Continuar'));
+      await tester.pump();
+      await tester.tap(_planFooter);
+      await tester.pump();
+      await acceptTerms(tester);
+      await tester.tap(_createButton);
+      await tester.pump();
+
+      // 2. Act
+      await tester.tap(_enterButton);
+      await tester.pumpAndSettle();
+
+      // 3. Assert
+      expect(find.text('Seletor'), findsOneWidget);
+    });
+
+    testWidgets('Sad Path: Entrar stays when the session is not on the '
+        'picker', (tester) async {
+      // 1. Arrange
+      await goToReview(tester);
       await acceptTerms(tester);
       await tester.tap(_createButton);
       await tester.pump();
@@ -306,8 +412,16 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      expect(entered, 1);
-      expect(find.byType(SnackBar), findsNothing);
+      final entered = verify(
+        enterOrganization.withKeptSignIn(
+          enter: captureAnyNamed('enter'),
+          welcome: anyNamed('welcome'),
+          checkDeletion: anyNamed('checkDeletion'),
+          onEntering: anyNamed('onEntering'),
+        ),
+      ).captured;
+      expect(entered, ['rotasul']);
+      expect(_enterButton, findsOneWidget);
     });
   });
 
@@ -316,20 +430,11 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final controller = CreateOrganizationViewModel(
-        repository: repository,
-        themes: catalog,
-      );
+      final controller = newController();
 
       // 2. Act
       await tester.pumpWidget(
-        MaterialApp(
-          home: CreateOrganizationScreen(
-            controller: controller,
-            ownerEmail: 'ana@example.com',
-            onReady: () async => const Ok(null),
-          ),
-        ),
+        MaterialApp(home: CreateOrganizationScreen(controller: controller)),
       );
       await tester.pump();
 
@@ -350,16 +455,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: ChangeNotifierProvider(
-            create: (_) => CreateOrganizationViewModel(
-              repository: repository,
-              themes: catalog,
-              debounce: const Duration(seconds: 1),
-            ),
+            create: (_) => newController(debounce: const Duration(seconds: 1)),
             child: Builder(
               builder: (context) => CreateOrganizationScreen(
                 controller: context.read<CreateOrganizationViewModel>(),
-                ownerEmail: 'ana@example.com',
-                onReady: () async => const Ok(null),
               ),
             ),
           ),

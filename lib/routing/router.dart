@@ -4,7 +4,6 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
 import 'package:monamie_app/data/repositories/session/session_repository.dart';
-import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/account/view_models/deletion_pending_view_model.dart';
 import 'package:monamie_app/ui/account/widgets/deletion_pending_screen.dart';
@@ -15,7 +14,11 @@ import 'package:monamie_app/ui/administrators/widgets/administrators_screen.dart
 import 'package:monamie_app/ui/appearance/view_models/appearance_view_model.dart';
 import 'package:monamie_app/ui/appearance/widgets/appearance_screen.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
+import 'package:monamie_app/ui/groups/view_models/group_invites_view_model.dart';
+import 'package:monamie_app/ui/groups/widgets/create_group_screen.dart';
+import 'package:monamie_app/ui/groups/widgets/group_screen.dart';
 import 'package:monamie_app/ui/groups/widgets/groups_screen.dart';
+import 'package:monamie_app/ui/groups/widgets/open_invite.dart';
 import 'package:monamie_app/ui/tracking_settings/view_models/tracking_settings_edit_view_model.dart';
 import 'package:monamie_app/ui/tracking_settings/widgets/tracking_settings_screen.dart';
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
@@ -31,13 +34,13 @@ import 'package:monamie_app/ui/auth/widgets/no_organization_screen.dart';
 import 'package:monamie_app/ui/auth/widgets/organization_picker_screen.dart';
 import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
+import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/routing/organization_scope.dart';
 import 'package:monamie_app/ui/home/widgets/home_screen.dart';
 import 'package:monamie_app/routing/routes.dart';
 import 'package:monamie_app/routing/session_redirect.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
-import 'package:monamie_app/utils/result.dart';
 import 'package:provider/provider.dart';
 
 /// The app's router.
@@ -141,14 +144,19 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
               signOut: context.read(),
               directory: context.read(),
             ),
-            builder: (session) => HomeScreen(
-              userCtrl: context.read(),
-              permissions: context.read(),
-              trackingCtrl: context.read(),
-              groupMap: context.read(),
-              calendar: context.read(),
-              calls: context.read(),
-              session: session,
+            builder: (session) => _owned(
+              create: () => HomeViewModel(
+                membership: context.read(),
+                permissions: context.read(),
+                calls: context.read(),
+              ),
+              builder: (home) => HomeScreen(
+                userCtrl: context.read(),
+                home: home,
+                trackingCtrl: context.read(),
+                calendar: context.read(),
+                session: session,
+              ),
             ),
           ),
         ),
@@ -221,11 +229,22 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
               path: ':groupId',
               redirect: (context, state) =>
                   state.extra is GroupsViewModel ? null : Routes.groups,
-              builder: (context, state) => GroupScreen(
-                controller: state.extra! as GroupsViewModel,
-                groupId: state.pathParameters['groupId']!,
-                invitesRepository: context.read(),
-              ),
+              builder: (context, state) {
+                final groups = state.extra! as GroupsViewModel;
+                final groupId = state.pathParameters['groupId']!;
+                return _owned(
+                  create: () => GroupInvitesViewModel(
+                    organizationId: groups.organizationId,
+                    groupId: groupId,
+                    repository: context.read(),
+                  ),
+                  builder: (invites) => GroupScreen(
+                    controller: groups,
+                    groupId: groupId,
+                    invites: invites,
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -279,37 +298,20 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
 /// Entering it normally binds it (the redirect opens the map). When the
 /// directory does not list it yet, the session goes to the picker; over
 /// *Sem organização* the redirect opens it, but over the picker this screen
-/// is still an allowed location, so it goes back to the picker itself.
+/// is still an allowed location, so the screen goes back to the picker
+/// itself (`CreateOrganizationViewModel.enter`).
 GoRoute _createOrganizationRoute() => GoRoute(
   path: Routes.createOrganizationSegment,
-  builder: (context, state) {
-    final session = context.read<SessionRepository>();
-    final enterOrganization = context.read<EnterOrganization>();
-    return _owned(
-      // A fresh one each time the flow opens; its screen loads the themes.
-      create: () => CreateOrganizationViewModel(
-        repository: context.read(),
-        themes: context.read(),
-      ),
-      builder: (controller) => CreateOrganizationScreen(
-        controller: controller,
-        ownerEmail: session.signedInEmail ?? '',
-        // "A `<nome>` está pronta · Entrar": enters the organization just
-        // created, without the picker in between.
-        onReady: () async {
-          final result = await enterOrganization.withKeptSignIn(
-            enter: controller.state.id,
-          );
-          if (result is Ok &&
-              session.session.value is SessionPicking &&
-              context.mounted) {
-            context.go(Routes.organizationPicker);
-          }
-          return result;
-        },
-      ),
-    );
-  },
+  builder: (context, state) => _owned(
+    // A fresh one each time the flow opens; its screen loads the themes.
+    create: () => CreateOrganizationViewModel(
+      repository: context.read(),
+      themes: context.read(),
+      enterOrganization: context.read(),
+      session: context.read(),
+    ),
+    builder: (controller) => CreateOrganizationScreen(controller: controller),
+  ),
 );
 
 /// *Sem organização*'s and the picker's view model.

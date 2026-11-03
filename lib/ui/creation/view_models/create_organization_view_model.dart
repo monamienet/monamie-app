@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:monamie_app/domain/models/organization/organization_id.dart';
+import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
 import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
+import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 
 import 'create_organization_state.dart';
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
@@ -67,20 +69,31 @@ String? idFormatProblem(String id) {
   return null;
 }
 
-/// State of *Criar organização*: name and identifier, theme, plan, review,
-/// then the creation itself. The screen runs [load] when it opens; its
-/// route disposes the controller when it closes, which stops the pending id
-/// check.
+/// State of *Criar organização*: name and identifier, theme, plan, review
+/// (the wizard's [CreateOrganizationState.step]), then the creation itself
+/// and entering the new organization. The screen runs [load] when it
+/// opens; its route disposes the controller when it closes, which stops the
+/// pending id check.
 class CreateOrganizationViewModel extends ChangeNotifier {
   CreateOrganizationViewModel({
     required this._repository,
     required this._themes,
+    required this._enterOrganization,
+    required this._session,
     this.debounce = const Duration(milliseconds: 500),
   });
 
   final CreationRepository _repository;
   final ThemeRepository _themes;
+  final EnterOrganization _enterOrganization;
+  final SessionRepository _session;
   final Duration debounce;
+
+  /// How many steps the wizard has.
+  static const stepCount = 4;
+
+  /// Who becomes the owner: the signed-in account.
+  String get ownerEmail => _session.signedInEmail ?? '';
 
   CreateOrganizationState _state = CreateOrganizationState(
     themeId: defaultOrganizationTheme.id,
@@ -116,12 +129,68 @@ class CreateOrganizationViewModel extends ChangeNotifier {
   /// Picks theme [id].
   void pickTheme(String id) => _emit(_state.copyWith(themeId: id));
 
+  /// Goes on to the next step; from *Nome* only once
+  /// [canContinueFromName]. Ignored while [create] runs.
+  void next() {
+    if (create.running || _state.step >= stepCount - 1) return;
+    if (_state.step == 0 && !canContinueFromName) return;
+    _emit(_state.copyWith(step: _state.step + 1));
+  }
+
+  /// Goes back one step (nothing while [create] runs); `false` on the first
+  /// step, where the screen closes instead.
+  bool back() {
+    if (_state.step == 0) return false;
+    if (!create.running) _emit(_state.copyWith(step: _state.step - 1));
+    return true;
+  }
+
+  /// Goes back to [step] from the review ("Alterar"). Ignored while
+  /// [create] runs.
+  void goToStep(int step) {
+    if (create.running || step < 0 || step >= stepCount) return;
+    _emit(_state.copyWith(step: step));
+  }
+
+  /// Ticks or unticks the terms. Ignored while [create] runs.
+  void acceptTerms(bool accepted) {
+    if (create.running) return;
+    _emit(_state.copyWith(acceptedTerms: accepted));
+  }
+
+  /// Whether the review may create the organization.
+  bool get canCreate => _state.acceptedTerms;
+
+  /// Records whether the identifier field changed what was typed.
+  void markIdAdjusted(bool adjusted) =>
+      _emit(_state.copyWith(idAdjusted: adjusted));
+
+  /// Whether the identifier is too short, which the field itself says
+  /// ("Mínimo 3 letras").
+  bool get idTooShort => _state.id.isNotEmpty && _state.id.length < 3;
+
+  /// Why the identifier cannot be used, shown under the field; empty when it
+  /// can, is being checked, or is only [idTooShort].
+  String get idShownProblem =>
+      _state.idCheck == IdCheck.unavailable && !idTooShort
+      ? _state.idProblem
+      : '';
+
+  /// The organization as the screens preview it, with placeholders for
+  /// what is not typed yet.
+  OrganizationConfig get preview => OrganizationConfig(
+    id: _state.id.length >= 3 ? _state.id : 'nova',
+    name: _state.name.trim().isEmpty ? 'Organização' : _state.name.trim(),
+    theme: pickedTheme,
+  );
+
   @override
   void dispose() {
     _disposed = true;
     _timer?.cancel();
     load.dispose();
     create.dispose();
+    enter.dispose();
     super.dispose();
   }
 
@@ -137,6 +206,18 @@ class CreateOrganizationViewModel extends ChangeNotifier {
     _create,
     blocked: () => !canContinueFromName,
   );
+
+  /// "Entrar na `<nome>`": enters the organization just created, without
+  /// the picker in between. Entering normally binds it (the router opens
+  /// the map); when the directory does not list it yet, the session goes to
+  /// the picker instead ([landedOnPicker]).
+  late final Command0<void> enter = Command0(
+    () => _enterOrganization.withKeptSignIn(enter: _state.id),
+  );
+
+  /// Whether the session is on the picker, after [enter] found the new
+  /// organization not listed yet.
+  bool get landedOnPicker => _session.session.value is SessionPicking;
 
   Future<Result<void>> _load() async {
     try {
@@ -154,7 +235,7 @@ class CreateOrganizationViewModel extends ChangeNotifier {
       defaultOrganizationTheme;
 
   void setName(String value) {
-    _emit(_state.copyWith(name: value));
+    _emit(_state.copyWith(name: value, idAdjusted: false));
     if (!_idEdited) _setId(suggestOrganizationId(value));
   }
 

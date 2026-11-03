@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 import 'package:monamie_app/domain/models/group.dart';
-import 'package:monamie_app/ui/groups/widgets/groups_screen.dart';
+import 'package:monamie_app/ui/core/ui/admin_ui.dart';
 
 import 'package:monamie_app/ui/administrators/view_models/administrators_view_model.dart';
-import 'package:monamie_app/utils/result.dart';
 
 const _ink = Color(0xFF1B1838);
 const _muted = Color(0xFF4A4858);
@@ -254,11 +253,9 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
   /// What the sheet shows after a change: nothing when it worked, else its
   /// message (a generic one when the call was ignored).
   Future<String?> _change(String email, {required bool admin}) async =>
-      switch (await c.setAdministrator.execute((email: email, admin: admin))) {
-        Ok() => null,
-        Err(:final message) when message.isNotEmpty => message,
-        _ => 'Não foi possível concluir agora. Tente de novo.',
-      };
+      sheetFailureOf(
+        await c.setAdministrator.execute((email: email, admin: admin)),
+      );
 
   Future<void> _promote(BuildContext context, String email) async {
     final ok = await adminActionSheet(
