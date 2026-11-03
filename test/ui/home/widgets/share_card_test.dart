@@ -9,6 +9,8 @@ import 'package:monamie_app/ui/home/widgets/share_card.dart';
 import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 @GenerateNiceMocks([MockSpec<TrackingToggleViewModel>()])
 import 'share_card_test.mocks.dart';
@@ -58,6 +60,9 @@ class ToggleDouble {
 }
 
 Widget buildApp(ToggleDouble toggle) => MaterialApp(
+  locale: const Locale('pt', 'BR'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: appSupportedLocales,
   home: Scaffold(body: ShareCard(controller: toggle.mock)),
 );
 

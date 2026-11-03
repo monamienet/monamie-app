@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
@@ -9,21 +10,6 @@ const _ink = Color(0xFF1B1838);
 const _muted = Color(0xFF4A4858);
 const _future = Color(0xFFB9B4C9);
 const _soft = Color(0xFFF1F0F4);
-
-const _months = [
-  'janeiro',
-  'fevereiro',
-  'março',
-  'abril',
-  'maio',
-  'junho',
-  'julho',
-  'agosto',
-  'setembro',
-  'outubro',
-  'novembro',
-  'dezembro',
-];
 
 /// *Histórico por data*: a month calendar over the map. Days with trails
 /// have a dot, future days cannot be picked, today is outlined.
@@ -66,8 +52,10 @@ class HistoryCalendarSheet extends StatelessWidget {
           builder: (context, _) {
             final month = controller.viewMonth.value;
             final selected = controller.observedDay.value;
-            final title =
-                '${_months[month.first.month - 1]} de ${month.first.year}';
+            final l10n = AppLocalizations.of(context);
+            final material = MaterialLocalizations.of(context);
+            // "novembro de 2026", "November 2026".
+            final title = material.formatMonthYear(month.first);
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,7 +94,7 @@ class HistoryCalendarSheet extends StatelessWidget {
                       ),
                     _Arrow(
                       icon: Icons.chevron_left,
-                      label: 'Mês anterior',
+                      label: l10n.calendarPreviousMonth,
                       onTap: month.canGoBack
                           ? () => controller.showMonth(-1)
                           : null,
@@ -114,7 +102,7 @@ class HistoryCalendarSheet extends StatelessWidget {
                     const SizedBox(width: 8),
                     _Arrow(
                       icon: Icons.chevron_right,
-                      label: 'Próximo mês',
+                      label: l10n.calendarNextMonth,
                       onTap: month.canGoForward
                           ? () => controller.showMonth(1)
                           : null,
@@ -124,15 +112,8 @@ class HistoryCalendarSheet extends StatelessWidget {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    for (final letter in const [
-                      'D',
-                      'S',
-                      'T',
-                      'Q',
-                      'Q',
-                      'S',
-                      'S',
-                    ])
+                    // Sunday first, like the grid (HistoryMonth.leadingBlanks).
+                    for (final letter in material.narrowWeekdays)
                       Expanded(
                         child: Center(
                           child: Text(
@@ -182,9 +163,9 @@ class HistoryCalendarSheet extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Dias com trajetos',
-                      style: TextStyle(fontSize: 13, color: _muted),
+                    Text(
+                      l10n.calendarDaysWithTrails,
+                      style: const TextStyle(fontSize: 13, color: _muted),
                     ),
                   ],
                 ),
@@ -242,14 +223,15 @@ class _DayCell extends StatelessWidget {
       button: true,
       selected: selected,
       enabled: !day.isFuture,
-      label:
-          '${day.date.day} de ${_months[day.date.month - 1]}'
-          '${day.isToday ? ', hoje' : ''}'
-          '${day.isFuture
-              ? ', ainda não chegou'
-              : day.hasTrails
-              ? ', com trajetos'
-              : ', sem trajetos'}',
+      label: AppLocalizations.of(context).calendarDayLabel(
+        day.date,
+        day.isToday ? 'yes' : 'no',
+        day.isFuture
+            ? 'future'
+            : day.hasTrails
+            ? 'trails'
+            : 'none',
+      ),
       excludeSemantics: true,
       child: InkWell(
         customBorder: const CircleBorder(),

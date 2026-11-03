@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
@@ -33,7 +34,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.white,
-    appBar: adminAppBar('Grupos'),
+    appBar: adminAppBar(AppLocalizations.of(context).groupsTitle),
     body: Column(
       children: [
         Expanded(
@@ -59,9 +60,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
                         child: Text(
                           controller.isAdmin
-                              ? 'Sua organização ainda não tem grupos. Crie o '
-                                    'primeiro e convide quem vai trabalhar nele.'
-                              : 'Você não é gestor de nenhum grupo agora.',
+                              ? AppLocalizations.of(context).groupsEmptyAdmin
+                              : AppLocalizations.of(
+                                  context,
+                                ).groupsEmptyMaintainer,
                           style: const TextStyle(
                             fontSize: 15,
                             height: 1.45,
@@ -87,7 +89,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
               top: false,
               minimum: const EdgeInsets.only(bottom: 32),
               child: adminPrimaryButton(
-                label: 'Criar grupo',
+                label: AppLocalizations.of(context).createGroupButton,
                 busy: false,
                 busyLabel: '',
                 icon: Icons.add,
@@ -127,7 +129,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    group.peopleLabel,
+                    AppLocalizations.of(
+                      context,
+                    ).peopleCount(group.people.length),
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -147,6 +151,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
 }
 
 Widget _initialTile(String name, {double size = 44, double? fontSize}) {
+  // A name such as "Grupo Norte" shows the initial of "Norte".
   final initial = name.replaceFirst(RegExp(r'^Grupo\s+'), '');
   return Container(
     width: size,

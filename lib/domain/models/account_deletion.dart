@@ -48,27 +48,6 @@ abstract class AccountDeletion with _$AccountDeletion {
   }
 }
 
-const _months = [
-  'janeiro',
-  'fevereiro',
-  'março',
-  'abril',
-  'maio',
-  'junho',
-  'julho',
-  'agosto',
-  'setembro',
-  'outubro',
-  'novembro',
-  'dezembro',
-];
-
-/// "25 de novembro de 2026", in the device's time zone.
-String longDate(DateTime date) {
-  final local = date.toLocal();
-  return '${local.day} de ${_months[local.month - 1]} de ${local.year}';
-}
-
 /// Whole days left until [deleteAt], counting a started day as one and
 /// never below zero.
 int daysLeft(DateTime deleteAt, DateTime now) {
@@ -76,13 +55,6 @@ int daysLeft(DateTime deleteAt, DateTime now) {
   if (left <= Duration.zero) return 0;
   return (left.inMinutes / Duration.minutesPerDay).ceil();
 }
-
-/// "em 30 dias", "em 1 dia", "hoje".
-String inDays(int days) => switch (days) {
-  0 => 'hoje',
-  1 => 'em 1 dia',
-  _ => 'em $days dias',
-};
 
 /// Whether the text typed to confirm matches the organization's id (case
 /// and surrounding spaces ignored).

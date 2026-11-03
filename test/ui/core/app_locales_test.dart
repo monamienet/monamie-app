@@ -1,0 +1,163 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
+
+/// An app configured as `MonAmieApp` is (the app's delegates and
+/// [appSupportedLocales], no fixed `locale`), on a device whose languages
+/// are [deviceLocales]. Its button opens Material's date picker on
+/// 2 November 2026, in [mode].
+Future<void> _pumpApp(
+  WidgetTester tester, {
+  required List<Locale> deviceLocales,
+  DatePickerEntryMode mode = DatePickerEntryMode.calendar,
+}) async {
+  tester.platformDispatcher.localesTestValue = deviceLocales;
+  addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+  await tester.pumpWidget(
+    MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: TextButton(
+            onPressed: () => showDatePicker(
+              context: context,
+              initialDate: DateTime(2026, 11, 2),
+              firstDate: DateTime(2026),
+              lastDate: DateTime(2026, 12, 31),
+              initialEntryMode: mode,
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Future<void> _openPicker(WidgetTester tester) async {
+  await tester.tap(find.text('open'));
+  await tester.pumpAndSettle();
+}
+
+/// The app's [Locale] as resolved under the [Scaffold].
+Locale _resolved(WidgetTester tester) =>
+    Localizations.localeOf(tester.element(find.byType(Scaffold).first));
+
+void main() {
+  group('appSupportedLocales - Unit Test Suite', () {
+    test('Happy Path: Brazilian Portuguese comes first, then English', () {
+      // 1. Arrange / 2. Act
+      const locales = appSupportedLocales;
+
+      // 3. Assert
+      expect(locales, const [Locale('pt', 'BR'), Locale('en')]);
+    });
+
+    test('Edge Case: every supported language has the app texts', () {
+      // 1. Arrange / 2. Act
+      final supported = [
+        for (final locale in appSupportedLocales)
+          AppLocalizations.delegate.isSupported(locale),
+      ];
+
+      // 3. Assert
+      expect(supported, everyElement(isTrue));
+    });
+  });
+
+  group('Device language resolution - Widget Test Suite', () {
+    testWidgets('Happy Path: a pt_BR device gets pt_BR', (tester) async {
+      // 1. Arrange / 2. Act
+      await _pumpApp(tester, deviceLocales: const [Locale('pt', 'BR')]);
+
+      // 3. Assert
+      expect(_resolved(tester), const Locale('pt', 'BR'));
+    });
+
+    testWidgets('Happy Path: an English device gets English', (tester) async {
+      // 1. Arrange / 2. Act
+      await _pumpApp(tester, deviceLocales: const [Locale('en', 'US')]);
+
+      // 3. Assert
+      expect(_resolved(tester).languageCode, 'en');
+    });
+
+    testWidgets('Edge Case: a Spanish device falls back to pt_BR', (
+      tester,
+    ) async {
+      // 1. Arrange / 2. Act
+      await _pumpApp(tester, deviceLocales: const [Locale('es', 'ES')]);
+
+      // 3. Assert
+      expect(_resolved(tester), const Locale('pt', 'BR'));
+    });
+  });
+
+  // #84: Material's own widgets followed English before the app declared
+  // the delegates.
+  group('Date picker on a pt_BR device - Widget Test Suite', () {
+    testWidgets('Happy Path: the buttons and the month are in Portuguese', (
+      tester,
+    ) async {
+      // 1. Arrange
+      await _pumpApp(tester, deviceLocales: const [Locale('pt', 'BR')]);
+
+      // 2. Act
+      await _openPicker(tester);
+
+      // 3. Assert
+      expect(find.text('Cancelar'), findsOneWidget);
+      expect(find.text('Cancel'), findsNothing);
+      expect(find.textContaining('novembro de 2026'), findsWidgets);
+      expect(find.textContaining('November'), findsNothing);
+    });
+
+    testWidgets('Happy Path: the week starts on Sunday with Portuguese '
+        'letters', (tester) async {
+      // 1. Arrange
+      await _pumpApp(tester, deviceLocales: const [Locale('pt', 'BR')]);
+
+      // 2. Act
+      await _openPicker(tester);
+      final material = MaterialLocalizations.of(
+        tester.element(find.text('Cancelar')),
+      );
+
+      // 3. Assert
+      expect(material.firstDayOfWeekIndex, 0);
+      expect(material.narrowWeekdays, ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']);
+    });
+
+    testWidgets('Happy Path: typing a date uses dd/MM/yyyy', (tester) async {
+      // 1. Arrange
+      await _pumpApp(
+        tester,
+        deviceLocales: const [Locale('pt', 'BR')],
+        mode: DatePickerEntryMode.input,
+      );
+
+      // 2. Act
+      await _openPicker(tester);
+
+      // 3. Assert
+      expect(find.text('02/11/2026'), findsOneWidget);
+      expect(find.text('11/02/2026'), findsNothing);
+    });
+
+    testWidgets('Edge Case: on an English device the picker is in English', (
+      tester,
+    ) async {
+      // 1. Arrange
+      await _pumpApp(tester, deviceLocales: const [Locale('en', 'US')]);
+
+      // 2. Act
+      await _openPicker(tester);
+
+      // 3. Assert
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Cancelar'), findsNothing);
+    });
+  });
+}

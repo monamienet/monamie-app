@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 
-import 'package:monamie_app/domain/models/account_deletion.dart';
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
 
 /// *Minha conta*: the signed-in account and its deletion. A member (an
@@ -37,16 +37,17 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final deleteAt = longDate(DateTime.now().add(const Duration(days: 30)));
+    final l10n = AppLocalizations.of(context);
+    final deleteAt = DateTime.now().add(const Duration(days: 30));
     return Scaffold(
       backgroundColor: MonAmieBrand.cream,
       appBar: AppBar(
         backgroundColor: MonAmieBrand.cream,
         foregroundColor: MonAmieBrand.navy,
         elevation: 0,
-        title: const Text(
-          'Minha conta',
-          style: TextStyle(
+        title: Text(
+          l10n.myAccountTitle,
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: MonAmieBrand.navy,
@@ -66,9 +67,9 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            const Text(
-              'Excluir conta',
-              style: TextStyle(
+            Text(
+              l10n.myAccountDeleteHeading,
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
                 color: MonAmieBrand.navy,
@@ -92,7 +93,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                           alignment: Alignment.centerLeft,
                           child: TextButton(
                             onPressed: controller.loadOwnership.execute,
-                            child: const Text('Tentar de novo'),
+                            child: Text(l10n.commonTryAgain),
                           ),
                         );
                 }
@@ -101,14 +102,11 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                   children: [
                     for (final line in [
                       if (owner)
-                        'Você é titular da $organizationName, então a organização '
-                            'inteira é excluída junto com a sua conta.'
+                        l10n.myAccountOwnerLeaves(organizationName)
                       else
-                        'Você sai da $organizationName agora e deixa de aparecer no '
-                            'mapa.',
-                      'Em $deleteAt apagamos de vez sua conta e seus dados no '
-                          'MonAmie.',
-                      'Até lá, é só entrar de novo e cancelar a exclusão.',
+                        l10n.myAccountMemberLeaves(organizationName),
+                      l10n.myAccountEraseOn(deleteAt),
+                      l10n.myAccountUndo,
                     ])
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
@@ -121,7 +119,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                           ),
                         ),
                       ),
-                    if (owner) ..._confirmation(),
+                    if (owner) ..._confirmation(l10n),
                   ],
                 );
               },
@@ -177,8 +175,8 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                           )
                         : Text(
                             controller.state.isOwner == true
-                                ? 'Excluir conta e organização'
-                                : 'Excluir conta',
+                                ? l10n.myAccountDeleteWithOrganization
+                                : l10n.myAccountDelete,
                           ),
                   ),
                 );
@@ -190,10 +188,10 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
     );
   }
 
-  List<Widget> _confirmation() => [
+  List<Widget> _confirmation(AppLocalizations l10n) => [
     const SizedBox(height: 12),
     Text(
-      'Para confirmar, digite ${controller.organizationId}',
+      l10n.myAccountConfirmPrompt(controller.organizationId),
       style: const TextStyle(
         fontWeight: FontWeight.w700,
         color: MonAmieBrand.navy,

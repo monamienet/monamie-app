@@ -3,25 +3,19 @@ import 'package:monamie_app/domain/models/role_names.dart';
 
 part 'group.freezed.dart';
 
-/// A person's role in a group.
+/// A person's role in a group. The screens name it in the person's
+/// language (`DomainLabels.roleName` in `lib/ui/`).
 enum GroupRole {
   /// *Em campo*: shares their own location in the group (`publisher`).
-  publisher('Em campo', 'Compartilha a própria localização'),
+  publisher,
 
   /// *Vê o mapa*: sees the group on the map (`subscriber`).
-  subscriber('Vê o mapa', 'Vê quem está em campo'),
+  subscriber,
 
   /// *Gestor do grupo*: manages the group's people, invites and name
   /// (`maintainer`). Only administrators give or take it; it shows no map
   /// by itself.
-  maintainer('Gestor do grupo', 'Cuida das pessoas e dos convites do grupo');
-
-  const GroupRole(this.label, this.description);
-
-  final String label;
-
-  /// One line under [label] in the role pickers.
-  final String description;
+  maintainer;
 
   /// The roles a group's maintainer gives, and the only ones an invite
   /// carries.
@@ -114,13 +108,6 @@ abstract class Group with _$Group {
       createdAt: createdAt is String ? DateTime.tryParse(createdAt) : null,
     );
   }
-
-  /// "4 pessoas", "1 pessoa", "Ninguém ainda".
-  String get peopleLabel => switch (people.length) {
-    0 => 'Ninguém ainda',
-    1 => '1 pessoa',
-    final n => '$n pessoas',
-  };
 }
 
 /// The comparison form of a group name, as the server compares them: no
@@ -176,60 +163,10 @@ String? groupNameProblem(String name, Iterable<String> existing) {
   return null;
 }
 
-/// "Em campo · Vê o mapa", in [GroupRole] order.
-String groupRolesLabel(Set<GroupRole> roles) => [
-  for (final role in GroupRole.values)
-    if (roles.contains(role)) role.label,
-].join(' · ');
-
 /// Up to two capitals from the words of [text] split at spaces, dots and
 /// `@`: "ana.lima@gmail.com" → "AL"; "?" when there are none.
 String initialsOf(String text) {
   final words = text.split(RegExp(r'[\s.@]+')).where((w) => w.isNotEmpty);
   final initials = words.take(2).map((w) => w[0].toUpperCase()).join();
   return initials.isEmpty ? '?' : initials;
-}
-
-/// "1 convite pendente", "3 convites pendentes", or empty for none.
-String pendingInvitesLabel(int count) => switch (count) {
-  <= 0 => '',
-  1 => '1 convite pendente',
-  final n => '$n convites pendentes',
-};
-
-/// What deleting a group does, one sentence per line: who loses access to
-/// [organization] ([loses] people in no other group), who stays, the
-/// [invites] cancelled, and that it cannot be undone.
-List<String> groupDeletionLines({
-  required int loses,
-  required int stays,
-  required int invites,
-  required String organization,
-}) => [
-  if (loses == 1)
-    '1 pessoa só estava neste grupo e perde o acesso à $organization.'
-  else if (loses > 1)
-    '$loses pessoas só estavam neste grupo e perdem o acesso à '
-        '$organization.',
-  if (stays == 1)
-    '1 pessoa continua nos outros grupos.'
-  else if (stays > 1)
-    '$stays pessoas continuam nos outros grupos.',
-  if (invites == 1)
-    'O convite pendente é cancelado.'
-  else if (invites > 1)
-    'Os $invites convites pendentes são cancelados.',
-  'Os trajetos publicados neste grupo são apagados junto. Não dá para '
-      'desfazer.',
-];
-
-/// The text under "`<group>` excluído": how many people ([loses]) lost
-/// access to [organization].
-String deletedGroupText({required int loses, required String organization}) {
-  final lost = switch (loses) {
-    <= 0 => '',
-    1 => '1 pessoa perdeu o acesso à $organization. ',
-    final n => '$n pessoas perderam o acesso à $organization. ',
-  };
-  return '${lost}Quem estava em outros grupos continua neles.';
 }

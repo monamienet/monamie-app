@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/domain/models/invite.dart';
@@ -27,11 +28,13 @@ class InviteCard extends StatelessWidget {
       final busy = controller.acceptingInvite != null || controller.isEntering;
       final shares = invite.roles.contains(GroupRole.publisher);
       final watches = invite.roles.contains(GroupRole.subscriber);
+      final l10n = AppLocalizations.of(context);
       final role = shares && watches
-          ? 'em campo e vendo o mapa'
+          ? 'both'
           : shares
-          ? 'em campo'
-          : 'vendo o mapa';
+          ? 'publisher'
+          : 'subscriber';
+      final expiresAt = invite.expiresAt;
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -42,9 +45,9 @@ class InviteCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Você tem um convite',
-              style: TextStyle(
+            Text(
+              l10n.inviteCardTitle,
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: MonAmieBrand.mutedInk,
@@ -62,9 +65,17 @@ class InviteCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              '${invite.inviterName.isEmpty ? 'Alguém' : invite.inviterName} '
-              'chamou você para o grupo ${invite.groupName}, $role.'
-              '${invite.expiresAt == null ? '' : ' Vale até ${dayMonth(invite.expiresAt!)}.'}',
+              [
+                l10n.inviteCardBody(
+                  invite.inviterName.isEmpty
+                      ? l10n.inviteSomeone
+                      : invite.inviterName,
+                  invite.groupName,
+                  role,
+                ),
+                if (expiresAt != null)
+                  l10n.inviteCardValidUntil(expiresAt.toLocal()),
+              ].join(' '),
               style: const TextStyle(
                 fontSize: 15,
                 height: 22 / 15,
@@ -121,13 +132,13 @@ class InviteCard extends StatelessWidget {
                           const SizedBox(width: 10),
                           Flexible(
                             child: Text(
-                              'Entrando na ${invite.organizationName}…',
+                              l10n.inviteCardEntering(invite.organizationName),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       )
-                    : const Text('Aceitar e entrar'),
+                    : Text(l10n.inviteCardAccept),
               ),
             ),
           ],

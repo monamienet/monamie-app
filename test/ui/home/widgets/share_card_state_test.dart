@@ -1,5 +1,9 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/home/widgets/share_card_state.dart';
+
+final l10n = lookupAppLocalizations(const Locale('pt'));
 
 void main() {
   group('shareCardState - Unit Test Suite', () {
@@ -45,6 +49,7 @@ void main() {
 
         // 2. Act
         final state = shareCardState(
+          l10n,
           enabled: flags.enabled,
           loading: flags.loading,
         );

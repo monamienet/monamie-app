@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
@@ -44,12 +45,13 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
       ]),
       builder: (context, _) {
         final theme = controller.pickedTheme;
+        final l10n = AppLocalizations.of(context);
         return Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
             backgroundColor: theme.dark,
             foregroundColor: theme.onDark,
-            title: const Text('Aparência'),
+            title: Text(l10n.appearanceTitle),
             centerTitle: false,
           ),
           body: Stack(
@@ -103,9 +105,9 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Você administra esta organização',
-              style: TextStyle(fontSize: 13, color: _muted),
+            Text(
+              AppLocalizations.of(context).appearanceYouAdminister,
+              style: const TextStyle(fontSize: 13, color: _muted),
             ),
           ],
         ),
@@ -114,6 +116,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
   );
 
   Widget _identityCard(BuildContext context, OrganizationTheme theme) {
+    final l10n = AppLocalizations.of(context);
     final hasLogo = controller.state.logoPng != null;
     final link = TextButton.styleFrom(
       foregroundColor: theme.primary,
@@ -128,7 +131,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
       child: Column(
         children: [
           _row(
-            label: 'Nome',
+            label: l10n.appearanceName,
             value: controller.state.name,
             actions: [
               TextButton(
@@ -136,19 +139,19 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                 onPressed: controller.save.running
                     ? null
                     : () => _editName(context),
-                child: const Text('Alterar'),
+                child: Text(l10n.commonChange),
               ),
             ],
           ),
           const Divider(height: 1, color: Color(0xFFECEAF0)),
           _row(
-            label: 'Logo',
+            label: l10n.appearanceLogo,
             value: !hasLogo
-                ? 'Sem logo · usamos a inicial'
+                ? l10n.appearanceNoLogo
                 : controller.state.logoPng == controller.organization.logoPng
-                ? 'PNG quadrado de 512 px'
-                : 'Novo logo · salve para aplicar',
-            hint: hasLogo ? null : 'SVG, PNG, JPEG ou WebP',
+                ? l10n.appearanceLogoSaved
+                : l10n.appearanceLogoNew,
+            hint: hasLogo ? null : l10n.appearanceLogoFormats,
             actions: [
               if (hasLogo)
                 TextButton(
@@ -163,12 +166,12 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                   onPressed: controller.save.running
                       ? null
                       : controller.removeLogo,
-                  child: const Text('Remover'),
+                  child: Text(l10n.commonRemove),
                 ),
               TextButton(
                 style: link,
                 onPressed: controller.save.running ? null : _pickLogo,
-                child: Text(hasLogo ? 'Alterar' : 'Adicionar'),
+                child: Text(hasLogo ? l10n.commonChange : l10n.commonAdd),
               ),
             ],
           ),
@@ -216,9 +219,9 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
       Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Tema',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context).appearanceTheme,
+            style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
               color: _ink,
@@ -265,15 +268,15 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
       color: _soft,
       borderRadius: BorderRadius.circular(14),
     ),
-    child: const Row(
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.info_outline, size: 18, color: _muted),
-        SizedBox(width: 10),
+        const Icon(Icons.info_outline, size: 18, color: _muted),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
-            'A equipe vê a nova aparência na próxima vez que abrir o app.',
-            style: TextStyle(fontSize: 13, height: 1.45, color: _muted),
+            AppLocalizations.of(context).appearanceNextLaunch,
+            style: const TextStyle(fontSize: 13, height: 1.45, color: _muted),
           ),
         ),
       ],
@@ -293,6 +296,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
 
   Widget _saveButton(BuildContext context, OrganizationTheme theme) {
     final saving = controller.save.running;
+    final l10n = AppLocalizations.of(context);
     return SizedBox(
       height: 56,
       child: FilledButton(
@@ -320,10 +324,10 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Salvando…'),
+                  Text(l10n.commonSaving),
                 ],
               )
-            : const Text('Salvar alterações'),
+            : Text(l10n.commonSaveChanges),
       ),
     );
   }
@@ -332,13 +336,11 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
     // Looked up first: the screen closes before the message shows.
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final l10n = AppLocalizations.of(context);
     if (await controller.save.execute() case Ok()) {
       navigator.pop();
       messenger.showSnackBar(
-        noticeSnackBar(
-          'A equipe vê a nova aparência na próxima vez que abrir o app.',
-          title: 'Aparência salva',
-        ),
+        noticeSnackBar(l10n.appearanceNextLaunch, title: l10n.appearanceSaved),
       );
     }
   }
@@ -357,7 +359,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Nome da organização'),
+        title: Text(AppLocalizations.of(context).appearanceNameDialog),
         content: TextField(
           controller: field,
           autofocus: true,
@@ -367,11 +369,11 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(AppLocalizations.of(context).commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, field.text),
-            child: const Text('OK'),
+            child: Text(AppLocalizations.of(context).commonOk),
           ),
         ],
       ),
@@ -424,10 +426,11 @@ class _LogoSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = controller.state.sheet;
     final processing = state == LogoSheet.processing;
+    final l10n = AppLocalizations.of(context);
     final title = switch (state) {
-      LogoSheet.error => 'Não deu para usar este arquivo',
-      LogoSheet.preview => 'Assim fica o logo',
-      _ => 'Logo da organização',
+      LogoSheet.error => l10n.appearanceLogoError,
+      LogoSheet.preview => l10n.appearanceLogoPreview,
+      _ => l10n.appearanceLogoSheet,
     };
     return Stack(
       children: [
@@ -469,14 +472,14 @@ class _LogoSheet extends StatelessWidget {
                         children: [
                           CircularProgressIndicator(color: theme.primary),
                           const SizedBox(height: 14),
-                          const Text(
-                            'Convertendo para PNG no seu celular',
-                            style: TextStyle(fontSize: 13, color: _muted),
+                          Text(
+                            l10n.appearanceConverting,
+                            style: const TextStyle(fontSize: 13, color: _muted),
                           ),
                         ],
                       ),
                     ),
-                  if (state == LogoSheet.preview) ..._preview(),
+                  if (state == LogoSheet.preview) ..._preview(l10n),
                   if (state == LogoSheet.error)
                     Container(
                       padding: const EdgeInsets.all(14),
@@ -501,12 +504,12 @@ class _LogoSheet extends StatelessWidget {
                         minimumSize: const Size.fromHeight(56),
                       ),
                       onPressed: controller.useCandidate,
-                      child: const Text('Usar este logo'),
+                      child: Text(l10n.appearanceUseLogo),
                     ),
                   TextButton(
                     style: TextButton.styleFrom(foregroundColor: _ink),
                     onPressed: processing ? null : controller.closeSheet,
-                    child: const Text('Fechar'),
+                    child: Text(l10n.commonClose),
                   ),
                 ],
               ),
@@ -517,7 +520,7 @@ class _LogoSheet extends StatelessWidget {
     );
   }
 
-  List<Widget> _preview() {
+  List<Widget> _preview(AppLocalizations l10n) {
     final organization = OrganizationConfig(
       id: controller.organization.id,
       name: controller.state.name,
@@ -544,10 +547,9 @@ class _LogoSheet extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 14),
-      const Text(
-        'Convertemos o arquivo para um PNG quadrado de 512 px. É assim que ele '
-        'aparece no topo do app, no menu e na lista de organizações.',
-        style: TextStyle(fontSize: 13, height: 1.45, color: _muted),
+      Text(
+        l10n.appearanceLogoExplained,
+        style: const TextStyle(fontSize: 13, height: 1.45, color: _muted),
       ),
     ];
   }

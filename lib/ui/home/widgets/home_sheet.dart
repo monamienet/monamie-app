@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
@@ -133,8 +134,8 @@ class _HomeSheetState extends State<HomeSheet> {
   Widget _grabber() => Semantics(
     button: true,
     label: _collapsed
-        ? 'Mostrar a lista do grupo'
-        : 'Recolher a lista do grupo',
+        ? AppLocalizations.of(context).sheetShowList
+        : AppLocalizations.of(context).sheetHideList,
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _collapsed = !_collapsed),
@@ -149,6 +150,7 @@ class _HomeSheetState extends State<HomeSheet> {
   List<Widget> _group({required bool afterCard}) {
     final group = _home.selectedGroup.value;
     final count = _home.observedMembers.value.length;
+    final l10n = AppLocalizations.of(context);
     return [
       SizedBox(height: afterCard ? 12 : 4),
       Padding(
@@ -159,7 +161,7 @@ class _HomeSheetState extends State<HomeSheet> {
           children: [
             Expanded(
               child: Text(
-                group?.name ?? 'Nenhum grupo escolhido',
+                group?.name ?? l10n.sheetNoGroup,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -171,7 +173,7 @@ class _HomeSheetState extends State<HomeSheet> {
             ),
             if (group != null)
               Text(
-                count == 1 ? '1 pessoa' : '$count pessoas',
+                l10n.memberCount(count),
                 style: TextStyle(
                   color: SheetColors.muted,
                   fontSize: 13,
@@ -199,8 +201,7 @@ class _HomeSheetState extends State<HomeSheet> {
       child: Column(
         children: [
           Text(
-            'Ninguém neste grupo ainda. Convide quem vai trabalhar nele '
-            'para ver todos no mapa.',
+            AppLocalizations.of(context).sheetEmptyGroup,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: SheetColors.muted,
@@ -221,9 +222,9 @@ class _HomeSheetState extends State<HomeSheet> {
                 ),
               ),
               onPressed: () => context.push<void>(Routes.groups),
-              child: const Text(
-                'Convidar pessoas',
-                style: TextStyle(fontWeight: FontWeight.w800),
+              child: Text(
+                AppLocalizations.of(context).invitePeople,
+                style: const TextStyle(fontWeight: FontWeight.w800),
               ),
             ),
           ],

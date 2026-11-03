@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 import 'package:monamie_app/domain/models/group.dart';
@@ -38,83 +39,94 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
-    appBar: adminAppBar('Administradores'),
-    body: ListenableBuilder(
-      listenable: Listenable.merge([c, c.load]),
-      builder: (context, _) {
-        final people = c.state.people;
-        if (c.load.running &&
-            people.administrators.isEmpty &&
-            people.members.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        return RefreshIndicator(
-          onRefresh: c.load.execute,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-            children: [
-              const Text(
-                'Quem administra cuida de todos os grupos, dos convites, da '
-                'aparência e dos ajustes da organização, e vê todos os grupos '
-                'no mapa. Só você, titular, escolhe quem administra.',
-                style: TextStyle(fontSize: 14, height: 1.45, color: _muted),
-              ),
-              const SizedBox(height: 16),
-              if (c.state.errorMessage.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    c.state.errorMessage,
-                    style: const TextStyle(
-                      color: _error,
-                      fontWeight: FontWeight.w800,
-                    ),
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: adminAppBar(l10n.administratorsTitle),
+      body: ListenableBuilder(
+        listenable: Listenable.merge([c, c.load]),
+        builder: (context, _) {
+          final people = c.state.people;
+          if (c.load.running &&
+              people.administrators.isEmpty &&
+              people.members.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return RefreshIndicator(
+            onRefresh: c.load.execute,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+              children: [
+                Text(
+                  l10n.administratorsIntro,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.45,
+                    color: _muted,
                   ),
                 ),
-              _section('Administradores', people.administrators.length),
-              _card([
-                for (final admin in people.administrators)
-                  _row(
-                    context,
-                    email: admin.email,
-                    detail: admin.owner
-                        ? 'Titular'
-                        : 'Administra a organização',
-                    highlighted: true,
-                    actionText: admin.owner ? null : 'Tornar membro',
-                    onAction: () => _demote(context, admin.email),
+                const SizedBox(height: 16),
+                if (c.state.errorMessage.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      c.state.errorMessage,
+                      style: const TextStyle(
+                        color: _error,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-              ], 'Ninguém administra a organização.'),
-              const SizedBox(height: 24),
-              _section('Membros', people.members.length),
-              _card(
-                [
+                _section(
+                  l10n,
+                  l10n.administratorsTitle,
+                  people.administrators.length,
+                ),
+                _card([
+                  for (final admin in people.administrators)
+                    _row(
+                      context,
+                      email: admin.email,
+                      detail: admin.owner
+                          ? l10n.administratorsOwner
+                          : l10n.administratorsAdministers,
+                      highlighted: true,
+                      actionText: admin.owner
+                          ? null
+                          : l10n.administratorsMakeMember,
+                      onAction: () => _demote(context, admin.email),
+                    ),
+                ], l10n.administratorsNone),
+                const SizedBox(height: 24),
+                _section(
+                  l10n,
+                  l10n.administratorsMembers,
+                  people.members.length,
+                ),
+                _card([
                   for (final email in people.members)
                     _row(
                       context,
                       email: email,
-                      detail: 'Membro',
+                      detail: l10n.administratorsMember,
                       highlighted: false,
-                      actionText: 'Tornar administrador',
+                      actionText: l10n.administratorsMakeAdmin,
                       onAction: () => _promote(context, email),
                     ),
-                ],
-                'Ninguém mais na organização ainda. Quem aceitar um convite '
-                'para um grupo aparece aqui.',
-              ),
-            ],
-          ),
-        );
-      },
-    ),
-  );
+                ], l10n.administratorsNoMembers),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
 
-  Widget _section(String title, int count) => Padding(
+  Widget _section(AppLocalizations l10n, String title, int count) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(
-      '${title.toUpperCase()} · $count',
+      l10n.administratorsSection(title.toUpperCase(), count),
       style: const TextStyle(
         color: _muted,
         fontSize: 12,
@@ -251,46 +263,45 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
   );
 
   /// What the sheet shows after a change: nothing when it worked, else its
-  /// message (a generic one when the call was ignored).
-  Future<String?> _change(String email, {required bool admin}) async =>
-      sheetFailureOf(
-        await c.setAdministrator.execute((email: email, admin: admin)),
-      );
+  /// message (a generic one when the call was ignored), in [l10n]'s
+  /// language.
+  Future<String?> _change(
+    AppLocalizations l10n,
+    String email, {
+    required bool admin,
+  }) async => sheetFailureOf(
+    l10n,
+    await c.setAdministrator.execute((email: email, admin: admin)),
+  );
 
   Future<void> _promote(BuildContext context, String email) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await adminActionSheet(
       context,
-      title: 'Tornar $email administrador?',
-      confirmLabel: 'Tornar administrador',
-      busyLabel: 'Salvando…',
-      lines: const [
-        'Passa a ver todos os grupos no mapa e a cuidar dos grupos, dos '
-            'convites, da aparência e dos ajustes da organização.',
-        'Você pode desfazer depois.',
-      ],
-      onConfirm: () => _change(email, admin: true),
+      title: l10n.administratorsPromoteTitle(email),
+      confirmLabel: l10n.administratorsMakeAdmin,
+      busyLabel: l10n.commonSaving,
+      lines: [l10n.administratorsPromoteSees, l10n.administratorsUndoLater],
+      onConfirm: () => _change(l10n, email, admin: true),
     );
     if (ok && context.mounted) {
-      adminToast(context, '$email agora administra a organização');
+      adminToast(context, l10n.administratorsPromoted(email));
     }
   }
 
   Future<void> _demote(BuildContext context, String email) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await adminActionSheet(
       context,
-      title: 'Tornar $email membro?',
-      confirmLabel: 'Tornar membro',
-      busyLabel: 'Salvando…',
+      title: l10n.administratorsDemoteTitle(email),
+      confirmLabel: l10n.administratorsMakeMember,
+      busyLabel: l10n.commonSaving,
       danger: true,
-      lines: const [
-        'Deixa de administrar a organização e de ver os grupos em que não '
-            'está.',
-        'Continua nos grupos em que já está. Se não estiver em nenhum, '
-            'continua na organização sem ver o mapa até ser convidado para '
-            'um grupo.',
-      ],
-      onConfirm: () => _change(email, admin: false),
+      lines: [l10n.administratorsDemoteStops, l10n.administratorsDemoteStays],
+      onConfirm: () => _change(l10n, email, admin: false),
     );
-    if (ok && context.mounted) adminToast(context, '$email agora é membro');
+    if (ok && context.mounted) {
+      adminToast(context, l10n.administratorsDemoted(email));
+    }
   }
 }

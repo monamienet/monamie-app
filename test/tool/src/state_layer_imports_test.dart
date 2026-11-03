@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../tool/src/state_layer_imports.dart';
+import '../../../tool/src/ui_text_literals.dart' show uiHardCodedText;
 
 const viewModelPath = 'lib/ui/x/view_models/x_view_model.dart';
 const marker = '// check_layers: state_contract';
@@ -1197,6 +1198,7 @@ import 'package:monamie_app/data/repositories/x/x.dart';
       for (final file in [
         'check_layers.dart',
         'src/state_layer_imports.dart',
+        'src/ui_text_literals.dart',
       ]) {
         final target = File(p.join(root.path, 'tool', file))
           ..createSync(recursive: true);
@@ -1232,7 +1234,7 @@ import 'package:monamie_app/data/repositories/x/x.dart';
       // 3. Assert
       expect(
         (result.exitCode, (result.stdout as String).trim()),
-        (0, 'No layer rule violations.'),
+        (0, 'No layer or text rule violations.'),
         reason: '${result.stderr}',
       );
     });
@@ -1295,5 +1297,29 @@ import 'package:monamie_app/data/repositories/x/x.dart';
         );
       },
     );
+    test('exits 1 for a hard-coded text in a screen under lib/ui/', () async {
+      // 1. Arrange
+      writeLib(
+        'ui/a/a_screen.dart',
+        "import 'package:flutter/widgets.dart';\n"
+            "Widget f() => const Text('Olá');\n",
+      );
+      writeLib('ui/a/a_view_model.dart', "const String m = 'Olá';\n");
+
+      // 2. Act
+      final result = await runTool();
+
+      // 3. Assert
+      expect(result.exitCode, 1);
+      expect(
+        result.stderr,
+        allOf(
+          contains('${p.join('lib', 'ui', 'a', 'a_screen.dart')}:2:26'),
+          isNot(contains('a_view_model.dart')),
+          contains(uiHardCodedText),
+          contains('1 violation(s) found.'),
+        ),
+      );
+    });
   });
 }

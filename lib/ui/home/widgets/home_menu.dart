@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
@@ -63,6 +64,7 @@ class HomeMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Drawer(
       width: 304,
       backgroundColor: Colors.white,
@@ -81,7 +83,7 @@ class HomeMenu extends StatelessWidget {
               const SizedBox(height: 8),
               _MenuItem(
                 icon: Icons.swap_horiz,
-                label: 'Trocar de organização',
+                label: l10n.menuSwitchOrganization,
                 onTap: () =>
                     _closeAndRun(context, _auth.switchOrganization.execute),
               ),
@@ -109,7 +111,7 @@ class HomeMenu extends StatelessWidget {
                   final loggingOut = _auth.state.isLoggingOut;
                   return _MenuItem(
                     icon: Icons.logout,
-                    label: 'Sair',
+                    label: l10n.commonSignOut,
                     onTap: loggingOut || trackingBusy
                         ? null
                         : () => _closeAndRun(context, _auth.logout.execute),
@@ -153,6 +155,7 @@ class HomeMenu extends StatelessWidget {
                   ]),
                   builder: (context, _) => Text(
                     menuSubtitle(
+                      AppLocalizations.of(context),
                       isAdmin: _home.isAdmin,
                       canWatch: _home.canWatch,
                       canShare: _home.canPublish,
@@ -188,7 +191,7 @@ class HomeMenu extends StatelessWidget {
         final avatar = user?.avatarBase64;
         return Semantics(
           button: true,
-          label: 'Minha conta',
+          label: AppLocalizations.of(context).menuMyAccount,
           excludeSemantics: true,
           child: Material(
             color: HomeColors.surface,
@@ -277,16 +280,17 @@ class HomeMenu extends StatelessWidget {
 
   /// The maintainer's section: their groups only.
   Widget _maintainer(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Divider(color: HomeColors.divider, height: 1),
-          _sectionTitle('GESTÃO DE GRUPOS'),
+          _sectionTitle(l10n.menuGroupManagement),
           _MenuItem(
             icon: Icons.groups_outlined,
-            label: 'Meus grupos',
+            label: l10n.menuMyGroups,
             onTap: () => _open(context, Routes.groups),
           ),
         ],
@@ -296,6 +300,7 @@ class HomeMenu extends StatelessWidget {
 
   Widget _admin(BuildContext context) {
     final organizationId = Organization.current?.id;
+    final l10n = AppLocalizations.of(context);
     // The owner-only entry needs to know who owns the organization: read
     // once per organization, while the menu is open.
     // After the frame: the command notifies when it starts, which must not
@@ -311,10 +316,10 @@ class HomeMenu extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Divider(color: HomeColors.divider, height: 1),
-          _sectionTitle('ADMINISTRAÇÃO'),
+          _sectionTitle(l10n.menuAdministration),
           _MenuItem(
             icon: Icons.groups_outlined,
-            label: 'Grupos',
+            label: l10n.groupsTitle,
             onTap: () => _open(context, Routes.groups),
           ),
           ListenableBuilder(
@@ -323,19 +328,19 @@ class HomeMenu extends StatelessWidget {
                 _auth.state.ownership[organizationId] == true
                 ? _MenuItem(
                     icon: Icons.admin_panel_settings_outlined,
-                    label: 'Administradores',
+                    label: l10n.administratorsTitle,
                     onTap: () => _open(context, Routes.administrators),
                   )
                 : const SizedBox.shrink(),
           ),
           _MenuItem(
             icon: Icons.palette_outlined,
-            label: 'Aparência da organização',
+            label: l10n.menuAppearance,
             onTap: () => _open(context, Routes.appearance),
           ),
           _MenuItem(
             icon: Icons.tune,
-            label: 'Ajustes de acompanhamento',
+            label: l10n.menuTrackingSettings,
             onTap: () => _open(context, Routes.trackingSettings),
           ),
         ],

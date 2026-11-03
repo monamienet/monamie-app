@@ -50,6 +50,8 @@ class MonAmieWordmark extends StatelessWidget {
   static const _i = GlyphMetrics(0.296, 0.080, 0.216);
   static const _e = GlyphMetrics(0.608, 0.040, 0.5675);
 
+  // The glyphs drawn, not a word to translate.
+  // check_layers: not_ui_text
   static const _letters = ['m', 'o', 'n', 'a', 'm', 'ı', 'e'];
   static const _metrics = [_m, _o, _n, _a, _m, _i, _e];
 

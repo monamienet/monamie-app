@@ -6,6 +6,8 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/ui/core/ui/organization_logo.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import '../../../support/test_organization.dart';
 
@@ -17,7 +19,12 @@ Finder svgAsset(String assetName) => find.byWidgetPredicate(
       (widget.bytesLoader as SvgAssetLoader).assetName == assetName,
 );
 
-Widget host(Widget child) => MaterialApp(home: Scaffold(body: child));
+Widget host(Widget child) => MaterialApp(
+  locale: const Locale('pt', 'BR'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: appSupportedLocales,
+  home: Scaffold(body: child),
+);
 
 void main() {
   tearDown(() => Organization.bind(testOrganization));

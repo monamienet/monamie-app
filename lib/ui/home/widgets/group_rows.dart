@@ -1,5 +1,6 @@
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/home/widgets/presence.dart';
 
 /// One line of the group list: a person of the observed group, their live
@@ -20,8 +21,10 @@ class GroupRow {
 ///
 /// Today the line says whether each person is sharing now; on a past day it
 /// says whether they have positions that day ([usersWithPoints]). Within the
-/// same presence the order of [members] is kept.
-List<GroupRow> groupRows({
+/// same presence the order of [members] is kept. The lines are in [l10n]'s
+/// language.
+List<GroupRow> groupRows(
+  AppLocalizations l10n, {
   required List<GroupMember> members,
   required List<UserModel> users,
   required Set<String> usersWithPoints,
@@ -37,13 +40,17 @@ List<GroupRow> groupRows({
         user: byEmail[member.email],
         presence: observingToday
             ? presenceOf(
+                l10n,
                 hasRecord: byEmail.containsKey(member.email),
                 isPublishing: byEmail[member.email]?.isPublishing,
                 lastSeen: byEmail[member.email]?.capturedAt,
                 now: now,
                 validity: validity,
               )
-            : dayPresence(hasPoints: usersWithPoints.contains(member.email)),
+            : dayPresence(
+                l10n,
+                hasPoints: usersWithPoints.contains(member.email),
+              ),
       ),
   ];
   // List.sort is not stable, so the index breaks ties.

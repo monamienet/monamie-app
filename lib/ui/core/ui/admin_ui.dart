@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 import 'package:monamie_app/utils/result.dart';
 
@@ -29,7 +30,8 @@ OrganizationPalette get adminPalette =>
 OrganizationPalette get _palette => adminPalette;
 
 /// The bound organization's name, "organização" before one is bound.
-String get adminOrganizationName => Organization.current?.name ?? 'organização';
+String adminOrganizationName(AppLocalizations l10n) =>
+    Organization.current?.name ?? l10n.adminOrganizationFallback;
 
 /// The administration screens' app bar.
 AppBar adminAppBar(String title) => AppBar(
@@ -108,12 +110,13 @@ Widget adminErrorText(String message) => message.isEmpty
 
 /// What [adminActionSheet] shows after an operation: nothing when it
 /// worked, else its message (a generic one when the call was ignored, see
-/// `Command`).
-String? sheetFailureOf(Result<Object?>? result) => switch (result) {
-  Ok() => null,
-  Err(:final message) when message.isNotEmpty => message,
-  _ => 'Não foi possível concluir agora. Tente de novo.',
-};
+/// `Command`), in [l10n]'s language.
+String? sheetFailureOf(AppLocalizations l10n, Result<Object?>? result) =>
+    switch (result) {
+      Ok() => null,
+      Err(:final message) when message.isNotEmpty => message,
+      _ => l10n.commonGenericFailure,
+    };
 
 /// A bottom sheet with [title], optional [content] and [lines], and a
 /// confirm button that runs [onConfirm] (an error message, or `null` on
@@ -286,7 +289,7 @@ Future<bool> adminActionSheet(
                         ),
                       ),
                       onPressed: busy ? null : () => Navigator.pop(context),
-                      child: const Text('Cancelar'),
+                      child: Text(AppLocalizations.of(context).commonCancel),
                     ),
                   ),
                 ],

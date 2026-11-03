@@ -12,16 +12,16 @@ const trackingRadii = [5, 10, 20, 50, 100, 200, 300, 500];
 /// [TrackingSettings.withinOffered]); the stored document is left as it is.
 const offeredPresets = {TrackingPreset.economia};
 
-/// A named choice on *Ajustes de acompanhamento*.
+/// A named choice on *Ajustes de acompanhamento*. The screens name it in the
+/// person's language (`DomainLabels.presetName` in `lib/ui/`).
 enum TrackingPreset {
-  economia('Economia', 15, 100),
-  equilibrio('Equilíbrio', 5, 10),
-  precisao('Precisão', 1, 5),
-  personalizado('Personalizado', null, null);
+  economia(15, 100),
+  equilibrio(5, 10),
+  precisao(1, 5),
+  personalizado(null, null);
 
-  const TrackingPreset(this.label, this.periodMinutes, this.radiusMeters);
+  const TrackingPreset(this.periodMinutes, this.radiusMeters);
 
-  final String label;
   final int? periodMinutes;
   final int? radiusMeters;
 

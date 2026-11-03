@@ -4,6 +4,8 @@ import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/ui/home/widgets/person_row_tile.dart';
 import 'package:monamie_app/ui/home/widgets/presence.dart';
 import 'package:monamie_app/ui/home/widgets/group_rows.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 GroupRow rowOf(Presence presence, {String name = 'Ana Souza'}) => GroupRow(
   member: GroupMember(name: name, email: 'ana@x.org'),
@@ -31,6 +33,9 @@ Future<void> pumpTile(
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('pt', 'BR'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
       home: Scaffold(
         body: PersonRowTile(
           row: row,

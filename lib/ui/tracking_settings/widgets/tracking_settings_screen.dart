@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
@@ -34,12 +36,13 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
   Widget build(BuildContext context) {
     final palette = OrganizationPalette.fromConfig(Organization.current);
     final name = Organization.current?.name ?? '';
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: palette.dark,
         foregroundColor: palette.onDark,
-        title: const Text('Ajustes de acompanhamento'),
+        title: Text(l10n.menuTrackingSettings),
         centerTitle: false,
       ),
       body: ListenableBuilder(
@@ -47,16 +50,16 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
         builder: (context, _) {
           final draft = controller.state.draft;
           final saving = controller.save.running;
-          String minutes(int n) => n == 1 ? '1 min' : '$n min';
+          final minutes = l10n.trackingMinutes;
           return Column(
             children: [
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
                   children: [
-                    const Text(
-                      'Com que frequência a equipe envia a localização?',
-                      style: TextStyle(
+                    Text(
+                      l10n.trackingQuestion,
+                      style: const TextStyle(
                         fontSize: 24,
                         height: 1.15,
                         fontWeight: FontWeight.w800,
@@ -65,14 +68,15 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Vale para todos da $name que estão em campo.',
+                      l10n.trackingAppliesTo(name),
                       style: const TextStyle(fontSize: 15, color: _muted),
                     ),
                     if (controller.state.minPeriodMinutes > 0) ...[
                       const SizedBox(height: 12),
                       Text(
-                        'No plano Community, a localização é enviada no máximo a '
-                        'cada ${controller.state.minPeriodMinutes} min.',
+                        l10n.trackingCommunityLimit(
+                          controller.state.minPeriodMinutes,
+                        ),
                         style: const TextStyle(fontSize: 13, color: _muted),
                       ),
                     ],
@@ -91,16 +95,18 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
                         TrackingPreset.personalizado) ...[
                       const SizedBox(height: 8),
                       _Slider(
-                        label: 'Intervalo',
-                        valueLabel: 'a cada ${minutes(draft.periodMinutes)}',
+                        label: l10n.trackingInterval,
+                        valueLabel: l10n.trackingEvery(
+                          minutes(draft.periodMinutes),
+                        ),
                         values: trackingPeriods,
                         value: draft.periodMinutes,
                         color: palette.primary,
                         onChanged: saving ? null : controller.setPeriod,
                       ),
                       _Slider(
-                        label: 'Distância mínima',
-                        valueLabel: '${draft.radiusMeters} m',
+                        label: l10n.trackingDistance,
+                        valueLabel: l10n.trackingMeters(draft.radiusMeters),
                         values: trackingRadii,
                         value: draft.radiusMeters,
                         color: palette.primary,
@@ -110,24 +116,20 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
                     const SizedBox(height: 16),
                     _Fact(
                       icon: Icons.send_outlined,
-                      text:
-                          'Até ${draft.positionsPerHour} '
-                          '${draft.positionsPerHour == 1 ? 'posição' : 'posições'} '
-                          'por hora, só quando a pessoa se mover '
-                          '${draft.radiusMeters} m ou mais.',
+                      text: l10n.trackingPositionsPerHour(
+                        draft.positionsPerHour,
+                        draft.radiusMeters,
+                      ),
                     ),
                     _Fact(
                       icon: Icons.schedule,
-                      text:
-                          'Quem ficar '
-                          '${minutes(validity.inMinutes)} sem dar notícia '
-                          'sai do mapa.',
+                      text: l10n.trackingLeavesMap(minutes(validity.inMinutes)),
                     ),
                     _Fact(
                       icon: Icons.battery_std,
-                      text:
-                          'Uso de bateria: '
-                          '${const ['Baixo', 'Médio', 'Alto'][draft.batteryLevel - 1]}',
+                      text: l10n.trackingBattery(
+                        const ['low', 'medium', 'high'][draft.batteryLevel - 1],
+                      ),
                     ),
                   ],
                 ),
@@ -141,8 +143,7 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: Text(
-                          'Salvo. A equipe recebe em instantes, sem desligar o '
-                          'compartilhamento.',
+                          l10n.trackingSaved,
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
@@ -191,13 +192,13 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 12),
-                                  const Text('Salvando…'),
+                                  Text(l10n.commonSaving),
                                 ],
                               )
                             : Text(
                                 controller.hasChanges
-                                    ? 'Salvar alterações'
-                                    : 'Nenhuma alteração',
+                                    ? l10n.commonSaveChanges
+                                    : l10n.trackingNoChanges,
                               ),
                       ),
                     ),
@@ -229,86 +230,91 @@ class _PresetTile extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  String get _description => switch (option) {
-    TrackingPreset.personalizado => 'Você escolhe intervalo e distância',
-    _ =>
-      'A cada ${option.periodMinutes} min, se andar ${option.radiusMeters} m',
+  String _description(AppLocalizations l10n) => switch (option) {
+    TrackingPreset.personalizado => l10n.trackingCustomDescription,
+    _ => l10n.trackingPresetDescription(
+      option.periodMinutes!,
+      option.radiusMeters!,
+    ),
   };
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Semantics(
-      inMutuallyExclusiveGroup: true,
-      selected: selected,
-      enabled: enabled,
-      child: Material(
-        color: selected ? color.withAlpha(30) : Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: selected ? color : _line,
-            width: selected ? 2 : 1,
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Semantics(
+        inMutuallyExclusiveGroup: true,
+        selected: selected,
+        enabled: enabled,
+        child: Material(
+          color: selected ? color.withAlpha(30) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: selected ? color : _line,
+              width: selected ? 2 : 1,
+            ),
           ),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: enabled ? onTap : null,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  color: selected ? color : const Color(0xFFB9B4C9),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Opacity(
-                    opacity: enabled ? 1 : 0.45,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              option.label,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: _ink,
-                              ),
-                            ),
-                            if (current) ...[
-                              const SizedBox(width: 8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: enabled ? onTap : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: selected ? color : const Color(0xFFB9B4C9),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Opacity(
+                      opacity: enabled ? 1 : 0.45,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
                               Text(
-                                'Em uso',
-                                style: TextStyle(
-                                  fontSize: 12,
+                                l10n.presetName(option),
+                                style: const TextStyle(
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w800,
-                                  color: color,
+                                  color: _ink,
                                 ),
                               ),
+                              if (current) ...[
+                                const SizedBox(width: 8),
+                                Text(
+                                  l10n.trackingInUse,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: color,
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
-                        Text(
-                          _description,
-                          style: const TextStyle(fontSize: 13, color: _muted),
-                        ),
-                      ],
+                          ),
+                          Text(
+                            _description(l10n),
+                            style: const TextStyle(fontSize: 13, color: _muted),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _Slider extends StatelessWidget {

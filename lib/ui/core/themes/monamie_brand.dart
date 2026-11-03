@@ -25,9 +25,6 @@ abstract final class MonAmieBrand {
   /// Secondary text on navy.
   static const mutedCream = Color(0xFFD8D3E4);
 
-  /// MonAmie's tagline on the sign-in screen.
-  static const tagline = 'Sua equipe, no mesmo ponto.';
-
   /// Radar mark with the "MonAmie" name below it.
   static const logoAsset = 'assets/monamie/monamie-logo.svg';
 

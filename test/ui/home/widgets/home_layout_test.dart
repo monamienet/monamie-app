@@ -1,5 +1,9 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/home/widgets/home_layout.dart';
+
+final l10n = lookupAppLocalizations(const Locale('pt'));
 
 void main() {
   group('HomeLayout.of - Unit Test Suite', () {
@@ -65,6 +69,7 @@ void main() {
     test('Happy Path: a watcher sees the team they picked', () {
       // 1. Arrange / 2. Act
       final label = groupChipLabel(
+        l10n,
         canWatch: true,
         observedGroup: 'Centro',
         publishGroups: const [],
@@ -77,6 +82,7 @@ void main() {
     test('Happy Path: share only with one team names that team (#110)', () {
       // 1. Arrange / 2. Act
       final label = groupChipLabel(
+        l10n,
         canWatch: false,
         observedGroup: null,
         publishGroups: const ['Zona Norte'],
@@ -89,6 +95,7 @@ void main() {
     test('Edge Case: share only with several teams names the first +N', () {
       // 1. Arrange / 2. Act
       final label = groupChipLabel(
+        l10n,
         canWatch: false,
         observedGroup: null,
         publishGroups: const ['Centro', 'Zona Norte', 'Zona Sul'],
@@ -101,6 +108,7 @@ void main() {
     test('Edge Case: share only with two teams reads "+1"', () {
       // 1. Arrange / 2. Act
       final label = groupChipLabel(
+        l10n,
         canWatch: false,
         observedGroup: null,
         publishGroups: const ['Centro', 'Zona Norte'],
@@ -113,6 +121,7 @@ void main() {
     test('Edge Case: a watcher who shares too still picks the team', () {
       // 1. Arrange / 2. Act
       final label = groupChipLabel(
+        l10n,
         canWatch: true,
         observedGroup: 'Zona Sul',
         publishGroups: const ['Centro'],
@@ -125,6 +134,7 @@ void main() {
     test('Edge Case: a watcher with no group picked is asked to choose', () {
       // 1. Arrange / 2. Act
       final label = groupChipLabel(
+        l10n,
         canWatch: true,
         observedGroup: null,
         publishGroups: const ['Centro'],
@@ -139,6 +149,7 @@ void main() {
       () {
         // 1. Arrange / 2. Act
         final label = groupChipLabel(
+          l10n,
           canWatch: false,
           observedGroup: 'Outra',
           publishGroups: const ['Centro'],
@@ -152,6 +163,7 @@ void main() {
     test('Sad Path: no capability and no group reads "Sem grupo"', () {
       // 1. Arrange / 2. Act
       final label = groupChipLabel(
+        l10n,
         canWatch: false,
         observedGroup: null,
         publishGroups: const [],
@@ -166,6 +178,7 @@ void main() {
     test('Happy Path: an administrator is told so', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
+        l10n,
         isAdmin: true,
         canWatch: true,
         canShare: false,
@@ -179,6 +192,7 @@ void main() {
     test('Happy Path: share only names the team, in the field (#110)', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
+        l10n,
         isAdmin: false,
         canWatch: false,
         canShare: true,
@@ -192,6 +206,7 @@ void main() {
     test('Happy Path: watch only', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
+        l10n,
         isAdmin: false,
         canWatch: true,
         canShare: false,
@@ -205,6 +220,7 @@ void main() {
     test('Happy Path: watch and share', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
+        l10n,
         isAdmin: false,
         canWatch: true,
         canShare: true,
@@ -218,6 +234,7 @@ void main() {
     test('Edge Case: an administrator wins even when they also share', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
+        l10n,
         isAdmin: true,
         canWatch: true,
         canShare: true,
@@ -231,6 +248,7 @@ void main() {
     test('Edge Case: share only with several teams names the first +N', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
+        l10n,
         isAdmin: false,
         canWatch: false,
         canShare: true,
@@ -244,6 +262,7 @@ void main() {
     test('Sad Path: no capability and no group still reads sensibly', () {
       // 1. Arrange / 2. Act
       final subtitle = menuSubtitle(
+        l10n,
         isAdmin: false,
         canWatch: false,
         canShare: false,

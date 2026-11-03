@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
+import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/group_menu_button.dart';
 import 'package:monamie_app/ui/home/widgets/home_header.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import 'home_doubles.dart';
 
@@ -13,6 +17,9 @@ const _recepcao = MapGroup(id: 'g2', name: 'Recepção');
 Future<void> pumpHeader(WidgetTester tester, HomeDoubles doubles) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('pt', 'BR'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
       home: Scaffold(
         body: HomeHeader(
           home: doubles.home,
@@ -75,6 +82,37 @@ void main() {
       expect(find.byType(GroupMenuButton), findsNothing);
       expect(find.text('Recepção'), findsOneWidget);
       expect(find.text('Hoje'), findsNothing);
+    });
+    testWidgets('Edge Case: the day before today reads "Ontem"', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final doubles = HomeDoubles()..capabilities.value = watcherOf('g1');
+      when(
+        doubles.calendar.observedRelativeDay,
+      ).thenReturn(RelativeDay.yesterday);
+
+      // 2. Act
+      await pumpHeader(tester, doubles);
+
+      // 3. Assert
+      expect(find.text('Ontem'), findsOneWidget);
+      expect(find.text('Hoje'), findsNothing);
+    });
+
+    testWidgets('Edge Case: another day reads as dd/MM/yyyy in pt_BR', (
+      tester,
+    ) async {
+      // 1. Arrange
+      final doubles = HomeDoubles()..capabilities.value = watcherOf('g1');
+      doubles.observedDay.value = DateTime(2025, 3, 7);
+      when(doubles.calendar.observedRelativeDay).thenReturn(RelativeDay.other);
+
+      // 2. Act
+      await pumpHeader(tester, doubles);
+
+      // 3. Assert
+      expect(find.text('07/03/2025'), findsOneWidget);
     });
   });
 }

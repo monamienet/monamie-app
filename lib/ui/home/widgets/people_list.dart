@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
@@ -9,14 +10,17 @@ import 'package:monamie_app/ui/home/widgets/group_rows.dart';
 
 /// The rows of [groupRows] for the observed group, read from the
 /// controllers: the people publishing there today, or on a past day everyone
-/// who ever published there (once read for the history).
-List<GroupRow> observedGroupRows({
+/// who ever published there (once read for the history), in [l10n]'s
+/// language.
+List<GroupRow> observedGroupRows(
+  AppLocalizations l10n, {
   required HomeViewModel home,
   required TrackingViewModel tracking,
   required CalendarViewModel calendar,
 }) {
   final today = calendar.isObservingToday;
   return groupRows(
+    l10n,
     members: home.listedMembers(observingToday: today),
     users: tracking.groupUsers.value,
     usersWithPoints: tracking.usersWithPointsOnObservedDay.value,
@@ -57,6 +61,7 @@ class PeopleList extends StatelessWidget {
       ]),
       builder: (context, _) {
         final rows = observedGroupRows(
+          AppLocalizations.of(context),
           home: home,
           tracking: tracking,
           calendar: calendar,

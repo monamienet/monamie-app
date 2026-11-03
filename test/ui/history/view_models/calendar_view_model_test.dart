@@ -292,39 +292,39 @@ void main() {
       expect(observingToday, isTrue);
     });
 
-    test('Happy Path: Deve chamar o dia de hoje de "Hoje"', () {
+    test('Happy Path: Deve reconhecer o dia de hoje', () {
       // 1. Arrange
       final harness = _Harness();
 
       // 2. Act
-      final label = harness.controller.observedDayFormatted;
+      final label = harness.controller.observedRelativeDay;
 
       // 3. Assert
-      expect(label, 'Hoje');
+      expect(label, RelativeDay.today);
     });
 
-    test('Edge Case: Deve chamar o dia anterior de "Ontem"', () {
+    test('Edge Case: Deve reconhecer o dia anterior como ontem', () {
       // 1. Arrange
       final harness = _Harness();
       harness.controller.selectDay(_today().subtract(const Duration(days: 1)));
 
       // 2. Act
-      final label = harness.controller.observedDayFormatted;
+      final label = harness.controller.observedRelativeDay;
 
       // 3. Assert
-      expect(label, 'Ontem');
+      expect(label, RelativeDay.yesterday);
     });
 
-    test('Edge Case: Deve mostrar outros dias como dd/mm/aaaa', () {
+    test('Edge Case: Deve tratar outros dias como um dia qualquer', () {
       // 1. Arrange
       final harness = _Harness();
       harness.controller.selectDay(DateTime(2025, 3, 7));
 
       // 2. Act
-      final label = harness.controller.observedDayFormatted;
+      final label = harness.controller.observedRelativeDay;
 
       // 3. Assert
-      expect(label, '07/03/2025');
+      expect(label, RelativeDay.other);
     });
   });
 

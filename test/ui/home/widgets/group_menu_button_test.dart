@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/ui/home/widgets/group_menu_button.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import 'home_doubles.dart';
 
@@ -12,6 +14,9 @@ const _recepcao = MapGroup(id: 'g2', name: 'Recepção');
 Future<void> pumpOpenMenu(WidgetTester tester, HomeDoubles doubles) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('pt', 'BR'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
       home: Scaffold(
         body: GroupMenuButton(home: doubles.home, label: 'Guias'),
       ),

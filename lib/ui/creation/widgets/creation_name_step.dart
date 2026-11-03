@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/rich_message.dart';
 
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
 import 'creation_ui.dart';
@@ -33,6 +35,7 @@ class CreationNameStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final check = c.state.idCheck;
     final id = c.state.id;
     final name = c.state.name.trim();
@@ -49,11 +52,11 @@ class CreationNameStep extends StatelessWidget {
           child: ListView(
             children: [
               creationTitle(
-                'Como sua organização se chama?',
-                'Use o nome que a equipe reconhece: da empresa, do grupo ou do projeto.',
+                l10n.creationNameTitle,
+                l10n.creationNameSubtitle,
                 24,
               ),
-              creationLabel('Nome da organização'),
+              creationLabel(l10n.creationNameLabel),
               const SizedBox(height: 8),
               TextField(
                 controller: nameField,
@@ -88,22 +91,19 @@ class CreationNameStep extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                       color: _muted,
                     ),
-                    children: [
-                      const TextSpan(text: 'Sua equipe vai ver '),
-                      TextSpan(
-                        text: name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: _navy,
-                        ),
+                    children: spansAround(
+                      l10n.creationNamePreview,
+                      name,
+                      valueStyle: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: _navy,
                       ),
-                      const TextSpan(text: ' no topo do app'),
-                    ],
+                    ),
                   ),
                 ),
               ],
               const SizedBox(height: 24),
-              creationLabel('Identificador'),
+              creationLabel(l10n.creationIdLabel),
               const SizedBox(height: 8),
               Container(
                 height: 56,
@@ -137,7 +137,7 @@ class CreationNameStep extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _idStatus(check, isShort),
+                    _idStatus(l10n, check, isShort),
                   ],
                 ),
               ),
@@ -146,17 +146,12 @@ class CreationNameStep extends StatelessWidget {
                 creationNote(problem, color: _danger, bold: true),
               ] else if (c.state.idAdjusted) ...[
                 const SizedBox(height: 8),
-                creationNote(
-                  'Ajustamos para letras minúsculas, sem acentos, espaços ou números.',
-                  color: _navy,
-                  bold: true,
-                ),
+                creationNote(l10n.creationIdAdjusted, color: _navy, bold: true),
               ],
               const SizedBox(height: 8),
-              const Text(
-                'Só letras minúsculas, sem acentos, espaços ou números. '
-                'É o código da organização no MonAmie.',
-                style: TextStyle(
+              Text(
+                l10n.creationIdRules,
+                style: const TextStyle(
                   fontSize: 13,
                   height: 19 / 13,
                   fontWeight: FontWeight.w500,
@@ -173,18 +168,18 @@ class CreationNameStep extends StatelessWidget {
                   color: _note,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Row(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
+                    const Padding(
                       padding: EdgeInsets.only(top: 1),
                       child: Icon(Icons.lock_outline, size: 18, color: _navy),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'O identificador não muda depois. O nome pode mudar.',
-                        style: TextStyle(
+                        l10n.creationIdPermanent,
+                        style: const TextStyle(
                           fontSize: 13,
                           height: 19 / 13,
                           fontWeight: FontWeight.w500,
@@ -199,17 +194,20 @@ class CreationNameStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        creationButton('Continuar', c.canContinueFromName ? c.next : null),
+        creationButton(
+          l10n.commonContinue,
+          c.canContinueFromName ? c.next : null,
+        ),
       ],
     );
   }
 
   /// What the field says about the identifier, on its right.
-  Widget _idStatus(IdCheck check, bool isShort) {
+  Widget _idStatus(AppLocalizations l10n, IdCheck check, bool isShort) {
     if (isShort) {
-      return const Text(
-        'Mínimo 3 letras',
-        style: TextStyle(
+      return Text(
+        l10n.creationIdTooShort,
+        style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w800,
           color: _danger,
@@ -217,17 +215,17 @@ class CreationNameStep extends StatelessWidget {
       );
     }
     return switch (check) {
-      IdCheck.checking => const Row(
+      IdCheck.checking => Row(
         children: [
-          SizedBox(
+          const SizedBox(
             width: 16,
             height: 16,
             child: CircularProgressIndicator(strokeWidth: 2, color: _muted),
           ),
-          SizedBox(width: 6),
+          const SizedBox(width: 6),
           Text(
-            'Verificando…',
-            style: TextStyle(
+            l10n.commonChecking,
+            style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
               color: _muted,
@@ -235,13 +233,13 @@ class CreationNameStep extends StatelessWidget {
           ),
         ],
       ),
-      IdCheck.available => const Row(
+      IdCheck.available => Row(
         children: [
-          Icon(Icons.check, size: 16, color: _ok),
-          SizedBox(width: 4),
+          const Icon(Icons.check, size: 16, color: _ok),
+          const SizedBox(width: 4),
           Text(
-            'Disponível',
-            style: TextStyle(
+            l10n.creationIdAvailable,
+            style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
               color: _ok,

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
@@ -66,8 +67,8 @@ class HomeScreen extends StatelessWidget {
               builder: (context, _) => session.state.isLoggingOut
                   ? LogoutProgressOverlay(
                       message: session.state.isSwitchingOrganization
-                          ? 'Trocando de organização…'
-                          : 'Encerrando sessão…',
+                          ? AppLocalizations.of(context).switchingOrganization
+                          : AppLocalizations.of(context).loggingOut,
                     )
                   : const SizedBox.shrink(),
             ),
@@ -166,7 +167,7 @@ class HomeScreen extends StatelessWidget {
             _highlightedTrajectories(),
             _firebaseMarkers(),
             _ownMarker(),
-            _attribution(),
+            _attribution(context),
             _centralizeButton(),
           ],
         ),
@@ -232,7 +233,7 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(width: 10),
                       Flexible(
                         child: Text(
-                          'Carregando $group…',
+                          AppLocalizations.of(context).homeLoadingGroup(group),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -326,7 +327,9 @@ class HomeScreen extends StatelessWidget {
                           foregroundColor: AppColors.darkBlue(),
                         ),
                         onPressed: home.requestNotificationPermission,
-                        child: const Text("Permitir notificação"),
+                        child: Text(
+                          AppLocalizations.of(context).homeAllowNotification,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -349,7 +352,11 @@ class HomeScreen extends StatelessWidget {
                           foregroundColor: AppColors.darkBlue(),
                         ),
                         onPressed: home.requestWhenInUsePermission,
-                        child: const Text("Permitir localização (durante uso)"),
+                        child: Text(
+                          AppLocalizations.of(
+                            context,
+                          ).homeAllowLocationWhileInUse,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -372,7 +379,9 @@ class HomeScreen extends StatelessWidget {
                           foregroundColor: AppColors.darkBlue(),
                         ),
                         onPressed: home.requestAlwaysPermission,
-                        child: const Text("Permitir localização (sempre)"),
+                        child: Text(
+                          AppLocalizations.of(context).homeAllowLocationAlways,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -395,7 +404,9 @@ class HomeScreen extends StatelessWidget {
                           foregroundColor: AppColors.darkBlue(),
                         ),
                         onPressed: home.openBackgroundUsageSettings,
-                        child: const Text("Permitir uso em segundo plano"),
+                        child: Text(
+                          AppLocalizations.of(context).homeAllowBackground,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -435,9 +446,9 @@ class HomeScreen extends StatelessWidget {
 
   /// The credit that the OSM licence and tile policy require on the map;
   /// bottom left, since the center button takes the bottom right.
-  Widget _attribution() {
+  Widget _attribution(BuildContext context) {
     return SimpleAttributionWidget(
-      source: const Text('OpenStreetMap contributors'),
+      source: Text(AppLocalizations.of(context).mapAttribution),
       alignment: Alignment.bottomLeft,
       onTap: () => launchUrl(
         Uri.parse('https://www.openstreetmap.org/copyright'),

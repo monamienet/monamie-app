@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/ui/core/ui/admin_ui.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/ui/groups/view_models/group_invites_view_model.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
 import 'package:monamie_app/utils/result.dart';
@@ -54,6 +56,7 @@ class _GroupScreenState extends State<GroupScreen> {
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([c, c.deletionImpact, invites]),
     builder: (context, _) {
+      final l10n = AppLocalizations.of(context);
       final deleted = c.state.deleted;
       if (deleted != null && deleted.id == widget.groupId) {
         return _deletedScreen(deleted);
@@ -62,15 +65,15 @@ class _GroupScreenState extends State<GroupScreen> {
       if (group == null) {
         return Scaffold(
           backgroundColor: Colors.white,
-          appBar: adminAppBar('Grupo'),
-          body: const Center(child: Text('Grupo não encontrado.')),
+          appBar: adminAppBar(l10n.groupTitle),
+          body: Center(child: Text(l10n.groupNotFound)),
         );
       }
       final invited = invites.state.invites?.length;
-      final pending = pendingInvitesLabel(invited ?? 0);
+      final pending = l10n.pendingInvitesLabel(invited ?? 0);
       return Scaffold(
         backgroundColor: Colors.white,
-        appBar: adminAppBar('Grupo'),
+        appBar: adminAppBar(l10n.groupTitle),
         // Only the list scrolls: header, tabs and the two buttons stay put.
         body: SafeArea(
           top: false,
@@ -82,7 +85,7 @@ class _GroupScreenState extends State<GroupScreen> {
                 _header(
                   group,
                   [
-                    group.peopleLabel,
+                    l10n.peopleCount(group.people.length),
                     if (pending.isNotEmpty) pending,
                   ].join(' · '),
                 ),
@@ -158,12 +161,12 @@ class _GroupScreenState extends State<GroupScreen> {
             ),
           ),
           onPressed: () => _rename(group),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.edit_outlined, size: 16),
-              SizedBox(width: 6),
-              Text('Renomear'),
+              const Icon(Icons.edit_outlined, size: 16),
+              const SizedBox(width: 6),
+              Text(AppLocalizations.of(context).groupRename),
             ],
           ),
         ),
@@ -172,6 +175,7 @@ class _GroupScreenState extends State<GroupScreen> {
   );
 
   Widget _tabs(int members, int? invited) {
+    final l10n = AppLocalizations.of(context);
     Widget tab(String label, bool selected, bool invitesTab) => Expanded(
       child: Semantics(
         selected: selected,
@@ -215,8 +219,8 @@ class _GroupScreenState extends State<GroupScreen> {
       ),
       child: Row(
         children: [
-          tab('No grupo · $members', !_onInvites, false),
-          tab('Convidados · ${invited ?? '…'}', _onInvites, true),
+          tab(l10n.groupTabPeople(members), !_onInvites, false),
+          tab(l10n.groupTabInvited('${invited ?? '…'}'), _onInvites, true),
         ],
       ),
     );
@@ -239,12 +243,12 @@ class _GroupScreenState extends State<GroupScreen> {
           await openInvite(context, c, groupId: widget.groupId);
           await invites.load.execute();
         },
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_add_alt, size: 20),
-            SizedBox(width: 8),
-            Text('Convidar para este grupo'),
+            const Icon(Icons.person_add_alt, size: 20),
+            const SizedBox(width: 8),
+            Text(AppLocalizations.of(context).groupInvite),
           ],
         ),
       ),
@@ -273,80 +277,89 @@ class _GroupScreenState extends State<GroupScreen> {
           else
             const Icon(Icons.delete_outline, size: 18),
           const SizedBox(width: 8),
-          const Text('Excluir grupo'),
+          Text(AppLocalizations.of(context).groupDelete),
         ],
       ),
     ),
   );
 
-  Widget _deletedScreen(DeletedGroup deleted) => Scaffold(
-    backgroundColor: Colors.white,
-    appBar: adminAppBar('Grupo'),
-    body: SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: _soft,
-                  borderRadius: BorderRadius.circular(20),
+  Widget _deletedScreen(DeletedGroup deleted) {
+    final l10n = AppLocalizations.of(context);
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: adminAppBar(l10n.groupTitle),
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: _soft,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline,
+                    size: 30,
+                    color: _ink,
+                  ),
                 ),
-                child: const Icon(Icons.delete_outline, size: 30, color: _ink),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Grupo excluído',
-              style: const TextStyle(
-                fontSize: 30,
-                height: 1.1,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.9,
-                color: _ink,
+              const SizedBox(height: 20),
+              Text(
+                l10n.groupDeleted,
+                style: const TextStyle(
+                  fontSize: 30,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.9,
+                  color: _ink,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              deletedGroupText(
-                loses: deleted.loses,
-                organization: adminOrganizationName,
+              const SizedBox(height: 10),
+              Text(
+                l10n.deletedGroupText(
+                  loses: deleted.loses,
+                  organization: adminOrganizationName(l10n),
+                ),
+                style: const TextStyle(
+                  fontSize: 16,
+                  height: 24 / 16,
+                  fontWeight: FontWeight.w500,
+                  color: _muted,
+                ),
               ),
-              style: const TextStyle(
-                fontSize: 16,
-                height: 24 / 16,
-                fontWeight: FontWeight.w500,
-                color: _muted,
+              const Spacer(),
+              adminPrimaryButton(
+                label: l10n.groupSeeGroups,
+                busy: false,
+                busyLabel: '',
+                onPressed: () => Navigator.pop(context),
               ),
-            ),
-            const Spacer(),
-            adminPrimaryButton(
-              label: 'Ver grupos',
-              busy: false,
-              busyLabel: '',
-              onPressed: () => Navigator.pop(context),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 
   Future<void> _rename(Group group) async {
     final field = TextEditingController(text: group.name);
+    final l10n = AppLocalizations.of(context);
     final ok = await adminActionSheet(
       context,
-      title: 'Renomear grupo',
-      confirmLabel: 'Salvar nome',
-      busyLabel: 'Salvando…',
+      title: l10n.groupRenameTitle,
+      confirmLabel: l10n.groupRenameConfirm,
+      busyLabel: l10n.commonSaving,
       canConfirm: () => c.canRename(group, field.text),
       onConfirm: () async => sheetFailureOf(
+        l10n,
         await c.rename.execute((
           groupId: group.id,
           name: c.tidyName(field.text),
@@ -363,9 +376,9 @@ class _GroupScreenState extends State<GroupScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Nome do grupo',
-              style: TextStyle(
+            Text(
+              l10n.groupNameLabel,
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: _ink,
@@ -401,7 +414,7 @@ class _GroupScreenState extends State<GroupScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              problem ?? 'As pessoas do grupo veem o novo nome na hora.',
+              problem ?? l10n.groupRenameNote,
               style: TextStyle(
                 fontSize: 13,
                 height: 19 / 13,
@@ -414,32 +427,34 @@ class _GroupScreenState extends State<GroupScreen> {
       },
     );
     field.dispose();
-    if (ok && mounted) adminToast(context, 'Grupo renomeado');
+    if (ok && mounted) adminToast(context, l10n.groupRenamed);
   }
 
   /// Reads who loses access, then asks; once deleted, the view model's
   /// [GroupsState.deleted] turns this screen into *Grupo excluído*.
   Future<void> _delete(Group group) async {
+    final l10n = AppLocalizations.of(context);
     final read = await c.deletionImpact.execute(group.id);
     if (!mounted) return;
     if (read is! Ok<({List<String> loses, List<String> stays})>) {
-      adminToast(context, sheetFailureOf(read)!);
+      adminToast(context, sheetFailureOf(l10n, read)!);
       return;
     }
     final impact = read.value;
     await adminActionSheet(
       context,
-      title: 'Excluir ${group.name}?',
-      confirmLabel: 'Excluir grupo',
-      busyLabel: 'Excluindo…',
+      title: l10n.groupDeleteTitle(group.name),
+      confirmLabel: l10n.groupDelete,
+      busyLabel: l10n.groupDeleting,
       danger: true,
-      lines: groupDeletionLines(
+      lines: l10n.groupDeletionLines(
         loses: impact.loses.length,
         stays: impact.stays.length,
         invites: invites.state.invites?.length ?? 0,
-        organization: adminOrganizationName,
+        organization: adminOrganizationName(l10n),
       ),
-      onConfirm: () async => sheetFailureOf(await c.delete.execute(group.id)),
+      onConfirm: () async =>
+          sheetFailureOf(l10n, await c.delete.execute(group.id)),
     );
   }
 }

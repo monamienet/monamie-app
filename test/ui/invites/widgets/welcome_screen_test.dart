@@ -4,6 +4,8 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/ui/invites/view_models/welcome_view_model.dart';
 import 'package:monamie_app/ui/invites/widgets/welcome_screen.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 @GenerateNiceMocks([MockSpec<WelcomeViewModel>()])
 import 'welcome_screen_test.mocks.dart';
@@ -18,7 +20,12 @@ MockWelcomeViewModel _controller() {
 /// Opens *Boas-vindas* over [controller].
 Future<void> _pump(WidgetTester tester, WelcomeViewModel controller) async {
   await tester.pumpWidget(
-    MaterialApp(home: WelcomeScreen(controller: controller)),
+    MaterialApp(
+      locale: const Locale('pt', 'BR'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
+      home: WelcomeScreen(controller: controller),
+    ),
   );
   await tester.pumpAndSettle();
 }

@@ -1,5 +1,9 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/home/widgets/presence.dart';
+
+final l10n = lookupAppLocalizations(const Locale('pt'));
 
 final now = DateTime(2026, 10, 27, 12, 0);
 const validity = Duration(minutes: 10);
@@ -9,6 +13,7 @@ Presence presence({
   bool? isPublishing = true,
   DateTime? lastSeen,
 }) => presenceOf(
+  l10n,
   hasRecord: hasRecord,
   isPublishing: isPublishing,
   lastSeen: lastSeen,
@@ -183,7 +188,7 @@ void main() {
         final seen = then;
 
         // 2. Act
-        final ago = agoLabel(seen, now);
+        final ago = agoLabel(l10n, seen, now);
 
         // 3. Assert
         expect(ago, expected);
@@ -196,7 +201,7 @@ void main() {
       final lastSeen = DateTime(2026, 10, 26, 23, 50);
 
       // 2. Act
-      final label = agoLabel(lastSeen, justAfterMidnight);
+      final label = agoLabel(l10n, lastSeen, justAfterMidnight);
 
       // 3. Assert
       expect(label, 'há 20 min');
@@ -208,7 +213,7 @@ void main() {
       final lastSeen = DateTime(2026, 10, 25, 23, 0);
 
       // 2. Act
-      final label = agoLabel(lastSeen, earlyMorning);
+      final label = agoLabel(l10n, lastSeen, earlyMorning);
 
       // 3. Assert
       expect(label, 'há 2 dias');
@@ -219,7 +224,7 @@ void main() {
       final future = now.add(const Duration(minutes: 5));
 
       // 2. Act
-      final label = agoLabel(future, now);
+      final label = agoLabel(l10n, future, now);
 
       // 3. Assert
       expect(label, 'agora');
@@ -229,7 +234,7 @@ void main() {
   group('dayPresence - Unit Test Suite', () {
     test('Happy Path: a person with positions that day has a trail', () {
       // 1. Arrange / 2. Act
-      final result = dayPresence(hasPoints: true);
+      final result = dayPresence(l10n, hasPoints: true);
 
       // 3. Assert
       expect(result.kind, PresenceKind.live);
@@ -237,7 +242,7 @@ void main() {
 
     test('Edge Case: a person without positions that day reads as off', () {
       // 1. Arrange / 2. Act
-      final result = dayPresence(hasPoints: false);
+      final result = dayPresence(l10n, hasPoints: false);
 
       // 3. Assert
       expect(result.kind, PresenceKind.off);

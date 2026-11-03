@@ -32,6 +32,8 @@ import 'package:monamie_app/routing/router.dart';
 import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import '../../testing/fakes/repositories/fake_account_deletion_repository.dart';
 import '../../testing/fakes/repositories/fake_administrators_repository.dart';
@@ -174,8 +176,12 @@ class TestApp {
   String get location => router.state.uri.path;
 
   /// Opens the app as `main` and `MonAmieApp` do (the data layer, the
-  /// session and the use cases provided above the router), on *Login*.
-  Future<void> pump(WidgetTester tester) async {
+  /// session and the use cases provided above the router), on *Login*, in
+  /// [locale] (Brazilian Portuguese unless a test checks another language).
+  Future<void> pump(
+    WidgetTester tester, {
+    Locale locale = const Locale('pt', 'BR'),
+  }) async {
     // Larger than a phone (800 x 2000): the test font's square glyphs take
     // more room than the real font's (the map's attribution needs ~600).
     tester.view.physicalSize = const Size(1600, 4000);
@@ -186,7 +192,12 @@ class TestApp {
     await tester.pumpWidget(
       MultiProvider(
         providers: dependencies,
-        child: MaterialApp.router(routerConfig: router),
+        child: MaterialApp.router(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          routerConfig: router,
+        ),
       ),
     );
     await settle(tester);

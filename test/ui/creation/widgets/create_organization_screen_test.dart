@@ -11,6 +11,8 @@ import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/routing/routes.dart';
 import 'package:monamie_app/utils/result.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import '../../../../testing/fakes/repositories/fake_creation_repository.dart';
 import '../../../../testing/fakes/repositories/fake_session_repository.dart';
@@ -79,7 +81,12 @@ Future<void> pumpView(
   if (entry != null) stubEntry(entry);
   final controller = newController(debounce: Duration.zero);
   await tester.pumpWidget(
-    MaterialApp(home: CreateOrganizationScreen(controller: controller)),
+    MaterialApp(
+      locale: const Locale('pt', 'BR'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
+      home: CreateOrganizationScreen(controller: controller),
+    ),
   );
   await tester.pump();
 }
@@ -337,7 +344,14 @@ void main() {
         ],
       );
       addTearDown(router.dispose);
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpWidget(
+        MaterialApp.router(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          routerConfig: router,
+        ),
+      );
       await tester.pump();
       await tester.enterText(find.byType(TextField).first, 'Rota Sul');
       await tester.pump();
@@ -395,7 +409,12 @@ void main() {
 
       // 2. Act
       await tester.pumpWidget(
-        MaterialApp(home: CreateOrganizationScreen(controller: controller)),
+        MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          home: CreateOrganizationScreen(controller: controller),
+        ),
       );
       await tester.pump();
 
@@ -415,6 +434,9 @@ void main() {
       // controller and disposes it when the route leaves.
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
           home: ChangeNotifierProvider(
             create: (_) => newController(debounce: const Duration(seconds: 1)),
             child: Builder(

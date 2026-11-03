@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/ui/home/widgets/home_colors.dart';
@@ -84,7 +85,7 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
     return Semantics(
       button: true,
       expanded: open,
-      label: 'Grupo no mapa: ${widget.label}',
+      label: AppLocalizations.of(context).mapGroupChip(widget.label),
       excludeSemantics: true,
       child: InkWell(
         onTap: _toggle,
@@ -231,10 +232,10 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'VER NO MAPA',
-                      style: TextStyle(
+                      AppLocalizations.of(context).mapSeeOnMap,
+                      style: const TextStyle(
                         color: HomeColors.muted,
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -243,7 +244,7 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
                     ),
                   ),
                   Text(
-                    groups.length == 1 ? '1 grupo' : '${groups.length} grupos',
+                    AppLocalizations.of(context).groupCount(groups.length),
                     style: const TextStyle(
                       color: HomeColors.muted,
                       fontSize: 12,
@@ -256,11 +257,14 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 392),
               child: groups.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 14, 16, 16),
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                       child: Text(
-                        'Nenhum grupo disponível',
-                        style: TextStyle(color: HomeColors.muted, fontSize: 14),
+                        AppLocalizations.of(context).mapNoGroups,
+                        style: const TextStyle(
+                          color: HomeColors.muted,
+                          fontSize: 14,
+                        ),
                       ),
                     )
                   : ListView.builder(
@@ -341,7 +345,7 @@ class _GroupMenuButtonState extends State<GroupMenuButton>
                       if (size != null) ...[
                         const SizedBox(height: 1),
                         Text(
-                          size == 1 ? '1 pessoa' : '$size pessoas',
+                          AppLocalizations.of(context).memberCount(size),
                           style: const TextStyle(
                             color: HomeColors.muted,
                             fontSize: 12,

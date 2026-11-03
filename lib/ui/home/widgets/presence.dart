@@ -1,3 +1,5 @@
+import 'package:monamie_app/l10n/app_localizations.dart';
+
 /// How fresh a person's last position is, which decides the line under their
 /// name and the color of their avatar in the group list.
 enum PresenceKind {
@@ -35,51 +37,58 @@ class Presence {
 ///
 /// [hasRecord] is false when the person has no document yet; [isPublishing] and
 /// [lastSeen] are the document's `isPublishing` and `capturedAt`. A person is
-/// "live" until [validity] has passed since [lastSeen].
-Presence presenceOf({
+/// "live" until [validity] has passed since [lastSeen]. The label is in
+/// [l10n]'s language.
+Presence presenceOf(
+  AppLocalizations l10n, {
   required bool hasRecord,
   required bool? isPublishing,
   required DateTime? lastSeen,
   required DateTime now,
   required Duration validity,
 }) {
-  const never = Presence(PresenceKind.never, 'Ainda não ativou a localização');
+  final never = Presence(PresenceKind.never, l10n.presenceNever);
   if (!hasRecord) return never;
 
   if (isPublishing == false) {
-    final seen = lastSeen == null ? '' : ' · visto ${agoLabel(lastSeen, now)}';
-    return Presence(PresenceKind.off, 'Localização desligada$seen');
+    return Presence(
+      PresenceKind.off,
+      lastSeen == null
+          ? l10n.presenceOff
+          : l10n.presenceOffSeen(agoLabel(l10n, lastSeen, now)),
+    );
   }
 
   if (lastSeen == null) return never;
 
   if (now.difference(lastSeen) >= validity) {
-    final ago = agoLabel(lastSeen, now);
+    final ago = agoLabel(l10n, lastSeen, now);
     return Presence(
       PresenceKind.stale,
       '${ago[0].toUpperCase()}${ago.substring(1)}',
     );
   }
-  return const Presence(PresenceKind.live, 'Agora');
+  return Presence(PresenceKind.live, l10n.presenceLive);
 }
 
 /// "agora", "há 12 min", "há 2 h", "ontem" or "há 3 dias" for [then] seen
-/// from [now].
-String agoLabel(DateTime then, DateTime now) {
+/// from [now], in [l10n]'s language.
+String agoLabel(AppLocalizations l10n, DateTime then, DateTime now) {
   final diff = now.difference(then);
-  if (diff.inMinutes < 1) return 'agora';
-  if (diff.inMinutes < 60) return 'há ${diff.inMinutes} min';
-  if (diff.inHours < 24) return 'há ${diff.inHours} h';
+  if (diff.inMinutes < 1) return l10n.agoNow;
+  if (diff.inMinutes < 60) return l10n.agoMinutes(diff.inMinutes);
+  if (diff.inHours < 24) return l10n.agoHours(diff.inHours);
   final days = DateTime(
     now.year,
     now.month,
     now.day,
   ).difference(DateTime(then.year, then.month, then.day)).inDays;
-  return days <= 1 ? 'ontem' : 'há $days dias';
+  return days <= 1 ? l10n.agoYesterday : l10n.agoDays(days);
 }
 
 /// The line under a name while a past day is observed: that day's trail, not
-/// whether the person is sharing now.
-Presence dayPresence({required bool hasPoints}) => hasPoints
-    ? const Presence(PresenceKind.live, 'Tem posições neste dia')
-    : const Presence(PresenceKind.off, 'Sem posições neste dia');
+/// whether the person is sharing now. In [l10n]'s language.
+Presence dayPresence(AppLocalizations l10n, {required bool hasPoints}) =>
+    hasPoints
+    ? Presence(PresenceKind.live, l10n.presenceDayPoints)
+    : Presence(PresenceKind.off, l10n.presenceDayNoPoints);

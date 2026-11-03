@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
@@ -25,6 +26,7 @@ class CreationPlanStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final community = c.state.plan == 'community';
     final name = c.preview.name;
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -32,9 +34,9 @@ class CreationPlanStep extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
             children: [
-              const Text(
-                'Escolha um plano',
-                style: TextStyle(
+              Text(
+                l10n.creationPlanTitle,
+                style: const TextStyle(
                   fontSize: 34,
                   height: 1.08,
                   fontWeight: FontWeight.w800,
@@ -44,8 +46,7 @@ class CreationPlanStep extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Os dois têm o mapa, os grupos e a aparência da $name. Muda '
-                'onde os dados ficam e quem paga.',
+                l10n.creationPlanSubtitle(name),
                 style: const TextStyle(
                   fontSize: 15,
                   height: 22 / 15,
@@ -56,34 +57,25 @@ class CreationPlanStep extends StatelessWidget {
               const SizedBox(height: 18),
               _planCard(
                 'community',
-                'Community',
-                'Grátis',
-                'Para começar agora, sem cadastrar pagamento.',
-                const [
-                  (true, 'Pronta em instantes'),
-                  (
-                    true,
-                    'Dados guardados pela MonAmie, separados das outras organizações',
-                  ),
-                  (
-                    false,
-                    'Localização enviada a cada 15 min (perfil Economia)',
-                  ),
+                l10n.planCommunity,
+                l10n.creationPlanFree,
+                l10n.creationPlanCommunityTagline,
+                [
+                  (true, l10n.creationPlanCommunityReady),
+                  (true, l10n.creationPlanCommunityData),
+                  (false, l10n.creationPlanCommunityInterval),
                 ],
               ),
               const SizedBox(height: 12),
               _planCard(
                 'standard',
-                'Standard',
-                'Uso no Google',
-                'Para quem quer o próprio espaço de dados e mais precisão.',
+                l10n.planStandard,
+                l10n.creationPlanGoogleUsage,
+                l10n.creationPlanStandardTagline,
                 [
-                  (true, 'Projeto Firebase só da $name'),
-                  (true, 'Todos os perfis de acompanhamento, até a cada 1 min'),
-                  (
-                    false,
-                    'Pede uma conta de faturamento do Google Cloud; vocês pagam o uso direto ao Google',
-                  ),
+                  (true, l10n.creationPlanStandardProject(name)),
+                  (true, l10n.creationPlanStandardProfiles),
+                  (false, l10n.creationPlanStandardBilling),
                 ],
               ),
               const SizedBox(height: 18),
@@ -96,18 +88,18 @@ class CreationPlanStep extends StatelessWidget {
                   color: _note,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Row(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
+                    const Padding(
                       padding: EdgeInsets.only(top: 1),
                       child: Icon(Icons.swap_horiz, size: 18, color: _navy),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Dá para passar do Community para o Standard depois, sem perder grupos nem histórico.',
-                        style: TextStyle(
+                        l10n.creationPlanSwitchLater,
+                        style: const TextStyle(
                           fontSize: 13,
                           height: 19 / 13,
                           fontWeight: FontWeight.w500,
@@ -127,7 +119,9 @@ class CreationPlanStep extends StatelessWidget {
             border: Border(top: BorderSide(color: _line)),
           ),
           child: creationButton(
-            community ? 'Continuar com Community' : 'Continuar com Standard',
+            l10n.creationPlanContinue(
+              community ? l10n.planCommunity : l10n.planStandard,
+            ),
             c.next,
           ),
         ),

@@ -6,6 +6,8 @@ import 'package:monamie_app/ui/auth/view_models/login_view_model.dart';
 import 'package:monamie_app/ui/auth/widgets/login_screen.dart';
 import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 @GenerateNiceMocks([MockSpec<LoginViewModel>()])
 import 'login_screen_test.mocks.dart';
@@ -36,7 +38,12 @@ void main() {
 
       // 2. Act
       await tester.pumpWidget(
-        MaterialApp(home: LoginScreen(controller: controller)),
+        MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          home: LoginScreen(controller: controller),
+        ),
       );
 
       // 3. Assert
@@ -49,7 +56,12 @@ void main() {
       // 1. Arrange
       final (:controller, :restores) = _loginViewModel();
       await tester.pumpWidget(
-        MaterialApp(home: LoginScreen(controller: controller)),
+        MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          home: LoginScreen(controller: controller),
+        ),
       );
 
       // 2. Act
@@ -67,7 +79,12 @@ void main() {
 
         // 2. Act
         await tester.pumpWidget(
-          MaterialApp(home: LoginScreen(controller: controller)),
+          MaterialApp(
+            locale: const Locale('pt', 'BR'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: appSupportedLocales,
+            home: LoginScreen(controller: controller),
+          ),
         );
 
         // 3. Assert

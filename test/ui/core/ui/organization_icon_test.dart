@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization_config.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 /// Finds the [SvgPicture] that shows the bundled asset [assetName].
 Finder svgAsset(String assetName) => find.byWidgetPredicate(
@@ -23,7 +25,12 @@ Color? tileColorBehind(WidgetTester tester, String letter) {
   return (tile.decoration as BoxDecoration?)?.color;
 }
 
-Widget host(Widget child) => MaterialApp(home: Scaffold(body: child));
+Widget host(Widget child) => MaterialApp(
+  locale: const Locale('pt', 'BR'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: appSupportedLocales,
+  home: Scaffold(body: child),
+);
 
 void main() {
   group('OrganizationIcon - Unit Test Suite', () {

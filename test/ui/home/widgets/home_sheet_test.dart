@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/ui/home/widgets/home_sheet.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import 'home_doubles.dart';
 
@@ -13,6 +15,9 @@ const _bia = GroupMember(name: 'Bia', email: 'bia@example.com');
 Future<void> pumpSheet(WidgetTester tester, HomeDoubles doubles) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('pt', 'BR'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
       home: Scaffold(
         body: Align(
           alignment: Alignment.bottomCenter,

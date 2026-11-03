@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 
 import 'package:monamie_app/ui/core/ui/admin_ui.dart';
 
@@ -168,7 +169,9 @@ class GroupPersonRow extends StatelessWidget {
                 ? text
                 : Semantics(
                     button: true,
-                    label: 'Mudar o que $title faz',
+                    label: AppLocalizations.of(
+                      context,
+                    ).groupPersonEditRoles(title),
                     child: InkWell(onTap: onEditRoles, child: text),
                   ),
           ),

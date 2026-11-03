@@ -6,6 +6,8 @@ import 'package:monamie_app/domain/models/user_model.dart';
 import 'package:monamie_app/ui/home/widgets/people_list.dart';
 import 'package:monamie_app/ui/home/widgets/person_row_tile.dart';
 import 'package:monamie_app/ui/home/widgets/presence.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import 'home_doubles.dart';
 
@@ -16,6 +18,9 @@ const _caio = GroupMember(name: 'Caio', email: 'caio@example.com');
 Future<void> pumpList(WidgetTester tester, HomeDoubles doubles) async {
   await tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('pt', 'BR'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
       home: Scaffold(
         body: SingleChildScrollView(
           child: PeopleList(

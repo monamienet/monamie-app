@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
@@ -51,7 +52,7 @@ class HomeHeader extends StatelessWidget {
               Row(
                 children: [
                   IconButton(
-                    tooltip: 'Menu',
+                    tooltip: AppLocalizations.of(context).homeMenuTooltip,
                     constraints: const BoxConstraints.tightFor(
                       width: 48,
                       height: 48,
@@ -99,8 +100,8 @@ class HomeHeader extends StatelessWidget {
                     spacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      _groupChip(),
-                      if (_home.canWatch) ..._dayChips(),
+                      _groupChip(context),
+                      if (_home.canWatch) ..._dayChips(context),
                     ],
                   ),
                 ),
@@ -112,9 +113,11 @@ class HomeHeader extends StatelessWidget {
     );
   }
 
-  Widget _groupChip() {
+  Widget _groupChip(BuildContext context) {
     final canWatch = _home.canWatch;
+    final l10n = AppLocalizations.of(context);
     final label = groupChipLabel(
+      l10n,
       canWatch: canWatch,
       observedGroup: _home.selectedGroup.value?.name,
       publishGroups: [
@@ -122,18 +125,26 @@ class HomeHeader extends StatelessWidget {
       ],
     );
     if (canWatch) return GroupMenuButton(home: _home, label: label);
-    return HomeChip(label: label, semanticsLabel: 'Grupo: $label');
+    return HomeChip(label: label, semanticsLabel: l10n.homeGroupChip(label));
   }
 
-  List<Widget> _dayChips() {
+  List<Widget> _dayChips(BuildContext context) {
     final isToday = _calendar.isObservingToday;
-    final day = _calendar.observedDayFormatted;
+    final l10n = AppLocalizations.of(context);
+    final day = switch (_calendar.observedRelativeDay) {
+      RelativeDay.today => l10n.dayToday,
+      RelativeDay.yesterday => l10n.dayYesterday,
+      // "02/11/2026", "11/2/2026".
+      RelativeDay.other => MaterialLocalizations.of(
+        context,
+      ).formatCompactDate(_calendar.observedDay.value),
+    };
     return [
       Builder(
         builder: (context) => HomeChip(
           label: day,
           icon: Icons.calendar_month_outlined,
-          semanticsLabel: 'Histórico por data, $day',
+          semanticsLabel: l10n.homeDayChip(day),
           onTap: () {
             _calendar.showObservedMonth();
             HistoryCalendarSheet.show(context, _calendar);
@@ -141,7 +152,7 @@ class HomeHeader extends StatelessWidget {
         ),
       ),
       if (!isToday)
-        HomeChip(label: 'Voltar para hoje', onTap: _calendar.goToToday),
+        HomeChip(label: l10n.homeBackToToday, onTap: _calendar.goToToday),
     ];
   }
 

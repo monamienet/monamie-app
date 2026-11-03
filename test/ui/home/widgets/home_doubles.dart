@@ -36,7 +36,7 @@ class HomeDoubles {
 
     when(calendar.observedDay).thenReturn(observedDay);
     when(calendar.isObservingToday).thenReturn(true);
-    when(calendar.observedDayFormatted).thenReturn('Hoje');
+    when(calendar.observedRelativeDay).thenReturn(RelativeDay.today);
 
     when(tracking.groupUsers).thenReturn(groupUsers);
     when(tracking.usersWithPointsOnObservedDay).thenReturn(usersWithPoints);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
@@ -40,6 +41,7 @@ class OrganizationPickerScreen extends StatelessWidget {
             ]),
             builder: (context, _) {
               final state = controller.state;
+              final l10n = AppLocalizations.of(context);
               final busy = controller.isEntering;
               final entering = state.enteringOrganizationName;
               final choices = state.organizationChoices;
@@ -56,9 +58,9 @@ class OrganizationPickerScreen extends StatelessWidget {
                           ),
                   ),
                   const SizedBox(height: 28),
-                  const Text(
-                    'Em qual organização você quer entrar?',
-                    style: TextStyle(
+                  Text(
+                    l10n.pickerTitle,
+                    style: const TextStyle(
                       fontSize: 30,
                       height: 1.1,
                       fontWeight: FontWeight.w800,
@@ -68,10 +70,7 @@ class OrganizationPickerScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    choices.length == 1
-                        ? 'Você participa de 1 organização.'
-                        : 'Você participa de ${choices.length}. Dá para trocar '
-                              'depois pelo menu.',
+                    l10n.pickerCount(choices.length),
                     style: const TextStyle(
                       fontSize: 15,
                       color: MonAmieBrand.mutedInk,
@@ -112,7 +111,7 @@ class OrganizationPickerScreen extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.add),
-                    label: const Text('Criar nova organização'),
+                    label: Text(l10n.pickerCreate),
                   ),
                 ],
               );

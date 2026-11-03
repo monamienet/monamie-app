@@ -4,26 +4,26 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i11;
+import 'dart:async' as _i10;
 import 'dart:ui' as _i17;
 
 import 'package:flutter/foundation.dart' as _i2;
 import 'package:flutter_map/flutter_map.dart' as _i4;
 import 'package:latlong2/latlong.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i9;
-import 'package:monamie_app/data/services/call_service.dart' as _i10;
+import 'package:mockito/src/dummies.dart' as _i16;
+import 'package:monamie_app/data/services/call_service.dart' as _i9;
 import 'package:monamie_app/domain/models/history_month.dart' as _i8;
-import 'package:monamie_app/domain/models/location_point.dart' as _i14;
-import 'package:monamie_app/domain/models/user_model.dart' as _i13;
+import 'package:monamie_app/domain/models/location_point.dart' as _i13;
+import 'package:monamie_app/domain/models/user_model.dart' as _i12;
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart'
     as _i7;
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart'
-    as _i12;
+    as _i11;
 import 'package:monamie_app/ui/home/view_models/user_state.dart' as _i6;
-import 'package:monamie_app/ui/home/view_models/user_view_model.dart' as _i16;
+import 'package:monamie_app/ui/home/view_models/user_view_model.dart' as _i15;
 import 'package:monamie_app/utils/command.dart' as _i5;
-import 'package:monamie_app/utils/user_notice.dart' as _i15;
+import 'package:monamie_app/utils/user_notice.dart' as _i14;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -126,19 +126,13 @@ class MockCalendarViewModel extends _i1.Mock implements _i7.CalendarViewModel {
           as bool);
 
   @override
-  String get observedDayFormatted =>
+  _i7.RelativeDay get observedRelativeDay =>
       (super.noSuchMethod(
-            Invocation.getter(#observedDayFormatted),
-            returnValue: _i9.dummyValue<String>(
-              this,
-              Invocation.getter(#observedDayFormatted),
-            ),
-            returnValueForMissingStub: _i9.dummyValue<String>(
-              this,
-              Invocation.getter(#observedDayFormatted),
-            ),
+            Invocation.getter(#observedRelativeDay),
+            returnValue: _i7.RelativeDay.today,
+            returnValueForMissingStub: _i7.RelativeDay.today,
           )
-          as String);
+          as _i7.RelativeDay);
 
   @override
   void goToToday() => super.noSuchMethod(
@@ -174,21 +168,21 @@ class MockCalendarViewModel extends _i1.Mock implements _i7.CalendarViewModel {
 /// A class which mocks [CallService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockCallService extends _i1.Mock implements _i10.CallService {
+class MockCallService extends _i1.Mock implements _i9.CallService {
   @override
-  _i11.Future<void> launchGoogleMeet(String? email) =>
+  _i10.Future<void> launchGoogleMeet(String? email) =>
       (super.noSuchMethod(
             Invocation.method(#launchGoogleMeet, [email]),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
+            returnValue: _i10.Future<void>.value(),
+            returnValueForMissingStub: _i10.Future<void>.value(),
           )
-          as _i11.Future<void>);
+          as _i10.Future<void>);
 }
 
 /// A class which mocks [TrackingViewModel].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockTrackingViewModel extends _i1.Mock implements _i12.TrackingViewModel {
+class MockTrackingViewModel extends _i1.Mock implements _i11.TrackingViewModel {
   @override
   _i3.LatLng get position =>
       (super.noSuchMethod(
@@ -202,36 +196,36 @@ class MockTrackingViewModel extends _i1.Mock implements _i12.TrackingViewModel {
           as _i3.LatLng);
 
   @override
-  _i2.ValueListenable<List<_i13.UserModel>> get firebaseUsers =>
+  _i2.ValueListenable<List<_i12.UserModel>> get firebaseUsers =>
       (super.noSuchMethod(
             Invocation.getter(#firebaseUsers),
-            returnValue: _FakeValueListenable_0<List<_i13.UserModel>>(
+            returnValue: _FakeValueListenable_0<List<_i12.UserModel>>(
               this,
               Invocation.getter(#firebaseUsers),
             ),
             returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i13.UserModel>>(
+                _FakeValueListenable_0<List<_i12.UserModel>>(
                   this,
                   Invocation.getter(#firebaseUsers),
                 ),
           )
-          as _i2.ValueListenable<List<_i13.UserModel>>);
+          as _i2.ValueListenable<List<_i12.UserModel>>);
 
   @override
-  _i2.ValueListenable<List<_i13.UserModel>> get groupUsers =>
+  _i2.ValueListenable<List<_i12.UserModel>> get groupUsers =>
       (super.noSuchMethod(
             Invocation.getter(#groupUsers),
-            returnValue: _FakeValueListenable_0<List<_i13.UserModel>>(
+            returnValue: _FakeValueListenable_0<List<_i12.UserModel>>(
               this,
               Invocation.getter(#groupUsers),
             ),
             returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i13.UserModel>>(
+                _FakeValueListenable_0<List<_i12.UserModel>>(
                   this,
                   Invocation.getter(#groupUsers),
                 ),
           )
-          as _i2.ValueListenable<List<_i13.UserModel>>);
+          as _i2.ValueListenable<List<_i12.UserModel>>);
 
   @override
   _i4.MapController get mapController =>
@@ -303,13 +297,13 @@ class MockTrackingViewModel extends _i1.Mock implements _i12.TrackingViewModel {
           as bool);
 
   @override
-  List<_i13.UserModel> get markedUsers =>
+  List<_i12.UserModel> get markedUsers =>
       (super.noSuchMethod(
             Invocation.getter(#markedUsers),
-            returnValue: <_i13.UserModel>[],
-            returnValueForMissingStub: <_i13.UserModel>[],
+            returnValue: <_i12.UserModel>[],
+            returnValueForMissingStub: <_i12.UserModel>[],
           )
-          as List<_i13.UserModel>);
+          as List<_i12.UserModel>);
 
   @override
   _i2.ValueListenable<Map<String, _i3.LatLng>> get animatedMarkerPositions =>
@@ -343,37 +337,37 @@ class MockTrackingViewModel extends _i1.Mock implements _i12.TrackingViewModel {
           as _i2.ValueListenable<Set<String>>);
 
   @override
-  _i2.ValueListenable<Map<String, List<_i14.LocationPoint>>>
+  _i2.ValueListenable<Map<String, List<_i13.LocationPoint>>>
   get highlightedTrajectories =>
       (super.noSuchMethod(
             Invocation.getter(#highlightedTrajectories),
             returnValue:
-                _FakeValueListenable_0<Map<String, List<_i14.LocationPoint>>>(
+                _FakeValueListenable_0<Map<String, List<_i13.LocationPoint>>>(
                   this,
                   Invocation.getter(#highlightedTrajectories),
                 ),
             returnValueForMissingStub:
-                _FakeValueListenable_0<Map<String, List<_i14.LocationPoint>>>(
+                _FakeValueListenable_0<Map<String, List<_i13.LocationPoint>>>(
                   this,
                   Invocation.getter(#highlightedTrajectories),
                 ),
           )
-          as _i2.ValueListenable<Map<String, List<_i14.LocationPoint>>>);
+          as _i2.ValueListenable<Map<String, List<_i13.LocationPoint>>>);
 
   @override
-  _i5.Command0<_i15.UserNotice?> get toggleService =>
+  _i5.Command0<_i14.UserNotice?> get toggleService =>
       (super.noSuchMethod(
             Invocation.getter(#toggleService),
-            returnValue: _FakeCommand0_3<_i15.UserNotice?>(
+            returnValue: _FakeCommand0_3<_i14.UserNotice?>(
               this,
               Invocation.getter(#toggleService),
             ),
-            returnValueForMissingStub: _FakeCommand0_3<_i15.UserNotice?>(
+            returnValueForMissingStub: _FakeCommand0_3<_i14.UserNotice?>(
               this,
               Invocation.getter(#toggleService),
             ),
           )
-          as _i5.Command0<_i15.UserNotice?>);
+          as _i5.Command0<_i14.UserNotice?>);
 
   @override
   set position(_i3.LatLng? value) => super.noSuchMethod(
@@ -391,7 +385,7 @@ class MockTrackingViewModel extends _i1.Mock implements _i12.TrackingViewModel {
           as bool);
 
   @override
-  bool isFaded(_i13.UserModel? user, DateTime? now) =>
+  bool isFaded(_i12.UserModel? user, DateTime? now) =>
       (super.noSuchMethod(
             Invocation.method(#isFaded, [user, now]),
             returnValue: false,
@@ -412,22 +406,22 @@ class MockTrackingViewModel extends _i1.Mock implements _i12.TrackingViewModel {
   );
 
   @override
-  _i11.Future<void> centerMapOnCurrentLocation() =>
+  _i10.Future<void> centerMapOnCurrentLocation() =>
       (super.noSuchMethod(
             Invocation.method(#centerMapOnCurrentLocation, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
+            returnValue: _i10.Future<void>.value(),
+            returnValueForMissingStub: _i10.Future<void>.value(),
           )
-          as _i11.Future<void>);
+          as _i10.Future<void>);
 
   @override
-  _i11.Future<void> start() =>
+  _i10.Future<void> start() =>
       (super.noSuchMethod(
             Invocation.method(#start, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
+            returnValue: _i10.Future<void>.value(),
+            returnValueForMissingStub: _i10.Future<void>.value(),
           )
-          as _i11.Future<void>);
+          as _i10.Future<void>);
 
   @override
   void dispose() => super.noSuchMethod(
@@ -439,7 +433,7 @@ class MockTrackingViewModel extends _i1.Mock implements _i12.TrackingViewModel {
 /// A class which mocks [UserViewModel].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockUserViewModel extends _i1.Mock implements _i16.UserViewModel {
+class MockUserViewModel extends _i1.Mock implements _i15.UserViewModel {
   @override
   _i6.UserState get state =>
       (super.noSuchMethod(
@@ -471,22 +465,22 @@ class MockUserViewModel extends _i1.Mock implements _i16.UserViewModel {
           as bool);
 
   @override
-  _i11.Future<void> start() =>
+  _i10.Future<void> start() =>
       (super.noSuchMethod(
             Invocation.method(#start, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
+            returnValue: _i10.Future<void>.value(),
+            returnValueForMissingStub: _i10.Future<void>.value(),
           )
-          as _i11.Future<void>);
+          as _i10.Future<void>);
 
   @override
-  _i11.Future<void> loadCurrentUser() =>
+  _i10.Future<void> loadCurrentUser() =>
       (super.noSuchMethod(
             Invocation.method(#loadCurrentUser, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
+            returnValue: _i10.Future<void>.value(),
+            returnValueForMissingStub: _i10.Future<void>.value(),
           )
-          as _i11.Future<void>);
+          as _i10.Future<void>);
 
   @override
   bool isTrackable() =>
@@ -501,11 +495,11 @@ class MockUserViewModel extends _i1.Mock implements _i16.UserViewModel {
   String getUserName() =>
       (super.noSuchMethod(
             Invocation.method(#getUserName, []),
-            returnValue: _i9.dummyValue<String>(
+            returnValue: _i16.dummyValue<String>(
               this,
               Invocation.method(#getUserName, []),
             ),
-            returnValueForMissingStub: _i9.dummyValue<String>(
+            returnValueForMissingStub: _i16.dummyValue<String>(
               this,
               Invocation.method(#getUserName, []),
             ),

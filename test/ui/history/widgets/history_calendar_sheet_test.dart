@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/ui/history/widgets/history_calendar_sheet.dart';
 import 'package:monamie_app/domain/models/history_month.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import '../../home/widgets/home_doubles.mocks.dart';
 
@@ -32,6 +34,9 @@ Future<void> _pumpSheet(WidgetTester tester, _Calendar calendar) {
   addTearDown(tester.view.reset);
   return tester.pumpWidget(
     MaterialApp(
+      locale: const Locale('pt', 'BR'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
       home: Scaffold(body: HistoryCalendarSheet(controller: calendar.mock)),
     ),
   );
@@ -89,6 +94,26 @@ void main() {
         tester.getSemantics(find.bySemanticsLabel(RegExp(r'^1 de novembro'))),
         isSemantics(isSelected: true),
       );
+    });
+    testWidgets('Happy Path: in pt_BR the month and the weekday letters are '
+        'Portuguese, Sunday first (#84)', (tester) async {
+      // 1. Arrange
+      final calendar = _Calendar();
+
+      // 2. Act
+      await _pumpSheet(tester, calendar);
+
+      // 3. Assert
+      expect(find.text('Novembro de 2026'), findsOneWidget);
+      final letters = [
+        for (final text in tester.widgetList<Text>(
+          find.byWidgetPredicate(
+            (w) => w is Text && (w.data?.length ?? 0) == 1,
+          ),
+        ))
+          text.data,
+      ];
+      expect(letters.take(7), ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']);
     });
   });
 }

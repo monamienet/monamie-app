@@ -88,37 +88,6 @@ void main() {
     }
   });
 
-  group('Group.peopleLabel - Unit Test Suite', () {
-    final cases = {
-      0: 'Ninguém ainda', // Edge Case: nobody
-      1: '1 pessoa', // Edge Case: singular
-      3: '3 pessoas', // Happy Path: plural
-    };
-    for (final MapEntry(key: count, value: expected) in cases.entries) {
-      final kind = switch (count) {
-        3 => 'Happy Path',
-        _ => 'Edge Case',
-      };
-      test('$kind: $count people read "$expected"', () {
-        // 1. Arrange
-        final team = Group(
-          id: 'g1',
-          name: 'Equipe Norte',
-          people: [
-            for (var i = 0; i < count; i++)
-              GroupPerson(email: 'p$i@x.com', roles: {GroupRole.publisher}),
-          ],
-        );
-
-        // 2. Act
-        final label = team.peopleLabel;
-
-        // 3. Assert
-        expect(label, expected);
-      });
-    }
-  });
-
   group('normalizeGroupName - Unit Test Suite', () {
     final cases = <(String, String, String)>[
       (
@@ -215,31 +184,6 @@ void main() {
     }
   });
 
-  group('groupRolesLabel - Unit Test Suite', () {
-    final cases = <(String, Set<GroupRole>, String)>[
-      (
-        'Happy Path: both roles in GroupRole order',
-        {GroupRole.subscriber, GroupRole.publisher},
-        'Em campo · Vê o mapa',
-      ),
-      ('Edge Case: only Em campo', {GroupRole.publisher}, 'Em campo'),
-      ('Edge Case: only Vê o mapa', {GroupRole.subscriber}, 'Vê o mapa'),
-      ('Sad Path: no roles give empty text', <GroupRole>{}, ''),
-    ];
-    for (final (label, input, expected) in cases) {
-      test('$label reads "$expected"', () {
-        // 1. Arrange
-        final roles = input;
-
-        // 2. Act
-        final text = groupRolesLabel(roles);
-
-        // 3. Assert
-        expect(text, expected);
-      });
-    }
-  });
-
   group('initialsOf - Unit Test Suite', () {
     final cases = <(String, String, String)>[
       ('Happy Path: an e-mail', 'ana.lima@gmail.com', 'AL'),
@@ -261,133 +205,6 @@ void main() {
 
         // 3. Assert
         expect(initials, expected);
-      });
-    }
-  });
-
-  group('pendingInvitesLabel - Unit Test Suite', () {
-    final cases = <(String, int, String)>[
-      ('Happy Path: plural', 3, '3 convites pendentes'),
-      ('Edge Case: singular', 1, '1 convite pendente'),
-      ('Edge Case: none', 0, ''),
-      ('Sad Path: a negative count reads as none', -1, ''),
-    ];
-    for (final (label, count, expected) in cases) {
-      test('$label ($count) reads "$expected"', () {
-        // 1. Arrange
-        final input = count;
-
-        // 2. Act
-        final text = pendingInvitesLabel(input);
-
-        // 3. Assert
-        expect(text, expected);
-      });
-    }
-  });
-
-  group('groupDeletionLines - Unit Test Suite', () {
-    const lastLine =
-        'Os trajetos publicados neste grupo são apagados junto. Não dá para '
-        'desfazer.';
-
-    test('Happy Path: plural counts give one line each, in order', () {
-      // 1. Arrange
-      const organization = 'Rota Sul';
-
-      // 2. Act
-      final lines = groupDeletionLines(
-        loses: 3,
-        stays: 2,
-        invites: 4,
-        organization: organization,
-      );
-
-      // 3. Assert
-      expect(lines, [
-        '3 pessoas só estavam neste grupo e perdem o acesso à Rota Sul.',
-        '2 pessoas continuam nos outros grupos.',
-        'Os 4 convites pendentes são cancelados.',
-        lastLine,
-      ]);
-    });
-
-    test('Edge Case: counts of one use the singular', () {
-      // 1. Arrange
-      const organization = 'Rota Sul';
-
-      // 2. Act
-      final lines = groupDeletionLines(
-        loses: 1,
-        stays: 1,
-        invites: 1,
-        organization: organization,
-      );
-
-      // 3. Assert
-      expect(lines, [
-        '1 pessoa só estava neste grupo e perde o acesso à Rota Sul.',
-        '1 pessoa continua nos outros grupos.',
-        'O convite pendente é cancelado.',
-        lastLine,
-      ]);
-    });
-
-    test('Edge Case: zero counts leave only the last line', () {
-      // 1. Arrange
-      const organization = 'Rota Sul';
-
-      // 2. Act
-      final lines = groupDeletionLines(
-        loses: 0,
-        stays: 0,
-        invites: 0,
-        organization: organization,
-      );
-
-      // 3. Assert
-      expect(lines, [lastLine]);
-    });
-
-    test('Sad Path: negative counts are left out', () {
-      // 1. Arrange
-      const organization = 'Rota Sul';
-
-      // 2. Act
-      final lines = groupDeletionLines(
-        loses: -1,
-        stays: -2,
-        invites: -3,
-        organization: organization,
-      );
-
-      // 3. Assert
-      expect(lines, [lastLine]);
-    });
-  });
-
-  group('deletedGroupText - Unit Test Suite', () {
-    const stays = 'Quem estava em outros grupos continua neles.';
-    final cases = <(String, int, String)>[
-      (
-        'Happy Path: plural',
-        3,
-        '3 pessoas perderam o acesso à Rota Sul. $stays',
-      ),
-      ('Edge Case: singular', 1, '1 pessoa perdeu o acesso à Rota Sul. $stays'),
-      ('Edge Case: nobody lost access', 0, stays),
-      ('Sad Path: a negative count reads as nobody', -2, stays),
-    ];
-    for (final (label, loses, expected) in cases) {
-      test('$label ($loses)', () {
-        // 1. Arrange
-        const organization = 'Rota Sul';
-
-        // 2. Act
-        final text = deletedGroupText(loses: loses, organization: organization);
-
-        // 3. Assert
-        expect(text, expected);
       });
     }
   });

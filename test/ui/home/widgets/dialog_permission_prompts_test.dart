@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/ui/home/widgets/dialog_permission_prompts.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 const _prompts = DialogPermissionPrompts();
 
@@ -11,6 +13,9 @@ const String _batterySnippet =
 /// An app whose navigator is [rootNavigatorKey], where the dialogs open.
 Future<void> _pumpApp(WidgetTester tester) => tester.pumpWidget(
   MaterialApp(
+    locale: const Locale('pt', 'BR'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: appSupportedLocales,
     navigatorKey: rootNavigatorKey,
     home: const Scaffold(body: SizedBox.shrink()),
   ),

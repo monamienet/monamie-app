@@ -28,6 +28,8 @@ import 'package:monamie_app/routing/routes.dart';
 import 'package:monamie_app/routing/session_redirect.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 @GenerateNiceMocks([
   MockSpec<BackgroundTrackingService>(),
@@ -155,7 +157,12 @@ Future<void> pumpRouter(WidgetTester tester, GoRouter router) async {
   await tester.pumpWidget(
     MultiProvider(
       providers: dependencies(),
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        locale: const Locale('pt', 'BR'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: appSupportedLocales,
+        routerConfig: router,
+      ),
     ),
   );
   await tester.pumpAndSettle();

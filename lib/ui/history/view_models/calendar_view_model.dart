@@ -4,6 +4,9 @@ import 'package:monamie_app/data/repositories/observed_day/observed_day_reposito
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/domain/models/history_month.dart';
 
+/// Where a day stands from today, for the observed day's chip.
+enum RelativeDay { today, yesterday, other }
+
 /// The history calendar: the month it shows and its trail days, over the
 /// day the map shows ([ObservedDayRepository], which the tracking view model
 /// follows too). Each value is its own [ValueListenable]. Whoever creates it
@@ -45,15 +48,17 @@ class CalendarViewModel {
 
   bool get isObservingToday => _observedDay.isObservingToday;
 
-  String get observedDayFormatted {
+  /// Whether the observed day is today, yesterday or another day; the
+  /// screen names it in the person's language.
+  RelativeDay get observedRelativeDay {
     final d = observedDay.value;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
 
-    if (d == today) return 'Hoje';
-    if (d == yesterday) return 'Ontem';
-    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    if (d == today) return RelativeDay.today;
+    if (d == yesterday) return RelativeDay.yesterday;
+    return RelativeDay.other;
   }
 
   /// Sets [notifier] unless disposed: a trail-day read may finish after

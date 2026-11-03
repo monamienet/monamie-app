@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/ui/core/ui/monamie_mark.dart';
 
@@ -40,7 +41,7 @@ class MonAmieAccountHeader extends StatelessWidget {
               decoration: TextDecoration.underline,
             ),
           ),
-          child: const Text('Trocar'),
+          child: Text(AppLocalizations.of(context).accountHeaderSwitch),
         ),
       ],
     ),

@@ -150,43 +150,6 @@ void main() {
     });
   });
 
-  group('longDate - Unit Test Suite', () {
-    test('Happy Path: a date is written out in Portuguese', () {
-      // 1. Arrange
-      final date = DateTime(2026, 11, 25, 12);
-
-      // 2. Act
-      final text = longDate(date);
-
-      // 3. Assert
-      expect(text, '25 de novembro de 2026');
-    });
-
-    test('Edge Case: a UTC instant is shown on its local day', () {
-      // 1. Arrange
-      // Half past midnight local on 1 March, as UTC: the local day must win
-      // whatever the machine's time zone.
-      final date = DateTime(2026, 3, 1, 0, 30).toUtc();
-
-      // 2. Act
-      final text = longDate(date);
-
-      // 3. Assert
-      expect(text, '1 de março de 2026');
-    });
-
-    test('Edge Case: December is the last month', () {
-      // 1. Arrange
-      final date = DateTime(2026, 12, 31, 23, 59);
-
-      // 2. Act
-      final text = longDate(date);
-
-      // 3. Assert
-      expect(text, '31 de dezembro de 2026');
-    });
-  });
-
   group('daysLeft - Unit Test Suite', () {
     final now = DateTime.utc(2026, 10, 26, 12);
     final cases = <String, (Duration, int)>{
@@ -212,27 +175,6 @@ void main() {
 
         // 3. Assert
         expect(days, expected);
-      });
-    }
-  });
-
-  group('inDays - Unit Test Suite', () {
-    final cases = <String, (int, String)>{
-      'Happy Path: several days': (30, 'em 30 dias'),
-      'Edge Case: one day is singular': (1, 'em 1 dia'),
-      'Edge Case: zero days is today': (0, 'hoje'),
-      'Edge Case: two days are plural': (2, 'em 2 dias'),
-    };
-    for (final MapEntry(key: label, value: (days, expected)) in cases.entries) {
-      test(label, () {
-        // 1. Arrange
-        final input = days;
-
-        // 2. Act
-        final text = inDays(input);
-
-        // 3. Assert
-        expect(text, expected);
       });
     }
   });

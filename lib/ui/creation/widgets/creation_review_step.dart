@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/rich_message.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
@@ -26,15 +28,16 @@ class CreationReviewStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = c.pickedTheme;
     final name = c.preview.name;
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
           child: ListView(
             children: [
-              const Text(
-                'Tudo certo?',
-                style: TextStyle(
+              Text(
+                l10n.creationReviewTitle,
+                style: const TextStyle(
                   fontSize: 34,
                   height: 1.08,
                   fontWeight: FontWeight.w800,
@@ -74,7 +77,7 @@ class CreationReviewStep extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Sua equipe vai ver',
+                            l10n.creationReviewTeamSees,
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
@@ -109,17 +112,20 @@ class CreationReviewStep extends StatelessWidget {
                 child: Column(
                   children: [
                     _reviewRow(
-                      'Nome',
+                      l10n,
+                      l10n.creationReviewName,
                       Text(c.state.name.trim(), style: _value),
                       0,
                     ),
                     _reviewRow(
-                      'Identificador',
+                      l10n,
+                      l10n.creationIdLabel,
                       Text(c.state.id, style: _value),
                       0,
                     ),
                     _reviewRow(
-                      'Tema',
+                      l10n,
+                      l10n.creationReviewTheme,
                       Row(
                         children: [
                           Container(
@@ -137,9 +143,12 @@ class CreationReviewStep extends StatelessWidget {
                       1,
                     ),
                     _reviewRow(
-                      'Plano',
+                      l10n,
+                      l10n.creationReviewPlan,
                       Text(
-                        c.state.plan == 'community' ? 'Community' : 'Standard',
+                        c.state.plan == 'community'
+                            ? l10n.planCommunity
+                            : l10n.planStandard,
                         style: _value,
                       ),
                       2,
@@ -182,9 +191,9 @@ class CreationReviewStep extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Você será titular',
-                            style: TextStyle(
+                          Text(
+                            l10n.creationReviewOwnerTitle,
+                            style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: _navy,
@@ -192,10 +201,7 @@ class CreationReviewStep extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${c.ownerEmail} vai administrar a organização: '
-                            'convidar pessoas, criar grupos, mudar a aparência e '
-                            'adicionar o logo. Depois, outras pessoas também '
-                            'podem administrar.',
+                            l10n.creationReviewOwnerBody(c.ownerEmail),
                             style: const TextStyle(
                               fontSize: 13,
                               height: 19 / 13,
@@ -244,21 +250,18 @@ class CreationReviewStep extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Text.rich(
-                const TextSpan(
-                  style: TextStyle(
+                TextSpan(
+                  style: const TextStyle(
                     fontSize: 14,
                     height: 20 / 14,
                     fontWeight: FontWeight.w500,
                     color: _navy,
                   ),
-                  children: [
-                    TextSpan(text: 'Li e aceito os '),
-                    TextSpan(
-                      text: 'Termos para organizações',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    TextSpan(text: '.'),
-                  ],
+                  children: spansAround(
+                    l10n.creationTermsAccept,
+                    l10n.creationTerms,
+                    valueStyle: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
             ),
@@ -266,10 +269,10 @@ class CreationReviewStep extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         creationButton(
-          'Criar organização',
+          l10n.creationCreate,
           c.canCreate ? c.create.execute : null,
           busy: c.create.running,
-          busyLabel: 'Criando…',
+          busyLabel: l10n.commonCreating,
         ),
       ],
     );
@@ -284,6 +287,7 @@ class CreationReviewStep extends StatelessWidget {
   /// One line of the review: a small label over its value, and "Alterar",
   /// which goes back to [step].
   Widget _reviewRow(
+    AppLocalizations l10n,
     String label,
     Widget value,
     int step, {
@@ -315,11 +319,11 @@ class CreationReviewStep extends StatelessWidget {
         const SizedBox(width: 12),
         InkWell(
           onTap: c.create.running ? null : () => c.goToStep(step),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'Alterar',
-              style: TextStyle(
+              l10n.commonChange,
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: _navy,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/ui/core/ui/monamie_mark.dart';
 import 'package:monamie_app/ui/core/ui/monamie_wordmark.dart';
@@ -40,20 +41,20 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Expanded(
+            Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  MonAmieMark(width: 150, color: MonAmieBrand.cream),
-                  SizedBox(height: 28),
-                  MonAmieWordmark(color: MonAmieBrand.cream),
-                  SizedBox(height: 28),
+                  const MonAmieMark(width: 150, color: MonAmieBrand.cream),
+                  const SizedBox(height: 28),
+                  const MonAmieWordmark(color: MonAmieBrand.cream),
+                  const SizedBox(height: 28),
                   SizedBox(
                     width: 280,
                     child: Text(
-                      MonAmieBrand.tagline,
+                      AppLocalizations.of(context).loginTagline,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 17,
                         height: 1.5,
                         color: MonAmieBrand.mutedCream,
@@ -98,8 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(width: 14),
                 Text(
                   name == null
-                      ? 'Procurando sua organização…'
-                      : 'Entrando em $name…',
+                      ? AppLocalizations.of(context).loginLookingForOrganization
+                      : AppLocalizations.of(context).loginEntering(name),
                   style: const TextStyle(
                     color: MonAmieBrand.cream,
                     fontSize: 15,

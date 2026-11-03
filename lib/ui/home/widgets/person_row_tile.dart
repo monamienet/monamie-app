@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:monamie_app/ui/home/widgets/home_colors.dart';
 import 'package:monamie_app/ui/home/widgets/sheet_colors.dart';
@@ -41,9 +42,10 @@ class PersonRowTile extends StatelessWidget {
     final kind = row.presence.kind;
     final name = row.member.name;
     final live = kind == PresenceKind.live;
+    final l10n = AppLocalizations.of(context);
     final trailLabel = highlighted
-        ? 'Esconder trajeto de $name'
-        : 'Mostrar trajeto de $name';
+        ? l10n.personHideTrail(name)
+        : l10n.personShowTrail(name);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       constraints: const BoxConstraints(minHeight: 52),
@@ -74,7 +76,7 @@ class PersonRowTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     highlighted && live
-                        ? '${row.presence.label} · trajeto visível'
+                        ? l10n.personTrailVisible(row.presence.label)
                         : row.presence.label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -101,7 +103,7 @@ class PersonRowTile extends StatelessWidget {
             if (onCall != null) ...[
               const SizedBox(width: 8),
               _SquareButton(
-                label: 'Chamar $name no Meet',
+                label: l10n.personCallOnMeet(name),
                 onTap: onCall!,
                 child: SvgPicture.asset(
                   'assets/monamie/Google_Meet_icon.svg',

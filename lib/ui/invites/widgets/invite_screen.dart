@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
 import 'package:monamie_app/domain/models/group.dart';
@@ -46,7 +48,7 @@ class _InviteScreenState extends State<InviteScreen> {
     appBar: AppBar(
       backgroundColor: palette.dark,
       foregroundColor: palette.onDark,
-      title: const Text('Convidar pessoas'),
+      title: Text(AppLocalizations.of(context).invitePeople),
       centerTitle: false,
     ),
     body: SafeArea(
@@ -62,6 +64,7 @@ class _InviteScreenState extends State<InviteScreen> {
 
   Widget _form() {
     final sending = c.send.running;
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         Expanded(
@@ -69,22 +72,24 @@ class _InviteScreenState extends State<InviteScreen> {
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
             children: [
               if (c.firstGroupMode) ...[
-                const Text(
-                  'Crie seu primeiro grupo',
-                  style: TextStyle(fontWeight: FontWeight.w800, color: _ink),
+                Text(
+                  l10n.inviteFirstGroupTitle,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: _ink,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Toda pessoa entra num grupo. Dê um nome para o primeiro; '
-                  'você cria outros depois, em Grupos.',
-                  style: TextStyle(fontSize: 13, color: _muted),
+                Text(
+                  l10n.inviteFirstGroupBody,
+                  style: const TextStyle(fontSize: 13, color: _muted),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   enabled: !sending,
                   maxLength: 40,
                   decoration: InputDecoration(
-                    hintText: 'Ex.: Motoristas',
+                    hintText: l10n.groupNameHint,
                     border: const OutlineInputBorder(),
                     errorText: c.state.firstGroupName.isEmpty
                         ? null
@@ -93,9 +98,12 @@ class _InviteScreenState extends State<InviteScreen> {
                   onChanged: c.setFirstGroupName,
                 ),
               ] else ...[
-                const Text(
-                  'Para qual grupo?',
-                  style: TextStyle(fontWeight: FontWeight.w800, color: _ink),
+                Text(
+                  l10n.inviteWhichGroup,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: _ink,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
@@ -107,16 +115,24 @@ class _InviteScreenState extends State<InviteScreen> {
                     for (final group in c.state.groups)
                       DropdownMenuItem(
                         value: group.id,
-                        child: Text('${group.name} · ${group.peopleLabel}'),
+                        child: Text(
+                          l10n.inviteGroupOption(
+                            group.name,
+                            l10n.peopleCount(group.people.length),
+                          ),
+                        ),
                       ),
                   ],
                   onChanged: sending ? null : c.selectGroup,
                 ),
               ],
               const SizedBox(height: 20),
-              const Text(
-                'Quem você quer chamar?',
-                style: TextStyle(fontWeight: FontWeight.w800, color: _ink),
+              Text(
+                l10n.inviteWho,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: _ink,
+                ),
               ),
               const SizedBox(height: 8),
               Row(
@@ -129,7 +145,7 @@ class _InviteScreenState extends State<InviteScreen> {
                       keyboardType: TextInputType.emailAddress,
                       autocorrect: false,
                       decoration: InputDecoration(
-                        hintText: 'email@exemplo.com',
+                        hintText: l10n.inviteEmailHint,
                         border: const OutlineInputBorder(),
                         errorText: c.state.draftError.isEmpty
                             ? null
@@ -143,24 +159,26 @@ class _InviteScreenState extends State<InviteScreen> {
                     height: 56,
                     child: OutlinedButton(
                       onPressed: sending ? null : _add,
-                      child: const Text('Adicionar'),
+                      child: Text(l10n.commonAdd),
                     ),
                   ),
                 ],
               ),
               if (c.state.people.isNotEmpty) ...[
                 const SizedBox(height: 20),
-                const Text(
-                  'O que cada pessoa faz? Uma ou as duas.',
-                  style: TextStyle(fontWeight: FontWeight.w800, color: _ink),
+                Text(
+                  l10n.inviteRolesQuestion,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: _ink,
+                  ),
                 ),
                 for (final person in c.state.people)
                   _personCard(person, sending),
                 const SizedBox(height: 4),
-                const Text(
-                  'Em campo compartilha a própria localização. Vê o mapa vê '
-                  'quem está em campo.',
-                  style: TextStyle(fontSize: 12, color: _muted),
+                Text(
+                  l10n.inviteRolesExplained,
+                  style: const TextStyle(fontSize: 12, color: _muted),
                 ),
               ],
               const SizedBox(height: 16),
@@ -170,11 +188,13 @@ class _InviteScreenState extends State<InviteScreen> {
                   color: _soft,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Text(
-                  'Cada pessoa recebe um e-mail e entra no app com essa Conta '
-                  'Google. A localização só é compartilhada depois que ela '
-                  'ativar no próprio celular.',
-                  style: TextStyle(fontSize: 13, height: 1.45, color: _muted),
+                child: Text(
+                  l10n.inviteHowItWorks,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: _muted,
+                  ),
                 ),
               ),
             ],
@@ -224,14 +244,10 @@ class _InviteScreenState extends State<InviteScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Text('Enviando…'),
+                            Text(l10n.inviteSending),
                           ],
                         )
-                      : Text(
-                          c.state.people.length <= 1
-                              ? 'Enviar convite'
-                              : 'Enviar ${c.state.people.length} convites',
-                        ),
+                      : Text(l10n.inviteSend(c.state.people.length)),
                 ),
               ),
             ],
@@ -241,65 +257,70 @@ class _InviteScreenState extends State<InviteScreen> {
     );
   }
 
-  Widget _personCard(InviteDraft person, bool sending) => Container(
-    margin: const EdgeInsets.only(top: 10),
-    padding: const EdgeInsets.fromLTRB(14, 6, 6, 10),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFDDD9E4)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                person.email,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+  Widget _personCard(InviteDraft person, bool sending) {
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(14, 6, 6, 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFDDD9E4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  person.email,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
-            ),
-            IconButton(
-              tooltip: 'Tirar ${person.email}',
-              onPressed: sending ? null : () => c.remove(person),
-              icon: const Icon(Icons.close),
-            ),
-          ],
-        ),
-        Wrap(
-          spacing: 8,
-          children: [
-            for (final role in GroupRole.everyday)
-              FilterChip(
-                label: Text(role.label),
-                selected: person.roles.contains(role),
-                selectedColor: palette.light,
-                onSelected: sending ? null : (_) => c.toggle(person, role),
+              IconButton(
+                tooltip: l10n.inviteRemovePerson(person.email),
+                onPressed: sending ? null : () => c.remove(person),
+                icon: const Icon(Icons.close),
               ),
-          ],
-        ),
-        if (person.roles.isEmpty)
-          const Text(
-            'Marque pelo menos uma opção.',
-            style: TextStyle(color: _error, fontWeight: FontWeight.w800),
+            ],
           ),
-      ],
-    ),
-  );
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final role in GroupRole.everyday)
+                FilterChip(
+                  label: Text(l10n.roleName(role)),
+                  selected: person.roles.contains(role),
+                  selectedColor: palette.light,
+                  onSelected: sending ? null : (_) => c.toggle(person, role),
+                ),
+            ],
+          ),
+          if (person.roles.isEmpty)
+            Text(
+              l10n.inviteNoRole,
+              style: const TextStyle(
+                color: _error,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _sent(InviteSendResult result) {
     final sent = result.sent;
     final notEmailed = result.notEmailed;
     final skipped = result.skipped;
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
       children: [
         Icon(Icons.mark_email_read_outlined, size: 56, color: palette.primary),
         const SizedBox(height: 16),
         Text(
-          sent.length == 1
-              ? 'Convite enviado'
-              : '${sent.length} convites enviados',
+          l10n.inviteSent(sent.length),
           style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w800,
@@ -308,7 +329,7 @@ class _InviteScreenState extends State<InviteScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Para ${result.groupName}. Vale por 14 dias; acompanhe em Grupos.',
+          l10n.inviteSentBody(result.groupName),
           style: const TextStyle(fontSize: 15, color: _muted),
         ),
         const SizedBox(height: 16),
@@ -318,10 +339,7 @@ class _InviteScreenState extends State<InviteScreen> {
             leading: const Icon(Icons.person_outline),
             title: Text(email),
             subtitle: notEmailed.contains(email)
-                ? const Text(
-                    'O e-mail não saiu agora; a pessoa vê o convite ao '
-                    'entrar no app com essa conta.',
-                  )
+                ? Text(l10n.inviteNotEmailed)
                 : null,
           ),
         for (final entry in skipped.entries)
@@ -332,13 +350,10 @@ class _InviteScreenState extends State<InviteScreen> {
             subtitle: Text(entry.value),
           ),
         const SizedBox(height: 16),
-        OutlinedButton(
-          onPressed: c.again,
-          child: const Text('Convidar mais pessoas'),
-        ),
+        OutlinedButton(onPressed: c.again, child: Text(l10n.inviteMore)),
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Voltar'),
+          child: Text(l10n.commonBack),
         ),
       ],
     );

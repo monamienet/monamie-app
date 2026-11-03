@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 /// Bloqueia toques (inclusive no botão de rastreamento), evitando que o
 /// serviço seja religado no meio do logout.
 class LogoutProgressOverlay extends StatelessWidget {
-  const LogoutProgressOverlay({super.key, this.message = 'Encerrando sessão…'});
+  const LogoutProgressOverlay({super.key, required this.message});
 
   final String message;
 

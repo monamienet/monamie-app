@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 
@@ -22,35 +23,38 @@ class CreationThemeStep extends StatelessWidget {
   /// in the picked theme, the eight themes in a grid of chips with their
   /// names, and the button at the bottom.
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Expanded(
-        child: ListView(
-          children: [
-            creationTitle(
-              'Escolha um tema',
-              'Cada tema já traz os tons do app, com contraste garantido para textos e botões.',
-            ),
-            _themePreview(),
-            const SizedBox(height: 20),
-            _themeGrid(),
-          ],
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ListView(
+            children: [
+              creationTitle(
+                l10n.creationThemeTitle,
+                l10n.creationThemeSubtitle,
+              ),
+              _themePreview(l10n),
+              const SizedBox(height: 20),
+              _themeGrid(),
+            ],
+          ),
         ),
-      ),
-      const SizedBox(height: 20),
-      creationButton('Continuar', c.next),
-    ],
-  );
+        const SizedBox(height: 20),
+        creationButton(l10n.commonContinue, c.next),
+      ],
+    );
+  }
 
   /// The app in the picked theme: its bar with the organization's tile and
   /// name, a map with a trail, a person, the "Compartilhando" pill and the
   /// locate button.
-  Widget _themePreview() {
+  Widget _themePreview(AppLocalizations l10n) {
     final theme = c.pickedTheme;
     final name = c.preview.name;
     return Semantics(
-      label: 'Prévia do app com o tema',
+      label: l10n.creationThemePreview,
       child: Container(
         height: 220,
         clipBehavior: Clip.antiAlias,
@@ -98,7 +102,7 @@ class CreationThemeStep extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'Motoristas',
+                    l10n.creationPreviewGroup,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -131,7 +135,8 @@ class CreationThemeStep extends StatelessWidget {
                           border: Border.all(color: Colors.white, width: 2),
                         ),
                         child: Text(
-                          'AL',
+                          // A sample person's initials.
+                          'AL', // check_layers: not_ui_text
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
@@ -152,7 +157,7 @@ class CreationThemeStep extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          'Compartilhando',
+                          l10n.creationPreviewSharing,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,

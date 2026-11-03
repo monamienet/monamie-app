@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
@@ -40,6 +41,7 @@ class NoOrganizationScreen extends StatelessWidget {
             ]),
             builder: (context, _) {
               final state = controller.state;
+              final l10n = AppLocalizations.of(context);
               final busy = controller.isEntering;
               final reason = state.noAccessReason;
               return Column(
@@ -65,9 +67,9 @@ class NoOrganizationScreen extends StatelessWidget {
                     InviteCard(invite: invite, controller: controller),
                     const SizedBox(height: 20),
                   ],
-                  const Text(
-                    'Você ainda não faz parte de uma organização',
-                    style: TextStyle(
+                  Text(
+                    l10n.noOrganizationTitle,
+                    style: const TextStyle(
                       fontSize: 34,
                       height: 1.08,
                       fontWeight: FontWeight.w800,
@@ -76,20 +78,19 @@ class NoOrganizationScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Crie a da sua equipe agora ou peça para alguém dela '
-                    'adicionar você.',
-                    style: TextStyle(
+                  Text(
+                    l10n.noOrganizationBody,
+                    style: const TextStyle(
                       fontSize: 16,
                       height: 1.5,
                       color: MonAmieBrand.mutedInk,
                     ),
                   ),
                   const SizedBox(height: 24),
-                  for (final line in const [
-                    'Nome e tema em menos de 2 minutos',
-                    'Você administra e convida a equipe',
-                    'O logo e a aparência você ajusta depois, no app',
+                  for (final line in [
+                    l10n.noOrganizationFast,
+                    l10n.noOrganizationYouAdminister,
+                    l10n.noOrganizationLater,
                   ])
                     _Bullet(text: line),
                   const Spacer(),
@@ -108,7 +109,7 @@ class NoOrganizationScreen extends StatelessWidget {
                         ),
                       ),
                       onPressed: busy ? null : onCreateOrganization,
-                      child: const Text('Criar minha organização'),
+                      child: Text(l10n.noOrganizationCreate),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -129,10 +130,10 @@ class NoOrganizationScreen extends StatelessWidget {
                               controller.recheckOrganizations.execute,
                             ),
                       child: busy
-                          ? const Row(
+                          ? Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                SizedBox(
+                                const SizedBox(
                                   width: 18,
                                   height: 18,
                                   child: CircularProgressIndicator(
@@ -140,11 +141,11 @@ class NoOrganizationScreen extends StatelessWidget {
                                     color: MonAmieBrand.navy,
                                   ),
                                 ),
-                                SizedBox(width: 10),
-                                Text('Verificando…'),
+                                const SizedBox(width: 10),
+                                Text(l10n.commonChecking),
                               ],
                             )
-                          : const Text('Já me convidaram · verificar de novo'),
+                          : Text(l10n.noOrganizationRecheck),
                     ),
                   ),
                 ],

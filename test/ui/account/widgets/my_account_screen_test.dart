@@ -4,6 +4,8 @@ import 'package:mockito/annotations.dart';
 import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
 import 'package:monamie_app/ui/account/widgets/my_account_screen.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import '../../../../testing/fakes/repositories/fake_account_deletion_repository.dart';
 import '../../../../testing/fakes/repositories/fake_organization_directory.dart';
@@ -28,6 +30,9 @@ void main() {
       // 2. Act
       await tester.pumpWidget(
         MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
           home: MyAccountScreen(
             controller: controller,
             email: 'ana@x.com',

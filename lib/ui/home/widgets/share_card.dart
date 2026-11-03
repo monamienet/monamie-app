@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_toggle_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/home_colors.dart';
 import 'package:monamie_app/ui/home/widgets/sheet_colors.dart';
@@ -34,6 +35,7 @@ class ShareCard extends StatelessWidget {
 
   Widget _card(BuildContext context, TrackingToggleViewModel tracking) {
     final state = shareCardState(
+      AppLocalizations.of(context),
       enabled: tracking.isTrackingEnabled.value,
       loading: tracking.toggleService.running,
     );

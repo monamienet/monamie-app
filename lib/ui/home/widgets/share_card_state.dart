@@ -1,3 +1,5 @@
+import 'package:monamie_app/l10n/app_localizations.dart';
+
 /// Where the location-sharing switch is in its life.
 enum SharePhase { off, starting, on, stopping }
 
@@ -16,30 +18,27 @@ class ShareCardState {
   bool get isOn => phase == SharePhase.on || phase == SharePhase.stopping;
 }
 
-/// The card's state from the tracking controller's two flags.
-ShareCardState shareCardState({required bool enabled, required bool loading}) {
+/// The card's state from the tracking controller's two flags, its text in
+/// [l10n]'s language.
+ShareCardState shareCardState(
+  AppLocalizations l10n, {
+  required bool enabled,
+  required bool loading,
+}) {
   if (loading) {
     return enabled
-        ? const ShareCardState(
+        ? ShareCardState(
             SharePhase.stopping,
-            'Desativando compartilhamento…',
-            'Aguarde um instante',
+            l10n.shareStopping,
+            l10n.shareWait,
           )
-        : const ShareCardState(
+        : ShareCardState(
             SharePhase.starting,
-            'Ativando compartilhamento…',
-            'Aguarde um instante',
+            l10n.shareStarting,
+            l10n.shareWait,
           );
   }
   return enabled
-      ? const ShareCardState(
-          SharePhase.on,
-          'Compartilhando sua localização',
-          'Seus grupos veem você no mapa',
-        )
-      : const ShareCardState(
-          SharePhase.off,
-          'Localização desligada',
-          'Seus grupos não veem você no mapa',
-        );
+      ? ShareCardState(SharePhase.on, l10n.shareOn, l10n.shareOnSubtitle)
+      : ShareCardState(SharePhase.off, l10n.shareOff, l10n.shareOffSubtitle);
 }

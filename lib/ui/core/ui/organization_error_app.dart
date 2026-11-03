@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
+import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 
 /// Shown instead of the app when the build has no usable organization, so the
 /// cause is on screen and not only in a minified log.
@@ -12,7 +15,9 @@ class OrganizationErrorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'MonAmie',
+      title: MonAmieBrand.name,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
       home: Scaffold(
         body: Center(
           child: Padding(

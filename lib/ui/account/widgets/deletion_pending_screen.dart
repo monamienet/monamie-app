@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/ui/account/view_models/deletion_pending_view_model.dart';
@@ -35,27 +36,28 @@ class DeletionPendingScreen extends StatelessWidget {
               final busy =
                   controller.cancelAccountDeletion.running ||
                   controller.enter.running;
+              final l10n = AppLocalizations.of(context);
               final name = deletion?.organizationName;
-              final when = deletion == null
-                  ? ''
-                  : inDays(daysLeft(deletion.deleteAt, DateTime.now()));
+              final days = deletion == null
+                  ? 0
+                  : daysLeft(deletion.deleteAt, DateTime.now());
               final title = restored
                   ? (name == null
-                        ? 'Sua conta está de volta'
-                        : 'A $name está de volta')
+                        ? l10n.deletionRestoredAccountTitle
+                        : l10n.deletionRestoredOrganizationTitle(name))
                   : (name == null
-                        ? 'Sua conta será excluída $when'
-                        : 'A $name será excluída $when');
+                        ? l10n.deletionPendingAccountTitle(days)
+                        : l10n.deletionPendingOrganizationTitle(name, days));
               final body = restored
-                  ? 'Nada foi apagado. Entre para continuar de onde parou.'
+                  ? l10n.deletionRestoredBody
                   : deletion == null
                   ? ''
                   : name == null
-                  ? 'Em ${longDate(deletion.deleteAt)} apagamos de vez sua '
-                        'conta e seus dados no MonAmie.'
-                  : 'Em ${longDate(deletion.deleteAt)} apagamos de vez a $name, '
-                        'os grupos, o histórico de todos e a sua conta. Até lá '
-                        'ninguém usa a organização.';
+                  ? l10n.deletionPendingAccountBody(deletion.deleteAt.toLocal())
+                  : l10n.deletionPendingOrganizationBody(
+                      deletion.deleteAt.toLocal(),
+                      name,
+                    );
               final error = state.deletionError;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,10 +125,10 @@ class DeletionPendingScreen extends StatelessWidget {
                             )
                           : Text(
                               restored
-                                  ? 'Entrar'
+                                  ? l10n.deletionEnter
                                   : name == null
-                                  ? 'Cancelar exclusão da conta'
-                                  : 'Cancelar exclusão',
+                                  ? l10n.deletionCancelAccount
+                                  : l10n.deletionCancel,
                             ),
                     ),
                   ),
@@ -143,7 +145,7 @@ class DeletionPendingScreen extends StatelessWidget {
                               context,
                               controller.logout.execute,
                             ),
-                      child: const Text('Sair'),
+                      child: Text(l10n.commonSignOut),
                     ),
                   ),
                 ],

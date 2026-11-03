@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/ui/core/ui/admin_ui.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
 import 'group_list.dart';
 
@@ -23,37 +25,42 @@ class GroupPeopleTab extends StatelessWidget {
   final Group group;
 
   @override
-  Widget build(BuildContext context) => GroupListCard(
-    rows: [
-      for (final person in group.people)
-        GroupPersonRow(
-          initials: initialsOf(person.email),
-          title: person.email,
-          roles: groupRolesLabel(person.roles),
-          member: true,
-          onEditRoles: () => _editRoles(context, person),
-          // A maintainer cannot remove another *Gestor do grupo*.
-          actionText: controller.canRemove(person) ? 'Remover' : null,
-          onAction: controller.canRemove(person)
-              ? () => _remove(context, person)
-              : null,
-        ),
-    ],
-    empty: 'Ninguém neste grupo ainda. Convide quem vai trabalhar nele.',
-  );
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return GroupListCard(
+      rows: [
+        for (final person in group.people)
+          GroupPersonRow(
+            initials: initialsOf(person.email),
+            title: person.email,
+            roles: l10n.rolesLabel(person.roles),
+            member: true,
+            onEditRoles: () => _editRoles(context, person),
+            // A maintainer cannot remove another *Gestor do grupo*.
+            actionText: controller.canRemove(person) ? l10n.commonRemove : null,
+            onAction: controller.canRemove(person)
+                ? () => _remove(context, person)
+                : null,
+          ),
+      ],
+      empty: l10n.groupPeopleEmpty,
+    );
+  }
 
   Future<void> _editRoles(BuildContext context, GroupPerson person) async {
     final c = controller;
     // The choice being made in the sheet, before it is saved.
     final roles = {...person.roles};
     final choices = c.assignableRoles;
+    final l10n = AppLocalizations.of(context);
     final ok = await adminActionSheet(
       context,
-      title: 'O que ${person.email} faz',
-      confirmLabel: 'Salvar',
-      busyLabel: 'Salvando…',
+      title: l10n.groupRolesTitle(person.email),
+      confirmLabel: l10n.commonSave,
+      busyLabel: l10n.commonSaving,
       canConfirm: () => c.canSetRoles(person, roles),
       onConfirm: () async => sheetFailureOf(
+        l10n,
         await c.setRoles.execute((
           groupId: group.id,
           email: person.email,
@@ -94,7 +101,7 @@ class GroupPeopleTab extends StatelessWidget {
             ],
             const SizedBox(height: 16),
             Text(
-              problem ?? 'A mudança vale na hora.',
+              problem ?? l10n.groupRolesImmediate,
               style: TextStyle(
                 fontSize: 13,
                 height: 19 / 13,
@@ -106,24 +113,24 @@ class GroupPeopleTab extends StatelessWidget {
         );
       },
     );
-    if (ok && context.mounted) adminToast(context, 'Papel atualizado');
+    if (ok && context.mounted) adminToast(context, l10n.groupRolesUpdated);
   }
 
   Future<void> _remove(BuildContext context, GroupPerson person) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await adminActionSheet(
       context,
-      title: 'Remover ${person.email} de ${group.name}?',
-      confirmLabel: 'Remover',
-      busyLabel: 'Removendo…',
+      title: l10n.groupRemoveTitle(person.email, group.name),
+      confirmLabel: l10n.commonRemove,
+      busyLabel: l10n.groupRemoving,
       danger: true,
       lines: [
-        'Se este for o único grupo da pessoa, o acesso à '
-            '$adminOrganizationName acaba (a não ser que ela administre a '
-            'organização).',
-        'Deixa de aparecer no mapa deste grupo e de ver quem está nele.',
-        'Os trajetos antigos continuam no histórico.',
+        l10n.groupRemoveAccess(adminOrganizationName(l10n)),
+        l10n.groupRemoveMap,
+        l10n.groupRemoveHistory,
       ],
       onConfirm: () async => sheetFailureOf(
+        l10n,
         await controller.remove.execute((
           groupId: group.id,
           email: person.email,
@@ -131,7 +138,7 @@ class GroupPeopleTab extends StatelessWidget {
       ),
     );
     if (ok && context.mounted) {
-      adminToast(context, '${person.email} não faz mais parte do grupo');
+      adminToast(context, l10n.groupRemoved(person.email));
     }
   }
 }
@@ -148,6 +155,7 @@ class _RoleOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = adminPalette;
+    final l10n = AppLocalizations.of(context);
     return Semantics(
       checked: on,
       child: Material(
@@ -185,7 +193,7 @@ class _RoleOption extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        role.label,
+                        l10n.roleName(role),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -194,7 +202,7 @@ class _RoleOption extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        role.description,
+                        l10n.roleDescription(role),
                         style: const TextStyle(
                           fontSize: 12,
                           height: 16 / 12,

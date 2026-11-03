@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
@@ -45,7 +46,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: Colors.white,
-    appBar: adminAppBar('Novo grupo'),
+    appBar: adminAppBar(AppLocalizations.of(context).createGroupTitle),
     body: SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
@@ -64,12 +65,13 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     final busy = c.isWorking;
     final typed = _name.text;
     final problem = c.newNameProblem(typed);
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Criar um grupo',
-          style: TextStyle(
+        Text(
+          l10n.createGroupHeading,
+          style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w800,
             color: _ink,
@@ -82,10 +84,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           maxLength: 40,
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(
-            labelText: 'Nome do grupo',
-            hintText: 'Ex.: Motoristas',
+            labelText: l10n.groupNameLabel,
+            hintText: l10n.groupNameHint,
             errorText: problem,
-            helperText: 'É assim que o grupo aparece no mapa e nos convites.',
+            helperText: l10n.groupNameHelper,
             border: const OutlineInputBorder(),
           ),
         ),
@@ -96,19 +98,17 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             color: _soft,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Text(
-            'Você administra a organização, então já vê todos os grupos no '
-            'mapa. O grupo nasce vazio: depois de criar, convide quem vai '
-            'fazer parte dele.',
-            style: TextStyle(fontSize: 13, height: 1.45, color: _muted),
+          child: Text(
+            l10n.createGroupNote,
+            style: const TextStyle(fontSize: 13, height: 1.45, color: _muted),
           ),
         ),
         const Spacer(),
         adminErrorText(c.state.errorMessage),
         adminPrimaryButton(
-          label: 'Criar grupo',
+          label: l10n.createGroupButton,
           busy: busy,
-          busyLabel: 'Criando…',
+          busyLabel: l10n.commonCreating,
           onPressed: c.canCreate(typed)
               ? () => c.create.execute(typed.trim())
               : null,
@@ -117,38 +117,40 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     );
   }
 
-  Widget _done(Group group) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      const Spacer(),
-      Icon(Icons.check_circle, size: 56, color: adminPalette.primary),
-      const SizedBox(height: 16),
-      Text(
-        'Grupo criado',
-        style: const TextStyle(
-          fontSize: 26,
-          fontWeight: FontWeight.w800,
-          color: _ink,
+  Widget _done(Group group) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Spacer(),
+        Icon(Icons.check_circle, size: 56, color: adminPalette.primary),
+        const SizedBox(height: 16),
+        Text(
+          l10n.createGroupDone,
+          style: const TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: _ink,
+          ),
         ),
-      ),
-      const SizedBox(height: 8),
-      Text(
-        '${group.name} ainda não tem ninguém. Convide as pessoas que vão '
-        'trabalhar nele e escolha o que cada uma faz no app.',
-        style: TextStyle(fontSize: 15, height: 1.45, color: _muted),
-      ),
-      const Spacer(),
-      adminPrimaryButton(
-        label: 'Ver o grupo',
-        busy: false,
-        busyLabel: '',
-        onPressed: () =>
-            context.pushReplacement(Routes.group(group.id), extra: c),
-      ),
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Voltar'),
-      ),
-    ],
-  );
+        const SizedBox(height: 8),
+        Text(
+          l10n.createGroupDoneBody(group.name),
+          style: TextStyle(fontSize: 15, height: 1.45, color: _muted),
+        ),
+        const Spacer(),
+        adminPrimaryButton(
+          label: l10n.createGroupOpen,
+          busy: false,
+          busyLabel: '',
+          onPressed: () =>
+              context.pushReplacement(Routes.group(group.id), extra: c),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.commonBack),
+        ),
+      ],
+    );
+  }
 }

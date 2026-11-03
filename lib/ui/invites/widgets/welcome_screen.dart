@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/ui/core/themes/organization_palette.dart';
@@ -20,6 +22,7 @@ class WelcomeScreen extends StatelessWidget {
     final organization = Organization.current;
     final palette = OrganizationPalette.fromConfig(organization);
     final shares = invite?.roles.contains(GroupRole.publisher) ?? false;
+    final l10n = AppLocalizations.of(context);
     // The router follows the session to the map.
     void open() => controller.finishWelcome();
 
@@ -42,7 +45,9 @@ class WelcomeScreen extends StatelessWidget {
                 OrganizationIcon(organization: organization, size: 72),
                 const SizedBox(height: 20),
                 Text(
-                  'Você entrou na ${organization?.name ?? invite?.organizationName ?? ''}',
+                  l10n.welcomeJoined(
+                    organization?.name ?? invite?.organizationName ?? '',
+                  ),
                   style: TextStyle(
                     fontSize: 32,
                     height: 1.1,
@@ -55,7 +60,10 @@ class WelcomeScreen extends StatelessWidget {
                   Text(
                     invite.inviterName.isEmpty
                         ? invite.groupName
-                        : '${invite.groupName} · convite de ${invite.inviterName}',
+                        : l10n.welcomeInvitedBy(
+                            invite.groupName,
+                            invite.inviterName,
+                          ),
                     style: TextStyle(fontSize: 16, color: palette.light),
                   ),
                 ],
@@ -66,9 +74,12 @@ class WelcomeScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
               children: [
-                const Text(
-                  'O que você faz no app',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                Text(
+                  l10n.welcomeWhatYouDo,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 for (final role in GroupRole.everyday)
@@ -95,7 +106,7 @@ class WelcomeScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  role.label,
+                                  l10n.roleName(role),
                                   style: TextStyle(
                                     fontWeight: FontWeight.w800,
                                     color: palette.dark,
@@ -104,11 +115,10 @@ class WelcomeScreen extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Text(
                                   role == GroupRole.publisher
-                                      ? 'Seus grupos veem onde você está enquanto o '
-                                            'compartilhamento estiver ligado. Você '
-                                            'liga e desliga quando quiser.'
-                                      : 'Você acompanha no mapa quem está em campo '
-                                            'em ${invite!.groupName}.',
+                                      ? l10n.welcomePublisher
+                                      : l10n.welcomeSubscriber(
+                                          invite!.groupName,
+                                        ),
                                   style: TextStyle(color: palette.dark),
                                 ),
                               ],
@@ -141,15 +151,12 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     onPressed: open,
                     child: Text(
-                      shares ? 'Ativar minha localização' : 'Abrir o mapa',
+                      shares ? l10n.welcomeTurnOnLocation : l10n.welcomeOpenMap,
                     ),
                   ),
                 ),
                 if (shares)
-                  TextButton(
-                    onPressed: open,
-                    child: const Text('Ativar depois'),
-                  ),
+                  TextButton(onPressed: open, child: Text(l10n.welcomeLater)),
               ],
             ),
           ),

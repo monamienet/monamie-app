@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/routing/routes.dart';
@@ -128,93 +129,94 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
   /// Back arrow, the screen's name and "n de 4", over a four-segment progress
   /// bar (`CriarNome.dc.html`): the arrow's box starts 12 px left of the
   /// 24 px margin, so the arrow lines up with the text below.
-  Widget _header(int step) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Transform.translate(
-        offset: const Offset(-12, 0),
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: 'Voltar',
-                constraints: const BoxConstraints.tightFor(
-                  width: 48,
-                  height: 48,
+  Widget _header(int step) {
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Transform.translate(
+          offset: const Offset(-12, 0),
+          child: SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: l10n.commonBack,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 48,
+                    height: 48,
+                  ),
+                  padding: EdgeInsets.zero,
+                  onPressed: c.create.running ? null : _back,
+                  icon: const Icon(Icons.arrow_back, color: _navy),
                 ),
-                padding: EdgeInsets.zero,
-                onPressed: c.create.running ? null : _back,
-                icon: const Icon(Icons.arrow_back, color: _navy),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Nova organização',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: _navy,
-                ),
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Text(
-                  '${step + 1} de ${CreateOrganizationViewModel.stepCount}',
+                const SizedBox(width: 8),
+                Text(
+                  l10n.creationTitle,
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: _muted,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: _navy,
+                  ),
+                ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Text(
+                    l10n.creationStep(
+                      step + 1,
+                      CreateOrganizationViewModel.stepCount,
+                    ),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: _muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            for (var i = 0; i < CreateOrganizationViewModel.stepCount; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: i <= step ? _navy : _line,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-      const SizedBox(height: 10),
-      Row(
-        children: [
-          for (var i = 0; i < CreateOrganizationViewModel.stepCount; i++) ...[
-            if (i > 0) const SizedBox(width: 6),
-            Expanded(
-              child: Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  color: i <= step ? _navy : _line,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
           ],
-        ],
-      ),
-    ],
-  );
+        ),
+      ],
+    );
+  }
 
   Widget _outcome(String status) {
     final name = c.state.name.trim();
+    final l10n = AppLocalizations.of(context);
     final (title, text, action) = switch (status) {
       'active' => (
-        'A $name está pronta',
-        'O app já aparece com o nome e o tema de vocês. O logo você adiciona '
-            'quando quiser, em Aparência. Próximo passo: chame sua equipe em Grupos.',
-        'Entrar na $name',
+        l10n.creationReadyTitle(name),
+        l10n.creationReadyBody,
+        l10n.creationReadyEnter(name),
       ),
       'awaiting_billing' => (
-        'Falta ativar o faturamento',
-        'A $name roda num projeto do Google Cloud pago pela sua organização. '
-            'Entre no Google Cloud com esta mesma Conta Google, escolha ou crie '
-            'uma conta de faturamento e vincule ao projeto monamienet-${c.state.id}. '
-            'O identificador fica reservado por 7 dias.',
-        'Entendi',
+        l10n.creationBillingTitle,
+        l10n.creationBillingBody(name, c.state.id),
+        l10n.commonGotIt,
       ),
       _ => (
-        'Algo deu errado ao criar a $name',
-        'Não é nada que você precise fazer. A equipe do MonAmie já foi avisada e '
-            'vai terminar a criação. O identificador ${c.state.id} continua '
-            'reservado para vocês enquanto isso.',
-        'Sair',
+        l10n.creationFailedTitle(name),
+        l10n.creationFailedBody(c.state.id),
+        l10n.commonSignOut,
       ),
     };
     return Padding(

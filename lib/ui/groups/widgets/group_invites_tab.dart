@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/domain/models/invite.dart';
 import 'package:monamie_app/ui/core/ui/admin_ui.dart';
+import 'package:monamie_app/ui/core/ui/domain_labels.dart';
 import 'package:monamie_app/ui/groups/view_models/group_invites_view_model.dart';
 import 'group_list.dart';
 
@@ -16,6 +18,7 @@ class GroupInvitesTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final state = invites.state;
     final list = state.invites;
     if (list == null) {
@@ -32,50 +35,46 @@ class GroupInvitesTab extends StatelessWidget {
           GroupPersonRow(
             initials: initialsOf(invite.email),
             title: invite.email,
-            detail: invite.statusLabel,
+            detail: l10n.inviteStatus(invite),
             expired: invite.expired,
-            roles: invite.rolesLabel,
+            roles: l10n.rolesLabel(invite.roles),
             member: false,
-            actionText: invite.expired ? 'Reenviar' : 'Cancelar',
+            actionText: invite.expired ? l10n.invitesResend : l10n.commonCancel,
             onAction: () => invite.expired
                 ? _resend(context, invite)
                 : _cancel(context, invite),
           ),
       ],
-      empty: 'Nenhum convite pendente.',
+      empty: l10n.invitesNone,
     );
   }
 
   Future<void> _resend(BuildContext context, Invite invite) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await adminActionSheet(
       context,
-      title: 'Reenviar o convite?',
-      confirmLabel: 'Reenviar convite',
-      busyLabel: 'Reenviando…',
-      lines: [
-        '${invite.email} recebe um novo e-mail.',
-        'O novo convite vale por 14 dias.',
-      ],
+      title: l10n.invitesResendTitle,
+      confirmLabel: l10n.invitesResendConfirm,
+      busyLabel: l10n.invitesResending,
+      lines: [l10n.invitesResendEmail(invite.email), l10n.invitesResendValid],
       onConfirm: () async =>
-          sheetFailureOf(await invites.resend.execute(invite)),
+          sheetFailureOf(l10n, await invites.resend.execute(invite)),
     );
-    if (ok && context.mounted) adminToast(context, 'Convite reenviado');
+    if (ok && context.mounted) adminToast(context, l10n.invitesResent);
   }
 
   Future<void> _cancel(BuildContext context, Invite invite) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await adminActionSheet(
       context,
-      title: 'Cancelar o convite?',
-      confirmLabel: 'Cancelar convite',
-      busyLabel: 'Cancelando…',
+      title: l10n.invitesCancelTitle,
+      confirmLabel: l10n.invitesCancelConfirm,
+      busyLabel: l10n.invitesCancelling,
       danger: true,
-      lines: [
-        'O link enviado para ${invite.email} deixa de funcionar.',
-        'Você pode convidar de novo depois.',
-      ],
+      lines: [l10n.invitesCancelLink(invite.email), l10n.invitesInviteAgain],
       onConfirm: () async =>
-          sheetFailureOf(await invites.cancel.execute(invite)),
+          sheetFailureOf(l10n, await invites.cancel.execute(invite)),
     );
-    if (ok && context.mounted) adminToast(context, 'Convite cancelado');
+    if (ok && context.mounted) adminToast(context, l10n.invitesCancelled);
   }
 }

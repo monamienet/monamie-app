@@ -35,19 +35,6 @@ void main() {
       expect(invite.expiresAt, DateTime.utc(2026, 11, 9, 12));
     });
 
-    test('Happy Path: rolesLabel lists Em campo before Vê o mapa', () {
-      // 1. Arrange
-      final json = _json({
-        'roles': ['subscriber', 'publisher'],
-      });
-
-      // 2. Act
-      final invite = Invite.fromJson(json);
-
-      // 3. Assert
-      expect(invite!.rolesLabel, 'Em campo · Vê o mapa');
-    });
-
     test('Edge Case: unknown roles are ignored when a known one remains', () {
       // 1. Arrange
       final json = _json({
@@ -112,30 +99,6 @@ void main() {
     }
   });
 
-  group('dayMonth - Unit Test Suite', () {
-    test('Happy Path: Nov 9 2026 is "9 de novembro"', () {
-      // 1. Arrange
-      final date = DateTime(2026, 11, 9);
-
-      // 2. Act
-      final text = dayMonth(date);
-
-      // 3. Assert
-      expect(text, '9 de novembro');
-    });
-
-    test('Edge Case: the first and last months use their names', () {
-      // 1. Arrange
-      final dates = [DateTime(2027, 1, 1), DateTime(2026, 12, 31)];
-
-      // 2. Act
-      final texts = dates.map(dayMonth).toList();
-
-      // 3. Assert
-      expect(texts, ['1 de janeiro', '31 de dezembro']);
-    });
-  });
-
   group('inviteEmailProblem - Unit Test Suite', () {
     test('Happy Path: a valid new e-mail has no problem', () {
       // 1. Arrange
@@ -172,48 +135,6 @@ void main() {
 
         // 3. Assert
         expect(problem, 'Digite um e-mail válido.');
-      });
-    }
-  });
-
-  group('Invite.statusLabel - Unit Test Suite', () {
-    final cases = <(String, Map<String, Object?>, String)>[
-      (
-        'Happy Path: a valid invite shows its last day',
-        {'expiresAt': '2026-11-09T12:00:00.000'},
-        'Vale até 9 de novembro',
-      ),
-      (
-        'Happy Path: an expired invite shows the day it expired',
-        {'expiresAt': '2026-11-09T12:00:00.000', 'expired': true},
-        'Expirado · venceu em 9 de novembro',
-      ),
-      (
-        'Edge Case: an expired invite without a date',
-        {'expiresAt': null, 'expired': true},
-        'Expirado',
-      ),
-      (
-        'Edge Case: a valid invite without a date is empty',
-        {'expiresAt': null},
-        '',
-      ),
-      (
-        'Sad Path: an expired flag that is not true reads as valid',
-        {'expiresAt': '2026-11-09T12:00:00.000', 'expired': 'true'},
-        'Vale até 9 de novembro',
-      ),
-    ];
-    for (final (label, overrides, expected) in cases) {
-      test('$label ("$expected")', () {
-        // 1. Arrange
-        final invite = Invite.fromJson(_json(overrides))!;
-
-        // 2. Act
-        final text = invite.statusLabel;
-
-        // 3. Assert
-        expect(text, expected);
       });
     }
   });

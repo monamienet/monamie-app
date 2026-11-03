@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 /// An app with [rootScaffoldMessengerKey] and a button that runs [action]
 /// through [runReportingErrors], storing what it returned in [returned].
@@ -12,6 +14,9 @@ Future<void> _pumpApp(
   void Function(int?)? returned,
 }) => tester.pumpWidget(
   MaterialApp(
+    locale: const Locale('pt', 'BR'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: appSupportedLocales,
     scaffoldMessengerKey: rootScaffoldMessengerKey,
     home: Scaffold(
       body: Builder(

@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
 import 'package:monamie_app/ui/groups/widgets/groups_screen.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 import '../../../../testing/fakes/repositories/fake_groups_repository.dart';
 
@@ -27,7 +29,12 @@ void main() {
 
       // 2. Act
       await tester.pumpWidget(
-        MaterialApp(home: GroupsScreen(controller: controller)),
+        MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          home: GroupsScreen(controller: controller),
+        ),
       );
       await tester.pump();
 

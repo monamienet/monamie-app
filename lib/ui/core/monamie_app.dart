@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/ui/core/themes/monamie_brand.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/routing/router.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/core/themes/app_theme.dart';
 import 'package:provider/provider.dart';
@@ -57,6 +59,10 @@ class _MonAmieAppState extends State<MonAmieApp> {
       theme: theme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light,
+      // The app's texts (lib/l10n/) and Material's, in the device's language
+      // (Portuguese when the app does not have it).
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: appSupportedLocales,
       routerConfig: _router,
     ),
   );

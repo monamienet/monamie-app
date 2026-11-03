@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/ui/core/ui/logout_progress_overlay.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
+import 'package:monamie_app/ui/core/app_locales.dart';
 
 const String _kOverlayMessage = 'Encerrando sessão…';
 const String _kBackgroundRouteText = 'tela-anterior';
@@ -18,6 +20,9 @@ Widget _buildCoveredButtonApp(
   Alignment buttonAlignment = Alignment.center,
 }) {
   return MaterialApp(
+    locale: const Locale('pt', 'BR'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: appSupportedLocales,
     home: Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -29,7 +34,7 @@ Widget _buildCoveredButtonApp(
               child: const Text('botão-sob-a-camada'),
             ),
           ),
-          const LogoutProgressOverlay(),
+          const LogoutProgressOverlay(message: _kOverlayMessage),
         ],
       ),
     ),
@@ -45,10 +50,17 @@ void main() {
       WidgetTester tester,
     ) async {
       // 1. Arrange
-      const overlay = LogoutProgressOverlay();
+      const overlay = LogoutProgressOverlay(message: _kOverlayMessage);
 
       // 2. Act
-      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: overlay)));
+      await tester.pumpWidget(
+        const MaterialApp(
+          locale: Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          home: Scaffold(body: overlay),
+        ),
+      );
 
       // 3. Assert
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
@@ -58,10 +70,17 @@ void main() {
       WidgetTester tester,
     ) async {
       // 1. Arrange
-      const overlay = LogoutProgressOverlay();
+      const overlay = LogoutProgressOverlay(message: _kOverlayMessage);
 
       // 2. Act
-      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: overlay)));
+      await tester.pumpWidget(
+        const MaterialApp(
+          locale: Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          home: Scaffold(body: overlay),
+        ),
+      );
 
       // 3. Assert
       expect(find.text(_kOverlayMessage), findsOneWidget);
@@ -77,7 +96,12 @@ void main() {
 
         // 2. Act
         await tester.pumpWidget(
-          const MaterialApp(home: Scaffold(body: overlay)),
+          const MaterialApp(
+            locale: Locale('pt', 'BR'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: appSupportedLocales,
+            home: Scaffold(body: overlay),
+          ),
         );
 
         // 3. Assert
@@ -96,6 +120,9 @@ void main() {
         final counter = _TapCounter();
         await tester.pumpWidget(
           MaterialApp(
+            locale: const Locale('pt', 'BR'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: appSupportedLocales,
             home: Scaffold(
               body: Stack(
                 fit: StackFit.expand,
@@ -128,11 +155,16 @@ void main() {
       'Edge Case: Deve exibir o indicador de progresso em modo indeterminado (sem valor fixo)',
       (WidgetTester tester) async {
         // 1. Arrange
-        const overlay = LogoutProgressOverlay();
+        const overlay = LogoutProgressOverlay(message: _kOverlayMessage);
 
         // 2. Act
         await tester.pumpWidget(
-          const MaterialApp(home: Scaffold(body: overlay)),
+          const MaterialApp(
+            locale: Locale('pt', 'BR'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: appSupportedLocales,
+            home: Scaffold(body: overlay),
+          ),
         );
 
         // 3. Assert
@@ -150,13 +182,18 @@ void main() {
         final navigatorKey = GlobalKey<NavigatorState>();
         await tester.pumpWidget(
           MaterialApp(
+            locale: const Locale('pt', 'BR'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: appSupportedLocales,
             navigatorKey: navigatorKey,
             home: const Scaffold(body: Text(_kBackgroundRouteText)),
           ),
         );
         navigatorKey.currentState!.push(
           MaterialPageRoute<void>(
-            builder: (_) => const Scaffold(body: LogoutProgressOverlay()),
+            builder: (_) => const Scaffold(
+              body: LogoutProgressOverlay(message: _kOverlayMessage),
+            ),
           ),
         );
         await tester.pump();

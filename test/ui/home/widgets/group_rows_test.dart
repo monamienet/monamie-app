@@ -1,8 +1,12 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 import 'package:monamie_app/ui/home/widgets/presence.dart';
 import 'package:monamie_app/ui/home/widgets/group_rows.dart';
+
+final l10n = lookupAppLocalizations(const Locale('pt'));
 
 final now = DateTime(2026, 10, 27, 12, 0);
 const validity = Duration(minutes: 10);
@@ -24,6 +28,7 @@ List<GroupRow> rows({
   Set<String> usersWithPoints = const {},
   bool observingToday = true,
 }) => groupRows(
+  l10n,
   members: members,
   users: users,
   usersWithPoints: usersWithPoints,
@@ -172,7 +177,7 @@ void main() {
 
       // 3. Assert
       expect(names(result), ['caio', 'ana', 'bia']);
-      expect(result.first.presence, dayPresence(hasPoints: true));
+      expect(result.first.presence, dayPresence(l10n, hasPoints: true));
     });
 
     test('Edge Case: a past day ignores whether the person shares now', () {
@@ -188,7 +193,7 @@ void main() {
       );
 
       // 3. Assert
-      expect(result.single.presence, dayPresence(hasPoints: false));
+      expect(result.single.presence, dayPresence(l10n, hasPoints: false));
     });
 
     test('Edge Case: a past day still carries the live document', () {
@@ -219,7 +224,7 @@ void main() {
       );
 
       // 3. Assert
-      expect(result.single.presence, dayPresence(hasPoints: false));
+      expect(result.single.presence, dayPresence(l10n, hasPoints: false));
     });
 
     test('Sad Path: today ignores usersWithPoints', () {
