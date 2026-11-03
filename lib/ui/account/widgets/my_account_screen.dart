@@ -32,7 +32,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
   @override
   void initState() {
     super.initState();
-    controller.loadOwnership();
+    controller.loadOwnership.execute();
   }
 
   @override
@@ -76,11 +76,14 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
             ),
             const SizedBox(height: 12),
             ListenableBuilder(
-              listenable: controller,
+              listenable: Listenable.merge([
+                controller,
+                controller.loadOwnership,
+              ]),
               builder: (context, _) {
                 final owner = controller.state.isOwner;
                 if (owner == null) {
-                  return controller.state.isCheckingOwner
+                  return controller.loadOwnership.running
                       ? const Padding(
                           padding: EdgeInsets.symmetric(vertical: 24),
                           child: Center(child: CircularProgressIndicator()),
@@ -88,7 +91,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                       : Align(
                           alignment: Alignment.centerLeft,
                           child: TextButton(
-                            onPressed: controller.loadOwnership,
+                            onPressed: controller.loadOwnership.execute,
                             child: const Text('Tentar de novo'),
                           ),
                         );
@@ -140,9 +143,12 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
               },
             ),
             ListenableBuilder(
-              listenable: controller,
+              listenable: Listenable.merge([
+                controller,
+                controller.deleteAccount,
+              ]),
               builder: (context, _) {
-                final deleting = controller.state.isDeleting;
+                final deleting = controller.deleteAccount.running;
                 return SizedBox(
                   height: 56,
                   child: FilledButton(
@@ -158,7 +164,7 @@ class _MyAccountScreenState extends State<MyAccountScreen> {
                       ),
                     ),
                     onPressed: controller.canDelete
-                        ? controller.deleteAccount
+                        ? controller.deleteAccount.execute
                         : null,
                     child: deleting
                         ? const SizedBox(

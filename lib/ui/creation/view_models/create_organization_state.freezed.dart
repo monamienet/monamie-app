@@ -17,7 +17,7 @@ mixin _$CreateOrganizationState {
 
  String get name; String get id; IdCheck get idCheck;/// Why [id] cannot be used; empty when it can or is being checked.
  String get idProblem;/// The themes that can be picked.
- List<OrganizationTheme> get themes; String get themeId; String get plan; bool get isCreating;/// Why the last creation failed; empty when it did not.
+ List<OrganizationTheme> get themes; String get themeId; String get plan;/// Why the last creation failed; empty when it did not.
  String get errorMessage;/// The status after creating (`active`, `awaiting_billing`, `failed`).
  String? get result;
 /// Create a copy of CreateOrganizationState
@@ -31,20 +31,20 @@ $CreateOrganizationStateCopyWith<CreateOrganizationState> get copyWith => _$Crea
 @override
 bool operator ==(Object other) {
   final _this = this as CreateOrganizationState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateOrganizationState&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.idCheck, _this.idCheck) || other.idCheck == _this.idCheck)&&(identical(other.idProblem, _this.idProblem) || other.idProblem == _this.idProblem)&&const DeepCollectionEquality().equals(other.themes, _this.themes)&&(identical(other.themeId, _this.themeId) || other.themeId == _this.themeId)&&(identical(other.plan, _this.plan) || other.plan == _this.plan)&&(identical(other.isCreating, _this.isCreating) || other.isCreating == _this.isCreating)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage)&&(identical(other.result, _this.result) || other.result == _this.result));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CreateOrganizationState&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.idCheck, _this.idCheck) || other.idCheck == _this.idCheck)&&(identical(other.idProblem, _this.idProblem) || other.idProblem == _this.idProblem)&&const DeepCollectionEquality().equals(other.themes, _this.themes)&&(identical(other.themeId, _this.themeId) || other.themeId == _this.themeId)&&(identical(other.plan, _this.plan) || other.plan == _this.plan)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage)&&(identical(other.result, _this.result) || other.result == _this.result));
 }
 
 
 @override
 int get hashCode {
   final _this = this as CreateOrganizationState;
-  return Object.hash(runtimeType,_this.name,_this.id,_this.idCheck,_this.idProblem,const DeepCollectionEquality().hash(_this.themes),_this.themeId,_this.plan,_this.isCreating,_this.errorMessage,_this.result);
+  return Object.hash(runtimeType,_this.name,_this.id,_this.idCheck,_this.idProblem,const DeepCollectionEquality().hash(_this.themes),_this.themeId,_this.plan,_this.errorMessage,_this.result);
 }
 
 @override
 String toString() {
   final _this = this as CreateOrganizationState;
-  return 'CreateOrganizationState(name: ${_this.name}, id: ${_this.id}, idCheck: ${_this.idCheck}, idProblem: ${_this.idProblem}, themes: ${_this.themes}, themeId: ${_this.themeId}, plan: ${_this.plan}, isCreating: ${_this.isCreating}, errorMessage: ${_this.errorMessage}, result: ${_this.result})';
+  return 'CreateOrganizationState(name: ${_this.name}, id: ${_this.id}, idCheck: ${_this.idCheck}, idProblem: ${_this.idProblem}, themes: ${_this.themes}, themeId: ${_this.themeId}, plan: ${_this.plan}, errorMessage: ${_this.errorMessage}, result: ${_this.result})';
 }
 
 
@@ -55,7 +55,7 @@ abstract mixin class $CreateOrganizationStateCopyWith<$Res>  {
   factory $CreateOrganizationStateCopyWith(CreateOrganizationState value, $Res Function(CreateOrganizationState) _then) = _$CreateOrganizationStateCopyWithImpl;
 @useResult
 $Res call({
- String name, String id, IdCheck idCheck, String idProblem, List<OrganizationTheme> themes, String themeId, String plan, bool isCreating, String errorMessage, String? result
+ String name, String id, IdCheck idCheck, String idProblem, List<OrganizationTheme> themes, String themeId, String plan, String errorMessage, String? result
 });
 
 
@@ -72,7 +72,7 @@ class _$CreateOrganizationStateCopyWithImpl<$Res>
 
 /// Create a copy of CreateOrganizationState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? id = null,Object? idCheck = null,Object? idProblem = null,Object? themes = null,Object? themeId = null,Object? plan = null,Object? isCreating = null,Object? errorMessage = null,Object? result = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? id = null,Object? idCheck = null,Object? idProblem = null,Object? themes = null,Object? themeId = null,Object? plan = null,Object? errorMessage = null,Object? result = freezed,}) {
   return _then(CreateOrganizationState(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
@@ -81,8 +81,7 @@ as IdCheck,idProblem: null == idProblem ? _self.idProblem : idProblem // ignore:
 as String,themes: null == themes ? _self.themes : themes // ignore: cast_nullable_to_non_nullable
 as List<OrganizationTheme>,themeId: null == themeId ? _self.themeId : themeId // ignore: cast_nullable_to_non_nullable
 as String,plan: null == plan ? _self.plan : plan // ignore: cast_nullable_to_non_nullable
-as String,isCreating: null == isCreating ? _self.isCreating : isCreating // ignore: cast_nullable_to_non_nullable
-as bool,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as String,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,result: freezed == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -169,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String id,  IdCheck idCheck,  String idProblem,  List<OrganizationTheme> themes,  String themeId,  String plan,  bool isCreating,  String errorMessage,  String? result)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String id,  IdCheck idCheck,  String idProblem,  List<OrganizationTheme> themes,  String themeId,  String plan,  String errorMessage,  String? result)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CreateOrganizationState() when $default != null:
-return $default(_that.name,_that.id,_that.idCheck,_that.idProblem,_that.themes,_that.themeId,_that.plan,_that.isCreating,_that.errorMessage,_that.result);case _:
+return $default(_that.name,_that.id,_that.idCheck,_that.idProblem,_that.themes,_that.themeId,_that.plan,_that.errorMessage,_that.result);case _:
   return orElse();
 
 }
@@ -190,10 +189,10 @@ return $default(_that.name,_that.id,_that.idCheck,_that.idProblem,_that.themes,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String id,  IdCheck idCheck,  String idProblem,  List<OrganizationTheme> themes,  String themeId,  String plan,  bool isCreating,  String errorMessage,  String? result)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String id,  IdCheck idCheck,  String idProblem,  List<OrganizationTheme> themes,  String themeId,  String plan,  String errorMessage,  String? result)  $default,) {final _that = this;
 switch (_that) {
 case _CreateOrganizationState():
-return $default(_that.name,_that.id,_that.idCheck,_that.idProblem,_that.themes,_that.themeId,_that.plan,_that.isCreating,_that.errorMessage,_that.result);case _:
+return $default(_that.name,_that.id,_that.idCheck,_that.idProblem,_that.themes,_that.themeId,_that.plan,_that.errorMessage,_that.result);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -210,10 +209,10 @@ return $default(_that.name,_that.id,_that.idCheck,_that.idProblem,_that.themes,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String id,  IdCheck idCheck,  String idProblem,  List<OrganizationTheme> themes,  String themeId,  String plan,  bool isCreating,  String errorMessage,  String? result)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String id,  IdCheck idCheck,  String idProblem,  List<OrganizationTheme> themes,  String themeId,  String plan,  String errorMessage,  String? result)?  $default,) {final _that = this;
 switch (_that) {
 case _CreateOrganizationState() when $default != null:
-return $default(_that.name,_that.id,_that.idCheck,_that.idProblem,_that.themes,_that.themeId,_that.plan,_that.isCreating,_that.errorMessage,_that.result);case _:
+return $default(_that.name,_that.id,_that.idCheck,_that.idProblem,_that.themes,_that.themeId,_that.plan,_that.errorMessage,_that.result);case _:
   return null;
 
 }
@@ -225,7 +224,7 @@ return $default(_that.name,_that.id,_that.idCheck,_that.idProblem,_that.themes,_
 
 
 class _CreateOrganizationState implements CreateOrganizationState {
-  const _CreateOrganizationState({this.name = '', this.id = '', this.idCheck = IdCheck.idle, this.idProblem = '',  List<OrganizationTheme> themes = const [], required this.themeId, this.plan = 'community', this.isCreating = false, this.errorMessage = '', this.result}): _themes = themes;
+  const _CreateOrganizationState({this.name = '', this.id = '', this.idCheck = IdCheck.idle, this.idProblem = '',  List<OrganizationTheme> themes = const [], required this.themeId, this.plan = 'community', this.errorMessage = '', this.result}): _themes = themes;
   
 
 @override@JsonKey() final  String name;
@@ -244,7 +243,6 @@ class _CreateOrganizationState implements CreateOrganizationState {
 
 @override final  String themeId;
 @override@JsonKey() final  String plan;
-@override@JsonKey() final  bool isCreating;
 /// Why the last creation failed; empty when it did not.
 @override@JsonKey() final  String errorMessage;
 /// The status after creating (`active`, `awaiting_billing`, `failed`).
@@ -260,18 +258,18 @@ _$CreateOrganizationStateCopyWith<_CreateOrganizationState> get copyWith => __$C
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateOrganizationState&&(identical(other.name, name) || other.name == name)&&(identical(other.id, id) || other.id == id)&&(identical(other.idCheck, idCheck) || other.idCheck == idCheck)&&(identical(other.idProblem, idProblem) || other.idProblem == idProblem)&&const DeepCollectionEquality().equals(other.themes, _themes)&&(identical(other.themeId, themeId) || other.themeId == themeId)&&(identical(other.plan, plan) || other.plan == plan)&&(identical(other.isCreating, isCreating) || other.isCreating == isCreating)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.result, result) || other.result == result));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CreateOrganizationState&&(identical(other.name, name) || other.name == name)&&(identical(other.id, id) || other.id == id)&&(identical(other.idCheck, idCheck) || other.idCheck == idCheck)&&(identical(other.idProblem, idProblem) || other.idProblem == idProblem)&&const DeepCollectionEquality().equals(other.themes, _themes)&&(identical(other.themeId, themeId) || other.themeId == themeId)&&(identical(other.plan, plan) || other.plan == plan)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.result, result) || other.result == result));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,name,id,idCheck,idProblem,const DeepCollectionEquality().hash(_themes),themeId,plan,isCreating,errorMessage,result);
+    return Object.hash(runtimeType,name,id,idCheck,idProblem,const DeepCollectionEquality().hash(_themes),themeId,plan,errorMessage,result);
 }
 
 @override
 String toString() {
-    return 'CreateOrganizationState(name: $name, id: $id, idCheck: $idCheck, idProblem: $idProblem, themes: $themes, themeId: $themeId, plan: $plan, isCreating: $isCreating, errorMessage: $errorMessage, result: $result)';
+    return 'CreateOrganizationState(name: $name, id: $id, idCheck: $idCheck, idProblem: $idProblem, themes: $themes, themeId: $themeId, plan: $plan, errorMessage: $errorMessage, result: $result)';
 }
 
 
@@ -282,7 +280,7 @@ abstract mixin class _$CreateOrganizationStateCopyWith<$Res> implements $CreateO
   factory _$CreateOrganizationStateCopyWith(_CreateOrganizationState value, $Res Function(_CreateOrganizationState) _then) = __$CreateOrganizationStateCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String id, IdCheck idCheck, String idProblem, List<OrganizationTheme> themes, String themeId, String plan, bool isCreating, String errorMessage, String? result
+ String name, String id, IdCheck idCheck, String idProblem, List<OrganizationTheme> themes, String themeId, String plan, String errorMessage, String? result
 });
 
 
@@ -299,7 +297,7 @@ class __$CreateOrganizationStateCopyWithImpl<$Res>
 
 /// Create a copy of CreateOrganizationState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? id = null,Object? idCheck = null,Object? idProblem = null,Object? themes = null,Object? themeId = null,Object? plan = null,Object? isCreating = null,Object? errorMessage = null,Object? result = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? id = null,Object? idCheck = null,Object? idProblem = null,Object? themes = null,Object? themeId = null,Object? plan = null,Object? errorMessage = null,Object? result = freezed,}) {
   return _then(_CreateOrganizationState(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
@@ -308,8 +306,7 @@ as IdCheck,idProblem: null == idProblem ? _self.idProblem : idProblem // ignore:
 as String,themes: null == themes ? _self._themes : themes // ignore: cast_nullable_to_non_nullable
 as List<OrganizationTheme>,themeId: null == themeId ? _self.themeId : themeId // ignore: cast_nullable_to_non_nullable
 as String,plan: null == plan ? _self.plan : plan // ignore: cast_nullable_to_non_nullable
-as String,isCreating: null == isCreating ? _self.isCreating : isCreating // ignore: cast_nullable_to_non_nullable
-as bool,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as String,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,result: freezed == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
 as String?,
   ));

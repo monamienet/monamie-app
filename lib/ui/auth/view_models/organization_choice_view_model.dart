@@ -6,6 +6,7 @@ import 'package:monamie_app/domain/models/invite.dart';
 import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/auth/view_models/organization_choice_state.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 
 export 'organization_choice_state.dart';
@@ -87,19 +88,52 @@ class OrganizationChoiceViewModel extends ChangeNotifier {
     _disposed = true;
     _session.session.removeListener(_onSession);
     _session.leaving.removeListener(_onLeaving);
+    logout.dispose();
+    recheckOrganizations.dispose();
+    chooseOrganization.dispose();
+    acceptInvite.dispose();
     super.dispose();
   }
 
+  /// Whether an organization entry (picked, or after a new check) runs.
+  bool get isEntering =>
+      recheckOrganizations.running || chooseOrganization.running;
+
+  /// The id of the invite being accepted (its button shows the pending
+  /// state), `null` while none is.
+  String? get acceptingInvite => acceptInvite.argument?.id;
+
   /// "Trocar": signs out. [Ok] holds whether the sign-out finished
   /// (`false` while another one runs); [Err] says why it failed.
-  Future<Result<bool>> logout() => _signOut();
+  late final Command0<bool> logout = Command0(() => _signOut());
 
   /// "Já me convidaram · verificar de novo": asks again which organizations
   /// the person belongs to, reusing this sign-in when there is one. [Err]
-  /// says why it could not; [Ok] also while another operation runs.
-  Future<Result<void>> recheckOrganizations() async {
-    if (_state.isLoading) return const Ok(null);
-    _emit(_state.copyWith(isLoading: true, noAccessReason: null));
+  /// says why it could not. Ignored while an organization is being entered.
+  late final Command0<void> recheckOrganizations = Command0(
+    _recheckOrganizations,
+    blocked: () => chooseOrganization.running,
+  );
+
+  /// Enters the organization picked on *Escolher organização*. [Err] says
+  /// why it could not. Ignored without a sign-in or while another entry
+  /// runs.
+  late final Command1<void, OrganizationBinding> chooseOrganization = Command1(
+    _chooseOrganization,
+    blocked: () => _session.idToken == null || recheckOrganizations.running,
+  );
+
+  /// "Aceitar e entrar": joins the invite's group, then enters its
+  /// organization and shows *Boas-vindas*. The failure is also kept in
+  /// [OrganizationChoiceState.inviteError], shown on the invite card.
+  /// Ignored while an organization is being entered.
+  late final Command1<void, Invite> acceptInvite = Command1(
+    _acceptInvite,
+    blocked: () => isEntering,
+  );
+
+  Future<Result<void>> _recheckOrganizations() async {
+    _emit(_state.copyWith(noAccessReason: null));
     try {
       return switch (await _enterOrganization.withKeptSignIn(
         onEntering: _onEntering,
@@ -113,15 +147,11 @@ class OrganizationChoiceViewModel extends ChangeNotifier {
         ),
       };
     } finally {
-      _emit(_state.copyWith(isLoading: false, enteringOrganizationName: null));
+      _emit(_state.copyWith(enteringOrganizationName: null));
     }
   }
 
-  /// Enters the organization picked on *Escolher organização*. [Err] says
-  /// why it could not; [Ok] also when there is nothing to do.
-  Future<Result<void>> chooseOrganization(OrganizationBinding binding) async {
-    if (_session.idToken == null || _state.isLoading) return const Ok(null);
-    _emit(_state.copyWith(isLoading: true));
+  Future<Result<void>> _chooseOrganization(OrganizationBinding binding) async {
     try {
       return switch (await _enterOrganization.choose(
         binding,
@@ -136,41 +166,37 @@ class OrganizationChoiceViewModel extends ChangeNotifier {
         ),
       };
     } finally {
-      _emit(_state.copyWith(isLoading: false, enteringOrganizationName: null));
+      _emit(_state.copyWith(enteringOrganizationName: null));
     }
   }
 
-  /// "Aceitar e entrar": joins the invite's group, then enters its
-  /// organization and shows *Boas-vindas*.
-  Future<void> acceptInvite(Invite invite) async {
-    if (_state.acceptingInvite != null || _state.isLoading) return;
-    _emit(_state.copyWith(acceptingInvite: invite.id, inviteError: ''));
+  Future<Result<void>> _acceptInvite(Invite invite) async {
+    _emit(_state.copyWith(inviteError: ''));
     try {
-      switch (await _invites.accept(invite)) {
+      final accepted = await _invites.accept(invite);
+      switch (accepted) {
         case Ok():
           final entered = await _enterOrganization.withKeptSignIn(
             enter: invite.organizationId,
             welcome: invite,
             onEntering: _onEntering,
           );
-          if (entered case Err(:final error)) {
+          if (entered case Err(:final error, :final stackTrace)) {
             // Entering the organization after joining failed.
             debugPrint('[Invites] Accept failed: $error');
-            _emit(
-              _state.copyWith(
-                inviteError:
-                    'Não foi possível aceitar agora. Verifique a conexão e '
-                    'tente de novo.',
-              ),
-            );
+            const message =
+                'Não foi possível aceitar agora. Verifique a conexão e '
+                'tente de novo.';
+            _emit(_state.copyWith(inviteError: message));
+            return Err(message, error: error, stackTrace: stackTrace);
           }
+          return const Ok(null);
         case Err(:final message):
           _emit(_state.copyWith(inviteError: message));
+          return accepted;
       }
     } finally {
-      _emit(
-        _state.copyWith(acceptingInvite: null, enteringOrganizationName: null),
-      );
+      _emit(_state.copyWith(enteringOrganizationName: null));
     }
   }
 }

@@ -133,7 +133,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
   @override
   void initState() {
     super.initState();
-    controller.load();
+    controller.load.execute();
   }
 
   @override
@@ -144,14 +144,14 @@ class _GroupsScreenState extends State<GroupsScreen> {
       children: [
         Expanded(
           child: ListenableBuilder(
-            listenable: controller,
+            listenable: Listenable.merge([controller, controller.load]),
             builder: (context, _) {
               final state = controller.state;
-              if (state.isLoading && state.groups.isEmpty) {
+              if (controller.load.running && state.groups.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
               return RefreshIndicator(
-                onRefresh: controller.load,
+                onRefresh: controller.load.execute,
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
                   children: [
@@ -288,9 +288,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   );
 
   Widget _form() => ListenableBuilder(
-    listenable: c,
+    listenable: Listenable.merge([c, c.create]),
     builder: (context, _) {
-      final busy = c.state.isWorking;
+      final busy = c.isWorking;
       final typed = _name.text.trim();
       final problem = typed.isEmpty ? null : c.nameProblem(typed);
       return Column(
@@ -342,8 +342,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             onPressed: typed.isEmpty || problem != null
                 ? null
                 : () async {
-                    final group = await c.create(typed);
-                    if (group != null && mounted) {
+                    final created = await c.create.execute(typed);
+                    if (created case Ok(value: final group) when mounted) {
                       setState(() => _created = group);
                     }
                   },
@@ -640,7 +640,6 @@ class _GroupScreenState extends State<GroupScreen> {
   bool _onInvites = false;
   List<Invite>? _invites;
   String _invitesError = '';
-  bool _loadingImpact = false;
 
   /// Set once the group is deleted: its name and how many lost access.
   ({String name, int loses})? _deleted;
@@ -672,14 +671,17 @@ class _GroupScreenState extends State<GroupScreen> {
     }
   }
 
-  /// The controller's message for a failed operation.
-  String get _failure => c.state.errorMessage.isEmpty
-      ? 'Não foi possível concluir agora. Tente de novo.'
-      : c.state.errorMessage;
+  /// What [_actionSheet] shows after an operation: nothing when it worked,
+  /// else its message (a generic one when the call was ignored).
+  String? _failureOf(Result<Object?>? result) => switch (result) {
+    Ok() => null,
+    Err(:final message) when message.isNotEmpty => message,
+    _ => 'Não foi possível concluir agora. Tente de novo.',
+  };
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: c,
+    listenable: Listenable.merge([c, c.deletionImpact]),
     builder: (context, _) {
       final deleted = _deleted;
       if (deleted != null) return _deletedScreen(deleted);
@@ -1076,11 +1078,11 @@ class _GroupScreenState extends State<GroupScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
       ),
-      onPressed: _loadingImpact ? null : () => _delete(group),
+      onPressed: c.deletionImpact.running ? null : () => _delete(group),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (_loadingImpact)
+          if (c.deletionImpact.running)
             const SizedBox(
               width: 18,
               height: 18,
@@ -1166,8 +1168,9 @@ class _GroupScreenState extends State<GroupScreen> {
       busyLabel: 'Salvando…',
       canConfirm: () =>
           typed().isNotEmpty && typed() != group.name && problem() == null,
-      onConfirm: () async =>
-          await c.rename(group.id, typed()) ? null : _failure,
+      onConfirm: () async => _failureOf(
+        await c.rename.execute((groupId: group.id, name: typed())),
+      ),
       content: (setSheet, busy) {
         final invalid = problem() != null;
         OutlineInputBorder border(Color color, double width) =>
@@ -1245,8 +1248,13 @@ class _GroupScreenState extends State<GroupScreen> {
           problem() == null &&
           !(roles.length == person.roles.length &&
               roles.containsAll(person.roles)),
-      onConfirm: () async =>
-          await c.setRoles(group.id, person.email, roles) ? null : _failure,
+      onConfirm: () async => _failureOf(
+        await c.setRoles.execute((
+          groupId: group.id,
+          email: person.email,
+          roles: {...roles},
+        )),
+      ),
       content: (setSheet, busy) {
         Widget tappable(GroupRole role) => _roleOption(
           role,
@@ -1377,8 +1385,9 @@ class _GroupScreenState extends State<GroupScreen> {
         'Deixa de aparecer no mapa deste grupo e de ver quem está nele.',
         'Os trajetos antigos continuam no histórico.',
       ],
-      onConfirm: () async =>
-          await c.remove(group.id, person.email) ? null : _failure,
+      onConfirm: () async => _failureOf(
+        await c.remove.execute((groupId: group.id, email: person.email)),
+      ),
     );
     if (ok && mounted) {
       _toast(context, '${person.email} não faz mais parte do grupo');
@@ -1431,19 +1440,13 @@ class _GroupScreenState extends State<GroupScreen> {
   }
 
   Future<void> _delete(Group group) async {
-    if (_loadingImpact) return;
-    setState(() => _loadingImpact = true);
-    ({List<String> loses, List<String> stays})? impact;
-    try {
-      impact = await c.deletionImpact(group.id);
-    } finally {
-      if (mounted) setState(() => _loadingImpact = false);
-    }
+    final read = await c.deletionImpact.execute(group.id);
     if (!mounted) return;
-    if (impact == null) {
-      _toast(context, _failure);
+    if (read is! Ok<({List<String> loses, List<String> stays})>) {
+      _toast(context, _failureOf(read)!);
       return;
     }
+    final impact = read.value;
     final loses = impact.loses.length;
     await _actionSheet(
       context,
@@ -1458,7 +1461,8 @@ class _GroupScreenState extends State<GroupScreen> {
         organization: _organization,
       ),
       onConfirm: () async {
-        if (!await c.delete(group.id)) return _failure;
+        final deleted = await c.delete.execute(group.id);
+        if (deleted is! Ok) return _failureOf(deleted);
         // Set before the next frame: the group is already gone from the list.
         if (mounted) {
           setState(() => _deleted = (name: group.name, loses: loses));
@@ -1482,7 +1486,7 @@ Future<void> openInvite(
 }) async {
   final InviteRequest request = (groups: controller, groupId: groupId);
   await context.push<void>(Routes.invite, extra: request);
-  await controller.load();
+  await controller.load.execute();
 }
 
 /// The administration screens' app bar, for the other admin screens.

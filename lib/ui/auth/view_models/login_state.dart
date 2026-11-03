@@ -12,14 +12,11 @@ abstract class LoginState with _$LoginState {
     /// Whether Google Sign-In finished initializing (or failed to).
     @Default(false) bool googleReady,
 
-    /// Whether a sign-in or an organization entry runs.
+    /// Whether an account was chosen and the organization is being looked
+    /// for or entered ("Procurando sua organização…"), after the button or
+    /// a web sign-in. While Google's account chooser is open only
+    /// `LoginViewModel.loginGoogle` runs, without this spinner.
     @Default(false) bool isLoading,
-
-    /// The login button was tapped and the sign-in has not finished:
-    /// Google's account chooser may be open. Guards against a second tap
-    /// without showing [isLoading]'s "Procurando sua organização…", which
-    /// only makes sense once an account is chosen.
-    @Default(false) bool isChoosingAccount,
 
     /// Name of the organization being entered, for "Entrando em ...".
     String? enteringOrganizationName,

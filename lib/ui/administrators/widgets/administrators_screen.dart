@@ -5,6 +5,7 @@ import 'package:monamie_app/domain/models/group.dart';
 import 'package:monamie_app/ui/groups/widgets/groups_screen.dart';
 
 import 'package:monamie_app/ui/administrators/view_models/administrators_view_model.dart';
+import 'package:monamie_app/utils/result.dart';
 
 const _ink = Color(0xFF1B1838);
 const _muted = Color(0xFF4A4858);
@@ -34,7 +35,7 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
   @override
   void initState() {
     super.initState();
-    c.load();
+    c.load.execute();
   }
 
   @override
@@ -42,16 +43,16 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
     backgroundColor: Colors.white,
     appBar: adminAppBar('Administradores'),
     body: ListenableBuilder(
-      listenable: c,
+      listenable: Listenable.merge([c, c.load]),
       builder: (context, _) {
         final people = c.state.people;
-        if (c.state.isLoading &&
+        if (c.load.running &&
             people.administrators.isEmpty &&
             people.members.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
         return RefreshIndicator(
-          onRefresh: c.load,
+          onRefresh: c.load.execute,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
             children: [
@@ -217,9 +218,9 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
         if (actionText != null) ...[
           const SizedBox(width: 8),
           ListenableBuilder(
-            listenable: c,
+            listenable: c.setAdministrator,
             builder: (context, _) {
-              final working = c.state.workingEmail;
+              final working = c.setAdministrator.argument?.email;
               return SizedBox(
                 height: 44,
                 child: TextButton(
@@ -250,10 +251,14 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
     ),
   );
 
-  /// The controller's message for a failed change.
-  String get _failure => c.state.errorMessage.isEmpty
-      ? 'Não foi possível concluir agora. Tente de novo.'
-      : c.state.errorMessage;
+  /// What the sheet shows after a change: nothing when it worked, else its
+  /// message (a generic one when the call was ignored).
+  Future<String?> _change(String email, {required bool admin}) async =>
+      switch (await c.setAdministrator.execute((email: email, admin: admin))) {
+        Ok() => null,
+        Err(:final message) when message.isNotEmpty => message,
+        _ => 'Não foi possível concluir agora. Tente de novo.',
+      };
 
   Future<void> _promote(BuildContext context, String email) async {
     final ok = await adminActionSheet(
@@ -266,8 +271,7 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
             'convites, da aparência e dos ajustes da organização.',
         'Você pode desfazer depois.',
       ],
-      onConfirm: () async =>
-          await c.setAdministrator(email, admin: true) ? null : _failure,
+      onConfirm: () => _change(email, admin: true),
     );
     if (ok && context.mounted) {
       adminToast(context, '$email agora administra a organização');
@@ -288,8 +292,7 @@ class _AdministratorsScreenState extends State<AdministratorsScreen> {
             'continua na organização sem ver o mapa até ser convidado para '
             'um grupo.',
       ],
-      onConfirm: () async =>
-          await c.setAdministrator(email, admin: false) ? null : _failure,
+      onConfirm: () => _change(email, admin: false),
     );
     if (ok && context.mounted) adminToast(context, '$email agora é membro');
   }

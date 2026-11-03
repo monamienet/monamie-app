@@ -20,7 +20,7 @@ mixin _$AppearanceState {
  String get themeId;/// The logo to save; `null` shows the name's initial. Compared by
 /// identity with the saved one to know whether it changed.
  Uint8List? get logoPng;/// The themes that can be picked.
- List<OrganizationTheme> get themes; bool get isLoadingThemes; bool get isSaving; LogoSheet get sheet;/// Why the picked file cannot be used (with [LogoSheet.error]).
+ List<OrganizationTheme> get themes; LogoSheet get sheet;/// Why the picked file cannot be used (with [LogoSheet.error]).
  String get sheetError;/// The converted logo waiting for "Usar este logo".
  Uint8List? get candidate;/// Why the last save failed; empty when it did not.
  String get errorMessage;
@@ -35,20 +35,20 @@ $AppearanceStateCopyWith<AppearanceState> get copyWith => _$AppearanceStateCopyW
 @override
 bool operator ==(Object other) {
   final _this = this as AppearanceState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppearanceState&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.themeId, _this.themeId) || other.themeId == _this.themeId)&&const DeepCollectionEquality().equals(other.logoPng, _this.logoPng)&&const DeepCollectionEquality().equals(other.themes, _this.themes)&&(identical(other.isLoadingThemes, _this.isLoadingThemes) || other.isLoadingThemes == _this.isLoadingThemes)&&(identical(other.isSaving, _this.isSaving) || other.isSaving == _this.isSaving)&&(identical(other.sheet, _this.sheet) || other.sheet == _this.sheet)&&(identical(other.sheetError, _this.sheetError) || other.sheetError == _this.sheetError)&&const DeepCollectionEquality().equals(other.candidate, _this.candidate)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppearanceState&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.themeId, _this.themeId) || other.themeId == _this.themeId)&&const DeepCollectionEquality().equals(other.logoPng, _this.logoPng)&&const DeepCollectionEquality().equals(other.themes, _this.themes)&&(identical(other.sheet, _this.sheet) || other.sheet == _this.sheet)&&(identical(other.sheetError, _this.sheetError) || other.sheetError == _this.sheetError)&&const DeepCollectionEquality().equals(other.candidate, _this.candidate)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
 }
 
 
 @override
 int get hashCode {
   final _this = this as AppearanceState;
-  return Object.hash(runtimeType,_this.name,_this.themeId,const DeepCollectionEquality().hash(_this.logoPng),const DeepCollectionEquality().hash(_this.themes),_this.isLoadingThemes,_this.isSaving,_this.sheet,_this.sheetError,const DeepCollectionEquality().hash(_this.candidate),_this.errorMessage);
+  return Object.hash(runtimeType,_this.name,_this.themeId,const DeepCollectionEquality().hash(_this.logoPng),const DeepCollectionEquality().hash(_this.themes),_this.sheet,_this.sheetError,const DeepCollectionEquality().hash(_this.candidate),_this.errorMessage);
 }
 
 @override
 String toString() {
   final _this = this as AppearanceState;
-  return 'AppearanceState(name: ${_this.name}, themeId: ${_this.themeId}, logoPng: ${_this.logoPng}, themes: ${_this.themes}, isLoadingThemes: ${_this.isLoadingThemes}, isSaving: ${_this.isSaving}, sheet: ${_this.sheet}, sheetError: ${_this.sheetError}, candidate: ${_this.candidate}, errorMessage: ${_this.errorMessage})';
+  return 'AppearanceState(name: ${_this.name}, themeId: ${_this.themeId}, logoPng: ${_this.logoPng}, themes: ${_this.themes}, sheet: ${_this.sheet}, sheetError: ${_this.sheetError}, candidate: ${_this.candidate}, errorMessage: ${_this.errorMessage})';
 }
 
 
@@ -59,7 +59,7 @@ abstract mixin class $AppearanceStateCopyWith<$Res>  {
   factory $AppearanceStateCopyWith(AppearanceState value, $Res Function(AppearanceState) _then) = _$AppearanceStateCopyWithImpl;
 @useResult
 $Res call({
- String name, String themeId, Uint8List? logoPng, List<OrganizationTheme> themes, bool isLoadingThemes, bool isSaving, LogoSheet sheet, String sheetError, Uint8List? candidate, String errorMessage
+ String name, String themeId, Uint8List? logoPng, List<OrganizationTheme> themes, LogoSheet sheet, String sheetError, Uint8List? candidate, String errorMessage
 });
 
 
@@ -76,15 +76,13 @@ class _$AppearanceStateCopyWithImpl<$Res>
 
 /// Create a copy of AppearanceState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? themeId = null,Object? logoPng = freezed,Object? themes = null,Object? isLoadingThemes = null,Object? isSaving = null,Object? sheet = null,Object? sheetError = null,Object? candidate = freezed,Object? errorMessage = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? themeId = null,Object? logoPng = freezed,Object? themes = null,Object? sheet = null,Object? sheetError = null,Object? candidate = freezed,Object? errorMessage = null,}) {
   return _then(AppearanceState(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,themeId: null == themeId ? _self.themeId : themeId // ignore: cast_nullable_to_non_nullable
 as String,logoPng: freezed == logoPng ? _self.logoPng : logoPng // ignore: cast_nullable_to_non_nullable
 as Uint8List?,themes: null == themes ? _self.themes : themes // ignore: cast_nullable_to_non_nullable
-as List<OrganizationTheme>,isLoadingThemes: null == isLoadingThemes ? _self.isLoadingThemes : isLoadingThemes // ignore: cast_nullable_to_non_nullable
-as bool,isSaving: null == isSaving ? _self.isSaving : isSaving // ignore: cast_nullable_to_non_nullable
-as bool,sheet: null == sheet ? _self.sheet : sheet // ignore: cast_nullable_to_non_nullable
+as List<OrganizationTheme>,sheet: null == sheet ? _self.sheet : sheet // ignore: cast_nullable_to_non_nullable
 as LogoSheet,sheetError: null == sheetError ? _self.sheetError : sheetError // ignore: cast_nullable_to_non_nullable
 as String,candidate: freezed == candidate ? _self.candidate : candidate // ignore: cast_nullable_to_non_nullable
 as Uint8List?,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
@@ -173,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String themeId,  Uint8List? logoPng,  List<OrganizationTheme> themes,  bool isLoadingThemes,  bool isSaving,  LogoSheet sheet,  String sheetError,  Uint8List? candidate,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String themeId,  Uint8List? logoPng,  List<OrganizationTheme> themes,  LogoSheet sheet,  String sheetError,  Uint8List? candidate,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AppearanceState() when $default != null:
-return $default(_that.name,_that.themeId,_that.logoPng,_that.themes,_that.isLoadingThemes,_that.isSaving,_that.sheet,_that.sheetError,_that.candidate,_that.errorMessage);case _:
+return $default(_that.name,_that.themeId,_that.logoPng,_that.themes,_that.sheet,_that.sheetError,_that.candidate,_that.errorMessage);case _:
   return orElse();
 
 }
@@ -194,10 +192,10 @@ return $default(_that.name,_that.themeId,_that.logoPng,_that.themes,_that.isLoad
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String themeId,  Uint8List? logoPng,  List<OrganizationTheme> themes,  bool isLoadingThemes,  bool isSaving,  LogoSheet sheet,  String sheetError,  Uint8List? candidate,  String errorMessage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String themeId,  Uint8List? logoPng,  List<OrganizationTheme> themes,  LogoSheet sheet,  String sheetError,  Uint8List? candidate,  String errorMessage)  $default,) {final _that = this;
 switch (_that) {
 case _AppearanceState():
-return $default(_that.name,_that.themeId,_that.logoPng,_that.themes,_that.isLoadingThemes,_that.isSaving,_that.sheet,_that.sheetError,_that.candidate,_that.errorMessage);case _:
+return $default(_that.name,_that.themeId,_that.logoPng,_that.themes,_that.sheet,_that.sheetError,_that.candidate,_that.errorMessage);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -214,10 +212,10 @@ return $default(_that.name,_that.themeId,_that.logoPng,_that.themes,_that.isLoad
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String themeId,  Uint8List? logoPng,  List<OrganizationTheme> themes,  bool isLoadingThemes,  bool isSaving,  LogoSheet sheet,  String sheetError,  Uint8List? candidate,  String errorMessage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String themeId,  Uint8List? logoPng,  List<OrganizationTheme> themes,  LogoSheet sheet,  String sheetError,  Uint8List? candidate,  String errorMessage)?  $default,) {final _that = this;
 switch (_that) {
 case _AppearanceState() when $default != null:
-return $default(_that.name,_that.themeId,_that.logoPng,_that.themes,_that.isLoadingThemes,_that.isSaving,_that.sheet,_that.sheetError,_that.candidate,_that.errorMessage);case _:
+return $default(_that.name,_that.themeId,_that.logoPng,_that.themes,_that.sheet,_that.sheetError,_that.candidate,_that.errorMessage);case _:
   return null;
 
 }
@@ -229,7 +227,7 @@ return $default(_that.name,_that.themeId,_that.logoPng,_that.themes,_that.isLoad
 
 
 class _AppearanceState implements AppearanceState {
-  const _AppearanceState({required this.name, required this.themeId, this.logoPng,  List<OrganizationTheme> themes = const [], this.isLoadingThemes = true, this.isSaving = false, this.sheet = LogoSheet.closed, this.sheetError = '', this.candidate, this.errorMessage = ''}): _themes = themes;
+  const _AppearanceState({required this.name, required this.themeId, this.logoPng,  List<OrganizationTheme> themes = const [], this.sheet = LogoSheet.closed, this.sheetError = '', this.candidate, this.errorMessage = ''}): _themes = themes;
   
 
 /// The name being edited.
@@ -248,8 +246,6 @@ class _AppearanceState implements AppearanceState {
   return EqualUnmodifiableListView(_themes);
 }
 
-@override@JsonKey() final  bool isLoadingThemes;
-@override@JsonKey() final  bool isSaving;
 @override@JsonKey() final  LogoSheet sheet;
 /// Why the picked file cannot be used (with [LogoSheet.error]).
 @override@JsonKey() final  String sheetError;
@@ -268,18 +264,18 @@ _$AppearanceStateCopyWith<_AppearanceState> get copyWith => __$AppearanceStateCo
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppearanceState&&(identical(other.name, name) || other.name == name)&&(identical(other.themeId, themeId) || other.themeId == themeId)&&const DeepCollectionEquality().equals(other.logoPng, logoPng)&&const DeepCollectionEquality().equals(other.themes, _themes)&&(identical(other.isLoadingThemes, isLoadingThemes) || other.isLoadingThemes == isLoadingThemes)&&(identical(other.isSaving, isSaving) || other.isSaving == isSaving)&&(identical(other.sheet, sheet) || other.sheet == sheet)&&(identical(other.sheetError, sheetError) || other.sheetError == sheetError)&&const DeepCollectionEquality().equals(other.candidate, candidate)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppearanceState&&(identical(other.name, name) || other.name == name)&&(identical(other.themeId, themeId) || other.themeId == themeId)&&const DeepCollectionEquality().equals(other.logoPng, logoPng)&&const DeepCollectionEquality().equals(other.themes, _themes)&&(identical(other.sheet, sheet) || other.sheet == sheet)&&(identical(other.sheetError, sheetError) || other.sheetError == sheetError)&&const DeepCollectionEquality().equals(other.candidate, candidate)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,name,themeId,const DeepCollectionEquality().hash(logoPng),const DeepCollectionEquality().hash(_themes),isLoadingThemes,isSaving,sheet,sheetError,const DeepCollectionEquality().hash(candidate),errorMessage);
+    return Object.hash(runtimeType,name,themeId,const DeepCollectionEquality().hash(logoPng),const DeepCollectionEquality().hash(_themes),sheet,sheetError,const DeepCollectionEquality().hash(candidate),errorMessage);
 }
 
 @override
 String toString() {
-    return 'AppearanceState(name: $name, themeId: $themeId, logoPng: $logoPng, themes: $themes, isLoadingThemes: $isLoadingThemes, isSaving: $isSaving, sheet: $sheet, sheetError: $sheetError, candidate: $candidate, errorMessage: $errorMessage)';
+    return 'AppearanceState(name: $name, themeId: $themeId, logoPng: $logoPng, themes: $themes, sheet: $sheet, sheetError: $sheetError, candidate: $candidate, errorMessage: $errorMessage)';
 }
 
 
@@ -290,7 +286,7 @@ abstract mixin class _$AppearanceStateCopyWith<$Res> implements $AppearanceState
   factory _$AppearanceStateCopyWith(_AppearanceState value, $Res Function(_AppearanceState) _then) = __$AppearanceStateCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String themeId, Uint8List? logoPng, List<OrganizationTheme> themes, bool isLoadingThemes, bool isSaving, LogoSheet sheet, String sheetError, Uint8List? candidate, String errorMessage
+ String name, String themeId, Uint8List? logoPng, List<OrganizationTheme> themes, LogoSheet sheet, String sheetError, Uint8List? candidate, String errorMessage
 });
 
 
@@ -307,15 +303,13 @@ class __$AppearanceStateCopyWithImpl<$Res>
 
 /// Create a copy of AppearanceState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? themeId = null,Object? logoPng = freezed,Object? themes = null,Object? isLoadingThemes = null,Object? isSaving = null,Object? sheet = null,Object? sheetError = null,Object? candidate = freezed,Object? errorMessage = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? themeId = null,Object? logoPng = freezed,Object? themes = null,Object? sheet = null,Object? sheetError = null,Object? candidate = freezed,Object? errorMessage = null,}) {
   return _then(_AppearanceState(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,themeId: null == themeId ? _self.themeId : themeId // ignore: cast_nullable_to_non_nullable
 as String,logoPng: freezed == logoPng ? _self.logoPng : logoPng // ignore: cast_nullable_to_non_nullable
 as Uint8List?,themes: null == themes ? _self._themes : themes // ignore: cast_nullable_to_non_nullable
-as List<OrganizationTheme>,isLoadingThemes: null == isLoadingThemes ? _self.isLoadingThemes : isLoadingThemes // ignore: cast_nullable_to_non_nullable
-as bool,isSaving: null == isSaving ? _self.isSaving : isSaving // ignore: cast_nullable_to_non_nullable
-as bool,sheet: null == sheet ? _self.sheet : sheet // ignore: cast_nullable_to_non_nullable
+as List<OrganizationTheme>,sheet: null == sheet ? _self.sheet : sheet // ignore: cast_nullable_to_non_nullable
 as LogoSheet,sheetError: null == sheetError ? _self.sheetError : sheetError // ignore: cast_nullable_to_non_nullable
 as String,candidate: freezed == candidate ? _self.candidate : candidate // ignore: cast_nullable_to_non_nullable
 as Uint8List?,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable

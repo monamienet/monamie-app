@@ -3,6 +3,7 @@ import 'package:monamie_app/domain/models/organization/organization_config.dart'
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
 
 import 'package:monamie_app/data/repositories/appearance/appearance_repository.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'appearance_state.dart';
 import 'package:monamie_app/data/services/logo_converter.dart';
@@ -10,7 +11,7 @@ import 'package:monamie_app/data/services/logo_converter.dart';
 export 'appearance_state.dart';
 
 /// State and actions of an administrator's *Aparência* screen: name, theme and
-/// logo, saved together. The screen calls [load] when it opens.
+/// logo, saved together. The screen runs [load] when it opens.
 class AppearanceViewModel extends ChangeNotifier {
   AppearanceViewModel({
     required this.organization,
@@ -46,25 +47,35 @@ class AppearanceViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    load.dispose();
+    pickLogo.dispose();
+    save.dispose();
     super.dispose();
   }
+
+  /// Loads the themes that can be picked; the organization's own theme
+  /// alone when the catalog cannot be read (so it always ends [Ok]).
+  late final Command0<void> load = Command0(_load);
+
+  /// Converts a picked file into the square PNG and shows the preview, or
+  /// says in [AppearanceState.sheetError] why it cannot be used (so it
+  /// always ends [Ok]).
+  late final Command1<void, Uint8List> pickLogo = Command1(_pickLogo);
+
+  /// Saves what changed. The failure is also kept in
+  /// [AppearanceState.errorMessage]. Ignored when nothing changed.
+  late final Command0<void> save = Command0(_save, blocked: () => !hasChanges);
 
   /// The converted logo waiting for "Usar este logo".
   Uint8List? get candidate => _state.candidate;
 
-  /// Loads the themes that can be picked; the organization's own theme
-  /// alone when the catalog cannot be read.
-  Future<void> load() async {
-    _emit(_state.copyWith(isLoadingThemes: true));
-    try {
-      final themes = switch (await _repository.pickableThemes()) {
-        Ok(:final value) => value,
-        Err() => [organization.effectiveTheme],
-      };
-      _emit(_state.copyWith(themes: themes));
-    } finally {
-      _emit(_state.copyWith(isLoadingThemes: false));
-    }
+  Future<Result<void>> _load() async {
+    final themes = switch (await _repository.pickableThemes()) {
+      Ok(:final value) => value,
+      Err() => [organization.effectiveTheme],
+    };
+    _emit(_state.copyWith(themes: themes));
+    return const Ok(null);
   }
 
   /// The theme currently picked, for the screen's colors.
@@ -86,9 +97,7 @@ class AppearanceViewModel extends ChangeNotifier {
   /// Picks theme [themeId] (saved with the other changes).
   void pickTheme(String themeId) => _emit(_state.copyWith(themeId: themeId));
 
-  /// Converts a picked file into the square PNG and shows the preview.
-  Future<void> pickLogo(Uint8List bytes) async {
-    if (_state.sheet == LogoSheet.processing) return;
+  Future<Result<void>> _pickLogo(Uint8List bytes) async {
     _emit(_state.copyWith(sheet: LogoSheet.processing));
     try {
       final png = await _convertLogo(bytes);
@@ -103,6 +112,7 @@ class AppearanceViewModel extends ChangeNotifier {
         ),
       );
     }
+    return const Ok(null);
   }
 
   /// Keeps the previewed logo (saved with the other changes).
@@ -122,10 +132,8 @@ class AppearanceViewModel extends ChangeNotifier {
   /// Back to the name's initial (saved with the other changes).
   void removeLogo() => _emit(_state.copyWith(logoPng: null));
 
-  /// Saves what changed. Returns whether it worked.
-  Future<bool> save() async {
-    if (_state.isSaving || !hasChanges) return false;
-    _emit(_state.copyWith(isSaving: true, errorMessage: ''));
+  Future<Result<void>> _save() async {
+    _emit(_state.copyWith(errorMessage: ''));
     try {
       String? logo;
       if (_logoChanged) {
@@ -140,7 +148,7 @@ class AppearanceViewModel extends ChangeNotifier {
         }
         if (stored case Err(:final message)) {
           _emit(_state.copyWith(errorMessage: message));
-          return false;
+          return stored;
         }
       }
       final newName = _state.name.trim();
@@ -153,7 +161,7 @@ class AppearanceViewModel extends ChangeNotifier {
       );
       if (saved case Err(:final message)) {
         _emit(_state.copyWith(errorMessage: message));
-        return false;
+        return saved;
       }
       await _onSaved?.call(
         OrganizationConfig(
@@ -169,20 +177,15 @@ class AppearanceViewModel extends ChangeNotifier {
           logoPng: _state.logoPng,
         ),
       );
-      return true;
-    } catch (e) {
+      return const Ok(null);
+    } catch (e, stackTrace) {
       // Storing the saved branding on the device failed.
       debugPrint('[Appearance] Save failed: $e');
-      _emit(
-        _state.copyWith(
-          errorMessage:
-              'Não foi possível salvar agora. Verifique a conexão e tente de '
-              'novo.',
-        ),
-      );
-      return false;
-    } finally {
-      _emit(_state.copyWith(isSaving: false));
+      const message =
+          'Não foi possível salvar agora. Verifique a conexão e tente de '
+          'novo.';
+      _emit(_state.copyWith(errorMessage: message));
+      return Err(message, error: e, stackTrace: stackTrace);
     }
   }
 }

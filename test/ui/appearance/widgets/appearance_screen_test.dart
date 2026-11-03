@@ -37,7 +37,8 @@ void main() {
 
       // 3. Assert
       verify(repository.pickableThemes()).called(1);
-      expect(controller.state.isLoadingThemes, isFalse);
+      expect(controller.load.running, isFalse);
+      expect(controller.load.completed, isTrue);
     });
   });
 }

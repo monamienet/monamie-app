@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => controller.restoreSession(),
+      (_) => controller.restoreSession.execute(),
     );
   }
 
@@ -111,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
         return buildGoogleButton(
-          () => runReportingErrors(context, controller.loginGoogle),
+          () => runReportingErrors(context, controller.loginGoogle.execute),
         );
       },
     );

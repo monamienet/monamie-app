@@ -10,11 +10,9 @@ abstract class MyAccountState with _$MyAccountState {
     /// being read or when it could not be read, and then nothing can be
     /// deleted.
     bool? isOwner,
-    @Default(false) bool isCheckingOwner,
 
     /// What the owner typed to confirm (the organization's id).
     @Default('') String confirmation,
-    @Default(false) bool isDeleting,
 
     /// Why the last load or deletion failed; empty when it did not.
     @Default('') String errorMessage,

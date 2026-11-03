@@ -53,7 +53,7 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
   @override
   void initState() {
     super.initState();
-    c.load();
+    c.load.execute();
   }
 
   @override
@@ -76,7 +76,7 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
       backgroundColor: MonAmieBrand.cream,
       body: SafeArea(
         child: ListenableBuilder(
-          listenable: c,
+          listenable: Listenable.merge([c, c.create]),
           builder: (context, _) {
             final result = c.state.result;
             if (result != null) return _outcome(result);
@@ -141,7 +141,7 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
                   height: 48,
                 ),
                 padding: EdgeInsets.zero,
-                onPressed: c.state.isCreating ? null : _back,
+                onPressed: c.create.running ? null : _back,
                 icon: const Icon(Icons.arrow_back, color: _navy),
               ),
               const SizedBox(width: 8),
@@ -992,7 +992,7 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
                 activeColor: _navy,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
-                onChanged: c.state.isCreating
+                onChanged: c.create.running
                     ? null
                     : (v) => setState(() => _acceptedTerms = v ?? false),
               ),
@@ -1023,8 +1023,8 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
         const SizedBox(height: 16),
         _button(
           'Criar organização',
-          _acceptedTerms ? c.create : null,
-          busy: c.state.isCreating,
+          _acceptedTerms ? c.create.execute : null,
+          busy: c.create.running,
           busyLabel: 'Criando…',
         ),
       ],
@@ -1070,7 +1070,7 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
         ),
         const SizedBox(width: 12),
         InkWell(
-          onTap: c.state.isCreating ? null : () => setState(() => _step = step),
+          onTap: c.create.running ? null : () => setState(() => _step = step),
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Text(
@@ -1218,7 +1218,7 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
       enabled: offered,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: c.state.isCreating || !offered ? null : () => c.pickPlan(id),
+        onTap: c.create.running || !offered ? null : () => c.pickPlan(id),
         child: Opacity(
           opacity: offered ? 1 : 0.45,
           child: Container(

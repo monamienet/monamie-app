@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
 import 'package:monamie_app/ui/tracking_settings/view_models/tracking_settings_edit_view_model.dart';
@@ -39,7 +40,7 @@ Future<TrackingSettingsEditViewModel> controllerFor(
     repository: repository,
     saved: saved,
   );
-  controller.load();
+  controller.load.execute();
   await pumpEventQueue();
   return controller;
 }
@@ -73,7 +74,7 @@ void main() {
       );
 
       // 2. Act
-      controller.load();
+      controller.load.execute();
       await pumpEventQueue();
 
       // 3. Assert
@@ -88,7 +89,7 @@ void main() {
       );
 
       // 2. Act
-      controller.load();
+      controller.load.execute();
       await pumpEventQueue();
 
       // 3. Assert
@@ -103,7 +104,7 @@ void main() {
       );
 
       // 2. Act
-      controller.load();
+      controller.load.execute();
       await pumpEventQueue();
 
       // 3. Assert
@@ -119,7 +120,7 @@ void main() {
       );
 
       // 2. Act
-      controller.load();
+      controller.load.execute();
       await pumpEventQueue();
 
       // 3. Assert
@@ -304,52 +305,52 @@ void main() {
       final controller = await changedController();
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
       verify(repository.save(economia)).called(1);
     });
 
     test('Happy Path: after a save the draft is the saved settings, '
-        'justSaved is true and it returns true', () async {
+        'justSaved is true and it returns Ok', () async {
       // 1. Arrange
       final controller = await changedController();
 
       // 2. Act
-      final ok = await controller.save();
+      final result = await controller.save.execute();
 
       // 3. Assert
       expect(
-        [ok, controller.state.savedSettings, controller.state.justSaved],
-        [true, economia, true],
+        [result, controller.state.savedSettings, controller.state.justSaved],
+        [isA<Ok<void>>(), economia, true],
       );
     });
 
-    test('Happy Path: isSaving is false after the save', () async {
+    test('Happy Path: save is not running after the save', () async {
       // 1. Arrange
       final controller = await changedController();
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
-      expect(controller.state.isSaving, isFalse);
+      expect(controller.save.running, isFalse);
     });
 
-    test('Sad Path: no changes returns false and calls nothing', () async {
+    test('Sad Path: no changes is ignored (null) and calls nothing', () async {
       // 1. Arrange
       final controller = await controllerFor(equilibrio);
 
       // 2. Act
-      final ok = await controller.save();
+      final result = await controller.save.execute();
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(result, isNull);
       verifyNever(repository.save(any));
     });
 
     test('Sad Path: a failing repository sets errorMessage and save '
-        'returns false', () async {
+        'returns an Err', () async {
       // 1. Arrange
       final controller = await changedController();
       when(
@@ -357,16 +358,16 @@ void main() {
       ).thenAnswer((_) async => throw Exception('offline'));
 
       // 2. Act
-      final ok = await controller.save();
+      final result = await controller.save.execute();
 
       // 3. Assert
       expect(
-        [ok, controller.state.errorMessage, controller.state.savedSettings],
-        [false, isNotEmpty, equilibrio],
+        [result, controller.state.errorMessage, controller.state.savedSettings],
+        [isA<Err<void>>(), isNotEmpty, equilibrio],
       );
     });
 
-    test('Sad Path: isSaving is false after the repository throws', () async {
+    test('Sad Path: save is not running after the repository throws', () async {
       // 1. Arrange
       final controller = await changedController();
       when(
@@ -374,45 +375,45 @@ void main() {
       ).thenAnswer((_) async => throw Exception('offline'));
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
-      expect(controller.state.isSaving, isFalse);
+      expect(controller.save.running, isFalse);
     });
   });
 
   group('TrackingSettingsEditViewModel.save reentrancy - Unit Test Suite', () {
-    test('Happy Path: isSaving is true while the save is in flight', () async {
+    test('Happy Path: save runs while the save is in flight', () async {
       // 1. Arrange
       final controller = await changedController();
       final gate = Completer<void>();
       saveWaitsOn(gate);
 
       // 2. Act
-      final pending = controller.save();
+      final pending = controller.save.execute();
 
       // 3. Assert
-      expect(controller.state.isSaving, isTrue);
+      expect(controller.save.running, isTrue);
       gate.complete();
       await pending;
     });
 
-    test('Edge Case: a second save while the first is in flight returns '
-        'false and does not call the repository again', () async {
+    test('Edge Case: a second save while the first is in flight is '
+        'ignored (null) and does not call the repository again', () async {
       // 1. Arrange
       final controller = await changedController();
       final gate = Completer<void>();
       saveWaitsOn(gate);
-      final first = controller.save();
+      final first = controller.save.execute();
       await pumpEventQueue();
 
       // 2. Act
-      final second = await controller.save();
+      final second = await controller.save.execute();
 
       // 3. Assert
       gate.complete();
       await first;
-      expect(second, isFalse);
+      expect(second, isNull);
       verify(repository.save(any)).called(1);
     });
 
@@ -425,7 +426,7 @@ void main() {
       controller.pickPreset(TrackingPreset.economia);
       final gate = Completer<void>();
       saveWaitsOn(gate);
-      final pending = controller.save();
+      final pending = controller.save.execute();
       final saving = controller.state;
 
       // 2. Act
@@ -433,7 +434,7 @@ void main() {
 
       // 3. Assert
       expect(controller.state, saving);
-      expect(controller.state.isSaving, isTrue);
+      expect(controller.save.running, isTrue);
       gate.complete();
       await pending;
     });
@@ -451,7 +452,7 @@ void main() {
       );
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(controller.state.minPeriodMinutes, 0);
@@ -499,7 +500,7 @@ void main() {
       controller.addListener(() => notifications++);
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(notifications, 0);
@@ -512,7 +513,7 @@ void main() {
       final gate = Completer<void>();
       saveWaitsOn(gate);
       var notifications = 0;
-      final pending = controller.save();
+      final pending = controller.save.execute();
       controller.addListener(() => notifications++);
       controller.dispose();
 
@@ -520,7 +521,7 @@ void main() {
       gate.complete();
 
       // 3. Assert
-      await expectLater(pending, completion(isTrue));
+      await expectLater(pending, completion(isA<Ok<void>>()));
       expect(notifications, 0);
     });
   });

@@ -23,12 +23,18 @@ class DeletionPendingScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 48, 24, 32),
           child: ListenableBuilder(
-            listenable: controller,
+            listenable: Listenable.merge([
+              controller,
+              controller.cancelAccountDeletion,
+              controller.enter,
+            ]),
             builder: (context, _) {
               final state = controller.state;
               final deletion = state.accountDeletion;
               final restored = state.deletionRestored;
-              final busy = state.cancellingDeletion || state.isLoading;
+              final busy =
+                  controller.cancelAccountDeletion.running ||
+                  controller.enter.running;
               final name = deletion?.organizationName;
               final when = deletion == null
                   ? ''
@@ -101,8 +107,11 @@ class DeletionPendingScreen extends StatelessWidget {
                       onPressed: busy
                           ? null
                           : restored
-                          ? () => runReportingErrors(context, controller.enter)
-                          : controller.cancelAccountDeletion,
+                          ? () => runReportingErrors(
+                              context,
+                              controller.enter.execute,
+                            )
+                          : controller.cancelAccountDeletion.execute,
                       child: busy
                           ? const SizedBox(
                               width: 22,
@@ -130,8 +139,10 @@ class DeletionPendingScreen extends StatelessWidget {
                       ),
                       onPressed: busy || state.isLoggingOut
                           ? null
-                          : () =>
-                                runReportingErrors(context, controller.logout),
+                          : () => runReportingErrors(
+                              context,
+                              controller.logout.execute,
+                            ),
                       child: const Text('Sair'),
                     ),
                   ),

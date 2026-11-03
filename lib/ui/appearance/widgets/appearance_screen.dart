@@ -4,6 +4,7 @@ import 'package:monamie_app/domain/models/organization/organization_config.dart'
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
+import 'package:monamie_app/utils/result.dart';
 
 import 'package:monamie_app/ui/appearance/view_models/appearance_view_model.dart';
 
@@ -29,13 +30,18 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
   @override
   void initState() {
     super.initState();
-    controller.load();
+    controller.load.execute();
   }
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: controller,
+      listenable: Listenable.merge([
+        controller,
+        controller.load,
+        controller.pickLogo,
+        controller.save,
+      ]),
       builder: (context, _) {
         final theme = controller.pickedTheme;
         return Scaffold(
@@ -127,7 +133,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
             actions: [
               TextButton(
                 style: link,
-                onPressed: controller.state.isSaving
+                onPressed: controller.save.running
                     ? null
                     : () => _editName(context),
                 child: const Text('Alterar'),
@@ -154,14 +160,14 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
                     ),
                     minimumSize: const Size(44, 44),
                   ),
-                  onPressed: controller.state.isSaving
+                  onPressed: controller.save.running
                       ? null
                       : controller.removeLogo,
                   child: const Text('Remover'),
                 ),
               TextButton(
                 style: link,
-                onPressed: controller.state.isSaving ? null : _pickLogo,
+                onPressed: controller.save.running ? null : _pickLogo,
                 child: Text(hasLogo ? 'Alterar' : 'Adicionar'),
               ),
             ],
@@ -229,7 +235,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
         ],
       ),
       const SizedBox(height: 12),
-      if (controller.state.isLoadingThemes)
+      if (controller.load.running)
         const Center(child: CircularProgressIndicator())
       else
         GridView.count(
@@ -244,7 +250,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
               _ThemeSwatch(
                 theme: theme,
                 selected: theme.id == picked.id,
-                onTap: controller.state.isSaving
+                onTap: controller.save.running
                     ? null
                     : () => controller.pickTheme(theme.id),
               ),
@@ -286,7 +292,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
   );
 
   Widget _saveButton(BuildContext context, OrganizationTheme theme) {
-    final saving = controller.state.isSaving;
+    final saving = controller.save.running;
     return SizedBox(
       height: 56,
       child: FilledButton(
@@ -326,7 +332,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
     // Looked up first: the screen closes before the message shows.
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    if (await controller.save()) {
+    if (await controller.save.execute() case Ok()) {
       navigator.pop();
       messenger.showSnackBar(
         noticeSnackBar(
@@ -343,7 +349,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
       allowedExtensions: const ['svg', 'png', 'jpg', 'jpeg', 'webp', 'heic'],
     );
     if (files.isEmpty) return;
-    await controller.pickLogo(await files.first.readAsBytes());
+    await controller.pickLogo.execute(await files.first.readAsBytes());
   }
 
   Future<void> _editName(BuildContext context) async {

@@ -26,7 +26,7 @@ class ShareCard extends StatelessWidget {
     return ListenableBuilder(
       listenable: Listenable.merge([
         tracking.isTrackingEnabled,
-        tracking.isTrackingLoading,
+        tracking.toggleService,
       ]),
       builder: (context, _) => _card(context, tracking),
     );
@@ -35,7 +35,7 @@ class ShareCard extends StatelessWidget {
   Widget _card(BuildContext context, TrackingToggleViewModel tracking) {
     final state = shareCardState(
       enabled: tracking.isTrackingEnabled.value,
-      loading: tracking.isTrackingLoading.value,
+      loading: tracking.toggleService.running,
     );
     final tinted = state.isOn && !state.busy;
     final background = tinted ? SheetColors.accent : SheetColors.surface;
@@ -104,7 +104,7 @@ class ShareCard extends StatelessWidget {
   /// start, or a remark on a start (e.g. no GPS fix yet).
   Future<void> _toggle(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final result = await _tracking.toggleService();
+    final result = await _tracking.toggleService.execute();
     switch (result) {
       case Ok(value: final notice?):
         showNotice(messenger, notice);
@@ -112,6 +112,8 @@ class ShareCard extends StatelessWidget {
         break;
       case Err():
         showErrorOf(messenger, result);
+      case null:
+        break;
     }
   }
 

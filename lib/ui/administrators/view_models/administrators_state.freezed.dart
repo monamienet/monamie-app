@@ -16,9 +16,7 @@ T _$identity<T>(T value) => value;
 mixin _$AdministratorsState {
 
 /// The administrators and the members who may be appointed.
- OrganizationAdministrators get people;/// Whether the list is being loaded.
- bool get isLoading;/// The e-mail whose role is being changed, or `null`.
- String? get workingEmail;/// Why the last load or change failed; empty when it did not.
+ OrganizationAdministrators get people;/// Why the last load or change failed; empty when it did not.
  String get errorMessage;
 /// Create a copy of AdministratorsState
 /// with the given fields replaced by the non-null parameter values.
@@ -31,20 +29,20 @@ $AdministratorsStateCopyWith<AdministratorsState> get copyWith => _$Administrato
 @override
 bool operator ==(Object other) {
   final _this = this as AdministratorsState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AdministratorsState&&(identical(other.people, _this.people) || other.people == _this.people)&&(identical(other.isLoading, _this.isLoading) || other.isLoading == _this.isLoading)&&(identical(other.workingEmail, _this.workingEmail) || other.workingEmail == _this.workingEmail)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AdministratorsState&&(identical(other.people, _this.people) || other.people == _this.people)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
 }
 
 
 @override
 int get hashCode {
   final _this = this as AdministratorsState;
-  return Object.hash(runtimeType,_this.people,_this.isLoading,_this.workingEmail,_this.errorMessage);
+  return Object.hash(runtimeType,_this.people,_this.errorMessage);
 }
 
 @override
 String toString() {
   final _this = this as AdministratorsState;
-  return 'AdministratorsState(people: ${_this.people}, isLoading: ${_this.isLoading}, workingEmail: ${_this.workingEmail}, errorMessage: ${_this.errorMessage})';
+  return 'AdministratorsState(people: ${_this.people}, errorMessage: ${_this.errorMessage})';
 }
 
 
@@ -55,7 +53,7 @@ abstract mixin class $AdministratorsStateCopyWith<$Res>  {
   factory $AdministratorsStateCopyWith(AdministratorsState value, $Res Function(AdministratorsState) _then) = _$AdministratorsStateCopyWithImpl;
 @useResult
 $Res call({
- OrganizationAdministrators people, bool isLoading, String? workingEmail, String errorMessage
+ OrganizationAdministrators people, String errorMessage
 });
 
 
@@ -72,12 +70,10 @@ class _$AdministratorsStateCopyWithImpl<$Res>
 
 /// Create a copy of AdministratorsState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? people = null,Object? isLoading = null,Object? workingEmail = freezed,Object? errorMessage = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? people = null,Object? errorMessage = null,}) {
   return _then(AdministratorsState(
 people: null == people ? _self.people : people // ignore: cast_nullable_to_non_nullable
-as OrganizationAdministrators,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
-as bool,workingEmail: freezed == workingEmail ? _self.workingEmail : workingEmail // ignore: cast_nullable_to_non_nullable
-as String?,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as OrganizationAdministrators,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -172,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( OrganizationAdministrators people,  bool isLoading,  String? workingEmail,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( OrganizationAdministrators people,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AdministratorsState() when $default != null:
-return $default(_that.people,_that.isLoading,_that.workingEmail,_that.errorMessage);case _:
+return $default(_that.people,_that.errorMessage);case _:
   return orElse();
 
 }
@@ -193,10 +189,10 @@ return $default(_that.people,_that.isLoading,_that.workingEmail,_that.errorMessa
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( OrganizationAdministrators people,  bool isLoading,  String? workingEmail,  String errorMessage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( OrganizationAdministrators people,  String errorMessage)  $default,) {final _that = this;
 switch (_that) {
 case _AdministratorsState():
-return $default(_that.people,_that.isLoading,_that.workingEmail,_that.errorMessage);case _:
+return $default(_that.people,_that.errorMessage);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -213,10 +209,10 @@ return $default(_that.people,_that.isLoading,_that.workingEmail,_that.errorMessa
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( OrganizationAdministrators people,  bool isLoading,  String? workingEmail,  String errorMessage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( OrganizationAdministrators people,  String errorMessage)?  $default,) {final _that = this;
 switch (_that) {
 case _AdministratorsState() when $default != null:
-return $default(_that.people,_that.isLoading,_that.workingEmail,_that.errorMessage);case _:
+return $default(_that.people,_that.errorMessage);case _:
   return null;
 
 }
@@ -228,15 +224,11 @@ return $default(_that.people,_that.isLoading,_that.workingEmail,_that.errorMessa
 
 
 class _AdministratorsState implements AdministratorsState {
-  const _AdministratorsState({this.people = const OrganizationAdministrators(), this.isLoading = false, this.workingEmail, this.errorMessage = ''});
+  const _AdministratorsState({this.people = const OrganizationAdministrators(), this.errorMessage = ''});
   
 
 /// The administrators and the members who may be appointed.
 @override@JsonKey() final  OrganizationAdministrators people;
-/// Whether the list is being loaded.
-@override@JsonKey() final  bool isLoading;
-/// The e-mail whose role is being changed, or `null`.
-@override final  String? workingEmail;
 /// Why the last load or change failed; empty when it did not.
 @override@JsonKey() final  String errorMessage;
 
@@ -250,18 +242,18 @@ _$AdministratorsStateCopyWith<_AdministratorsState> get copyWith => __$Administr
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AdministratorsState&&(identical(other.people, people) || other.people == people)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.workingEmail, workingEmail) || other.workingEmail == workingEmail)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AdministratorsState&&(identical(other.people, people) || other.people == people)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,people,isLoading,workingEmail,errorMessage);
+    return Object.hash(runtimeType,people,errorMessage);
 }
 
 @override
 String toString() {
-    return 'AdministratorsState(people: $people, isLoading: $isLoading, workingEmail: $workingEmail, errorMessage: $errorMessage)';
+    return 'AdministratorsState(people: $people, errorMessage: $errorMessage)';
 }
 
 
@@ -272,7 +264,7 @@ abstract mixin class _$AdministratorsStateCopyWith<$Res> implements $Administrat
   factory _$AdministratorsStateCopyWith(_AdministratorsState value, $Res Function(_AdministratorsState) _then) = __$AdministratorsStateCopyWithImpl;
 @override @useResult
 $Res call({
- OrganizationAdministrators people, bool isLoading, String? workingEmail, String errorMessage
+ OrganizationAdministrators people, String errorMessage
 });
 
 
@@ -289,12 +281,10 @@ class __$AdministratorsStateCopyWithImpl<$Res>
 
 /// Create a copy of AdministratorsState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? people = null,Object? isLoading = null,Object? workingEmail = freezed,Object? errorMessage = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? people = null,Object? errorMessage = null,}) {
   return _then(_AdministratorsState(
 people: null == people ? _self.people : people // ignore: cast_nullable_to_non_nullable
-as OrganizationAdministrators,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
-as bool,workingEmail: freezed == workingEmail ? _self.workingEmail : workingEmail // ignore: cast_nullable_to_non_nullable
-as String?,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as OrganizationAdministrators,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

@@ -23,14 +23,8 @@ abstract class OrganizationChoiceState with _$OrganizationChoiceState {
     /// Invites waiting for the signed-in account.
     @Default([]) List<Invite> pendingInvites,
 
-    /// Whether an organization entry (or a new check) runs.
-    @Default(false) bool isLoading,
-
     /// Name of the organization being entered, for its spinner.
     String? enteringOrganizationName,
-
-    /// Id of the invite being accepted (its button shows the pending state).
-    String? acceptingInvite,
 
     /// Error of the last accept, shown on the invite card.
     @Default('') String inviteError,

@@ -88,7 +88,7 @@ MyAccountViewModel newController(FakeOwnerCheck check) {
 /// A controller whose ownership has already been read as [isOwner].
 Future<MyAccountViewModel> controllerFor({required bool isOwner}) async {
   final controller = newController(FakeOwnerCheck(isOwner));
-  await controller.loadOwnership();
+  await controller.loadOwnership.execute();
   return controller;
 }
 
@@ -112,11 +112,11 @@ void main() {
         final controller = newController(FakeOwnerCheck(owner));
 
         // 2. Act
-        await controller.loadOwnership();
+        await controller.loadOwnership.execute();
 
         // 3. Assert
         expect(controller.state.isOwner, owner);
-        expect(controller.state.isCheckingOwner, isFalse);
+        expect(controller.loadOwnership.running, isFalse);
         expect(controller.state.errorMessage, isEmpty);
       });
     }
@@ -127,7 +127,7 @@ void main() {
       final controller = newController(check);
 
       // 2. Act
-      controller.loadOwnership();
+      controller.loadOwnership.execute();
       await pumpEventQueue();
 
       // 3. Assert
@@ -143,14 +143,14 @@ void main() {
         final controller = newController(check);
 
         // 2. Act
-        final pending = controller.loadOwnership();
+        final pending = controller.loadOwnership.execute();
 
         // 3. Assert
         expect(controller.state.isOwner, isNull);
-        expect(controller.state.isCheckingOwner, isTrue);
+        expect(controller.loadOwnership.running, isTrue);
         check.gate!.complete();
         await pending;
-        expect(controller.state.isCheckingOwner, isFalse);
+        expect(controller.loadOwnership.running, isFalse);
       },
     );
 
@@ -160,10 +160,10 @@ void main() {
         // 1. Arrange
         final check = FakeOwnerCheck(true)..gate = Completer<void>();
         final controller = newController(check);
-        final first = controller.loadOwnership();
+        final first = controller.loadOwnership.execute();
 
         // 2. Act
-        await controller.loadOwnership();
+        await controller.loadOwnership.execute();
 
         // 3. Assert
         expect(check.calls, 1);
@@ -176,11 +176,11 @@ void main() {
       // 1. Arrange
       final check = FakeOwnerCheck(false)..failure = StateError('offline');
       final controller = newController(check);
-      await controller.loadOwnership();
+      await controller.loadOwnership.execute();
       check.failure = null;
 
       // 2. Act
-      await controller.loadOwnership();
+      await controller.loadOwnership.execute();
 
       // 3. Assert
       expect(controller.state.isOwner, isFalse);
@@ -194,13 +194,13 @@ void main() {
       final controller = newController(check);
 
       // 2. Act
-      await controller.loadOwnership();
+      await controller.loadOwnership.execute();
 
       // 3. Assert
       expect(controller.state.isOwner, isNull);
       expect(controller.state.errorMessage, isNotEmpty);
       expect(controller.state.errorMessage, isNot(contains('offline')));
-      expect(controller.state.isCheckingOwner, isFalse);
+      expect(controller.loadOwnership.running, isFalse);
     });
   });
 
@@ -234,7 +234,7 @@ void main() {
         ..setConfirmation('rotasul');
       final gate = Completer<void>();
       stubRequest(() => gate.future);
-      final pending = controller.deleteAccount();
+      final pending = controller.deleteAccount.execute();
 
       // 2. Act
       final canDelete = controller.canDelete;
@@ -250,7 +250,7 @@ void main() {
       final controller = newController(
         FakeOwnerCheck(false)..gate = Completer<void>(),
       );
-      unawaited(controller.loadOwnership());
+      unawaited(controller.loadOwnership.execute());
 
       // 2. Act
       final canDelete = controller.canDelete;
@@ -265,7 +265,7 @@ void main() {
       final controller = newController(
         FakeOwnerCheck(false)..failure = StateError('offline'),
       );
-      await controller.loadOwnership();
+      await controller.loadOwnership.execute();
 
       // 2. Act
       final canDelete = controller.canDelete;
@@ -303,13 +303,13 @@ void main() {
       final controller = await controllerFor(isOwner: false);
 
       // 2. Act
-      await controller.deleteAccount();
+      await controller.deleteAccount.execute();
 
       // 3. Assert
       expect(requestedConfirmIds(), [<String>[]]);
       expect(deleted, [_deletion]);
       expect(controller.state.errorMessage, isEmpty);
-      expect(controller.state.isDeleting, isFalse);
+      expect(controller.deleteAccount.running, isFalse);
     });
 
     test('Happy Path: an owner confirms the bound organization', () async {
@@ -318,7 +318,7 @@ void main() {
         ..setConfirmation('rotasul');
 
       // 2. Act
-      await controller.deleteAccount();
+      await controller.deleteAccount.execute();
 
       // 3. Assert
       expect(requestedConfirmIds(), [
@@ -327,21 +327,21 @@ void main() {
       expect(deleted, [_deletion]);
     });
 
-    test('Edge Case: isDeleting is set while the request runs', () async {
+    test('Edge Case: deleteAccount runs while the request runs', () async {
       // 1. Arrange
       final controller = await controllerFor(isOwner: false);
       final gate = Completer<void>();
       stubRequest(() => gate.future);
 
       // 2. Act
-      final pending = controller.deleteAccount();
+      final pending = controller.deleteAccount.execute();
 
       // 3. Assert
-      expect(controller.state.isDeleting, isTrue);
+      expect(controller.deleteAccount.running, isTrue);
       expect(controller.canDelete, isFalse);
       gate.complete();
       await pending;
-      expect(controller.state.isDeleting, isFalse);
+      expect(controller.deleteAccount.running, isFalse);
     });
 
     test('Edge Case: a second tap while in flight sends nothing', () async {
@@ -349,12 +349,13 @@ void main() {
       final controller = await controllerFor(isOwner: false);
       final gate = Completer<void>();
       stubRequest(() => gate.future);
-      final first = controller.deleteAccount();
+      final first = controller.deleteAccount.execute();
 
       // 2. Act
-      await controller.deleteAccount();
+      final second = await controller.deleteAccount.execute();
 
       // 3. Assert
+      expect(second, isNull);
       verify(repository.request(confirmIds: anyNamed('confirmIds'))).called(1);
       gate.complete();
       await first;
@@ -365,9 +366,10 @@ void main() {
       final controller = await controllerFor(isOwner: true);
 
       // 2. Act
-      await controller.deleteAccount();
+      final result = await controller.deleteAccount.execute();
 
       // 3. Assert
+      expect(result, isNull);
       verifyNever(repository.request(confirmIds: anyNamed('confirmIds')));
       expect(deleted, isEmpty);
     });
@@ -377,10 +379,10 @@ void main() {
       final controller = newController(
         FakeOwnerCheck(false)..failure = StateError('offline'),
       );
-      await controller.loadOwnership();
+      await controller.loadOwnership.execute();
 
       // 2. Act
-      await controller.deleteAccount();
+      await controller.deleteAccount.execute();
 
       // 3. Assert
       verifyNever(repository.request(confirmIds: anyNamed('confirmIds')));
@@ -393,12 +395,16 @@ void main() {
       stubRequest(() async {}, failure: 'Recusado.');
 
       // 2. Act
-      await controller.deleteAccount();
+      final result = await controller.deleteAccount.execute();
 
       // 3. Assert
+      expect(
+        result,
+        isA<Err<void>>().having((err) => err.message, 'message', 'Recusado.'),
+      );
       expect(controller.state.errorMessage, 'Recusado.');
       expect(deleted, isEmpty);
-      expect(controller.state.isDeleting, isFalse);
+      expect(controller.deleteAccount.running, isFalse);
     });
 
     test('Sad Path: the repository\'s generic message for an unexpected '
@@ -411,12 +417,12 @@ void main() {
       stubRequest(() async {}, failure: generic);
 
       // 2. Act
-      await controller.deleteAccount();
+      await controller.deleteAccount.execute();
 
       // 3. Assert
       expect(controller.state.errorMessage, generic);
       expect(deleted, isEmpty);
-      expect(controller.state.isDeleting, isFalse);
+      expect(controller.deleteAccount.running, isFalse);
     });
 
     test('Sad Path: a failure after the deletion was scheduled (the '
@@ -428,12 +434,12 @@ void main() {
       final controller = await controllerFor(isOwner: false);
 
       // 2. Act
-      await controller.deleteAccount();
+      await controller.deleteAccount.execute();
 
       // 3. Assert
       expect(controller.state.errorMessage, isNotEmpty);
       expect(controller.state.errorMessage, isNot(contains('offline')));
-      expect(controller.state.isDeleting, isFalse);
+      expect(controller.deleteAccount.running, isFalse);
     });
   });
 
@@ -465,22 +471,24 @@ void main() {
       expect(notifications, 0);
     });
 
-    test(
-      'Edge Case: reading the ownership notifies when the read starts, with the result '
-      'and when it ends',
-      () async {
-        // 1. Arrange
-        final controller = newController(FakeOwnerCheck(false));
-        var notifications = 0;
-        controller.addListener(() => notifications++);
+    test('Edge Case: reading the ownership notifies the view model once, with '
+        'the result, and the command when the read starts and ends', () async {
+      // 1. Arrange
+      final controller = newController(FakeOwnerCheck(false));
+      var notifications = 0;
+      final running = <bool>[];
+      controller.addListener(() => notifications++);
+      controller.loadOwnership.addListener(
+        () => running.add(controller.loadOwnership.running),
+      );
 
-        // 2. Act
-        await controller.loadOwnership();
+      // 2. Act
+      await controller.loadOwnership.execute();
 
-        // 3. Assert
-        expect(notifications, 3);
-      },
-    );
+      // 3. Assert
+      expect(notifications, 1);
+      expect(running, [true, false]);
+    });
 
     test('Sad Path: a read finishing after dispose notifies nobody and does '
         'not throw', () async {
@@ -488,7 +496,7 @@ void main() {
       final check = FakeOwnerCheck(true)..gate = Completer<void>();
       final controller = newController(check);
       var notifications = 0;
-      final pending = controller.loadOwnership();
+      final pending = controller.loadOwnership.execute();
       controller.addListener(() => notifications++);
       controller.dispose();
 
@@ -507,7 +515,7 @@ void main() {
       final gate = Completer<void>();
       stubRequest(() => gate.future);
       var notifications = 0;
-      final pending = controller.deleteAccount();
+      final pending = controller.deleteAccount.execute();
       controller.addListener(() => notifications++);
       controller.dispose();
 

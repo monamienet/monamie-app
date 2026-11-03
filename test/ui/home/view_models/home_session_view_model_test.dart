@@ -112,7 +112,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      final result = await harness.controller.logout();
+      final result = await harness.controller.logout.execute();
 
       // 3. Assert
       expect(result, isA<Ok<bool>>());
@@ -125,7 +125,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      final result = await harness.controller.switchOrganization();
+      final result = await harness.controller.switchOrganization.execute();
 
       // 3. Assert
       expect(result, isA<Ok<void>>());
@@ -140,7 +140,7 @@ void main() {
       );
 
       // 2. Act
-      final result = await harness.controller.switchOrganization();
+      final result = await harness.controller.switchOrganization.execute();
 
       // 3. Assert
       expect(
@@ -160,7 +160,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      await harness.controller.loadOwnership('rotasul');
+      await harness.controller.loadOwnership.execute('rotasul');
 
       // 3. Assert
       expect(harness.controller.state.ownership, {'rotasul': true});
@@ -172,7 +172,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      await harness.controller.loadOwnership('verdemar');
+      await harness.controller.loadOwnership.execute('verdemar');
 
       // 3. Assert
       expect(harness.controller.state.ownership, {'verdemar': false});
@@ -182,12 +182,12 @@ void main() {
         'notified', () async {
       // 1. Arrange
       final harness = _Harness();
-      await harness.controller.loadOwnership('rotasul');
+      await harness.controller.loadOwnership.execute('rotasul');
       var notifications = 0;
       harness.controller.addListener(() => notifications++);
 
       // 2. Act
-      await harness.controller.loadOwnership('rotasul');
+      await harness.controller.loadOwnership.execute('rotasul');
 
       // 3. Assert
       verify(harness.directory.organizationsOfSignedInUser()).called(1);
@@ -197,10 +197,10 @@ void main() {
     test('Edge Case: another organization is read on its own', () async {
       // 1. Arrange
       final harness = _Harness();
-      await harness.controller.loadOwnership('rotasul');
+      await harness.controller.loadOwnership.execute('rotasul');
 
       // 2. Act
-      await harness.controller.loadOwnership('verdemar');
+      await harness.controller.loadOwnership.execute('verdemar');
 
       // 3. Assert
       verify(harness.directory.organizationsOfSignedInUser()).called(2);
@@ -220,15 +220,18 @@ void main() {
         await gate.future;
         return _kOrganizations;
       });
-      final first = harness.controller.loadOwnership('rotasul');
+      final first = harness.controller.loadOwnership.execute('rotasul');
 
       // 2. Act
-      await harness.controller.loadOwnership('rotasul');
+      final second = await harness.controller.loadOwnership.execute('rotasul');
 
       // 3. Assert
+      expect(second, isNull);
+      expect(harness.controller.loadOwnership.argument, 'rotasul');
       verify(harness.directory.organizationsOfSignedInUser()).called(1);
       gate.complete();
       await first;
+      expect(harness.controller.loadOwnership.argument, isNull);
     });
 
     test('Edge Case: reading the ownership does not move the session', () async {
@@ -236,7 +239,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      await harness.controller.loadOwnership('rotasul');
+      await harness.controller.loadOwnership.execute('rotasul');
 
       // 3. Assert
       expect(harness.session.moves, isEmpty);
@@ -253,7 +256,7 @@ void main() {
       harness.controller.addListener(() => notifications++);
 
       // 2. Act
-      await harness.controller.loadOwnership('rotasul');
+      await harness.controller.loadOwnership.execute('rotasul');
 
       // 3. Assert
       expect(harness.controller.state.ownership.containsKey('rotasul'), isFalse);
@@ -266,13 +269,13 @@ void main() {
       when(
         harness.directory.organizationsOfSignedInUser(),
       ).thenAnswer((_) async => throw StateError('offline'));
-      await harness.controller.loadOwnership('rotasul');
+      await harness.controller.loadOwnership.execute('rotasul');
       when(
         harness.directory.organizationsOfSignedInUser(),
       ).thenAnswer((_) async => _kOrganizations);
 
       // 2. Act
-      await harness.controller.loadOwnership('rotasul');
+      await harness.controller.loadOwnership.execute('rotasul');
 
       // 3. Assert
       verify(harness.directory.organizationsOfSignedInUser()).called(2);

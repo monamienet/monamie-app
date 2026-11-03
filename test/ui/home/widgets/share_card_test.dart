@@ -1,39 +1,64 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_toggle_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/share_card.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
 
 @GenerateNiceMocks([MockSpec<TrackingToggleViewModel>()])
 import 'share_card_test.mocks.dart';
 
-/// A [MockTrackingToggleViewModel] whose flags start at [enabled] and
-/// [loading]; the test flips them with [flip].
-/// [toggleService] answers [result] (by default `Ok(null)`).
-MockTrackingToggleViewModel mockToggle({
-  bool enabled = false,
-  bool loading = false,
-  Result<UserNotice?> result = const Ok(null),
-}) {
-  final toggle = MockTrackingToggleViewModel();
-  final isEnabled = ValueNotifier<bool>(enabled);
-  final isLoading = ValueNotifier<bool>(loading);
-  when(toggle.isTrackingEnabled).thenReturn(isEnabled);
-  when(toggle.isTrackingLoading).thenReturn(isLoading);
-  when(toggle.toggleService()).thenAnswer((_) async => result);
-  return toggle;
+/// A [MockTrackingToggleViewModel] whose sharing flag starts at [enabled]
+/// and whose [toggleService] is a real [Command0] answering [result] (by
+/// default `Ok(null)`), counting the toggles in [calls]. With [loading] a
+/// toggle is already in flight, until [finishLoading].
+class ToggleDouble {
+  ToggleDouble({
+    bool enabled = false,
+    bool loading = false,
+    this.result = const Ok(null),
+  }) : isEnabled = ValueNotifier<bool>(enabled) {
+    when(mock.isTrackingEnabled).thenReturn(isEnabled);
+    when(mock.toggleService).thenReturn(command);
+    if (loading) startLoading();
+  }
+
+  final mock = MockTrackingToggleViewModel();
+  final ValueNotifier<bool> isEnabled;
+  final Result<UserNotice?> result;
+
+  /// The toggles the card asked for (not the one [startLoading] began).
+  int calls = 0;
+  Completer<void>? _inFlight;
+
+  late final command = Command0<UserNotice?>(() async {
+    calls++;
+    await _inFlight?.future;
+    return result;
+  });
+
+  /// Starts a toggle that runs until [finishLoading], as a start or stop
+  /// in flight.
+  void startLoading() {
+    _inFlight = Completer<void>();
+    command.execute();
+    calls = 0;
+  }
+
+  /// Ends the toggle [startLoading] began.
+  void finishLoading() {
+    _inFlight?.complete();
+    _inFlight = null;
+  }
 }
 
-/// Sets one of [mockToggle]'s flags, which are [ValueNotifier]s.
-void flip(ValueListenable<bool> flag, bool value) =>
-    (flag as ValueNotifier<bool>).value = value;
-
-Widget buildApp(TrackingToggleViewModel controller) => MaterialApp(
-  home: Scaffold(body: ShareCard(controller: controller)),
+Widget buildApp(ToggleDouble toggle) => MaterialApp(
+  home: Scaffold(body: ShareCard(controller: toggle.mock)),
 );
 
 const busyKey = ValueKey('share_card_busy');
@@ -47,7 +72,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle(
+      final fake = ToggleDouble(
         result: const Err(
           'Você não está em campo em nenhum grupo.',
           title: 'Compartilhamento não autorizado',
@@ -72,7 +97,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle(
+      final fake = ToggleDouble(
         result: const Ok(
           UserNotice(
             'O monitoramento foi iniciado.',
@@ -94,7 +119,7 @@ void main() {
 
     testWidgets('Edge Case: Ok(null) shows no message', (tester) async {
       // 1. Arrange
-      final fake = mockToggle(result: const Ok(null));
+      final fake = ToggleDouble(result: const Ok(null));
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -111,7 +136,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle();
+      final fake = ToggleDouble();
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -119,14 +144,14 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      verify(fake.toggleService()).called(1);
+      expect(fake.calls, 1);
     });
 
     testWidgets('Happy Path: while sharing it reads on, with no spinner', (
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle(enabled: true);
+      final fake = ToggleDouble(enabled: true);
 
       // 2. Act
       await tester.pumpWidget(buildApp(fake));
@@ -140,7 +165,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle(enabled: false);
+      final fake = ToggleDouble(enabled: false);
 
       // 2. Act
       await tester.pumpWidget(buildApp(fake));
@@ -154,7 +179,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle(enabled: true);
+      final fake = ToggleDouble(enabled: true);
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -162,34 +187,34 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      verify(fake.toggleService()).called(1);
+      expect(fake.calls, 1);
     });
 
-    testWidgets('Edge Case: the spinner shows when the loading flag flips', (
+    testWidgets('Edge Case: the spinner shows when a toggle starts', (
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle();
+      final fake = ToggleDouble();
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
-      flip(fake.isTrackingLoading, true);
+      fake.startLoading();
       await tester.pump();
 
       // 3. Assert
       expect(find.byKey(busyKey), findsOneWidget);
     });
 
-    testWidgets('Edge Case: the spinner goes away when loading ends', (
+    testWidgets('Edge Case: the spinner goes away when the toggle ends', (
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle(loading: true);
+      final fake = ToggleDouble(loading: true);
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
-      flip(fake.isTrackingLoading, false);
-      flip(fake.isTrackingEnabled, true);
+      fake.finishLoading();
+      fake.isEnabled.value = true;
       await tester.pump();
 
       // 3. Assert
@@ -200,11 +225,11 @@ void main() {
     testWidgets('Edge Case: the card reads on when sharing turns on with no '
         'loading change', (tester) async {
       // 1. Arrange
-      final fake = mockToggle();
+      final fake = ToggleDouble();
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
-      flip(fake.isTrackingEnabled, true);
+      fake.isEnabled.value = true;
       await tester.pump();
 
       // 3. Assert
@@ -215,7 +240,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle(enabled: false, loading: true);
+      final fake = ToggleDouble(enabled: false, loading: true);
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -223,7 +248,7 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      verifyNever(fake.toggleService());
+      expect(fake.calls, 0);
       expect(find.byKey(busyKey), findsOneWidget);
     });
 
@@ -231,7 +256,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final fake = mockToggle(enabled: true, loading: true);
+      final fake = ToggleDouble(enabled: true, loading: true);
       await tester.pumpWidget(buildApp(fake));
 
       // 2. Act
@@ -239,7 +264,7 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      verifyNever(fake.toggleService());
+      expect(fake.calls, 0);
       expect(find.byKey(busyKey), findsOneWidget);
     });
   });

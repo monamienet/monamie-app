@@ -32,10 +32,15 @@ class OrganizationPickerScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: ListenableBuilder(
-            listenable: controller,
+            listenable: Listenable.merge([
+              controller,
+              controller.recheckOrganizations,
+              controller.chooseOrganization,
+              controller.acceptInvite,
+            ]),
             builder: (context, _) {
               final state = controller.state;
-              final busy = state.isLoading;
+              final busy = controller.isEntering;
               final entering = state.enteringOrganizationName;
               final choices = state.organizationChoices;
               return Column(
@@ -45,7 +50,10 @@ class OrganizationPickerScreen extends StatelessWidget {
                     email: state.signedInEmail,
                     onSwitch: busy
                         ? null
-                        : () => runReportingErrors(context, controller.logout),
+                        : () => runReportingErrors(
+                            context,
+                            controller.logout.execute,
+                          ),
                   ),
                   const SizedBox(height: 28),
                   const Text(
@@ -92,7 +100,7 @@ class OrganizationPickerScreen extends StatelessWidget {
                     ),
                   ),
                   TextButton.icon(
-                    onPressed: busy || state.acceptingInvite != null
+                    onPressed: busy || controller.acceptingInvite != null
                         ? null
                         : onCreateOrganization,
                     style: TextButton.styleFrom(
@@ -123,7 +131,7 @@ class OrganizationPickerScreen extends StatelessWidget {
   }) {
     final isEntering = busy && entering == binding.organization.name;
     // Accepting an invite enters its organization: no other choice meanwhile.
-    final locked = busy || controller.state.acceptingInvite != null;
+    final locked = busy || controller.acceptingInvite != null;
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(18),
@@ -133,7 +141,7 @@ class OrganizationPickerScreen extends StatelessWidget {
             ? null
             : () => runReportingErrors(
                 context,
-                () => controller.chooseOrganization(binding),
+                () => controller.chooseOrganization.execute(binding),
               ),
         child: Padding(
           padding: const EdgeInsets.all(14),

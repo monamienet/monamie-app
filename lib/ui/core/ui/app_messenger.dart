@@ -50,13 +50,15 @@ void showErrorOf(ScaffoldMessengerState messenger, Result<Object?> result) {
 ///
 /// The messenger is looked up before [action] starts, so the message still
 /// shows when the action replaces the screen (e.g. a sign-out). Returns the
-/// value of an [Ok], `null` after an [Err].
+/// value of an [Ok], `null` after an [Err] or when [action] gave no result
+/// (a command that ignored the call while another one ran, see `Command`).
 Future<T?> runReportingErrors<T>(
   BuildContext context,
-  Future<Result<T>> Function() action,
+  Future<Result<T>?> Function() action,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
   final result = await action();
+  if (result == null) return null;
   showErrorOf(messenger, result);
   return switch (result) {
     Ok(:final value) => value,

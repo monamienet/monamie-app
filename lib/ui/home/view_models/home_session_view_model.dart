@@ -3,6 +3,7 @@ import 'package:monamie_app/data/repositories/organization/organization_director
 import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_state.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 
 export 'home_session_state.dart';
@@ -27,7 +28,6 @@ class HomeSessionViewModel extends ChangeNotifier {
 
   HomeSessionState _state = const HomeSessionState();
   bool _disposed = false;
-  bool _readingOwnership = false;
 
   /// What the screen shows; replaced whole, never changed in place.
   HomeSessionState get state => _state;
@@ -45,26 +45,30 @@ class HomeSessionViewModel extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _session.leaving.removeListener(_onLeaving);
+    logout.dispose();
+    switchOrganization.dispose();
+    loadOwnership.dispose();
     super.dispose();
   }
 
   /// "Sair". [Ok] holds whether the sign-out finished (`false` while
   /// another one runs); [Err] says why it failed.
-  Future<Result<bool>> logout() => _signOut();
+  late final Command0<bool> logout = Command0(() => _signOut());
 
   /// "Trocar de organização". [Err] says why nothing changed; [Ok] also
-  /// while another operation runs.
-  Future<Result<void>> switchOrganization() => _signOut.switchOrganization();
+  /// while a sign-out runs; `null` while this switch already runs.
+  late final Command0<void> switchOrganization = Command0(
+    () => _signOut.switchOrganization(),
+  );
 
-  /// Reads once whether the signed-in user owns [organizationId] into
-  /// [HomeSessionState.ownership]. A failure leaves it unknown, so
+  /// Reads once whether the signed-in user owns the organization given
+  /// into [HomeSessionState.ownership]. A failure leaves it unknown, so
   /// owner-only entries stay hidden (the server refuses anyone else anyway)
-  /// and the next call retries.
-  Future<void> loadOwnership(String organizationId) async {
-    if (_readingOwnership || _state.ownership.containsKey(organizationId)) {
-      return;
-    }
-    _readingOwnership = true;
+  /// and the next call retries; it always ends [Ok].
+  late final Command1<void, String> loadOwnership = Command1(_loadOwnership);
+
+  Future<Result<void>> _loadOwnership(String organizationId) async {
+    if (_state.ownership.containsKey(organizationId)) return const Ok(null);
     try {
       final owns = await _directory.ownsOrganization(organizationId);
       _emit(
@@ -72,8 +76,7 @@ class HomeSessionViewModel extends ChangeNotifier {
       );
     } catch (e) {
       debugPrint('[Account] Could not read the ownership: $e');
-    } finally {
-      _readingOwnership = false;
     }
+    return const Ok(null);
   }
 }

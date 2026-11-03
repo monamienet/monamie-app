@@ -60,7 +60,7 @@ Future<GroupsViewModel> loadedController({bool isAdmin = false}) async {
     repository: repository,
     isAdmin: isAdmin,
   );
-  controller.load();
+  controller.load.execute();
   await pumpEventQueue();
   clearInteractions(repository);
   return controller;
@@ -91,14 +91,14 @@ void main() {
       );
 
       // 2. Act
-      controller.load();
+      controller.load.execute();
       await pumpEventQueue();
 
       // 3. Assert
       verify(repository.list('rotasul')).called(1);
       verifyNoMoreInteractions(repository);
       expect(controller.state.groups, [norte, leste]);
-      expect(controller.state.isLoading, isFalse);
+      expect(controller.load.running, isFalse);
     });
 
     test(
@@ -114,13 +114,13 @@ void main() {
         );
 
         // 2. Act
-        controller.load();
+        controller.load.execute();
         await pumpEventQueue();
 
         // 3. Assert
         expect(controller.state.errorMessage, 'Sem permissão.');
         expect(controller.state.groups, isEmpty);
-        expect(controller.state.isLoading, isFalse);
+        expect(controller.load.running, isFalse);
       },
     );
   });
@@ -169,14 +169,17 @@ void main() {
       final controller = await loadedController();
 
       // 2. Act
-      final created = await controller.create('Equipe Serra');
+      final created = await controller.create.execute('Equipe Serra');
 
       // 3. Assert
-      expect(created, serra);
+      expect(
+        created,
+        isA<Ok<Group>>().having((ok) => ok.value, 'value', serra),
+      );
       expect(controller.state.groups, [norte, leste, serra]);
       verify(repository.create('rotasul', 'Equipe Serra')).called(1);
       verifyNoMoreInteractions(repository);
-      expect(controller.state.isWorking, isFalse);
+      expect(controller.isWorking, isFalse);
     });
 
     test(
@@ -186,10 +189,10 @@ void main() {
         final controller = await loadedController();
         final gate = Completer<void>();
         writesWaitOn(gate);
-        final first = controller.create('Equipe Serra');
+        final first = controller.create.execute('Equipe Serra');
 
         // 2. Act
-        final second = await controller.create('Equipe Mar');
+        final second = await controller.create.execute('Equipe Mar');
 
         // 3. Assert
         expect(second, isNull);
@@ -200,34 +203,37 @@ void main() {
       },
     );
 
-    test('Edge Case: isWorking is true while the repository works', () async {
-      // 1. Arrange
-      final controller = await loadedController();
-      final gate = Completer<void>();
-      writesWaitOn(gate);
+    test(
+      'Edge Case: isWorking (the command runs) while the repository works',
+      () async {
+        // 1. Arrange
+        final controller = await loadedController();
+        final gate = Completer<void>();
+        writesWaitOn(gate);
 
-      // 2. Act
-      final pending = controller.create('Equipe Serra');
+        // 2. Act
+        final pending = controller.create.execute('Equipe Serra');
 
-      // 3. Assert
-      expect(controller.state.isWorking, isTrue);
-      gate.complete();
-      await pending;
-    });
+        // 3. Assert
+        expect(controller.isWorking, isTrue);
+        gate.complete();
+        await pending;
+      },
+    );
 
-    test('Sad Path: an Err returns null with its message', () async {
+    test('Sad Path: an Err is returned with its message', () async {
       // 1. Arrange
       final controller = await loadedController();
       writesFail('Já existe a equipe Equipe Serra.');
 
       // 2. Act
-      final created = await controller.create('Equipe Serra');
+      final created = await controller.create.execute('Equipe Serra');
 
       // 3. Assert
-      expect(created, isNull);
+      expect(created, isA<Err<Group>>());
       expect(controller.state.errorMessage, 'Já existe a equipe Equipe Serra.');
       expect(controller.state.groups, [norte, leste]);
-      expect(controller.state.isWorking, isFalse);
+      expect(controller.isWorking, isFalse);
     });
   });
 
@@ -237,13 +243,14 @@ void main() {
       final controller = await loadedController();
 
       // 2. Act
-      final ok = await controller.setRoles('01', 'ana@x.com', {
-        GroupRole.publisher,
-        GroupRole.subscriber,
-      });
+      final result = await controller.setRoles.execute((
+        groupId: '01',
+        email: 'ana@x.com',
+        roles: {GroupRole.publisher, GroupRole.subscriber},
+      ));
 
       // 3. Assert
-      expect(ok, isTrue);
+      expect(result, isA<Ok<void>>());
       verifyInOrder([
         repository.setRoles('rotasul', '01', 'ana@x.com', {
           GroupRole.publisher,
@@ -255,21 +262,23 @@ void main() {
     });
 
     test(
-      'Edge Case: a second operation while one runs returns false',
+      'Edge Case: a second operation while one runs is ignored (null)',
       () async {
         // 1. Arrange
         final controller = await loadedController();
         final gate = Completer<void>();
         writesWaitOn(gate);
-        final first = controller.delete('03');
+        final first = controller.delete.execute('03');
 
         // 2. Act
-        final ok = await controller.setRoles('01', 'ana@x.com', {
-          GroupRole.subscriber,
-        });
+        final result = await controller.setRoles.execute((
+          groupId: '01',
+          email: 'ana@x.com',
+          roles: {GroupRole.subscriber},
+        ));
 
         // 3. Assert
-        expect(ok, isFalse);
+        expect(result, isNull);
         verify(repository.delete('rotasul', '03')).called(1);
         verifyNoMoreInteractions(repository);
         gate.complete();
@@ -277,15 +286,19 @@ void main() {
       },
     );
 
-    test('Sad Path: no roles returns false and calls nothing', () async {
+    test('Sad Path: no roles returns an Err and calls nothing', () async {
       // 1. Arrange
       final controller = await loadedController();
 
       // 2. Act
-      final ok = await controller.setRoles('01', 'ana@x.com', {});
+      final result = await controller.setRoles.execute((
+        groupId: '01',
+        email: 'ana@x.com',
+        roles: {},
+      ));
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(result, isA<Err<void>>());
       verifyNoMoreInteractions(repository);
     });
   });
@@ -313,12 +326,14 @@ void main() {
       final controller = await loadedController(isAdmin: true);
 
       // 2. Act
-      final ok = await controller.setRoles('01', 'vera@x.com', {
-        GroupRole.maintainer,
-      });
+      final result = await controller.setRoles.execute((
+        groupId: '01',
+        email: 'vera@x.com',
+        roles: {GroupRole.maintainer},
+      ));
 
       // 3. Assert
-      expect(ok, isTrue);
+      expect(result, isA<Ok<void>>());
       verifyInOrder([
         repository.setRoles('rotasul', '01', 'vera@x.com', {
           GroupRole.maintainer,
@@ -368,12 +383,14 @@ void main() {
       final controller = await loadedController();
 
       // 2. Act
-      final ok = await controller.setRoles('01', 'vera@x.com', {
-        GroupRole.maintainer,
-      });
+      final result = await controller.setRoles.execute((
+        groupId: '01',
+        email: 'vera@x.com',
+        roles: {GroupRole.maintainer},
+      ));
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(result, isA<Err<void>>());
       verifyNoMoreInteractions(repository);
       expect(controller.state.errorMessage, 'Marque pelo menos uma opção.');
     });
@@ -385,10 +402,10 @@ void main() {
       final controller = await loadedController();
 
       // 2. Act
-      final ok = await controller.delete('01');
+      final result = await controller.delete.execute('01');
 
       // 3. Assert
-      expect(ok, isTrue);
+      expect(result, isA<Ok<void>>());
       expect(controller.state.groups, [leste]);
       verify(repository.delete('rotasul', '01')).called(1);
       verifyNoMoreInteractions(repository);
@@ -400,12 +417,12 @@ void main() {
       writesFail(_generic);
 
       // 2. Act
-      final ok = await controller.delete('01');
+      final result = await controller.delete.execute('01');
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(result, isA<Err<void>>());
       expect(controller.state.errorMessage, isNotEmpty);
-      expect(controller.state.isWorking, isFalse);
+      expect(controller.isWorking, isFalse);
     });
 
     test('Sad Path: a failed delete keeps the team', () async {
@@ -414,13 +431,13 @@ void main() {
       writesFail('Equipe não encontrada.');
 
       // 2. Act
-      final ok = await controller.delete('01');
+      final result = await controller.delete.execute('01');
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(result, isA<Err<void>>());
       expect(controller.state.groups, [norte, leste]);
       expect(controller.state.errorMessage, 'Equipe não encontrada.');
-      expect(controller.state.isWorking, isFalse);
+      expect(controller.isWorking, isFalse);
     });
   });
 
@@ -432,10 +449,13 @@ void main() {
         final controller = await loadedController();
 
         // 2. Act
-        final ok = await controller.rename('01', '  Guias Norte ');
+        final result = await controller.rename.execute((
+          groupId: '01',
+          name: '  Guias Norte ',
+        ));
 
         // 3. Assert
-        expect(ok, isTrue);
+        expect(result, isA<Ok<void>>());
         verifyInOrder([
           repository.rename('rotasul', '01', 'Guias Norte'),
           repository.list('rotasul'),
@@ -444,34 +464,65 @@ void main() {
       },
     );
 
-    test('Edge Case: isWorking is true while the repository works', () async {
-      // 1. Arrange
-      final controller = await loadedController();
-      final gate = Completer<void>();
-      writesWaitOn(gate);
+    test(
+      'Edge Case: isWorking (the command runs) while the repository works',
+      () async {
+        // 1. Arrange
+        final controller = await loadedController();
+        final gate = Completer<void>();
+        writesWaitOn(gate);
 
-      // 2. Act
-      final pending = controller.rename('01', 'Guias');
+        // 2. Act
+        final pending = controller.rename.execute((
+          groupId: '01',
+          name: 'Guias',
+        ));
 
-      // 3. Assert
-      expect(controller.state.isWorking, isTrue);
-      gate.complete();
-      await pending;
-      expect(controller.state.isWorking, isFalse);
-    });
+        // 3. Assert
+        expect(controller.isWorking, isTrue);
+        gate.complete();
+        await pending;
+        expect(controller.isWorking, isFalse);
+      },
+    );
 
     test(
-      'Sad Path: a refused name returns false with the server message',
+      'Edge Case: the rename in flight is its argument, cleared after',
+      () async {
+        // 1. Arrange
+        final controller = await loadedController();
+        final gate = Completer<void>();
+        writesWaitOn(gate);
+
+        // 2. Act
+        final pending = controller.rename.execute((
+          groupId: '01',
+          name: 'Guias',
+        ));
+
+        // 3. Assert
+        expect(controller.rename.argument, (groupId: '01', name: 'Guias'));
+        gate.complete();
+        await pending;
+        expect(controller.rename.argument, isNull);
+      },
+    );
+
+    test(
+      'Sad Path: a refused name returns an Err with the server message',
       () async {
         // 1. Arrange
         final controller = await loadedController();
         writesFail('Já existe o grupo Equipe Léste.');
 
         // 2. Act
-        final ok = await controller.rename('01', 'equipe leste');
+        final result = await controller.rename.execute((
+          groupId: '01',
+          name: 'equipe leste',
+        ));
 
         // 3. Assert
-        expect(ok, isFalse);
+        expect(result, isA<Err<void>>());
         expect(
           controller.state.errorMessage,
           'Já existe o grupo Equipe Léste.',
@@ -488,40 +539,50 @@ void main() {
       final controller = await loadedController();
 
       // 2. Act
-      final impact = await controller.deletionImpact('01');
+      final impact = await controller.deletionImpact.execute('01');
 
       // 3. Assert
-      expect(impact?.loses, ['ana@x.com']);
+      expect(
+        impact,
+        isA<Ok<({List<String> loses, List<String> stays})>>().having(
+          (ok) => ok.value.loses,
+          'loses',
+          ['ana@x.com'],
+        ),
+      );
       verify(repository.deletionImpact('rotasul', '01')).called(1);
       verifyNoMoreInteractions(repository);
     });
 
-    test('Edge Case: while another operation runs it returns null', () async {
-      // 1. Arrange
-      final controller = await loadedController();
-      final gate = Completer<void>();
-      writesWaitOn(gate);
-      final first = controller.delete('03');
+    test(
+      'Edge Case: while another operation runs it is ignored (null)',
+      () async {
+        // 1. Arrange
+        final controller = await loadedController();
+        final gate = Completer<void>();
+        writesWaitOn(gate);
+        final first = controller.delete.execute('03');
 
-      // 2. Act
-      final impact = await controller.deletionImpact('01');
+        // 2. Act
+        final impact = await controller.deletionImpact.execute('01');
 
-      // 3. Assert
-      expect(impact, isNull);
-      gate.complete();
-      await first;
-    });
+        // 3. Assert
+        expect(impact, isNull);
+        gate.complete();
+        await first;
+      },
+    );
 
-    test('Sad Path: a failure returns null with its message', () async {
+    test('Sad Path: a failure returns an Err with its message', () async {
       // 1. Arrange
       final controller = await loadedController();
       writesFail('Grupo não encontrado.');
 
       // 2. Act
-      final impact = await controller.deletionImpact('01');
+      final impact = await controller.deletionImpact.execute('01');
 
       // 3. Assert
-      expect(impact, isNull);
+      expect(impact, isA<Err<Object?>>());
       expect(controller.state.errorMessage, 'Grupo não encontrado.');
     });
   });
@@ -532,10 +593,13 @@ void main() {
       final controller = await loadedController();
 
       // 2. Act
-      final ok = await controller.remove('01', 'ana@x.com');
+      final result = await controller.remove.execute((
+        groupId: '01',
+        email: 'ana@x.com',
+      ));
 
       // 3. Assert
-      expect(ok, isTrue);
+      expect(result, isA<Ok<void>>());
       verifyInOrder([
         repository.remove('rotasul', '01', 'ana@x.com'),
         repository.list('rotasul'),
@@ -549,10 +613,13 @@ void main() {
       writesFail(_generic);
 
       // 2. Act
-      final ok = await controller.remove('01', 'ana@x.com');
+      final result = await controller.remove.execute((
+        groupId: '01',
+        email: 'ana@x.com',
+      ));
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(result, isA<Err<void>>());
       expect(controller.state.errorMessage, contains('tente de novo'));
     });
 
@@ -562,10 +629,13 @@ void main() {
       writesFail('Essa pessoa não está no grupo.');
 
       // 2. Act
-      final ok = await controller.remove('01', 'vera@x.com');
+      final result = await controller.remove.execute((
+        groupId: '01',
+        email: 'vera@x.com',
+      ));
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(result, isA<Err<void>>());
       verify(repository.remove('rotasul', '01', 'vera@x.com')).called(1);
       verifyNoMoreInteractions(repository);
       expect(controller.state.errorMessage, 'Essa pessoa não está no grupo.');
@@ -573,20 +643,20 @@ void main() {
   });
 
   group('GroupsViewModel.load (more cases) - Unit Test Suite', () {
-    test('Edge Case: isLoading is true while the groups are read', () async {
+    test('Edge Case: load runs while the groups are read', () async {
       // 1. Arrange
       final gate = Completer<List<Group>>();
       when(repository.list(any)).thenAnswer((_) async => Ok(await gate.future));
       final controller = newController();
 
       // 2. Act
-      final pending = controller.load();
+      final pending = controller.load.execute();
 
       // 3. Assert
-      expect(controller.state.isLoading, isTrue);
+      expect(controller.load.running, isTrue);
       gate.complete([norte]);
       await pending;
-      expect(controller.state.isLoading, isFalse);
+      expect(controller.load.running, isFalse);
     });
 
     test('Edge Case: an organization with no group loads an empty '
@@ -596,7 +666,7 @@ void main() {
       final controller = newController();
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(controller.state.groups, isEmpty);
@@ -608,10 +678,10 @@ void main() {
       final gate = Completer<List<Group>>();
       when(repository.list(any)).thenAnswer((_) async => Ok(await gate.future));
       final controller = newController();
-      final first = controller.load();
+      final first = controller.load.execute();
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       verify(repository.list(any)).called(1);
@@ -630,32 +700,38 @@ void main() {
       final controller = newController();
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(controller.state.errorMessage, isNotEmpty);
       expect(controller.state.errorMessage, isNot(contains('offline')));
-      expect(controller.state.isLoading, isFalse);
+      expect(controller.load.running, isFalse);
     });
   });
 
   group('GroupsViewModel (listeners) - Unit Test Suite', () {
-    test('Happy Path: a load that changes the groups notifies three times: '
-        'loading, groups, loaded', () async {
-      // 1. Arrange
-      final controller = newController();
-      var notifications = 0;
-      controller.addListener(() => notifications++);
+    test(
+      'Happy Path: a load that changes the groups notifies the view '
+      'model once (groups) and the command twice (started, finished)',
+      () async {
+        // 1. Arrange
+        final controller = newController();
+        var notifications = 0;
+        final running = <bool>[];
+        controller.addListener(() => notifications++);
+        controller.load.addListener(() => running.add(controller.load.running));
 
-      // 2. Act
-      await controller.load();
+        // 2. Act
+        await controller.load.execute();
 
-      // 3. Assert
-      expect(notifications, 3);
-    });
+        // 3. Assert
+        expect(notifications, 1);
+        expect(running, [true, false]);
+      },
+    );
 
-    test('Edge Case: reloading groups equal by content notifies only for '
-        'the loading flag', () async {
+    test('Edge Case: reloading groups equal by content does not notify the '
+        'view model', () async {
       // 1. Arrange
       // Fresh objects on every read, as the repository builds them from JSON.
       when(repository.list(any)).thenAnswer(
@@ -674,15 +750,15 @@ void main() {
         ]),
       );
       final controller = newController();
-      await controller.load();
+      await controller.load.execute();
       var notifications = 0;
       controller.addListener(() => notifications++);
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
-      expect(notifications, 2);
+      expect(notifications, 0);
     });
 
     test('Sad Path: roles refused locally notify once with the '
@@ -693,7 +769,11 @@ void main() {
       controller.addListener(() => notifications++);
 
       // 2. Act
-      await controller.setRoles('01', 'ana@x.com', {});
+      await controller.setRoles.execute((
+        groupId: '01',
+        email: 'ana@x.com',
+        roles: {},
+      ));
 
       // 3. Assert
       expect(notifications, 1);
@@ -706,7 +786,7 @@ void main() {
       when(repository.list(any)).thenAnswer((_) async => Ok(await gate.future));
       final controller = newController();
       var notifications = 0;
-      final pending = controller.load();
+      final pending = controller.load.execute();
       controller.addListener(() => notifications++);
       controller.dispose();
 
@@ -725,7 +805,7 @@ void main() {
       final gate = Completer<void>();
       writesWaitOn(gate);
       var notifications = 0;
-      final pending = controller.create('Equipe Serra');
+      final pending = controller.create.execute('Equipe Serra');
       controller.addListener(() => notifications++);
       controller.dispose();
 
@@ -733,7 +813,10 @@ void main() {
       gate.complete();
 
       // 3. Assert
-      await expectLater(pending, completion(serra));
+      await expectLater(
+        pending,
+        completion(isA<Ok<Group>>().having((ok) => ok.value, 'value', serra)),
+      );
       expect(notifications, 0);
     });
   });

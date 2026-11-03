@@ -32,10 +32,15 @@ class NoOrganizationScreen extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
           child: ListenableBuilder(
-            listenable: controller,
+            listenable: Listenable.merge([
+              controller,
+              controller.recheckOrganizations,
+              controller.chooseOrganization,
+              controller.acceptInvite,
+            ]),
             builder: (context, _) {
               final state = controller.state;
-              final busy = state.isLoading;
+              final busy = controller.isEntering;
               final reason = state.noAccessReason;
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -44,7 +49,10 @@ class NoOrganizationScreen extends StatelessWidget {
                     email: state.signedInEmail,
                     onSwitch: busy || state.isLoggingOut
                         ? null
-                        : () => runReportingErrors(context, controller.logout),
+                        : () => runReportingErrors(
+                            context,
+                            controller.logout.execute,
+                          ),
                   ),
                   const SizedBox(height: 32),
                   if (reason != null) ...[
@@ -118,7 +126,7 @@ class NoOrganizationScreen extends StatelessWidget {
                           ? null
                           : () => runReportingErrors(
                               context,
-                              controller.recheckOrganizations,
+                              controller.recheckOrganizations.execute,
                             ),
                       child: busy
                           ? const Row(

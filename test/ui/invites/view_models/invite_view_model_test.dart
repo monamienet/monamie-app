@@ -171,10 +171,10 @@ void main() {
       controller.add('ana@x.com');
 
       // 2. Act
-      final ok = await controller.send();
+      final ok = await controller.send.execute();
 
       // 3. Assert
-      expect(ok, isTrue);
+      expect(ok, isA<Ok<InviteSendResult>>());
       final call = sentCall();
       expect([call.groupId, call.firstGroupName], ['03', isNull]);
     });
@@ -207,10 +207,10 @@ void main() {
       controller.add('ana@x.com');
 
       // 2. Act
-      final ok = await controller.send();
+      final ok = await controller.send.execute();
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(ok, isNull);
       verifyNever(anySend());
     });
   });
@@ -248,7 +248,7 @@ void main() {
       final controller = readyController();
       final gate = Completer<void>();
       stubSend(() => gate.future);
-      final pending = controller.send();
+      final pending = controller.send.execute();
 
       // 2. Act
       final added = controller.add('bia@x.com');
@@ -322,10 +322,10 @@ void main() {
       final controller = readyController();
 
       // 2. Act
-      final sent = await controller.send();
+      final sent = await controller.send.execute();
 
       // 3. Assert
-      expect(sent, isTrue);
+      expect(sent, isA<Ok<InviteSendResult>>());
       final call = sentCall();
       expect(call.organizationId, 'rotasul');
       expect(call.groupId, '01');
@@ -333,7 +333,7 @@ void main() {
       expect(call.invites.map((p) => p.email), ['ana@x.com']);
       expect(call.invites.single.roles, {GroupRole.publisher});
       expect(controller.state.result, same(_result));
-      expect(controller.state.isSending, isFalse);
+      expect(controller.send.running, isFalse);
     });
 
     test(
@@ -345,10 +345,10 @@ void main() {
         controller.add('ana@x.com');
 
         // 2. Act
-        final sent = await controller.send();
+        final sent = await controller.send.execute();
 
         // 3. Assert
-        expect(sent, isTrue);
+        expect(sent, isA<Ok<InviteSendResult>>());
         final call = sentCall();
         expect(call.groupId, isNull);
         expect(call.firstGroupName, 'Equipe Serra');
@@ -356,41 +356,48 @@ void main() {
     );
 
     test(
-      'Edge Case: a second send while the first is in flight returns false',
+      'Edge Case: a second send while the first is in flight is ignored (null)',
       () async {
         // 1. Arrange
         final controller = readyController();
         final gate = Completer<void>();
         stubSend(() => gate.future);
-        final first = controller.send();
+        final first = controller.send.execute();
 
         // 2. Act
-        final second = await controller.send();
+        final second = await controller.send.execute();
 
         // 3. Assert
-        expect(second, isFalse);
+        expect(second, isNull);
         verify(anySend()).called(1);
-        expect(controller.state.isSending, isTrue);
+        expect(controller.send.running, isTrue);
         gate.complete();
         await first;
       },
     );
 
     test(
-      'Sad Path: an Err returns false with its message and resets isSending',
+      'Sad Path: an Err is returned with its message and the send stops running',
       () async {
         // 1. Arrange
         final controller = readyController();
         stubSend(() async {}, failure: 'Escolha uma equipe.');
 
         // 2. Act
-        final sent = await controller.send();
+        final sent = await controller.send.execute();
 
         // 3. Assert
-        expect(sent, isFalse);
+        expect(
+          sent,
+          isA<Err<InviteSendResult>>().having(
+            (err) => err.message,
+            'message',
+            'Escolha uma equipe.',
+          ),
+        );
         expect(controller.state.errorMessage, 'Escolha uma equipe.');
         expect(controller.state.result, isNull);
-        expect(controller.state.isSending, isFalse);
+        expect(controller.send.running, isFalse);
       },
     );
 
@@ -399,10 +406,10 @@ void main() {
       final controller = controllerWith();
 
       // 2. Act
-      final sent = await controller.send();
+      final sent = await controller.send.execute();
 
       // 3. Assert
-      expect(sent, isFalse);
+      expect(sent, isNull);
       verifyNever(anySend());
     });
   });
@@ -411,7 +418,7 @@ void main() {
     test('Happy Path: clears the people and the result', () async {
       // 1. Arrange
       final controller = readyController();
-      await controller.send();
+      await controller.send.execute();
 
       // 2. Act
       controller.again();
@@ -484,7 +491,7 @@ void main() {
       final gate = Completer<void>();
       stubSend(() => gate.future);
       var notifications = 0;
-      final pending = controller.send();
+      final pending = controller.send.execute();
       controller.addListener(() => notifications++);
       controller.dispose();
 
@@ -492,7 +499,7 @@ void main() {
       gate.complete();
 
       // 3. Assert
-      await expectLater(pending, completion(isTrue));
+      await expectLater(pending, completion(isA<Ok<InviteSendResult>>()));
       expect(notifications, 0);
     });
   });

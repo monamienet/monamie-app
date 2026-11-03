@@ -19,7 +19,7 @@ mixin _$TrackingSettingsEditState {
  TrackingSettings get savedSettings;/// What an administrator is choosing.
  TrackingSettings get draft; TrackingPreset get preset;/// The plan's minimum period (Community: 15 min); presets below it are
 /// not offered.
- int get minPeriodMinutes; bool get isSaving; bool get justSaved;/// Why the last save failed; empty when it did not.
+ int get minPeriodMinutes; bool get justSaved;/// Why the last save failed; empty when it did not.
  String get errorMessage;
 /// Create a copy of TrackingSettingsEditState
 /// with the given fields replaced by the non-null parameter values.
@@ -32,20 +32,20 @@ $TrackingSettingsEditStateCopyWith<TrackingSettingsEditState> get copyWith => _$
 @override
 bool operator ==(Object other) {
   final _this = this as TrackingSettingsEditState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TrackingSettingsEditState&&(identical(other.savedSettings, _this.savedSettings) || other.savedSettings == _this.savedSettings)&&(identical(other.draft, _this.draft) || other.draft == _this.draft)&&(identical(other.preset, _this.preset) || other.preset == _this.preset)&&(identical(other.minPeriodMinutes, _this.minPeriodMinutes) || other.minPeriodMinutes == _this.minPeriodMinutes)&&(identical(other.isSaving, _this.isSaving) || other.isSaving == _this.isSaving)&&(identical(other.justSaved, _this.justSaved) || other.justSaved == _this.justSaved)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TrackingSettingsEditState&&(identical(other.savedSettings, _this.savedSettings) || other.savedSettings == _this.savedSettings)&&(identical(other.draft, _this.draft) || other.draft == _this.draft)&&(identical(other.preset, _this.preset) || other.preset == _this.preset)&&(identical(other.minPeriodMinutes, _this.minPeriodMinutes) || other.minPeriodMinutes == _this.minPeriodMinutes)&&(identical(other.justSaved, _this.justSaved) || other.justSaved == _this.justSaved)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
 }
 
 
 @override
 int get hashCode {
   final _this = this as TrackingSettingsEditState;
-  return Object.hash(runtimeType,_this.savedSettings,_this.draft,_this.preset,_this.minPeriodMinutes,_this.isSaving,_this.justSaved,_this.errorMessage);
+  return Object.hash(runtimeType,_this.savedSettings,_this.draft,_this.preset,_this.minPeriodMinutes,_this.justSaved,_this.errorMessage);
 }
 
 @override
 String toString() {
   final _this = this as TrackingSettingsEditState;
-  return 'TrackingSettingsEditState(savedSettings: ${_this.savedSettings}, draft: ${_this.draft}, preset: ${_this.preset}, minPeriodMinutes: ${_this.minPeriodMinutes}, isSaving: ${_this.isSaving}, justSaved: ${_this.justSaved}, errorMessage: ${_this.errorMessage})';
+  return 'TrackingSettingsEditState(savedSettings: ${_this.savedSettings}, draft: ${_this.draft}, preset: ${_this.preset}, minPeriodMinutes: ${_this.minPeriodMinutes}, justSaved: ${_this.justSaved}, errorMessage: ${_this.errorMessage})';
 }
 
 
@@ -56,7 +56,7 @@ abstract mixin class $TrackingSettingsEditStateCopyWith<$Res>  {
   factory $TrackingSettingsEditStateCopyWith(TrackingSettingsEditState value, $Res Function(TrackingSettingsEditState) _then) = _$TrackingSettingsEditStateCopyWithImpl;
 @useResult
 $Res call({
- TrackingSettings savedSettings, TrackingSettings draft, TrackingPreset preset, int minPeriodMinutes, bool isSaving, bool justSaved, String errorMessage
+ TrackingSettings savedSettings, TrackingSettings draft, TrackingPreset preset, int minPeriodMinutes, bool justSaved, String errorMessage
 });
 
 
@@ -73,14 +73,13 @@ class _$TrackingSettingsEditStateCopyWithImpl<$Res>
 
 /// Create a copy of TrackingSettingsEditState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? savedSettings = null,Object? draft = null,Object? preset = null,Object? minPeriodMinutes = null,Object? isSaving = null,Object? justSaved = null,Object? errorMessage = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? savedSettings = null,Object? draft = null,Object? preset = null,Object? minPeriodMinutes = null,Object? justSaved = null,Object? errorMessage = null,}) {
   return _then(TrackingSettingsEditState(
 savedSettings: null == savedSettings ? _self.savedSettings : savedSettings // ignore: cast_nullable_to_non_nullable
 as TrackingSettings,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
 as TrackingSettings,preset: null == preset ? _self.preset : preset // ignore: cast_nullable_to_non_nullable
 as TrackingPreset,minPeriodMinutes: null == minPeriodMinutes ? _self.minPeriodMinutes : minPeriodMinutes // ignore: cast_nullable_to_non_nullable
-as int,isSaving: null == isSaving ? _self.isSaving : isSaving // ignore: cast_nullable_to_non_nullable
-as bool,justSaved: null == justSaved ? _self.justSaved : justSaved // ignore: cast_nullable_to_non_nullable
+as int,justSaved: null == justSaved ? _self.justSaved : justSaved // ignore: cast_nullable_to_non_nullable
 as bool,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -167,10 +166,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( TrackingSettings savedSettings,  TrackingSettings draft,  TrackingPreset preset,  int minPeriodMinutes,  bool isSaving,  bool justSaved,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( TrackingSettings savedSettings,  TrackingSettings draft,  TrackingPreset preset,  int minPeriodMinutes,  bool justSaved,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TrackingSettingsEditState() when $default != null:
-return $default(_that.savedSettings,_that.draft,_that.preset,_that.minPeriodMinutes,_that.isSaving,_that.justSaved,_that.errorMessage);case _:
+return $default(_that.savedSettings,_that.draft,_that.preset,_that.minPeriodMinutes,_that.justSaved,_that.errorMessage);case _:
   return orElse();
 
 }
@@ -188,10 +187,10 @@ return $default(_that.savedSettings,_that.draft,_that.preset,_that.minPeriodMinu
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( TrackingSettings savedSettings,  TrackingSettings draft,  TrackingPreset preset,  int minPeriodMinutes,  bool isSaving,  bool justSaved,  String errorMessage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( TrackingSettings savedSettings,  TrackingSettings draft,  TrackingPreset preset,  int minPeriodMinutes,  bool justSaved,  String errorMessage)  $default,) {final _that = this;
 switch (_that) {
 case _TrackingSettingsEditState():
-return $default(_that.savedSettings,_that.draft,_that.preset,_that.minPeriodMinutes,_that.isSaving,_that.justSaved,_that.errorMessage);case _:
+return $default(_that.savedSettings,_that.draft,_that.preset,_that.minPeriodMinutes,_that.justSaved,_that.errorMessage);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +207,10 @@ return $default(_that.savedSettings,_that.draft,_that.preset,_that.minPeriodMinu
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( TrackingSettings savedSettings,  TrackingSettings draft,  TrackingPreset preset,  int minPeriodMinutes,  bool isSaving,  bool justSaved,  String errorMessage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( TrackingSettings savedSettings,  TrackingSettings draft,  TrackingPreset preset,  int minPeriodMinutes,  bool justSaved,  String errorMessage)?  $default,) {final _that = this;
 switch (_that) {
 case _TrackingSettingsEditState() when $default != null:
-return $default(_that.savedSettings,_that.draft,_that.preset,_that.minPeriodMinutes,_that.isSaving,_that.justSaved,_that.errorMessage);case _:
+return $default(_that.savedSettings,_that.draft,_that.preset,_that.minPeriodMinutes,_that.justSaved,_that.errorMessage);case _:
   return null;
 
 }
@@ -223,7 +222,7 @@ return $default(_that.savedSettings,_that.draft,_that.preset,_that.minPeriodMinu
 
 
 class _TrackingSettingsEditState implements TrackingSettingsEditState {
-  const _TrackingSettingsEditState({required this.savedSettings, required this.draft, required this.preset, this.minPeriodMinutes = 0, this.isSaving = false, this.justSaved = false, this.errorMessage = ''});
+  const _TrackingSettingsEditState({required this.savedSettings, required this.draft, required this.preset, this.minPeriodMinutes = 0, this.justSaved = false, this.errorMessage = ''});
   
 
 /// What is saved now.
@@ -234,7 +233,6 @@ class _TrackingSettingsEditState implements TrackingSettingsEditState {
 /// The plan's minimum period (Community: 15 min); presets below it are
 /// not offered.
 @override@JsonKey() final  int minPeriodMinutes;
-@override@JsonKey() final  bool isSaving;
 @override@JsonKey() final  bool justSaved;
 /// Why the last save failed; empty when it did not.
 @override@JsonKey() final  String errorMessage;
@@ -249,18 +247,18 @@ _$TrackingSettingsEditStateCopyWith<_TrackingSettingsEditState> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _TrackingSettingsEditState&&(identical(other.savedSettings, savedSettings) || other.savedSettings == savedSettings)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.preset, preset) || other.preset == preset)&&(identical(other.minPeriodMinutes, minPeriodMinutes) || other.minPeriodMinutes == minPeriodMinutes)&&(identical(other.isSaving, isSaving) || other.isSaving == isSaving)&&(identical(other.justSaved, justSaved) || other.justSaved == justSaved)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _TrackingSettingsEditState&&(identical(other.savedSettings, savedSettings) || other.savedSettings == savedSettings)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.preset, preset) || other.preset == preset)&&(identical(other.minPeriodMinutes, minPeriodMinutes) || other.minPeriodMinutes == minPeriodMinutes)&&(identical(other.justSaved, justSaved) || other.justSaved == justSaved)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,savedSettings,draft,preset,minPeriodMinutes,isSaving,justSaved,errorMessage);
+    return Object.hash(runtimeType,savedSettings,draft,preset,minPeriodMinutes,justSaved,errorMessage);
 }
 
 @override
 String toString() {
-    return 'TrackingSettingsEditState(savedSettings: $savedSettings, draft: $draft, preset: $preset, minPeriodMinutes: $minPeriodMinutes, isSaving: $isSaving, justSaved: $justSaved, errorMessage: $errorMessage)';
+    return 'TrackingSettingsEditState(savedSettings: $savedSettings, draft: $draft, preset: $preset, minPeriodMinutes: $minPeriodMinutes, justSaved: $justSaved, errorMessage: $errorMessage)';
 }
 
 
@@ -271,7 +269,7 @@ abstract mixin class _$TrackingSettingsEditStateCopyWith<$Res> implements $Track
   factory _$TrackingSettingsEditStateCopyWith(_TrackingSettingsEditState value, $Res Function(_TrackingSettingsEditState) _then) = __$TrackingSettingsEditStateCopyWithImpl;
 @override @useResult
 $Res call({
- TrackingSettings savedSettings, TrackingSettings draft, TrackingPreset preset, int minPeriodMinutes, bool isSaving, bool justSaved, String errorMessage
+ TrackingSettings savedSettings, TrackingSettings draft, TrackingPreset preset, int minPeriodMinutes, bool justSaved, String errorMessage
 });
 
 
@@ -288,14 +286,13 @@ class __$TrackingSettingsEditStateCopyWithImpl<$Res>
 
 /// Create a copy of TrackingSettingsEditState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? savedSettings = null,Object? draft = null,Object? preset = null,Object? minPeriodMinutes = null,Object? isSaving = null,Object? justSaved = null,Object? errorMessage = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? savedSettings = null,Object? draft = null,Object? preset = null,Object? minPeriodMinutes = null,Object? justSaved = null,Object? errorMessage = null,}) {
   return _then(_TrackingSettingsEditState(
 savedSettings: null == savedSettings ? _self.savedSettings : savedSettings // ignore: cast_nullable_to_non_nullable
 as TrackingSettings,draft: null == draft ? _self.draft : draft // ignore: cast_nullable_to_non_nullable
 as TrackingSettings,preset: null == preset ? _self.preset : preset // ignore: cast_nullable_to_non_nullable
 as TrackingPreset,minPeriodMinutes: null == minPeriodMinutes ? _self.minPeriodMinutes : minPeriodMinutes // ignore: cast_nullable_to_non_nullable
-as int,isSaving: null == isSaving ? _self.isSaving : isSaving // ignore: cast_nullable_to_non_nullable
-as bool,justSaved: null == justSaved ? _self.justSaved : justSaved // ignore: cast_nullable_to_non_nullable
+as int,justSaved: null == justSaved ? _self.justSaved : justSaved // ignore: cast_nullable_to_non_nullable
 as bool,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,
   ));

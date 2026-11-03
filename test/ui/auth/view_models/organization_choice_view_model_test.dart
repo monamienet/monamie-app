@@ -176,9 +176,10 @@ void main() {
       );
 
       // 2. Act
-      harness.session.session.value = SessionState.picking([
-        _kRotaSul,
-      ], invites: [_kInvite]);
+      harness.session.session.value = SessionState.picking(
+        [_kRotaSul],
+        invites: [_kInvite],
+      );
 
       // 3. Assert
       expect(harness.controller.state.organizationChoices, [_kRotaSul]);
@@ -233,7 +234,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      final result = await harness.controller.logout();
+      final result = await harness.controller.logout.execute();
 
       // 3. Assert
       expect(result, isA<Ok<bool>>().having((ok) => ok.value, 'value', true));
@@ -248,87 +249,104 @@ void main() {
       ).thenAnswer((_) async => const Err('Falhou.', title: 'Erro ao sair'));
 
       // 2. Act
-      final result = await harness.controller.logout();
+      final result = await harness.controller.logout.execute();
 
       // 3. Assert
       expect(result, _err('Erro ao sair', 'Falhou.'));
     });
   });
 
-  group('OrganizationChoiceViewModel.recheckOrganizations - Unit Test Suite', () {
-    test('Happy Path: asks the entry again with the kept sign-in', () async {
-      // 1. Arrange
-      final harness = _Harness();
+  group(
+    'OrganizationChoiceViewModel.recheckOrganizations - Unit Test Suite',
+    () {
+      test('Happy Path: asks the entry again with the kept sign-in', () async {
+        // 1. Arrange
+        final harness = _Harness();
 
-      // 2. Act
-      final result = await harness.controller.recheckOrganizations();
+        // 2. Act
+        final result = await harness.controller.recheckOrganizations.execute();
 
-      // 3. Assert
-      expect(result, isA<Ok<void>>());
-      expect(harness.keptSignInCalls(), [null, null]);
-    });
+        // 3. Assert
+        expect(result, isA<Ok<void>>());
+        expect(harness.keptSignInCalls(), [null, null]);
+      });
 
-    test('Happy Path: clears noAccessReason', () async {
-      // 1. Arrange
-      final harness = _Harness(
-        initial: const SessionState.noOrganization(reason: 'Saiu.'),
+      test('Happy Path: clears noAccessReason', () async {
+        // 1. Arrange
+        final harness = _Harness(
+          initial: const SessionState.noOrganization(reason: 'Saiu.'),
+        );
+
+        // 2. Act
+        await harness.controller.recheckOrganizations.execute();
+
+        // 3. Assert
+        expect(harness.controller.state.noAccessReason, isNull);
+      });
+
+      test(
+        'Edge Case: isEntering and the organization being entered show while '
+        'it runs, and clear after',
+        () async {
+          // 1. Arrange
+          final harness = _Harness();
+
+          // 2. Act
+          await harness.controller.recheckOrganizations.execute();
+
+          // 3. Assert
+          expect(harness.enteringSeen, 'Rota Sul');
+          expect(harness.controller.isEntering, isFalse);
+          expect(harness.controller.state.enteringOrganizationName, isNull);
+        },
       );
 
-      // 2. Act
-      await harness.controller.recheckOrganizations();
+      test(
+        'Edge Case: a call while one runs is ignored (reentrancy)',
+        () async {
+          // 1. Arrange
+          final pendingEntry = Completer<void>();
+          final harness = _Harness(pendingEntry: pendingEntry);
+          final first = harness.controller.recheckOrganizations.execute();
+          expect(harness.controller.isEntering, isTrue);
 
-      // 3. Assert
-      expect(harness.controller.state.noAccessReason, isNull);
-    });
+          // 2. Act
+          final second = await harness.controller.recheckOrganizations
+              .execute();
 
-    test('Edge Case: isLoading and the organization being entered show while '
-        'it runs, and clear after', () async {
-      // 1. Arrange
-      final harness = _Harness();
-
-      // 2. Act
-      await harness.controller.recheckOrganizations();
-
-      // 3. Assert
-      expect(harness.enteringSeen, 'Rota Sul');
-      expect(harness.controller.state.isLoading, isFalse);
-      expect(harness.controller.state.enteringOrganizationName, isNull);
-    });
-
-    test('Edge Case: a call while isLoading does nothing (reentrancy)', () async {
-      // 1. Arrange
-      final pendingEntry = Completer<void>();
-      final harness = _Harness(pendingEntry: pendingEntry);
-      final first = harness.controller.recheckOrganizations();
-      expect(harness.controller.state.isLoading, isTrue);
-
-      // 2. Act
-      final second = await harness.controller.recheckOrganizations();
-
-      // 3. Assert
-      expect(second, isA<Ok<void>>());
-      expect(harness.keptSignInCalls(), hasLength(2));
-      pendingEntry.complete();
-      await first;
-    });
-
-    test('Sad Path: a failing check returns why and turns isLoading off', () async {
-      // 1. Arrange
-      final harness = _Harness(
-        entry: Err('Não foi possível entrar agora', error: Exception('sem rede')),
+          // 3. Assert
+          expect(second, isNull);
+          expect(harness.keptSignInCalls(), hasLength(2));
+          pendingEntry.complete();
+          await first;
+        },
       );
 
-      // 2. Act
-      final result = await harness.controller.recheckOrganizations();
+      test(
+        'Sad Path: a failing check returns why and turns isEntering off',
+        () async {
+          // 1. Arrange
+          final harness = _Harness(
+            entry: Err(
+              'Não foi possível entrar agora',
+              error: Exception('sem rede'),
+            ),
+          );
 
-      // 3. Assert
-      expect(
-        result,
-        _err(_kLoginErrorTitle, 'Não foi possível verificar agora'),
+          // 2. Act
+          final result = await harness.controller.recheckOrganizations
+              .execute();
+
+          // 3. Assert
+          expect(
+            result,
+            _err(_kLoginErrorTitle, 'Não foi possível verificar agora'),
+          );
+          expect(harness.controller.isEntering, isFalse);
+        },
       );
-      expect(harness.controller.state.isLoading, isFalse);
-    });
-  });
+    },
+  );
 
   group('OrganizationChoiceViewModel.chooseOrganization - Unit Test Suite', () {
     test('Happy Path: enters the organization picked', () async {
@@ -336,7 +354,9 @@ void main() {
       final harness = _Harness(initial: SessionState.picking([_kRotaSul]));
 
       // 2. Act
-      final result = await harness.controller.chooseOrganization(_kRotaSul);
+      final result = await harness.controller.chooseOrganization.execute(
+        _kRotaSul,
+      );
 
       // 3. Assert
       expect(result, isA<Ok<void>>());
@@ -347,7 +367,7 @@ void main() {
         ),
       ).called(1);
       expect(harness.enteringSeen, 'Rota Sul');
-      expect(harness.controller.state.isLoading, isFalse);
+      expect(harness.controller.isEntering, isFalse);
     });
 
     test('Edge Case: without a kept sign-in nothing happens', () async {
@@ -355,12 +375,17 @@ void main() {
       final harness = _Harness(idToken: null);
 
       // 2. Act
-      final result = await harness.controller.chooseOrganization(_kRotaSul);
+      final result = await harness.controller.chooseOrganization.execute(
+        _kRotaSul,
+      );
 
       // 3. Assert
-      expect(result, isA<Ok<void>>());
+      expect(result, isNull);
       verifyNever(
-        harness.enterOrganization.choose(any, onEntering: anyNamed('onEntering')),
+        harness.enterOrganization.choose(
+          any,
+          onEntering: anyNamed('onEntering'),
+        ),
       );
     });
 
@@ -368,17 +393,70 @@ void main() {
       // 1. Arrange
       final pendingEntry = Completer<void>();
       final harness = _Harness(pendingEntry: pendingEntry);
-      final first = harness.controller.chooseOrganization(_kRotaSul);
+      final first = harness.controller.chooseOrganization.execute(_kRotaSul);
 
       // 2. Act
-      await harness.controller.chooseOrganization(_kRotaSul);
+      final second = await harness.controller.chooseOrganization.execute(
+        _kRotaSul,
+      );
 
       // 3. Assert
+      expect(second, isNull);
       verify(
-        harness.enterOrganization.choose(any, onEntering: anyNamed('onEntering')),
+        harness.enterOrganization.choose(
+          any,
+          onEntering: anyNamed('onEntering'),
+        ),
       ).called(1);
       pendingEntry.complete();
       await first;
+    });
+
+    test('Edge Case: a choice while a new check runs is ignored', () async {
+      // 1. Arrange
+      final pendingEntry = Completer<void>();
+      final harness = _Harness(pendingEntry: pendingEntry);
+      final recheck = harness.controller.recheckOrganizations.execute();
+
+      // 2. Act
+      final choice = await harness.controller.chooseOrganization.execute(
+        _kRotaSul,
+      );
+
+      // 3. Assert
+      expect(choice, isNull);
+      verifyNever(
+        harness.enterOrganization.choose(
+          any,
+          onEntering: anyNamed('onEntering'),
+        ),
+      );
+      pendingEntry.complete();
+      await recheck;
+    });
+
+    test('Edge Case: a new check while a choice runs is ignored', () async {
+      // 1. Arrange
+      final pendingEntry = Completer<void>();
+      final harness = _Harness(pendingEntry: pendingEntry);
+      final choice = harness.controller.chooseOrganization.execute(_kRotaSul);
+      expect(harness.controller.isEntering, isTrue);
+
+      // 2. Act
+      final recheck = await harness.controller.recheckOrganizations.execute();
+
+      // 3. Assert
+      expect(recheck, isNull);
+      verifyNever(
+        harness.enterOrganization.withKeptSignIn(
+          enter: anyNamed('enter'),
+          welcome: anyNamed('welcome'),
+          checkDeletion: anyNamed('checkDeletion'),
+          onEntering: anyNamed('onEntering'),
+        ),
+      );
+      pendingEntry.complete();
+      await choice;
     });
 
     test('Sad Path: a failing entry says which organization could not be '
@@ -389,14 +467,16 @@ void main() {
       );
 
       // 2. Act
-      final result = await harness.controller.chooseOrganization(_kRotaSul);
+      final result = await harness.controller.chooseOrganization.execute(
+        _kRotaSul,
+      );
 
       // 3. Assert
       expect(
         result,
         _err(_kLoginErrorTitle, 'Não foi possível entrar em Rota Sul'),
       );
-      expect(harness.controller.state.isLoading, isFalse);
+      expect(harness.controller.isEntering, isFalse);
     });
   });
 
@@ -406,7 +486,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      await harness.controller.acceptInvite(_kInvite);
+      await harness.controller.acceptInvite.execute(_kInvite);
 
       // 3. Assert
       verify(harness.invites.accept(_kInvite)).called(1);
@@ -418,11 +498,11 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      await harness.controller.acceptInvite(_kInvite);
+      await harness.controller.acceptInvite.execute(_kInvite);
 
       // 3. Assert
       expect(harness.keptSignInCalls(), ['rotasul', _kInvite]);
-      expect(harness.controller.state.acceptingInvite, isNull);
+      expect(harness.controller.acceptingInvite, isNull);
       expect(harness.controller.state.inviteError, isEmpty);
     });
 
@@ -432,29 +512,51 @@ void main() {
       final harness = _Harness(pendingAccept: pendingAccept);
 
       // 2. Act
-      final accepting = harness.controller.acceptInvite(_kInvite);
+      final accepting = harness.controller.acceptInvite.execute(_kInvite);
 
       // 3. Assert
-      expect(harness.controller.state.acceptingInvite, 'inv1');
+      expect(harness.controller.acceptingInvite, 'inv1');
       pendingAccept.complete();
       await accepting;
-      expect(harness.controller.state.acceptingInvite, isNull);
+      expect(harness.controller.acceptingInvite, isNull);
     });
 
-    test('Edge Case: a second accept while one is in flight does nothing', () async {
+    test(
+      'Edge Case: a second accept while one is in flight does nothing',
+      () async {
+        // 1. Arrange
+        final pendingAccept = Completer<void>();
+        final harness = _Harness(pendingAccept: pendingAccept);
+        final first = harness.controller.acceptInvite.execute(_kInvite);
+
+        // 2. Act
+        final second = await harness.controller.acceptInvite.execute(_kInvite);
+
+        // 3. Assert
+        expect(second, isNull);
+        verify(harness.invites.accept(_kInvite)).called(1);
+        expect(harness.controller.acceptingInvite, 'inv1');
+        pendingAccept.complete();
+        await first;
+      },
+    );
+
+    test('Edge Case: an accept while an organization is being entered is '
+        'ignored', () async {
       // 1. Arrange
-      final pendingAccept = Completer<void>();
-      final harness = _Harness(pendingAccept: pendingAccept);
-      final first = harness.controller.acceptInvite(_kInvite);
+      final pendingEntry = Completer<void>();
+      final harness = _Harness(pendingEntry: pendingEntry);
+      final choice = harness.controller.chooseOrganization.execute(_kRotaSul);
 
       // 2. Act
-      await harness.controller.acceptInvite(_kInvite);
+      final accept = await harness.controller.acceptInvite.execute(_kInvite);
 
       // 3. Assert
-      verify(harness.invites.accept(_kInvite)).called(1);
-      expect(harness.controller.state.acceptingInvite, 'inv1');
-      pendingAccept.complete();
-      await first;
+      expect(accept, isNull);
+      expect(harness.controller.acceptingInvite, isNull);
+      verifyNever(harness.invites.accept(any));
+      pendingEntry.complete();
+      await choice;
     });
 
     test('Sad Path: a refused invite sets inviteError, clears acceptingInvite '
@@ -467,14 +569,22 @@ void main() {
       );
 
       // 2. Act
-      await harness.controller.acceptInvite(_kInvite);
+      final result = await harness.controller.acceptInvite.execute(_kInvite);
 
       // 3. Assert
+      expect(
+        result,
+        isA<Err<void>>().having(
+          (err) => err.message,
+          'message',
+          'Este convite expirou. Peça um novo a quem convidou você.',
+        ),
+      );
       expect(
         harness.controller.state.inviteError,
         'Este convite expirou. Peça um novo a quem convidou você.',
       );
-      expect(harness.controller.state.acceptingInvite, isNull);
+      expect(harness.controller.acceptingInvite, isNull);
       verifyNever(
         harness.enterOrganization.withKeptSignIn(
           enter: anyNamed('enter'),
@@ -494,26 +604,32 @@ void main() {
       );
 
       // 2. Act
-      await harness.controller.acceptInvite(_kInvite);
+      final result = await harness.controller.acceptInvite.execute(_kInvite);
 
       // 3. Assert
+      expect(
+        result,
+        isA<Err<void>>().having(
+          (err) => err.message,
+          'message',
+          'Não foi possível aceitar agora. Verifique a conexão e tente de novo.',
+        ),
+      );
       expect(
         harness.controller.state.inviteError,
         'Não foi possível aceitar agora. Verifique a conexão e tente de novo.',
       );
-      expect(harness.controller.state.acceptingInvite, isNull);
+      expect(harness.controller.acceptingInvite, isNull);
     });
 
     test('Sad Path: a new accept clears the last error', () async {
       // 1. Arrange
       final harness = _Harness(accept: const Err('Este convite expirou.'));
-      await harness.controller.acceptInvite(_kInvite);
-      when(
-        harness.invites.accept(any),
-      ).thenAnswer((_) async => Ok(_kInvite));
+      await harness.controller.acceptInvite.execute(_kInvite);
+      when(harness.invites.accept(any)).thenAnswer((_) async => Ok(_kInvite));
 
       // 2. Act
-      await harness.controller.acceptInvite(_kInvite);
+      await harness.controller.acceptInvite.execute(_kInvite);
 
       // 3. Assert
       expect(harness.controller.state.inviteError, isEmpty);

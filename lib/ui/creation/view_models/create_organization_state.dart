@@ -22,7 +22,6 @@ abstract class CreateOrganizationState with _$CreateOrganizationState {
     @Default([]) List<OrganizationTheme> themes,
     required String themeId,
     @Default('community') String plan,
-    @Default(false) bool isCreating,
 
     /// Why the last creation failed; empty when it did not.
     @Default('') String errorMessage,

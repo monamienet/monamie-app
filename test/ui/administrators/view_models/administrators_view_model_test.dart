@@ -53,7 +53,7 @@ AdministratorsViewModel newController() =>
 /// interactions cleared.
 Future<AdministratorsViewModel> loadedController() async {
   final controller = newController();
-  controller.load();
+  controller.load.execute();
   await pumpEventQueue();
   clearInteractions(repository);
   return controller;
@@ -76,30 +76,30 @@ void main() {
       final controller = newController();
 
       // 2. Act
-      controller.load();
+      controller.load.execute();
       await pumpEventQueue();
 
       // 3. Assert
       verify(repository.list('rotasul')).called(1);
       verifyNoMoreInteractions(repository);
       expect(controller.state.people, same(_before));
-      expect(controller.state.isLoading, isFalse);
+      expect(controller.load.running, isFalse);
     });
 
-    test('Edge Case: isLoading is true while the list is read', () async {
+    test('Edge Case: load runs while the list is read', () async {
       // 1. Arrange
       final controller = await loadedController();
       final gate = Completer<void>();
       listWaitsOn(gate);
 
       // 2. Act
-      final pending = controller.load();
+      final pending = controller.load.execute();
 
       // 3. Assert
-      expect(controller.state.isLoading, isTrue);
+      expect(controller.load.running, isTrue);
       gate.complete();
       await pending;
-      expect(controller.state.isLoading, isFalse);
+      expect(controller.load.running, isFalse);
     });
 
     test('Edge Case: a second load while one runs reads nothing', () async {
@@ -107,10 +107,10 @@ void main() {
       final controller = await loadedController();
       final gate = Completer<void>();
       listWaitsOn(gate);
-      final first = controller.load();
+      final first = controller.load.execute();
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       verify(repository.list('rotasul')).called(1);
@@ -128,11 +128,11 @@ void main() {
       ).thenAnswer((_) async => const Err('Sem permissão.'));
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(controller.state.errorMessage, 'Sem permissão.');
-      expect(controller.state.isLoading, isFalse);
+      expect(controller.load.running, isFalse);
     });
 
     test('Sad Path: the repository\'s generic message for an unexpected '
@@ -147,14 +147,14 @@ void main() {
       );
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(
         controller.state.errorMessage,
         'Não foi possível carregar os administradores.',
       );
-      expect(controller.state.isLoading, isFalse);
+      expect(controller.load.running, isFalse);
     });
   });
 
@@ -165,10 +165,13 @@ void main() {
       when(repository.list(any)).thenAnswer((_) async => const Ok(_after));
 
       // 2. Act
-      final ok = await controller.setAdministrator('caio@x.com', admin: true);
+      final result = await controller.setAdministrator.execute((
+        email: 'caio@x.com',
+        admin: true,
+      ));
 
       // 3. Assert
-      expect(ok, isTrue);
+      expect(result, isA<Ok<void>>());
       verifyInOrder([
         repository.setAdministrator('rotasul', 'caio@x.com', admin: true),
         repository.list('rotasul'),
@@ -184,52 +187,74 @@ void main() {
       setWaitsOn(gate);
 
       // 2. Act
-      final pending = controller.setAdministrator('ana@x.com', admin: false);
+      final pending = controller.setAdministrator.execute((
+        email: 'ana@x.com',
+        admin: false,
+      ));
 
       // 3. Assert
-      expect(controller.state.workingEmail, 'ana@x.com');
+      expect(controller.setAdministrator.argument?.email, 'ana@x.com');
+      expect(controller.setAdministrator.argument?.admin, isFalse);
+      expect(controller.setAdministrator.running, isTrue);
       gate.complete();
       await pending;
-      expect(controller.state.workingEmail, isNull);
+      expect(controller.setAdministrator.argument?.email, isNull);
     });
 
-    test('Edge Case: a second change while one runs returns false', () async {
-      // 1. Arrange
-      final controller = await loadedController();
-      final gate = Completer<void>();
-      setWaitsOn(gate);
-      final first = controller.setAdministrator('ana@x.com', admin: false);
+    test(
+      'Edge Case: a second change while one runs is ignored (null)',
+      () async {
+        // 1. Arrange
+        final controller = await loadedController();
+        final gate = Completer<void>();
+        setWaitsOn(gate);
+        final first = controller.setAdministrator.execute((
+          email: 'ana@x.com',
+          admin: false,
+        ));
 
-      // 2. Act
-      final ok = await controller.setAdministrator('caio@x.com', admin: true);
+        // 2. Act
+        final result = await controller.setAdministrator.execute((
+          email: 'caio@x.com',
+          admin: true,
+        ));
 
-      // 3. Assert
-      expect(ok, isFalse);
-      verify(repository.setAdministrator('rotasul', 'ana@x.com', admin: false));
-      verifyNoMoreInteractions(repository);
-      gate.complete();
-      await first;
-    });
+        // 3. Assert
+        expect(result, isNull);
+        verify(
+          repository.setAdministrator('rotasul', 'ana@x.com', admin: false),
+        );
+        verifyNoMoreInteractions(repository);
+        gate.complete();
+        await first;
+      },
+    );
 
-    test('Edge Case: no change starts while the list is loading', () async {
-      // 1. Arrange
-      final controller = await loadedController();
-      final gate = Completer<void>();
-      listWaitsOn(gate);
-      final loading = controller.load();
+    test(
+      'Edge Case: no change starts while the list is loading (null)',
+      () async {
+        // 1. Arrange
+        final controller = await loadedController();
+        final gate = Completer<void>();
+        listWaitsOn(gate);
+        final loading = controller.load.execute();
 
-      // 2. Act
-      final ok = await controller.setAdministrator('caio@x.com', admin: true);
+        // 2. Act
+        final result = await controller.setAdministrator.execute((
+          email: 'caio@x.com',
+          admin: true,
+        ));
 
-      // 3. Assert
-      expect(ok, isFalse);
-      verify(repository.list('rotasul')).called(1);
-      verifyNoMoreInteractions(repository);
-      gate.complete();
-      await loading;
-    });
+        // 3. Assert
+        expect(result, isNull);
+        verify(repository.list('rotasul')).called(1);
+        verifyNoMoreInteractions(repository);
+        gate.complete();
+        await loading;
+      },
+    );
 
-    test('Sad Path: an Err from the change returns false with its '
+    test('Sad Path: an Err from the change returns the Err with its '
         'message and clears the row', () async {
       // 1. Arrange
       final controller = await loadedController();
@@ -240,15 +265,25 @@ void main() {
       );
 
       // 2. Act
-      final ok = await controller.setAdministrator('rui@x.com', admin: true);
+      final result = await controller.setAdministrator.execute((
+        email: 'rui@x.com',
+        admin: true,
+      ));
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(
+        result,
+        isA<Err<void>>().having(
+          (err) => err.message,
+          'message',
+          'Essa pessoa não faz parte da organização.',
+        ),
+      );
       expect(
         controller.state.errorMessage,
         'Essa pessoa não faz parte da organização.',
       );
-      expect(controller.state.workingEmail, isNull);
+      expect(controller.setAdministrator.argument?.email, isNull);
       expect(controller.state.people, same(_before));
     });
 
@@ -267,19 +302,22 @@ void main() {
       );
 
       // 2. Act
-      final ok = await controller.setAdministrator('caio@x.com', admin: true);
+      final result = await controller.setAdministrator.execute((
+        email: 'caio@x.com',
+        admin: true,
+      ));
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(result, isA<Err<void>>());
       expect(
         controller.state.errorMessage,
         'Não foi possível concluir agora. Verifique a conexão e tente de '
         'novo.',
       );
-      expect(controller.state.workingEmail, isNull);
+      expect(controller.setAdministrator.argument?.email, isNull);
     });
 
-    test('Sad Path: a change made but whose reload fails returns false with '
+    test('Sad Path: a change made but whose reload fails returns an Err with '
         'the reload\'s message and keeps the old people', () async {
       // 1. Arrange
       final controller = await loadedController();
@@ -288,10 +326,20 @@ void main() {
       );
 
       // 2. Act
-      final ok = await controller.setAdministrator('caio@x.com', admin: true);
+      final result = await controller.setAdministrator.execute((
+        email: 'caio@x.com',
+        admin: true,
+      ));
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(
+        result,
+        isA<Err<void>>().having(
+          (err) => err.message,
+          'message',
+          'Não foi possível carregar os administradores.',
+        ),
+      );
       verifyInOrder([
         repository.setAdministrator('rotasul', 'caio@x.com', admin: true),
         repository.list('rotasul'),
@@ -301,7 +349,7 @@ void main() {
         'Não foi possível carregar os administradores.',
       );
       expect(controller.state.people, same(_before));
-      expect(controller.state.workingEmail, isNull);
+      expect(controller.setAdministrator.argument?.email, isNull);
     });
   });
 
@@ -315,7 +363,7 @@ void main() {
       final controller = newController();
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(controller.state.people.administrators, isEmpty);
@@ -323,22 +371,28 @@ void main() {
       expect(controller.state.errorMessage, isEmpty);
     });
 
-    test('Happy Path: a load that changes the people notifies three times: '
-        'loading, people, loaded', () async {
-      // 1. Arrange
-      final controller = newController();
-      var notifications = 0;
-      controller.addListener(() => notifications++);
+    test(
+      'Happy Path: a load that changes the people notifies the view '
+      'model once (people) and the command twice (started, finished)',
+      () async {
+        // 1. Arrange
+        final controller = newController();
+        var notifications = 0;
+        final running = <bool>[];
+        controller.addListener(() => notifications++);
+        controller.load.addListener(() => running.add(controller.load.running));
 
-      // 2. Act
-      await controller.load();
+        // 2. Act
+        await controller.load.execute();
 
-      // 3. Assert
-      expect(notifications, 3);
-    });
+        // 3. Assert
+        expect(notifications, 1);
+        expect(running, [true, false]);
+      },
+    );
 
-    test('Edge Case: reloading people equal by content notifies only for '
-        'the loading flag', () async {
+    test('Edge Case: reloading people equal by content does not notify the '
+        'view model', () async {
       // 1. Arrange
       // Fresh objects on every read, as the repository builds them from
       // JSON.
@@ -351,15 +405,15 @@ void main() {
         ),
       );
       final controller = newController();
-      await controller.load();
+      await controller.load.execute();
       var notifications = 0;
       controller.addListener(() => notifications++);
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
-      expect(notifications, 2);
+      expect(notifications, 0);
     });
 
     test('Sad Path: a change finishing after dispose notifies nobody and '
@@ -369,7 +423,10 @@ void main() {
       final gate = Completer<void>();
       setWaitsOn(gate);
       var notifications = 0;
-      final pending = controller.setAdministrator('caio@x.com', admin: true);
+      final pending = controller.setAdministrator.execute((
+        email: 'caio@x.com',
+        admin: true,
+      ));
       controller.addListener(() => notifications++);
       controller.dispose();
 
@@ -377,7 +434,7 @@ void main() {
       gate.complete();
 
       // 3. Assert
-      await expectLater(pending, completion(isTrue));
+      await expectLater(pending, completion(isA<Ok<void>>()));
       expect(notifications, 0);
     });
   });

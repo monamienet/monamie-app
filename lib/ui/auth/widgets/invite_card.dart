@@ -14,12 +14,17 @@ class InviteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: controller,
+    listenable: Listenable.merge([
+      controller,
+      controller.recheckOrganizations,
+      controller.chooseOrganization,
+      controller.acceptInvite,
+    ]),
     builder: (context, _) {
       final state = controller.state;
-      final accepting = state.acceptingInvite == invite.id;
+      final accepting = controller.acceptingInvite == invite.id;
       // Entering an organization from the picker also locks the card.
-      final busy = state.acceptingInvite != null || state.isLoading;
+      final busy = controller.acceptingInvite != null || controller.isEntering;
       final shares = invite.roles.contains(GroupRole.publisher);
       final watches = invite.roles.contains(GroupRole.subscriber);
       final role = shares && watches
@@ -98,7 +103,9 @@ class InviteCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                onPressed: busy ? null : () => controller.acceptInvite(invite),
+                onPressed: busy
+                    ? null
+                    : () => controller.acceptInvite.execute(invite),
                 child: accepting
                     ? Row(
                         mainAxisSize: MainAxisSize.min,

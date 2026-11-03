@@ -21,10 +21,8 @@ mixin _$OrganizationChoiceState {
 /// organization (no membership there any more); `null` otherwise.
  String? get noAccessReason;/// Organizations offered by the picker; none on *Sem organização*.
  List<OrganizationBinding> get organizationChoices;/// Invites waiting for the signed-in account.
- List<Invite> get pendingInvites;/// Whether an organization entry (or a new check) runs.
- bool get isLoading;/// Name of the organization being entered, for its spinner.
- String? get enteringOrganizationName;/// Id of the invite being accepted (its button shows the pending state).
- String? get acceptingInvite;/// Error of the last accept, shown on the invite card.
+ List<Invite> get pendingInvites;/// Name of the organization being entered, for its spinner.
+ String? get enteringOrganizationName;/// Error of the last accept, shown on the invite card.
  String get inviteError;/// Whether a sign-out runs.
  bool get isLoggingOut;
 /// Create a copy of OrganizationChoiceState
@@ -38,20 +36,20 @@ $OrganizationChoiceStateCopyWith<OrganizationChoiceState> get copyWith => _$Orga
 @override
 bool operator ==(Object other) {
   final _this = this as OrganizationChoiceState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OrganizationChoiceState&&(identical(other.signedInEmail, _this.signedInEmail) || other.signedInEmail == _this.signedInEmail)&&(identical(other.noAccessReason, _this.noAccessReason) || other.noAccessReason == _this.noAccessReason)&&const DeepCollectionEquality().equals(other.organizationChoices, _this.organizationChoices)&&const DeepCollectionEquality().equals(other.pendingInvites, _this.pendingInvites)&&(identical(other.isLoading, _this.isLoading) || other.isLoading == _this.isLoading)&&(identical(other.enteringOrganizationName, _this.enteringOrganizationName) || other.enteringOrganizationName == _this.enteringOrganizationName)&&(identical(other.acceptingInvite, _this.acceptingInvite) || other.acceptingInvite == _this.acceptingInvite)&&(identical(other.inviteError, _this.inviteError) || other.inviteError == _this.inviteError)&&(identical(other.isLoggingOut, _this.isLoggingOut) || other.isLoggingOut == _this.isLoggingOut));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OrganizationChoiceState&&(identical(other.signedInEmail, _this.signedInEmail) || other.signedInEmail == _this.signedInEmail)&&(identical(other.noAccessReason, _this.noAccessReason) || other.noAccessReason == _this.noAccessReason)&&const DeepCollectionEquality().equals(other.organizationChoices, _this.organizationChoices)&&const DeepCollectionEquality().equals(other.pendingInvites, _this.pendingInvites)&&(identical(other.enteringOrganizationName, _this.enteringOrganizationName) || other.enteringOrganizationName == _this.enteringOrganizationName)&&(identical(other.inviteError, _this.inviteError) || other.inviteError == _this.inviteError)&&(identical(other.isLoggingOut, _this.isLoggingOut) || other.isLoggingOut == _this.isLoggingOut));
 }
 
 
 @override
 int get hashCode {
   final _this = this as OrganizationChoiceState;
-  return Object.hash(runtimeType,_this.signedInEmail,_this.noAccessReason,const DeepCollectionEquality().hash(_this.organizationChoices),const DeepCollectionEquality().hash(_this.pendingInvites),_this.isLoading,_this.enteringOrganizationName,_this.acceptingInvite,_this.inviteError,_this.isLoggingOut);
+  return Object.hash(runtimeType,_this.signedInEmail,_this.noAccessReason,const DeepCollectionEquality().hash(_this.organizationChoices),const DeepCollectionEquality().hash(_this.pendingInvites),_this.enteringOrganizationName,_this.inviteError,_this.isLoggingOut);
 }
 
 @override
 String toString() {
   final _this = this as OrganizationChoiceState;
-  return 'OrganizationChoiceState(signedInEmail: ${_this.signedInEmail}, noAccessReason: ${_this.noAccessReason}, organizationChoices: ${_this.organizationChoices}, pendingInvites: ${_this.pendingInvites}, isLoading: ${_this.isLoading}, enteringOrganizationName: ${_this.enteringOrganizationName}, acceptingInvite: ${_this.acceptingInvite}, inviteError: ${_this.inviteError}, isLoggingOut: ${_this.isLoggingOut})';
+  return 'OrganizationChoiceState(signedInEmail: ${_this.signedInEmail}, noAccessReason: ${_this.noAccessReason}, organizationChoices: ${_this.organizationChoices}, pendingInvites: ${_this.pendingInvites}, enteringOrganizationName: ${_this.enteringOrganizationName}, inviteError: ${_this.inviteError}, isLoggingOut: ${_this.isLoggingOut})';
 }
 
 
@@ -62,7 +60,7 @@ abstract mixin class $OrganizationChoiceStateCopyWith<$Res>  {
   factory $OrganizationChoiceStateCopyWith(OrganizationChoiceState value, $Res Function(OrganizationChoiceState) _then) = _$OrganizationChoiceStateCopyWithImpl;
 @useResult
 $Res call({
- String? signedInEmail, String? noAccessReason, List<OrganizationBinding> organizationChoices, List<Invite> pendingInvites, bool isLoading, String? enteringOrganizationName, String? acceptingInvite, String inviteError, bool isLoggingOut
+ String? signedInEmail, String? noAccessReason, List<OrganizationBinding> organizationChoices, List<Invite> pendingInvites, String? enteringOrganizationName, String inviteError, bool isLoggingOut
 });
 
 
@@ -79,15 +77,13 @@ class _$OrganizationChoiceStateCopyWithImpl<$Res>
 
 /// Create a copy of OrganizationChoiceState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? signedInEmail = freezed,Object? noAccessReason = freezed,Object? organizationChoices = null,Object? pendingInvites = null,Object? isLoading = null,Object? enteringOrganizationName = freezed,Object? acceptingInvite = freezed,Object? inviteError = null,Object? isLoggingOut = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? signedInEmail = freezed,Object? noAccessReason = freezed,Object? organizationChoices = null,Object? pendingInvites = null,Object? enteringOrganizationName = freezed,Object? inviteError = null,Object? isLoggingOut = null,}) {
   return _then(OrganizationChoiceState(
 signedInEmail: freezed == signedInEmail ? _self.signedInEmail : signedInEmail // ignore: cast_nullable_to_non_nullable
 as String?,noAccessReason: freezed == noAccessReason ? _self.noAccessReason : noAccessReason // ignore: cast_nullable_to_non_nullable
 as String?,organizationChoices: null == organizationChoices ? _self.organizationChoices : organizationChoices // ignore: cast_nullable_to_non_nullable
 as List<OrganizationBinding>,pendingInvites: null == pendingInvites ? _self.pendingInvites : pendingInvites // ignore: cast_nullable_to_non_nullable
-as List<Invite>,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
-as bool,enteringOrganizationName: freezed == enteringOrganizationName ? _self.enteringOrganizationName : enteringOrganizationName // ignore: cast_nullable_to_non_nullable
-as String?,acceptingInvite: freezed == acceptingInvite ? _self.acceptingInvite : acceptingInvite // ignore: cast_nullable_to_non_nullable
+as List<Invite>,enteringOrganizationName: freezed == enteringOrganizationName ? _self.enteringOrganizationName : enteringOrganizationName // ignore: cast_nullable_to_non_nullable
 as String?,inviteError: null == inviteError ? _self.inviteError : inviteError // ignore: cast_nullable_to_non_nullable
 as String,isLoggingOut: null == isLoggingOut ? _self.isLoggingOut : isLoggingOut // ignore: cast_nullable_to_non_nullable
 as bool,
@@ -175,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? signedInEmail,  String? noAccessReason,  List<OrganizationBinding> organizationChoices,  List<Invite> pendingInvites,  bool isLoading,  String? enteringOrganizationName,  String? acceptingInvite,  String inviteError,  bool isLoggingOut)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? signedInEmail,  String? noAccessReason,  List<OrganizationBinding> organizationChoices,  List<Invite> pendingInvites,  String? enteringOrganizationName,  String inviteError,  bool isLoggingOut)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _OrganizationChoiceState() when $default != null:
-return $default(_that.signedInEmail,_that.noAccessReason,_that.organizationChoices,_that.pendingInvites,_that.isLoading,_that.enteringOrganizationName,_that.acceptingInvite,_that.inviteError,_that.isLoggingOut);case _:
+return $default(_that.signedInEmail,_that.noAccessReason,_that.organizationChoices,_that.pendingInvites,_that.enteringOrganizationName,_that.inviteError,_that.isLoggingOut);case _:
   return orElse();
 
 }
@@ -196,10 +192,10 @@ return $default(_that.signedInEmail,_that.noAccessReason,_that.organizationChoic
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? signedInEmail,  String? noAccessReason,  List<OrganizationBinding> organizationChoices,  List<Invite> pendingInvites,  bool isLoading,  String? enteringOrganizationName,  String? acceptingInvite,  String inviteError,  bool isLoggingOut)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? signedInEmail,  String? noAccessReason,  List<OrganizationBinding> organizationChoices,  List<Invite> pendingInvites,  String? enteringOrganizationName,  String inviteError,  bool isLoggingOut)  $default,) {final _that = this;
 switch (_that) {
 case _OrganizationChoiceState():
-return $default(_that.signedInEmail,_that.noAccessReason,_that.organizationChoices,_that.pendingInvites,_that.isLoading,_that.enteringOrganizationName,_that.acceptingInvite,_that.inviteError,_that.isLoggingOut);case _:
+return $default(_that.signedInEmail,_that.noAccessReason,_that.organizationChoices,_that.pendingInvites,_that.enteringOrganizationName,_that.inviteError,_that.isLoggingOut);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -216,10 +212,10 @@ return $default(_that.signedInEmail,_that.noAccessReason,_that.organizationChoic
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? signedInEmail,  String? noAccessReason,  List<OrganizationBinding> organizationChoices,  List<Invite> pendingInvites,  bool isLoading,  String? enteringOrganizationName,  String? acceptingInvite,  String inviteError,  bool isLoggingOut)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? signedInEmail,  String? noAccessReason,  List<OrganizationBinding> organizationChoices,  List<Invite> pendingInvites,  String? enteringOrganizationName,  String inviteError,  bool isLoggingOut)?  $default,) {final _that = this;
 switch (_that) {
 case _OrganizationChoiceState() when $default != null:
-return $default(_that.signedInEmail,_that.noAccessReason,_that.organizationChoices,_that.pendingInvites,_that.isLoading,_that.enteringOrganizationName,_that.acceptingInvite,_that.inviteError,_that.isLoggingOut);case _:
+return $default(_that.signedInEmail,_that.noAccessReason,_that.organizationChoices,_that.pendingInvites,_that.enteringOrganizationName,_that.inviteError,_that.isLoggingOut);case _:
   return null;
 
 }
@@ -231,7 +227,7 @@ return $default(_that.signedInEmail,_that.noAccessReason,_that.organizationChoic
 
 
 class _OrganizationChoiceState implements OrganizationChoiceState {
-  const _OrganizationChoiceState({this.signedInEmail, this.noAccessReason,  List<OrganizationBinding> organizationChoices = const [],  List<Invite> pendingInvites = const [], this.isLoading = false, this.enteringOrganizationName, this.acceptingInvite, this.inviteError = '', this.isLoggingOut = false}): _organizationChoices = organizationChoices,_pendingInvites = pendingInvites;
+  const _OrganizationChoiceState({this.signedInEmail, this.noAccessReason,  List<OrganizationBinding> organizationChoices = const [],  List<Invite> pendingInvites = const [], this.enteringOrganizationName, this.inviteError = '', this.isLoggingOut = false}): _organizationChoices = organizationChoices,_pendingInvites = pendingInvites;
   
 
 /// E-mail of the Google account signed in to MonAmie (central project),
@@ -258,12 +254,8 @@ class _OrganizationChoiceState implements OrganizationChoiceState {
   return EqualUnmodifiableListView(_pendingInvites);
 }
 
-/// Whether an organization entry (or a new check) runs.
-@override@JsonKey() final  bool isLoading;
 /// Name of the organization being entered, for its spinner.
 @override final  String? enteringOrganizationName;
-/// Id of the invite being accepted (its button shows the pending state).
-@override final  String? acceptingInvite;
 /// Error of the last accept, shown on the invite card.
 @override@JsonKey() final  String inviteError;
 /// Whether a sign-out runs.
@@ -279,18 +271,18 @@ _$OrganizationChoiceStateCopyWith<_OrganizationChoiceState> get copyWith => __$O
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _OrganizationChoiceState&&(identical(other.signedInEmail, signedInEmail) || other.signedInEmail == signedInEmail)&&(identical(other.noAccessReason, noAccessReason) || other.noAccessReason == noAccessReason)&&const DeepCollectionEquality().equals(other.organizationChoices, _organizationChoices)&&const DeepCollectionEquality().equals(other.pendingInvites, _pendingInvites)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.enteringOrganizationName, enteringOrganizationName) || other.enteringOrganizationName == enteringOrganizationName)&&(identical(other.acceptingInvite, acceptingInvite) || other.acceptingInvite == acceptingInvite)&&(identical(other.inviteError, inviteError) || other.inviteError == inviteError)&&(identical(other.isLoggingOut, isLoggingOut) || other.isLoggingOut == isLoggingOut));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _OrganizationChoiceState&&(identical(other.signedInEmail, signedInEmail) || other.signedInEmail == signedInEmail)&&(identical(other.noAccessReason, noAccessReason) || other.noAccessReason == noAccessReason)&&const DeepCollectionEquality().equals(other.organizationChoices, _organizationChoices)&&const DeepCollectionEquality().equals(other.pendingInvites, _pendingInvites)&&(identical(other.enteringOrganizationName, enteringOrganizationName) || other.enteringOrganizationName == enteringOrganizationName)&&(identical(other.inviteError, inviteError) || other.inviteError == inviteError)&&(identical(other.isLoggingOut, isLoggingOut) || other.isLoggingOut == isLoggingOut));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,signedInEmail,noAccessReason,const DeepCollectionEquality().hash(_organizationChoices),const DeepCollectionEquality().hash(_pendingInvites),isLoading,enteringOrganizationName,acceptingInvite,inviteError,isLoggingOut);
+    return Object.hash(runtimeType,signedInEmail,noAccessReason,const DeepCollectionEquality().hash(_organizationChoices),const DeepCollectionEquality().hash(_pendingInvites),enteringOrganizationName,inviteError,isLoggingOut);
 }
 
 @override
 String toString() {
-    return 'OrganizationChoiceState(signedInEmail: $signedInEmail, noAccessReason: $noAccessReason, organizationChoices: $organizationChoices, pendingInvites: $pendingInvites, isLoading: $isLoading, enteringOrganizationName: $enteringOrganizationName, acceptingInvite: $acceptingInvite, inviteError: $inviteError, isLoggingOut: $isLoggingOut)';
+    return 'OrganizationChoiceState(signedInEmail: $signedInEmail, noAccessReason: $noAccessReason, organizationChoices: $organizationChoices, pendingInvites: $pendingInvites, enteringOrganizationName: $enteringOrganizationName, inviteError: $inviteError, isLoggingOut: $isLoggingOut)';
 }
 
 
@@ -301,7 +293,7 @@ abstract mixin class _$OrganizationChoiceStateCopyWith<$Res> implements $Organiz
   factory _$OrganizationChoiceStateCopyWith(_OrganizationChoiceState value, $Res Function(_OrganizationChoiceState) _then) = __$OrganizationChoiceStateCopyWithImpl;
 @override @useResult
 $Res call({
- String? signedInEmail, String? noAccessReason, List<OrganizationBinding> organizationChoices, List<Invite> pendingInvites, bool isLoading, String? enteringOrganizationName, String? acceptingInvite, String inviteError, bool isLoggingOut
+ String? signedInEmail, String? noAccessReason, List<OrganizationBinding> organizationChoices, List<Invite> pendingInvites, String? enteringOrganizationName, String inviteError, bool isLoggingOut
 });
 
 
@@ -318,15 +310,13 @@ class __$OrganizationChoiceStateCopyWithImpl<$Res>
 
 /// Create a copy of OrganizationChoiceState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? signedInEmail = freezed,Object? noAccessReason = freezed,Object? organizationChoices = null,Object? pendingInvites = null,Object? isLoading = null,Object? enteringOrganizationName = freezed,Object? acceptingInvite = freezed,Object? inviteError = null,Object? isLoggingOut = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? signedInEmail = freezed,Object? noAccessReason = freezed,Object? organizationChoices = null,Object? pendingInvites = null,Object? enteringOrganizationName = freezed,Object? inviteError = null,Object? isLoggingOut = null,}) {
   return _then(_OrganizationChoiceState(
 signedInEmail: freezed == signedInEmail ? _self.signedInEmail : signedInEmail // ignore: cast_nullable_to_non_nullable
 as String?,noAccessReason: freezed == noAccessReason ? _self.noAccessReason : noAccessReason // ignore: cast_nullable_to_non_nullable
 as String?,organizationChoices: null == organizationChoices ? _self._organizationChoices : organizationChoices // ignore: cast_nullable_to_non_nullable
 as List<OrganizationBinding>,pendingInvites: null == pendingInvites ? _self._pendingInvites : pendingInvites // ignore: cast_nullable_to_non_nullable
-as List<Invite>,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
-as bool,enteringOrganizationName: freezed == enteringOrganizationName ? _self.enteringOrganizationName : enteringOrganizationName // ignore: cast_nullable_to_non_nullable
-as String?,acceptingInvite: freezed == acceptingInvite ? _self.acceptingInvite : acceptingInvite // ignore: cast_nullable_to_non_nullable
+as List<Invite>,enteringOrganizationName: freezed == enteringOrganizationName ? _self.enteringOrganizationName : enteringOrganizationName // ignore: cast_nullable_to_non_nullable
 as String?,inviteError: null == inviteError ? _self.inviteError : inviteError // ignore: cast_nullable_to_non_nullable
 as String,isLoggingOut: null == isLoggingOut ? _self.isLoggingOut : isLoggingOut // ignore: cast_nullable_to_non_nullable
 as bool,

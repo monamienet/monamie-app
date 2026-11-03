@@ -2,8 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:monamie_app/domain/models/group.dart';
 
 import 'package:monamie_app/domain/models/invite.dart';
+import 'package:monamie_app/domain/models/invite_send_result.dart';
 import 'invite_state.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 
 export 'invite_state.dart';
@@ -47,6 +49,7 @@ class InviteViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    send.dispose();
     super.dispose();
   }
 
@@ -68,7 +71,7 @@ class InviteViewModel extends ChangeNotifier {
   /// Adds [email] with the default role (*Em campo*). Returns whether it
   /// was added.
   bool add(String email) {
-    if (_state.isSending) return false;
+    if (send.running) return false;
     final problem = inviteEmailProblem(email, _state.people);
     if (problem != null) {
       _emit(_state.copyWith(draftError: problem));
@@ -85,7 +88,7 @@ class InviteViewModel extends ChangeNotifier {
 
   /// Takes [person] (matched by e-mail, unique in the list) off the list.
   void remove(InviteDraft person) {
-    if (_state.isSending) return;
+    if (send.running) return;
     _emit(
       _state.copyWith(
         people: [
@@ -100,7 +103,7 @@ class InviteViewModel extends ChangeNotifier {
   /// list; a person may end up with none, which blocks the send until
   /// fixed).
   void toggle(InviteDraft person, GroupRole role) {
-    if (_state.isSending) return;
+    if (send.running) return;
     _emit(
       _state.copyWith(
         people: [
@@ -119,36 +122,37 @@ class InviteViewModel extends ChangeNotifier {
   }
 
   bool get canSend =>
-      !_state.isSending &&
+      !send.running &&
       _state.people.isNotEmpty &&
       _state.people.every((p) => p.roles.isNotEmpty) &&
       (firstGroupMode ? firstGroupProblem == null : _state.groupId != null);
 
-  /// Sends the invites. Returns whether they were sent.
-  Future<bool> send() async {
-    if (!canSend) return false;
-    _emit(_state.copyWith(isSending: true, errorMessage: ''));
-    try {
-      final sent = await _repository.send(
-        organizationId,
-        organizationName: organizationName,
-        groupId: firstGroupMode ? null : _state.groupId,
-        firstGroupName: firstGroupMode ? _state.firstGroupName.trim() : null,
-        invites: [
-          for (final p in _state.people) (email: p.email, roles: {...p.roles}),
-        ],
-      );
-      switch (sent) {
-        case Ok(value: final result):
-          _emit(_state.copyWith(result: result));
-          return true;
-        case Err(:final message):
-          _emit(_state.copyWith(errorMessage: message));
-          return false;
-      }
-    } finally {
-      _emit(_state.copyWith(isSending: false));
+  /// Sends the invites; [Ok] holds the outcome, also kept in
+  /// [InviteState.result]. The failure is also kept in
+  /// [InviteState.errorMessage]. Ignored unless [canSend].
+  late final Command0<InviteSendResult> send = Command0(
+    _send,
+    blocked: () => !canSend,
+  );
+
+  Future<Result<InviteSendResult>> _send() async {
+    _emit(_state.copyWith(errorMessage: ''));
+    final sent = await _repository.send(
+      organizationId,
+      organizationName: organizationName,
+      groupId: firstGroupMode ? null : _state.groupId,
+      firstGroupName: firstGroupMode ? _state.firstGroupName.trim() : null,
+      invites: [
+        for (final p in _state.people) (email: p.email, roles: {...p.roles}),
+      ],
+    );
+    switch (sent) {
+      case Ok(value: final result):
+        _emit(_state.copyWith(result: result));
+      case Err(:final message):
+        _emit(_state.copyWith(errorMessage: message));
     }
+    return sent;
   }
 
   /// "Convidar mais pessoas".

@@ -18,7 +18,6 @@ abstract class TrackingSettingsEditState with _$TrackingSettingsEditState {
     /// The plan's minimum period (Community: 15 min); presets below it are
     /// not offered.
     @Default(0) int minPeriodMinutes,
-    @Default(false) bool isSaving,
     @Default(false) bool justSaved,
 
     /// Why the last save failed; empty when it did not.

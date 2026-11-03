@@ -107,7 +107,7 @@ Future<AppearanceViewModel> controllerFor(
     convertLogo: convert ?? (_) async => convertedPng,
     onSaved: (saved) async => onSavedWith.add(saved),
   );
-  controller.load();
+  controller.load.execute();
   await pumpEventQueue();
   clearInteractions(repository);
   return controller;
@@ -115,7 +115,7 @@ Future<AppearanceViewModel> controllerFor(
 
 /// Picks [pickedFile] and keeps the converted logo.
 Future<void> pickAndUse(AppearanceViewModel controller) async {
-  await controller.pickLogo(pickedFile);
+  await controller.pickLogo.execute(pickedFile);
   controller.useCandidate();
 }
 
@@ -215,7 +215,7 @@ void main() {
       controller.setName('Rota Norte');
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
       expect(savedBranding(), (name: 'Rota Norte', themeId: null, logo: null));
@@ -228,7 +228,7 @@ void main() {
       controller.pickTheme('oceano');
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
       expect(savedBranding(), (name: null, themeId: 'oceano', logo: null));
@@ -240,7 +240,7 @@ void main() {
       await pickAndUse(controller);
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
       verifyInOrder([
@@ -262,7 +262,7 @@ void main() {
       controller.removeLogo();
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
       verifyInOrder([
@@ -284,7 +284,7 @@ void main() {
       controller.pickTheme('oceano');
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
       expect(
@@ -297,16 +297,16 @@ void main() {
       );
     });
 
-    test('Happy Path: a successful save returns true', () async {
+    test('Happy Path: a successful save returns Ok', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
 
       // 2. Act
-      final ok = await controller.save();
+      final result = await controller.save.execute();
 
       // 3. Assert
-      expect(ok, isTrue);
+      expect(result, isA<Ok<void>>());
     });
 
     test('Edge Case: the name is trimmed before it is sent', () async {
@@ -315,42 +315,42 @@ void main() {
       controller.setName('  Rota Norte ');
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
       expect(savedBranding().name, 'Rota Norte');
     });
 
-    test('Sad Path: no changes returns false and calls nothing', () async {
+    test('Sad Path: no changes is ignored (null) and calls nothing', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
 
       // 2. Act
-      final ok = await controller.save();
+      final result = await controller.save.execute();
 
       // 3. Assert
-      expect([ok, onSavedWith], [false, isEmpty]);
+      expect([result, onSavedWith], [isNull, isEmpty]);
       verifyNoMoreInteractions(repository);
     });
 
     test('Sad Path: an Err from saveBranding lands in errorMessage and save '
-        'returns false', () async {
+        'returns an Err', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
       stubSave(() async {}, failure: 'Nome inválido.');
 
       // 2. Act
-      final ok = await controller.save();
+      final result = await controller.save.execute();
 
       // 3. Assert
       expect(
-        [ok, controller.state.errorMessage, onSavedWith],
-        [false, 'Nome inválido.', isEmpty],
+        [result, controller.state.errorMessage, onSavedWith],
+        [isA<Err<void>>(), 'Nome inválido.', isEmpty],
       );
     });
 
-    test('Sad Path: a failed upload returns false with its message and '
+    test('Sad Path: a failed upload returns an Err with its message and '
         'saves no branding', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
@@ -360,19 +360,19 @@ void main() {
       ).thenAnswer((_) async => const Err('Não foi possível salvar agora.'));
 
       // 2. Act
-      final ok = await controller.save();
+      final result = await controller.save.execute();
 
       // 3. Assert
       expect(
-        [ok, controller.state.errorMessage, onSavedWith],
-        [false, 'Não foi possível salvar agora.', isEmpty],
+        [result, controller.state.errorMessage, onSavedWith],
+        [isA<Err<void>>(), 'Não foi possível salvar agora.', isEmpty],
       );
       verify(repository.uploadLogo('rotasul', convertedPng)).called(1);
       verifyNoMoreInteractions(repository);
-      expect(controller.state.isSaving, isFalse);
+      expect(controller.save.running, isFalse);
     });
 
-    test('Sad Path: a failed logo delete returns false with its message and '
+    test('Sad Path: a failed logo delete returns an Err with its message and '
         'saves no branding', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSulWithLogo);
@@ -382,12 +382,12 @@ void main() {
       ).thenAnswer((_) async => const Err('Sem permissão.'));
 
       // 2. Act
-      final ok = await controller.save();
+      final result = await controller.save.execute();
 
       // 3. Assert
       expect(
-        [ok, controller.state.errorMessage, onSavedWith],
-        [false, 'Sem permissão.', isEmpty],
+        [result, controller.state.errorMessage, onSavedWith],
+        [isA<Err<void>>(), 'Sem permissão.', isEmpty],
       );
       verify(repository.deleteLogo('rotasul')).called(1);
       verifyNoMoreInteractions(repository);
@@ -395,7 +395,7 @@ void main() {
   });
 
   group('AppearanceViewModel.save reentrancy - Unit Test Suite', () {
-    test('Happy Path: isSaving is true while the save is in flight', () async {
+    test('Happy Path: save runs while the save is in flight', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
@@ -403,58 +403,58 @@ void main() {
       stubSave(() => gate.future);
 
       // 2. Act
-      final pending = controller.save();
+      final pending = controller.save.execute();
 
       // 3. Assert
-      expect(controller.state.isSaving, isTrue);
+      expect(controller.save.running, isTrue);
       gate.complete();
       await pending;
     });
 
-    test('Happy Path: isSaving is false after the save', () async {
+    test('Happy Path: save is not running after the save', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
-      expect(controller.state.isSaving, isFalse);
+      expect(controller.save.running, isFalse);
     });
 
-    test('Edge Case: a second save while the first is in flight returns '
-        'false and does not call the repository again', () async {
+    test('Edge Case: a second save while the first is in flight is '
+        'ignored (null) and does not call the repository again', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
       final gate = Completer<void>();
       stubSave(() => gate.future);
-      final first = controller.save();
+      final first = controller.save.execute();
       await pumpEventQueue();
 
       // 2. Act
-      final second = await controller.save();
+      final second = await controller.save.execute();
 
       // 3. Assert
       gate.complete();
       await first;
-      expect(second, isFalse);
+      expect(second, isNull);
       savedBranding();
       verifyNoMoreInteractions(repository);
     });
 
-    test('Sad Path: isSaving is false after an Err', () async {
+    test('Sad Path: save is not running after an Err', () async {
       // 1. Arrange
       final controller = await controllerFor(rotaSul);
       controller.setName('Rota Norte');
       stubSave(() async {}, failure: 'Sem permissão.');
 
       // 2. Act
-      await controller.save();
+      await controller.save.execute();
 
       // 3. Assert
-      expect(controller.state.isSaving, isFalse);
+      expect(controller.save.running, isFalse);
     });
   });
 
@@ -464,7 +464,7 @@ void main() {
       final controller = await controllerFor(rotaSul);
 
       // 2. Act
-      await controller.pickLogo(pickedFile);
+      await controller.pickLogo.execute(pickedFile);
 
       // 3. Assert
       expect(
@@ -482,7 +482,7 @@ void main() {
       );
 
       // 2. Act
-      final pending = controller.pickLogo(pickedFile);
+      final pending = controller.pickLogo.execute(pickedFile);
 
       // 3. Assert
       expect(controller.state.sheet, LogoSheet.processing);
@@ -495,7 +495,7 @@ void main() {
       () async {
         // 1. Arrange
         final controller = await controllerFor(rotaSul);
-        await controller.pickLogo(pickedFile);
+        await controller.pickLogo.execute(pickedFile);
 
         // 2. Act
         controller.useCandidate();
@@ -512,6 +512,34 @@ void main() {
       },
     );
 
+    test(
+      'Edge Case: a second pick while converting is ignored (null)',
+      () async {
+        // 1. Arrange
+        final conversion = Completer<Uint8List>();
+        var conversions = 0;
+        final controller = await controllerFor(
+          rotaSul,
+          convert: (_) {
+            conversions++;
+            return conversion.future;
+          },
+        );
+        final pending = controller.pickLogo.execute(pickedFile);
+        expect(controller.pickLogo.argument, same(pickedFile));
+
+        // 2. Act
+        final second = await controller.pickLogo.execute(pickedFile);
+
+        // 3. Assert
+        expect(second, isNull);
+        expect(conversions, 1);
+        conversion.complete(convertedPng);
+        await pending;
+        expect(controller.pickLogo.argument, isNull);
+      },
+    );
+
     test('Edge Case: closeSheet is ignored while processing', () async {
       // 1. Arrange
       final conversion = Completer<Uint8List>();
@@ -519,7 +547,7 @@ void main() {
         rotaSul,
         convert: (_) => conversion.future,
       );
-      final pending = controller.pickLogo(pickedFile);
+      final pending = controller.pickLogo.execute(pickedFile);
 
       // 2. Act
       controller.closeSheet();
@@ -535,7 +563,7 @@ void main() {
       () async {
         // 1. Arrange
         final controller = await controllerFor(rotaSul);
-        await controller.pickLogo(pickedFile);
+        await controller.pickLogo.execute(pickedFile);
 
         // 2. Act
         controller.closeSheet();
@@ -565,9 +593,10 @@ void main() {
         );
 
         // 2. Act
-        await controller.pickLogo(pickedFile);
+        final result = await controller.pickLogo.execute(pickedFile);
 
         // 3. Assert
+        expect(result, isA<Ok<void>>());
         expect(
           [controller.state.sheet, controller.state.sheetError],
           [LogoSheet.error, 'O arquivo tem 12 MB. Envie um de até 10 MB.'],
@@ -582,14 +611,14 @@ void main() {
       final controller = newController(rotaSul);
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(controller.state.themes, [oceano, defaultOrganizationTheme]);
-      expect(controller.state.isLoadingThemes, isFalse);
+      expect(controller.load.running, isFalse);
     });
 
-    test('Edge Case: isLoadingThemes is true while the themes are '
+    test('Edge Case: load runs while the themes are '
         'read', () async {
       // 1. Arrange
       final gate = Completer<List<OrganizationTheme>>();
@@ -599,13 +628,13 @@ void main() {
       final controller = newController(rotaSul);
 
       // 2. Act
-      final pending = controller.load();
+      final pending = controller.load.execute();
 
       // 3. Assert
-      expect(controller.state.isLoadingThemes, isTrue);
+      expect(controller.load.running, isTrue);
       gate.complete([oceano]);
       await pending;
-      expect(controller.state.isLoadingThemes, isFalse);
+      expect(controller.load.running, isFalse);
     });
 
     test('Edge Case: an empty catalog leaves the saved theme '
@@ -617,7 +646,7 @@ void main() {
       final controller = newController(rotaSul);
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(controller.state.themes, isEmpty);
@@ -636,11 +665,11 @@ void main() {
       final controller = newController(rotaSul);
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(controller.state.themes, [defaultOrganizationTheme]);
-      expect(controller.state.isLoadingThemes, isFalse);
+      expect(controller.load.running, isFalse);
     });
   });
 
@@ -687,8 +716,8 @@ void main() {
       expect(notifications, 0);
     });
 
-    test('Edge Case: reloading themes equal by content notifies only for '
-        'the loading flag', () async {
+    test('Edge Case: reloading themes equal by content does not notify the '
+        'view model', () async {
       // 1. Arrange
       // Fresh objects on every read, as the repository builds them from
       // Firestore documents.
@@ -706,15 +735,15 @@ void main() {
         ]),
       );
       final controller = newController(rotaSul);
-      await controller.load();
+      await controller.load.execute();
       var notifications = 0;
       controller.addListener(() => notifications++);
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
-      expect(notifications, 2);
+      expect(notifications, 0);
     });
 
     test('Sad Path: a save finishing after dispose notifies nobody and does '
@@ -725,7 +754,7 @@ void main() {
       final gate = Completer<void>();
       stubSave(() => gate.future);
       var notifications = 0;
-      final pending = controller.save();
+      final pending = controller.save.execute();
       controller.addListener(() => notifications++);
       controller.dispose();
 
@@ -733,7 +762,7 @@ void main() {
       gate.complete();
 
       // 3. Assert
-      await expectLater(pending, completion(isTrue));
+      await expectLater(pending, completion(isA<Ok<void>>()));
       expect(notifications, 0);
     });
   });

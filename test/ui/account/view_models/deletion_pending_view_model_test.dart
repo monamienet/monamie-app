@@ -34,7 +34,9 @@ class _Harness {
     Completer<void>? pendingCancel,
     Result<void> entry = const Ok(null),
     Completer<void>? pendingEntry,
-  }) : session = SessionDouble(initial: SessionState.deletionPending(_kDeletion)) {
+  }) : session = SessionDouble(
+         initial: SessionState.deletionPending(_kDeletion),
+       ) {
     when(session.repository.keptOrSignIn()).thenAnswer((_) async {
       if (signInError != null) throw signInError;
       return token;
@@ -125,31 +127,53 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      await harness.controller.cancelAccountDeletion();
+      await harness.controller.cancelAccountDeletion.execute();
 
       // 3. Assert
       verify(harness.session.repository.keptOrSignIn()).called(1);
       verify(harness.repository.cancel()).called(1);
       expect(harness.controller.state.deletionRestored, isTrue);
       expect(harness.controller.state.deletionError, isEmpty);
-      expect(harness.controller.state.cancellingDeletion, isFalse);
+      expect(harness.controller.cancelAccountDeletion.running, isFalse);
     });
 
-    test('Edge Case: a second tap while the cancel runs does nothing', () async {
+    test(
+      'Edge Case: a second tap while the cancel runs does nothing',
+      () async {
+        // 1. Arrange
+        final pendingCancel = Completer<void>();
+        final harness = _Harness(pendingCancel: pendingCancel);
+        final first = harness.controller.cancelAccountDeletion.execute();
+        await pumpEventQueue();
+        expect(harness.controller.cancelAccountDeletion.running, isTrue);
+
+        // 2. Act
+        final second = await harness.controller.cancelAccountDeletion.execute();
+
+        // 3. Assert
+        expect(second, isNull);
+        verify(harness.repository.cancel()).called(1);
+        pendingCancel.complete();
+        await first;
+      },
+    );
+
+    test('Edge Case: a tap while entering runs is ignored', () async {
       // 1. Arrange
-      final pendingCancel = Completer<void>();
-      final harness = _Harness(pendingCancel: pendingCancel);
-      final first = harness.controller.cancelAccountDeletion();
-      await pumpEventQueue();
-      expect(harness.controller.state.cancellingDeletion, isTrue);
+      final pendingEntry = Completer<void>();
+      final harness = _Harness(pendingEntry: pendingEntry);
+      final entering = harness.controller.enter.execute();
+      expect(harness.controller.enter.running, isTrue);
 
       // 2. Act
-      await harness.controller.cancelAccountDeletion();
+      final cancel = await harness.controller.cancelAccountDeletion.execute();
 
       // 3. Assert
-      verify(harness.repository.cancel()).called(1);
-      pendingCancel.complete();
-      await first;
+      expect(cancel, isNull);
+      verifyNever(harness.session.repository.keptOrSignIn());
+      verifyNever(harness.repository.cancel());
+      pendingEntry.complete();
+      await entering;
     });
 
     test('Edge Case: no token (the chooser closed) cancels nothing', () async {
@@ -157,11 +181,11 @@ void main() {
       final harness = _Harness(token: null);
 
       // 2. Act
-      await harness.controller.cancelAccountDeletion();
+      await harness.controller.cancelAccountDeletion.execute();
 
       // 3. Assert
       verifyNever(harness.repository.cancel());
-      expect(harness.controller.state.cancellingDeletion, isFalse);
+      expect(harness.controller.cancelAccountDeletion.running, isFalse);
       expect(harness.controller.state.deletionRestored, isFalse);
     });
 
@@ -171,12 +195,20 @@ void main() {
       final harness = _Harness(cancel: const Err('Prazo encerrado.'));
 
       // 2. Act
-      await harness.controller.cancelAccountDeletion();
+      final result = await harness.controller.cancelAccountDeletion.execute();
 
       // 3. Assert
+      expect(
+        result,
+        isA<Err<void>>().having(
+          (err) => err.message,
+          'message',
+          'Prazo encerrado.',
+        ),
+      );
       expect(harness.controller.state.deletionError, 'Prazo encerrado.');
       expect(harness.controller.state.deletionRestored, isFalse);
-      expect(harness.controller.state.cancellingDeletion, isFalse);
+      expect(harness.controller.cancelAccountDeletion.running, isFalse);
     });
 
     test('Sad Path: a failed Google sign-in shows a generic message and '
@@ -185,9 +217,11 @@ void main() {
       final harness = _Harness(signInError: Exception('offline'));
 
       // 2. Act
-      await harness.controller.cancelAccountDeletion();
+      final result = await harness.controller.cancelAccountDeletion.execute();
 
       // 3. Assert
+      expect(result, isA<Err<void>>());
+      expect(harness.controller.cancelAccountDeletion.running, isFalse);
       verifyNever(harness.repository.cancel());
       expect(
         harness.controller.state.deletionError,
@@ -199,70 +233,79 @@ void main() {
   });
 
   group('DeletionPendingViewModel.enter - Unit Test Suite', () {
-    test('Happy Path: after the cancel, enters without the deletion check', () async {
-      // 1. Arrange
-      final harness = _Harness();
-      await harness.controller.cancelAccountDeletion();
+    test(
+      'Happy Path: after the cancel, enters without the deletion check',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        await harness.controller.cancelAccountDeletion.execute();
 
-      // 2. Act
-      final result = await harness.controller.enter();
+        // 2. Act
+        final result = await harness.controller.enter.execute();
 
-      // 3. Assert
-      expect(result, isA<Ok<void>>());
-      expect(harness.checkDeletions(), [false]);
-      expect(harness.controller.state.isLoading, isFalse);
-    });
+        // 3. Assert
+        expect(result, isA<Ok<void>>());
+        expect(harness.checkDeletions(), [false]);
+        expect(harness.controller.enter.running, isFalse);
+      },
+    );
 
-    test('Edge Case: before any cancel the deletion is checked again', () async {
-      // 1. Arrange
-      final harness = _Harness();
+    test(
+      'Edge Case: before any cancel the deletion is checked again',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
 
-      // 2. Act
-      await harness.controller.enter();
+        // 2. Act
+        await harness.controller.enter.execute();
 
-      // 3. Assert
-      expect(harness.checkDeletions(), [true]);
-    });
+        // 3. Assert
+        expect(harness.checkDeletions(), [true]);
+      },
+    );
 
     test('Edge Case: a second tap while entering does nothing', () async {
       // 1. Arrange
       final pendingEntry = Completer<void>();
       final harness = _Harness(pendingEntry: pendingEntry);
-      final first = harness.controller.enter();
-      expect(harness.controller.state.isLoading, isTrue);
+      final first = harness.controller.enter.execute();
+      expect(harness.controller.enter.running, isTrue);
 
       // 2. Act
-      final second = await harness.controller.enter();
+      final second = await harness.controller.enter.execute();
 
       // 3. Assert
-      expect(second, isA<Ok<void>>());
+      expect(second, isNull);
       expect(harness.checkDeletions(), hasLength(1));
       pendingEntry.complete();
       await first;
     });
 
-    test('Sad Path: a failing entry returns why, titled "Erro de Login"', () async {
-      // 1. Arrange
-      final harness = _Harness(
-        entry: Err('Não foi possível entrar agora', error: Exception('x')),
-      );
+    test(
+      'Sad Path: a failing entry returns why, titled "Erro de Login"',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(
+          entry: Err('Não foi possível entrar agora', error: Exception('x')),
+        );
 
-      // 2. Act
-      final result = await harness.controller.enter();
+        // 2. Act
+        final result = await harness.controller.enter.execute();
 
-      // 3. Assert
-      expect(
-        result,
-        isA<Err<void>>()
-            .having((err) => err.title, 'title', 'Erro de Login')
-            .having(
-              (err) => err.message,
-              'message',
-              startsWith('Não foi possível verificar agora'),
-            ),
-      );
-      expect(harness.controller.state.isLoading, isFalse);
-    });
+        // 3. Assert
+        expect(
+          result,
+          isA<Err<void>>()
+              .having((err) => err.title, 'title', 'Erro de Login')
+              .having(
+                (err) => err.message,
+                'message',
+                startsWith('Não foi possível verificar agora'),
+              ),
+        );
+        expect(harness.controller.enter.running, isFalse);
+      },
+    );
   });
 
   group('DeletionPendingViewModel.logout - Unit Test Suite', () {
@@ -271,7 +314,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      final result = await harness.controller.logout();
+      final result = await harness.controller.logout.execute();
 
       // 3. Assert
       expect(result, isA<Ok<bool>>());

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'package:monamie_app/data/repositories/administrators/administrators_repository.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'administrators_state.dart';
 
@@ -8,9 +9,9 @@ export 'administrators_state.dart';
 
 /// State of *Administradores*, the owner's screen: who administers the
 /// organization, appointing a member and turning an administrator back
-/// into a member. One change at a time: [AdministratorsState.workingEmail]
-/// guards reentrancy and marks the row in flight; it always resets in
-/// `finally`. The screen calls [load] when it opens.
+/// into a member. One change at a time: [setAdministrator] ignores a call
+/// while one runs, and its [Command1.argument] marks the row in flight. The
+/// screen runs [load] when it opens.
 class AdministratorsViewModel extends ChangeNotifier {
   AdministratorsViewModel({
     required this.organizationId,
@@ -38,50 +39,51 @@ class AdministratorsViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    load.dispose();
+    setAdministrator.dispose();
     super.dispose();
   }
 
-  Future<void> load() async {
-    if (_state.isLoading) return;
-    _emit(_state.copyWith(isLoading: true, errorMessage: ''));
-    try {
-      switch (await repository.list(organizationId)) {
-        case Ok(value: final people):
-          _emit(_state.copyWith(people: people));
-        case Err(:final message):
-          _emit(_state.copyWith(errorMessage: message));
-      }
-    } finally {
-      _emit(_state.copyWith(isLoading: false));
-    }
+  /// Reads the administrators and the members. The failure is also kept in
+  /// [AdministratorsState.errorMessage].
+  late final Command0<void> load = Command0(_load);
+
+  /// Makes `email` an administrator (`admin` true) or a member again, then
+  /// reads the list again. The failure is also kept in
+  /// [AdministratorsState.errorMessage]. Ignored while [load] runs.
+  late final Command1<void, ({String email, bool admin})> setAdministrator =
+      Command1(_setAdministrator, blocked: () => load.running);
+
+  Future<Result<void>> _load() async {
+    _emit(_state.copyWith(errorMessage: ''));
+    return _list();
   }
 
-  /// Makes [email] an administrator ([admin] true) or a member again;
-  /// returns whether it changed (the message is in
-  /// [AdministratorsState.errorMessage] when not).
-  Future<bool> setAdministrator(String email, {required bool admin}) async {
-    if (_state.workingEmail != null || _state.isLoading) return false;
-    _emit(_state.copyWith(workingEmail: email, errorMessage: ''));
-    try {
-      final changed = await repository.setAdministrator(
-        organizationId,
-        email,
-        admin: admin,
-      );
-      if (changed case Err(:final message)) {
+  /// Reads the list into the state.
+  Future<Result<void>> _list() async {
+    final listed = await repository.list(organizationId);
+    switch (listed) {
+      case Ok(value: final people):
+        _emit(_state.copyWith(people: people));
+      case Err(:final message):
         _emit(_state.copyWith(errorMessage: message));
-        return false;
-      }
-      switch (await repository.list(organizationId)) {
-        case Ok(value: final people):
-          _emit(_state.copyWith(people: people));
-          return true;
-        case Err(:final message):
-          _emit(_state.copyWith(errorMessage: message));
-          return false;
-      }
-    } finally {
-      _emit(_state.copyWith(workingEmail: null));
     }
+    return listed;
+  }
+
+  Future<Result<void>> _setAdministrator(
+    ({String email, bool admin}) change,
+  ) async {
+    _emit(_state.copyWith(errorMessage: ''));
+    final changed = await repository.setAdministrator(
+      organizationId,
+      change.email,
+      admin: change.admin,
+    );
+    if (changed case Err(:final message)) {
+      _emit(_state.copyWith(errorMessage: message));
+      return changed;
+    }
+    return _list();
   }
 }

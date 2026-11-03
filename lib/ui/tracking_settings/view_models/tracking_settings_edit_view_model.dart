@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
 
+import 'package:monamie_app/utils/command.dart';
+import 'package:monamie_app/utils/result.dart';
 import 'tracking_settings_edit_state.dart';
 
 export 'tracking_settings_edit_state.dart';
 
 /// State of *Ajustes de acompanhamento*: an administrator picks a preset or custom
-/// values and saves them for everyone in the field. The screen calls [load]
+/// values and saves them for everyone in the field. The screen runs [load]
 /// when it opens.
 class TrackingSettingsEditViewModel extends ChangeNotifier {
   TrackingSettingsEditViewModel({
@@ -37,18 +39,27 @@ class TrackingSettingsEditViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    load.dispose();
+    save.dispose();
     super.dispose();
   }
 
   /// Reads the plan's minimum period; nothing is restricted when it cannot
-  /// be read.
-  Future<void> load() async {
+  /// be read (so it always ends [Ok]).
+  late final Command0<void> load = Command0(_load);
+
+  /// Saves the draft. The failure is also kept in
+  /// [TrackingSettingsEditState.errorMessage]. Ignored without changes.
+  late final Command0<void> save = Command0(_save, blocked: () => !hasChanges);
+
+  Future<Result<void>> _load() async {
     try {
       final minutes = await _repository.minPeriodMinutes();
       _emit(_state.copyWith(minPeriodMinutes: minutes));
     } catch (e) {
       debugPrint('[TrackingSettings] Could not read the plan: $e');
     }
+    return const Ok(null);
   }
 
   bool get hasChanges => _state.draft != _state.savedSettings;
@@ -61,7 +72,7 @@ class TrackingSettingsEditViewModel extends ChangeNotifier {
           option.periodMinutes! >= _state.minPeriodMinutes);
 
   void pickPreset(TrackingPreset option) {
-    if (_state.isSaving || !allows(option)) return;
+    if (save.running || !allows(option)) return;
     final settings = option.settings;
     _emit(
       _state.copyWith(
@@ -73,7 +84,7 @@ class TrackingSettingsEditViewModel extends ChangeNotifier {
   }
 
   void setPeriod(int minutes) {
-    if (_state.isSaving ||
+    if (save.running ||
         !allows(TrackingPreset.personalizado) ||
         minutes < _state.minPeriodMinutes) {
       return;
@@ -90,7 +101,7 @@ class TrackingSettingsEditViewModel extends ChangeNotifier {
   }
 
   void setRadius(int meters) {
-    if (_state.isSaving || !allows(TrackingPreset.personalizado)) return;
+    if (save.running || !allows(TrackingPreset.personalizado)) return;
     _emit(
       _state.copyWith(
         justSaved: false,
@@ -102,26 +113,19 @@ class TrackingSettingsEditViewModel extends ChangeNotifier {
     );
   }
 
-  /// Saves the draft. Returns whether it worked.
-  Future<bool> save() async {
-    if (_state.isSaving || !hasChanges) return false;
-    _emit(_state.copyWith(isSaving: true, errorMessage: ''));
+  Future<Result<void>> _save() async {
+    _emit(_state.copyWith(errorMessage: ''));
     try {
       await _repository.save(_state.draft);
       _emit(_state.copyWith(savedSettings: _state.draft, justSaved: true));
-      return true;
-    } catch (e) {
+      return const Ok(null);
+    } catch (e, stackTrace) {
       debugPrint('[TrackingSettings] Save failed: $e');
-      _emit(
-        _state.copyWith(
-          errorMessage:
-              'Não foi possível salvar agora. Verifique a conexão e tente de '
-              'novo.',
-        ),
-      );
-      return false;
-    } finally {
-      _emit(_state.copyWith(isSaving: false));
+      const message =
+          'Não foi possível salvar agora. Verifique a conexão e tente de '
+          'novo.';
+      _emit(_state.copyWith(errorMessage: message));
+      return Err(message, error: e, stackTrace: stackTrace);
     }
   }
 }

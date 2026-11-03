@@ -16,9 +16,7 @@ T _$identity<T>(T value) => value;
 mixin _$GroupsState {
 
 /// The groups the person manages (every group for an administrator).
- List<Group> get groups;/// Whether the list is being (re)loaded.
- bool get isLoading;/// Whether an operation (create, rename, delete, roles, remove) runs.
- bool get isWorking;/// Why the last load or operation failed; empty when it did not.
+ List<Group> get groups;/// Why the last load or operation failed; empty when it did not.
  String get errorMessage;
 /// Create a copy of GroupsState
 /// with the given fields replaced by the non-null parameter values.
@@ -31,20 +29,20 @@ $GroupsStateCopyWith<GroupsState> get copyWith => _$GroupsStateCopyWithImpl<Grou
 @override
 bool operator ==(Object other) {
   final _this = this as GroupsState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupsState&&const DeepCollectionEquality().equals(other.groups, _this.groups)&&(identical(other.isLoading, _this.isLoading) || other.isLoading == _this.isLoading)&&(identical(other.isWorking, _this.isWorking) || other.isWorking == _this.isWorking)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GroupsState&&const DeepCollectionEquality().equals(other.groups, _this.groups)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
 }
 
 
 @override
 int get hashCode {
   final _this = this as GroupsState;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.groups),_this.isLoading,_this.isWorking,_this.errorMessage);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.groups),_this.errorMessage);
 }
 
 @override
 String toString() {
   final _this = this as GroupsState;
-  return 'GroupsState(groups: ${_this.groups}, isLoading: ${_this.isLoading}, isWorking: ${_this.isWorking}, errorMessage: ${_this.errorMessage})';
+  return 'GroupsState(groups: ${_this.groups}, errorMessage: ${_this.errorMessage})';
 }
 
 
@@ -55,7 +53,7 @@ abstract mixin class $GroupsStateCopyWith<$Res>  {
   factory $GroupsStateCopyWith(GroupsState value, $Res Function(GroupsState) _then) = _$GroupsStateCopyWithImpl;
 @useResult
 $Res call({
- List<Group> groups, bool isLoading, bool isWorking, String errorMessage
+ List<Group> groups, String errorMessage
 });
 
 
@@ -72,12 +70,10 @@ class _$GroupsStateCopyWithImpl<$Res>
 
 /// Create a copy of GroupsState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? groups = null,Object? isLoading = null,Object? isWorking = null,Object? errorMessage = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? groups = null,Object? errorMessage = null,}) {
   return _then(GroupsState(
 groups: null == groups ? _self.groups : groups // ignore: cast_nullable_to_non_nullable
-as List<Group>,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
-as bool,isWorking: null == isWorking ? _self.isWorking : isWorking // ignore: cast_nullable_to_non_nullable
-as bool,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as List<Group>,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -163,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<Group> groups,  bool isLoading,  bool isWorking,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<Group> groups,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GroupsState() when $default != null:
-return $default(_that.groups,_that.isLoading,_that.isWorking,_that.errorMessage);case _:
+return $default(_that.groups,_that.errorMessage);case _:
   return orElse();
 
 }
@@ -184,10 +180,10 @@ return $default(_that.groups,_that.isLoading,_that.isWorking,_that.errorMessage)
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<Group> groups,  bool isLoading,  bool isWorking,  String errorMessage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<Group> groups,  String errorMessage)  $default,) {final _that = this;
 switch (_that) {
 case _GroupsState():
-return $default(_that.groups,_that.isLoading,_that.isWorking,_that.errorMessage);case _:
+return $default(_that.groups,_that.errorMessage);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -204,10 +200,10 @@ return $default(_that.groups,_that.isLoading,_that.isWorking,_that.errorMessage)
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<Group> groups,  bool isLoading,  bool isWorking,  String errorMessage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<Group> groups,  String errorMessage)?  $default,) {final _that = this;
 switch (_that) {
 case _GroupsState() when $default != null:
-return $default(_that.groups,_that.isLoading,_that.isWorking,_that.errorMessage);case _:
+return $default(_that.groups,_that.errorMessage);case _:
   return null;
 
 }
@@ -219,7 +215,7 @@ return $default(_that.groups,_that.isLoading,_that.isWorking,_that.errorMessage)
 
 
 class _GroupsState implements GroupsState {
-  const _GroupsState({ List<Group> groups = const [], this.isLoading = false, this.isWorking = false, this.errorMessage = ''}): _groups = groups;
+  const _GroupsState({ List<Group> groups = const [], this.errorMessage = ''}): _groups = groups;
   
 
 /// The groups the person manages (every group for an administrator).
@@ -231,10 +227,6 @@ class _GroupsState implements GroupsState {
   return EqualUnmodifiableListView(_groups);
 }
 
-/// Whether the list is being (re)loaded.
-@override@JsonKey() final  bool isLoading;
-/// Whether an operation (create, rename, delete, roles, remove) runs.
-@override@JsonKey() final  bool isWorking;
 /// Why the last load or operation failed; empty when it did not.
 @override@JsonKey() final  String errorMessage;
 
@@ -248,18 +240,18 @@ _$GroupsStateCopyWith<_GroupsState> get copyWith => __$GroupsStateCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupsState&&const DeepCollectionEquality().equals(other.groups, _groups)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.isWorking, isWorking) || other.isWorking == isWorking)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GroupsState&&const DeepCollectionEquality().equals(other.groups, _groups)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_groups),isLoading,isWorking,errorMessage);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_groups),errorMessage);
 }
 
 @override
 String toString() {
-    return 'GroupsState(groups: $groups, isLoading: $isLoading, isWorking: $isWorking, errorMessage: $errorMessage)';
+    return 'GroupsState(groups: $groups, errorMessage: $errorMessage)';
 }
 
 
@@ -270,7 +262,7 @@ abstract mixin class _$GroupsStateCopyWith<$Res> implements $GroupsStateCopyWith
   factory _$GroupsStateCopyWith(_GroupsState value, $Res Function(_GroupsState) _then) = __$GroupsStateCopyWithImpl;
 @override @useResult
 $Res call({
- List<Group> groups, bool isLoading, bool isWorking, String errorMessage
+ List<Group> groups, String errorMessage
 });
 
 
@@ -287,12 +279,10 @@ class __$GroupsStateCopyWithImpl<$Res>
 
 /// Create a copy of GroupsState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? groups = null,Object? isLoading = null,Object? isWorking = null,Object? errorMessage = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? groups = null,Object? errorMessage = null,}) {
   return _then(_GroupsState(
 groups: null == groups ? _self._groups : groups // ignore: cast_nullable_to_non_nullable
-as List<Group>,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
-as bool,isWorking: null == isWorking ? _self.isWorking : isWorking // ignore: cast_nullable_to_non_nullable
-as bool,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as List<Group>,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

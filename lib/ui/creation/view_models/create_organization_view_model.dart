@@ -7,6 +7,7 @@ import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 
 import 'create_organization_state.dart';
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 
 export 'create_organization_state.dart';
@@ -67,7 +68,7 @@ String? idFormatProblem(String id) {
 }
 
 /// State of *Criar organização*: name and identifier, theme, plan, review,
-/// then the creation itself. The screen calls [load] when it opens; its
+/// then the creation itself. The screen runs [load] when it opens; its
 /// route disposes the controller when it closes, which stops the pending id
 /// check.
 class CreateOrganizationViewModel extends ChangeNotifier {
@@ -108,7 +109,7 @@ class CreateOrganizationViewModel extends ChangeNotifier {
 
   /// Picks [id] when it is offered and nothing is being created.
   void pickPlan(String id) {
-    if (_state.isCreating || !offeredPlans.contains(id)) return;
+    if (create.running || !offeredPlans.contains(id)) return;
     _emit(_state.copyWith(plan: id));
   }
 
@@ -119,12 +120,25 @@ class CreateOrganizationViewModel extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _timer?.cancel();
+    load.dispose();
+    create.dispose();
     super.dispose();
   }
 
   /// Loads the themes that can be picked; the default theme alone when the
-  /// catalog cannot be read.
-  Future<void> load() async {
+  /// catalog cannot be read (so it always ends [Ok]).
+  late final Command0<void> load = Command0(_load);
+
+  /// Creates the organization; [Ok] holds its status, also kept in
+  /// [CreateOrganizationState.result]. The failure is also kept in
+  /// [CreateOrganizationState.errorMessage]. Ignored until
+  /// [canContinueFromName].
+  late final Command0<String> create = Command0(
+    _create,
+    blocked: () => !canContinueFromName,
+  );
+
+  Future<Result<void>> _load() async {
     try {
       final themes = pickableThemes((await _themes.themes()).values);
       _emit(_state.copyWith(themes: themes));
@@ -132,6 +146,7 @@ class CreateOrganizationViewModel extends ChangeNotifier {
       debugPrint('[Creation] Could not load themes: $e');
       _emit(_state.copyWith(themes: [defaultOrganizationTheme]));
     }
+    return const Ok(null);
   }
 
   OrganizationTheme get pickedTheme =>
@@ -197,28 +212,20 @@ class CreateOrganizationViewModel extends ChangeNotifier {
   bool get canContinueFromName =>
       nameValid && _state.idCheck == IdCheck.available;
 
-  /// Creates the organization. Returns whether the call went through (the
-  /// status is in [CreateOrganizationState.result]).
-  Future<bool> create() async {
-    if (_state.isCreating || !canContinueFromName) return false;
-    _emit(_state.copyWith(isCreating: true, errorMessage: ''));
-    try {
-      final created = await _repository.create(
-        id: _state.id,
-        name: _state.name.trim(),
-        themeId: _state.themeId,
-        plan: _state.plan,
-      );
-      switch (created) {
-        case Ok(value: final result):
-          _emit(_state.copyWith(result: result));
-          return true;
-        case Err(:final message):
-          _emit(_state.copyWith(errorMessage: message));
-          return false;
-      }
-    } finally {
-      _emit(_state.copyWith(isCreating: false));
+  Future<Result<String>> _create() async {
+    _emit(_state.copyWith(errorMessage: ''));
+    final created = await _repository.create(
+      id: _state.id,
+      name: _state.name.trim(),
+      themeId: _state.themeId,
+      plan: _state.plan,
+    );
+    switch (created) {
+      case Ok(value: final result):
+        _emit(_state.copyWith(result: result));
+      case Err(:final message):
+        _emit(_state.copyWith(errorMessage: message));
     }
+    return created;
   }
 }

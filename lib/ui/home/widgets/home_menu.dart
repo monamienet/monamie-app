@@ -53,11 +53,12 @@ class HomeMenu extends StatelessWidget {
   /// The messenger outlives the menu (and the home screen, on sign-out).
   Future<void> _closeAndRun(
     BuildContext context,
-    Future<Result<Object?>> Function() action,
+    Future<Result<Object?>?> Function() action,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
-    showErrorOf(messenger, await action());
+    final result = await action();
+    if (result != null) showErrorOf(messenger, result);
   }
 
   @override
@@ -81,7 +82,8 @@ class HomeMenu extends StatelessWidget {
               _MenuItem(
                 icon: Icons.swap_horiz,
                 label: 'Trocar de organização',
-                onTap: () => _closeAndRun(context, _auth.switchOrganization),
+                onTap: () =>
+                    _closeAndRun(context, _auth.switchOrganization.execute),
               ),
               ListenableBuilder(
                 listenable: _groups.capabilities,
@@ -101,19 +103,16 @@ class HomeMenu extends StatelessWidget {
               // stops: leaving in the middle of the start could turn the
               // service on after the sign-out.
               ListenableBuilder(
-                listenable: Listenable.merge([
-                  _auth,
-                  _tracking.isTrackingLoading,
-                ]),
+                listenable: Listenable.merge([_auth, _tracking.toggleService]),
                 builder: (context, _) {
-                  final trackingBusy = _tracking.isTrackingLoading.value;
+                  final trackingBusy = _tracking.toggleService.running;
                   final loggingOut = _auth.state.isLoggingOut;
                   return _MenuItem(
                     icon: Icons.logout,
                     label: 'Sair',
                     onTap: loggingOut || trackingBusy
                         ? null
-                        : () => _closeAndRun(context, _auth.logout),
+                        : () => _closeAndRun(context, _auth.logout.execute),
                   );
                 },
               ),
@@ -299,7 +298,13 @@ class HomeMenu extends StatelessWidget {
     final organizationId = Organization.current?.id;
     // The owner-only entry needs to know who owns the organization: read
     // once per organization, while the menu is open.
-    if (organizationId != null) _auth.loadOwnership(organizationId);
+    // After the frame: the command notifies when it starts, which must not
+    // happen while the menu is building.
+    if (organizationId != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _auth.loadOwnership.execute(organizationId),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Column(

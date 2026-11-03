@@ -25,8 +25,6 @@ abstract class AppearanceState with _$AppearanceState {
 
     /// The themes that can be picked.
     @Default([]) List<OrganizationTheme> themes,
-    @Default(true) bool isLoadingThemes,
-    @Default(false) bool isSaving,
     @Default(LogoSheet.closed) LogoSheet sheet,
 
     /// Why the picked file cannot be used (with [LogoSheet.error]).

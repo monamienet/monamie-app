@@ -4,14 +4,13 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i4;
-import 'dart:ui' as _i7;
+import 'dart:async' as _i5;
+import 'dart:ui' as _i6;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i6;
 import 'package:monamie_app/ui/auth/view_models/login_state.dart' as _i2;
-import 'package:monamie_app/ui/auth/view_models/login_view_model.dart' as _i3;
-import 'package:monamie_app/utils/result.dart' as _i5;
+import 'package:monamie_app/ui/auth/view_models/login_view_model.dart' as _i4;
+import 'package:monamie_app/utils/command.dart' as _i3;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -34,10 +33,15 @@ class _FakeLoginState_0 extends _i1.SmartFake implements _i2.LoginState {
     : super(parent, parentInvocation);
 }
 
+class _FakeCommand0_1<T> extends _i1.SmartFake implements _i3.Command0<T> {
+  _FakeCommand0_1(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [LoginViewModel].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockLoginViewModel extends _i1.Mock implements _i3.LoginViewModel {
+class MockLoginViewModel extends _i1.Mock implements _i4.LoginViewModel {
   @override
   _i2.LoginState get state =>
       (super.noSuchMethod(
@@ -49,6 +53,36 @@ class MockLoginViewModel extends _i1.Mock implements _i3.LoginViewModel {
             ),
           )
           as _i2.LoginState);
+
+  @override
+  _i3.Command0<void> get restoreSession =>
+      (super.noSuchMethod(
+            Invocation.getter(#restoreSession),
+            returnValue: _FakeCommand0_1<void>(
+              this,
+              Invocation.getter(#restoreSession),
+            ),
+            returnValueForMissingStub: _FakeCommand0_1<void>(
+              this,
+              Invocation.getter(#restoreSession),
+            ),
+          )
+          as _i3.Command0<void>);
+
+  @override
+  _i3.Command0<void> get loginGoogle =>
+      (super.noSuchMethod(
+            Invocation.getter(#loginGoogle),
+            returnValue: _FakeCommand0_1<void>(
+              this,
+              Invocation.getter(#loginGoogle),
+            ),
+            returnValueForMissingStub: _FakeCommand0_1<void>(
+              this,
+              Invocation.getter(#loginGoogle),
+            ),
+          )
+          as _i3.Command0<void>);
 
   @override
   bool get hasListeners =>
@@ -66,50 +100,22 @@ class MockLoginViewModel extends _i1.Mock implements _i3.LoginViewModel {
   );
 
   @override
-  _i4.Future<void> restoreSession() =>
-      (super.noSuchMethod(
-            Invocation.method(#restoreSession, []),
-            returnValue: _i4.Future<void>.value(),
-            returnValueForMissingStub: _i4.Future<void>.value(),
-          )
-          as _i4.Future<void>);
-
-  @override
-  _i4.Future<bool> hasActiveGoogleBond() =>
+  _i5.Future<bool> hasActiveGoogleBond() =>
       (super.noSuchMethod(
             Invocation.method(#hasActiveGoogleBond, []),
-            returnValue: _i4.Future<bool>.value(false),
-            returnValueForMissingStub: _i4.Future<bool>.value(false),
+            returnValue: _i5.Future<bool>.value(false),
+            returnValueForMissingStub: _i5.Future<bool>.value(false),
           )
-          as _i4.Future<bool>);
+          as _i5.Future<bool>);
 
   @override
-  _i4.Future<_i5.Result<void>> loginGoogle() =>
-      (super.noSuchMethod(
-            Invocation.method(#loginGoogle, []),
-            returnValue: _i4.Future<_i5.Result<void>>.value(
-              _i6.dummyValue<_i5.Result<void>>(
-                this,
-                Invocation.method(#loginGoogle, []),
-              ),
-            ),
-            returnValueForMissingStub: _i4.Future<_i5.Result<void>>.value(
-              _i6.dummyValue<_i5.Result<void>>(
-                this,
-                Invocation.method(#loginGoogle, []),
-              ),
-            ),
-          )
-          as _i4.Future<_i5.Result<void>>);
-
-  @override
-  void addListener(_i7.VoidCallback? listener) => super.noSuchMethod(
+  void addListener(_i6.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#addListener, [listener]),
     returnValueForMissingStub: null,
   );
 
   @override
-  void removeListener(_i7.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i6.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#removeListener, [listener]),
     returnValueForMissingStub: null,
   );

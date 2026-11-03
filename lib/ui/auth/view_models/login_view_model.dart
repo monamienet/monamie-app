@@ -5,6 +5,7 @@ import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/data/services/auth/google_bond_check.dart';
 import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/ui/auth/view_models/login_state.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
@@ -63,6 +64,8 @@ class LoginViewModel extends ChangeNotifier {
     _disposed = true;
     _session.googleReady.removeListener(_onGoogleReady);
     _webSignInSub.cancel();
+    restoreSession.dispose();
+    loginGoogle.dispose();
     super.dispose();
   }
 
@@ -70,15 +73,26 @@ class LoginViewModel extends ChangeNotifier {
   /// example after Android kills the process while the person is in the
   /// system settings. Without it they would have to sign in again.
   ///
-  /// Called by *Login* after its first frame; runs once per view model.
-  Future<void> restoreSession() async {
-    if (_restoreStarted) return;
+  /// Run by *Login* after its first frame; only the first run does
+  /// anything ([LoginState.isRestoringSession] is `true` until it ends).
+  late final Command0<void> restoreSession = Command0(_restoreSession);
+
+  /// "Entrar com o Google". [Err] says why the sign-in failed. Ignored
+  /// while a web sign-in enters an organization ([LoginState.isLoading]).
+  late final Command0<void> loginGoogle = Command0(
+    _loginGoogle,
+    blocked: () => _state.isLoading,
+  );
+
+  Future<Result<void>> _restoreSession() async {
+    if (_restoreStarted) return const Ok(null);
     _restoreStarted = true;
     try {
       // The router follows the session to the map.
       if (await hasActiveGoogleBond()) {
         _session.moveTo(const SessionState.bound());
       }
+      return const Ok(null);
     } finally {
       _emit(_state.copyWith(isRestoringSession: false));
     }
@@ -87,11 +101,7 @@ class LoginViewModel extends ChangeNotifier {
   /// See [GoogleBondCheck.hasActiveBond].
   Future<bool> hasActiveGoogleBond() => _bondCheck.hasActiveBond();
 
-  /// "Entrar com o Google". [Err] says why the sign-in failed; [Ok] also
-  /// while another sign-in runs.
-  Future<Result<void>> loginGoogle() async {
-    if (_state.isLoading || _state.isChoosingAccount) return const Ok(null);
-    _emit(_state.copyWith(isChoosingAccount: true));
+  Future<Result<void>> _loginGoogle() async {
     try {
       // The spinner waits for an account: while Google's chooser is open there
       // is no organization to look for yet.
@@ -115,13 +125,7 @@ class LoginViewModel extends ChangeNotifier {
     } catch (e, stackTrace) {
       return _loginError("Ocorreu um erro inesperado: $e", e, stackTrace);
     } finally {
-      _emit(
-        _state.copyWith(
-          isLoading: false,
-          isChoosingAccount: false,
-          enteringOrganizationName: null,
-        ),
-      );
+      _emit(_state.copyWith(isLoading: false, enteringOrganizationName: null));
     }
   }
 

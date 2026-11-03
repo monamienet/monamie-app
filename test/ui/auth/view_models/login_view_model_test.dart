@@ -73,8 +73,7 @@ class _Harness {
       ),
     ).thenAnswer((invocation) async {
       await chooser?.future;
-      (invocation.namedArguments[#onAccountChosen] as void Function()?)
-          ?.call();
+      (invocation.namedArguments[#onAccountChosen] as void Function()?)?.call();
       if (signInError != null) throw signInError;
       return idToken;
     });
@@ -136,7 +135,7 @@ void main() {
         final harness = _Harness(bondCheck: _bondCheck(hasBond: true));
 
         // 2. Act
-        await harness.controller.restoreSession();
+        await harness.controller.restoreSession.execute();
 
         // 3. Assert
         expect(harness.session.moves, [const SessionState.bound()]);
@@ -150,7 +149,7 @@ void main() {
         final harness = _Harness(bondCheck: _bondCheck(hasBond: true));
 
         // 2. Act
-        await harness.controller.restoreSession();
+        await harness.controller.restoreSession.execute();
 
         // 3. Assert
         expect(harness.controller.state.isRestoringSession, isFalse);
@@ -165,7 +164,7 @@ void main() {
         final harness = _Harness(bondCheck: bondCheck);
 
         // 2. Act
-        await harness.controller.restoreSession();
+        await harness.controller.restoreSession.execute();
 
         // 3. Assert
         verify(bondCheck.hasActiveBond()).called(1);
@@ -180,7 +179,7 @@ void main() {
         final harness = _Harness(bondCheck: _bondCheck(pending: pending));
 
         // 2. Act
-        unawaited(harness.controller.restoreSession());
+        unawaited(harness.controller.restoreSession.execute());
         await pumpEventQueue();
 
         // 3. Assert
@@ -190,22 +189,25 @@ void main() {
       },
     );
 
-    test('Edge Case: a second call checks nothing and notifies nothing', () async {
-      // 1. Arrange
-      final bondCheck = _bondCheck(hasBond: true);
-      final harness = _Harness(bondCheck: bondCheck);
-      await harness.controller.restoreSession();
-      var notifications = 0;
-      harness.controller.addListener(() => notifications++);
+    test(
+      'Edge Case: a second call checks nothing and notifies nothing',
+      () async {
+        // 1. Arrange
+        final bondCheck = _bondCheck(hasBond: true);
+        final harness = _Harness(bondCheck: bondCheck);
+        await harness.controller.restoreSession.execute();
+        var notifications = 0;
+        harness.controller.addListener(() => notifications++);
 
-      // 2. Act
-      await harness.controller.restoreSession();
+        // 2. Act
+        await harness.controller.restoreSession.execute();
 
-      // 3. Assert
-      verify(bondCheck.hasActiveBond()).called(1);
-      expect(harness.session.moves, [const SessionState.bound()]);
-      expect(notifications, 0);
-    });
+        // 3. Assert
+        verify(bondCheck.hasActiveBond()).called(1);
+        expect(harness.session.moves, [const SessionState.bound()]);
+        expect(notifications, 0);
+      },
+    );
 
     test(
       'Sad Path: Deve permanecer no login e finalizar isRestoringSession como false quando não houver sessão ativa',
@@ -216,7 +218,7 @@ void main() {
         harness.controller.addListener(() => notifications++);
 
         // 2. Act
-        await harness.controller.restoreSession();
+        await harness.controller.restoreSession.execute();
 
         // 3. Assert
         expect(harness.wentToMap, isFalse);
@@ -235,10 +237,11 @@ void main() {
         // 2. Act
         // restoreSession has only try/finally (no catch) and the screen
         // starts it without await: the error escapes to the caller.
-        final restore = harness.controller.restoreSession();
+        final restore = harness.controller.restoreSession.execute();
 
         // 3. Assert
         await expectLater(restore, throwsA(same(failure)));
+        expect(harness.controller.restoreSession.running, isFalse);
         expect(harness.controller.state.isRestoringSession, isFalse);
         expect(harness.wentToMap, isFalse);
       },
@@ -299,10 +302,10 @@ void main() {
             last = controller.state.isLoading;
             loadingHistory.add(last);
           });
-          final login = controller.loginGoogle();
+          final login = controller.loginGoogle.execute();
           await pumpEventQueue();
           final loadingWhileChooserOpen = controller.state.isLoading;
-          final guardedWhileChooserOpen = controller.state.isChoosingAccount;
+          final guardedWhileChooserOpen = controller.loginGoogle.running;
           final historyWhileChooserOpen = List<bool>.of(loadingHistory);
 
           // 2. Act
@@ -314,7 +317,7 @@ void main() {
           expect(guardedWhileChooserOpen, isTrue);
           expect(historyWhileChooserOpen, isEmpty);
           expect(loadingHistory, [true, false]);
-          expect(controller.state.isChoosingAccount, isFalse);
+          expect(controller.loginGoogle.running, isFalse);
         },
       );
 
@@ -324,14 +327,14 @@ void main() {
           // 1. Arrange
           final chooser = Completer<void>();
           final harness = _Harness(chooser: chooser);
-          final first = harness.controller.loginGoogle();
+          final first = harness.controller.loginGoogle.execute();
           await pumpEventQueue();
 
           // 2. Act
-          final second = await harness.controller.loginGoogle();
+          final second = await harness.controller.loginGoogle.execute();
 
           // 3. Assert
-          expect(second, isA<Ok<void>>());
+          expect(second, isNull);
           verify(
             harness.session.repository.signInGoogle(
               onAccountChosen: anyNamed('onAccountChosen'),
@@ -351,9 +354,10 @@ void main() {
           final controller = harness.controller;
           var loadingEverTrue = false;
           controller.addListener(
-            () => loadingEverTrue = loadingEverTrue || controller.state.isLoading,
+            () =>
+                loadingEverTrue = loadingEverTrue || controller.state.isLoading,
           );
-          final login = controller.loginGoogle();
+          final login = controller.loginGoogle.execute();
           await pumpEventQueue();
 
           // 2. Act
@@ -364,7 +368,7 @@ void main() {
           expect(result, _errTitled(_kLoginErrorTitle));
           expect(loadingEverTrue, isFalse);
           expect(controller.state.isLoading, isFalse);
-          expect(controller.state.isChoosingAccount, isFalse);
+          expect(controller.loginGoogle.running, isFalse);
           verifyNever(
             harness.enterOrganization.afterSignIn(
               any,
@@ -383,7 +387,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      final result = await harness.controller.loginGoogle();
+      final result = await harness.controller.loginGoogle.execute();
 
       // 3. Assert
       expect(result, isA<Ok<void>>());
@@ -402,7 +406,7 @@ void main() {
       final harness = _Harness();
 
       // 2. Act
-      await harness.controller.loginGoogle();
+      await harness.controller.loginGoogle.execute();
 
       // 3. Assert
       expect(harness.enteringSeen, 'Rota Sul');
@@ -416,7 +420,7 @@ void main() {
       final harness = _Harness(idToken: null);
 
       // 2. Act
-      final result = await harness.controller.loginGoogle();
+      final result = await harness.controller.loginGoogle.execute();
 
       // 3. Assert
       expect(result, isA<Ok<void>>());
@@ -434,15 +438,15 @@ void main() {
       // 1. Arrange
       final pendingEntry = Completer<void>();
       final harness = _Harness(pendingEntry: pendingEntry);
-      final first = harness.controller.loginGoogle();
+      final first = harness.controller.loginGoogle.execute();
       await pumpEventQueue();
       expect(harness.controller.state.isLoading, isTrue);
 
       // 2. Act
-      final second = await harness.controller.loginGoogle();
+      final second = await harness.controller.loginGoogle.execute();
 
       // 3. Assert
-      expect(second, isA<Ok<void>>());
+      expect(second, isNull);
       verify(
         harness.session.repository.signInGoogle(
           onAccountChosen: anyNamed('onAccountChosen'),
@@ -456,11 +460,14 @@ void main() {
         'isLoading off', () async {
       // 1. Arrange
       final harness = _Harness(
-        entry: Err('Não foi possível entrar agora', error: Exception('sem rede')),
+        entry: Err(
+          'Não foi possível entrar agora',
+          error: Exception('sem rede'),
+        ),
       );
 
       // 2. Act
-      final result = await harness.controller.loginGoogle();
+      final result = await harness.controller.loginGoogle.execute();
 
       // 3. Assert
       expect(result, _errTitled(_kLoginErrorTitle));
@@ -511,6 +518,29 @@ void main() {
       pendingEntry.complete();
       await pumpEventQueue();
       expect(harness.controller.state.isLoading, isFalse);
+    });
+
+    test('Edge Case: a tap on the button while the web entry runs is '
+        'ignored (null)', () async {
+      // 1. Arrange
+      final pendingEntry = Completer<void>();
+      final harness = _Harness(pendingEntry: pendingEntry);
+      harness.webSignIns.add(_kIdToken);
+      await pumpEventQueue();
+
+      // 2. Act
+      final tap = await harness.controller.loginGoogle.execute();
+
+      // 3. Assert
+      expect(tap, isNull);
+      expect(harness.controller.loginGoogle.running, isFalse);
+      verifyNever(
+        harness.session.repository.signInGoogle(
+          onAccountChosen: anyNamed('onAccountChosen'),
+        ),
+      );
+      pendingEntry.complete();
+      await pumpEventQueue();
     });
 
     test('Edge Case: a web sign-in while an entry runs is ignored', () async {

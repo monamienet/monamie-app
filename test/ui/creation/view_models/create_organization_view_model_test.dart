@@ -77,7 +77,7 @@ CreateOrganizationViewModel startedController({ThemeRepository? themes}) =>
       repository: repository,
       themes: themes ?? mockCatalog(),
       debounce: Duration.zero,
-    )..load();
+    )..load.execute();
 
 /// Lets the debounce timer fire and the mock answers resolve.
 Future<void> settle() async {
@@ -396,7 +396,7 @@ void main() {
       controller.pickPlan('community');
 
       // 2. Act
-      await controller.create();
+      await controller.create.execute();
 
       // 3. Assert
       final sent = verify(
@@ -410,91 +410,101 @@ void main() {
       expect(sent, ['rotasul', 'Rota Sul', 'oceano', 'community']);
     });
 
-    test('Happy Path: returns true and keeps the returned status', () async {
+    test('Happy Path: returns the status and keeps it', () async {
       // 1. Arrange
       stubCreate(() async {}, status: 'awaiting_billing');
       final controller = await readyController();
 
       // 2. Act
-      final ok = await controller.create();
+      final result = await controller.create.execute();
 
       // 3. Assert
-      expect(ok, isTrue);
+      expect(
+        result,
+        isA<Ok<String>>().having((ok) => ok.value, 'value', 'awaiting_billing'),
+      );
       expect(controller.state.result, 'awaiting_billing');
     });
 
-    test('Happy Path: isCreating resets after success', () async {
+    test('Happy Path: create stops running after success', () async {
       // 1. Arrange
       final controller = await readyController();
 
       // 2. Act
-      await controller.create();
+      await controller.create.execute();
 
       // 3. Assert
-      expect(controller.state.isCreating, isFalse);
+      expect(controller.create.running, isFalse);
     });
 
-    test('Edge Case: isCreating is true while the call is in flight', () async {
+    test('Edge Case: create runs while the call is in flight', () async {
       // 1. Arrange
       final gate = Completer<void>();
       stubCreate(() => gate.future);
       final controller = await readyController();
 
       // 2. Act
-      final pending = controller.create();
+      final pending = controller.create.execute();
 
       // 3. Assert
-      expect(controller.state.isCreating, isTrue);
+      expect(controller.create.running, isTrue);
       gate.complete();
       await pending;
     });
 
     test(
-      'Edge Case: a second create while one is in flight is refused',
+      'Edge Case: a second create while one is in flight is ignored (null)',
       () async {
         // 1. Arrange
         final gate = Completer<void>();
         stubCreate(() => gate.future);
         final controller = await readyController();
-        final first = controller.create();
+        final first = controller.create.execute();
 
         // 2. Act
-        final second = await controller.create();
+        final second = await controller.create.execute();
 
         // 3. Assert
-        expect(second, isFalse);
+        expect(second, isNull);
         verify(anyCreate()).called(1);
         gate.complete();
         await first;
       },
     );
 
-    test('Sad Path: an Err returns false with its message', () async {
+    test('Sad Path: an Err is returned and its message kept', () async {
       // 1. Arrange
       stubCreate(() async {}, failure: 'Esse identificador já está em uso.');
       final controller = await readyController();
 
       // 2. Act
-      final ok = await controller.create();
+      final result = await controller.create.execute();
 
       // 3. Assert
-      expect(ok, isFalse);
+      expect(
+        result,
+        isA<Err<String>>().having(
+          (err) => err.message,
+          'message',
+          'Esse identificador já está em uso.',
+        ),
+      );
       expect(
         controller.state.errorMessage,
         'Esse identificador já está em uso.',
       );
     });
 
-    test('Sad Path: isCreating resets after a failure', () async {
+    test('Sad Path: create stops running after a failure', () async {
       // 1. Arrange
       stubCreate(() async {}, failure: 'Falhou.');
       final controller = await readyController();
 
       // 2. Act
-      await controller.create();
+      await controller.create.execute();
 
       // 3. Assert
-      expect(controller.state.isCreating, isFalse);
+      expect(controller.create.running, isFalse);
     });
 
     test(
@@ -505,10 +515,10 @@ void main() {
         await settle();
 
         // 2. Act
-        final ok = await controller.create();
+        final result = await controller.create.execute();
 
         // 3. Assert
-        expect(ok, isFalse);
+        expect(result, isNull);
         verifyNever(anyCreate());
       },
     );
@@ -570,7 +580,7 @@ void main() {
       final gate = Completer<void>();
       stubCreate(() => gate.future);
       final controller = await readyController();
-      final pending = controller.create();
+      final pending = controller.create.execute();
       final creating = controller.state;
 
       // 2. Act
@@ -578,7 +588,7 @@ void main() {
 
       // 3. Assert
       expect(controller.state, creating);
-      expect(controller.state.isCreating, isTrue);
+      expect(controller.create.running, isTrue);
       gate.complete();
       await pending;
     });
@@ -626,7 +636,7 @@ void main() {
       );
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(controller.state.themes, isEmpty);
@@ -680,7 +690,7 @@ void main() {
       stubCreate(() => gate.future);
       final controller = await readyController();
       var notifications = 0;
-      final pending = controller.create();
+      final pending = controller.create.execute();
       controller.addListener(() => notifications++);
       controller.dispose();
 
@@ -688,7 +698,7 @@ void main() {
       gate.complete();
 
       // 3. Assert
-      await expectLater(pending, completion(isTrue));
+      await expectLater(pending, completion(isA<Ok<String>>()));
       expect(notifications, 0);
     });
   });
@@ -728,7 +738,7 @@ void main() {
       controller.addListener(() => notifications++);
 
       // 2. Act
-      await controller.load();
+      await controller.load.execute();
 
       // 3. Assert
       expect(notifications, 0);

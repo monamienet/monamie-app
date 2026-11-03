@@ -51,7 +51,7 @@ class _InviteScreenState extends State<InviteScreen> {
     ),
     body: SafeArea(
       child: ListenableBuilder(
-        listenable: c,
+        listenable: Listenable.merge([c, c.send]),
         builder: (context, _) {
           final result = c.state.result;
           return result == null ? _form() : _sent(result);
@@ -61,7 +61,7 @@ class _InviteScreenState extends State<InviteScreen> {
   );
 
   Widget _form() {
-    final sending = c.state.isSending;
+    final sending = c.send.running;
     return Column(
       children: [
         Expanded(
@@ -210,7 +210,7 @@ class _InviteScreenState extends State<InviteScreen> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  onPressed: c.canSend ? c.send : null,
+                  onPressed: c.canSend ? c.send.execute : null,
                   child: sending
                       ? Row(
                           mainAxisSize: MainAxisSize.min,

@@ -18,8 +18,8 @@ mixin _$MyAccountState {
 /// Whether the person owns the bound organization; `null` while it is
 /// being read or when it could not be read, and then nothing can be
 /// deleted.
- bool? get isOwner; bool get isCheckingOwner;/// What the owner typed to confirm (the organization's id).
- String get confirmation; bool get isDeleting;/// Why the last load or deletion failed; empty when it did not.
+ bool? get isOwner;/// What the owner typed to confirm (the organization's id).
+ String get confirmation;/// Why the last load or deletion failed; empty when it did not.
  String get errorMessage;
 /// Create a copy of MyAccountState
 /// with the given fields replaced by the non-null parameter values.
@@ -32,20 +32,20 @@ $MyAccountStateCopyWith<MyAccountState> get copyWith => _$MyAccountStateCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as MyAccountState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MyAccountState&&(identical(other.isOwner, _this.isOwner) || other.isOwner == _this.isOwner)&&(identical(other.isCheckingOwner, _this.isCheckingOwner) || other.isCheckingOwner == _this.isCheckingOwner)&&(identical(other.confirmation, _this.confirmation) || other.confirmation == _this.confirmation)&&(identical(other.isDeleting, _this.isDeleting) || other.isDeleting == _this.isDeleting)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MyAccountState&&(identical(other.isOwner, _this.isOwner) || other.isOwner == _this.isOwner)&&(identical(other.confirmation, _this.confirmation) || other.confirmation == _this.confirmation)&&(identical(other.errorMessage, _this.errorMessage) || other.errorMessage == _this.errorMessage));
 }
 
 
 @override
 int get hashCode {
   final _this = this as MyAccountState;
-  return Object.hash(runtimeType,_this.isOwner,_this.isCheckingOwner,_this.confirmation,_this.isDeleting,_this.errorMessage);
+  return Object.hash(runtimeType,_this.isOwner,_this.confirmation,_this.errorMessage);
 }
 
 @override
 String toString() {
   final _this = this as MyAccountState;
-  return 'MyAccountState(isOwner: ${_this.isOwner}, isCheckingOwner: ${_this.isCheckingOwner}, confirmation: ${_this.confirmation}, isDeleting: ${_this.isDeleting}, errorMessage: ${_this.errorMessage})';
+  return 'MyAccountState(isOwner: ${_this.isOwner}, confirmation: ${_this.confirmation}, errorMessage: ${_this.errorMessage})';
 }
 
 
@@ -56,7 +56,7 @@ abstract mixin class $MyAccountStateCopyWith<$Res>  {
   factory $MyAccountStateCopyWith(MyAccountState value, $Res Function(MyAccountState) _then) = _$MyAccountStateCopyWithImpl;
 @useResult
 $Res call({
- bool? isOwner, bool isCheckingOwner, String confirmation, bool isDeleting, String errorMessage
+ bool? isOwner, String confirmation, String errorMessage
 });
 
 
@@ -73,13 +73,11 @@ class _$MyAccountStateCopyWithImpl<$Res>
 
 /// Create a copy of MyAccountState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? isOwner = freezed,Object? isCheckingOwner = null,Object? confirmation = null,Object? isDeleting = null,Object? errorMessage = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? isOwner = freezed,Object? confirmation = null,Object? errorMessage = null,}) {
   return _then(MyAccountState(
 isOwner: freezed == isOwner ? _self.isOwner : isOwner // ignore: cast_nullable_to_non_nullable
-as bool?,isCheckingOwner: null == isCheckingOwner ? _self.isCheckingOwner : isCheckingOwner // ignore: cast_nullable_to_non_nullable
-as bool,confirmation: null == confirmation ? _self.confirmation : confirmation // ignore: cast_nullable_to_non_nullable
-as String,isDeleting: null == isDeleting ? _self.isDeleting : isDeleting // ignore: cast_nullable_to_non_nullable
-as bool,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as bool?,confirmation: null == confirmation ? _self.confirmation : confirmation // ignore: cast_nullable_to_non_nullable
+as String,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -165,10 +163,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool? isOwner,  bool isCheckingOwner,  String confirmation,  bool isDeleting,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( bool? isOwner,  String confirmation,  String errorMessage)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MyAccountState() when $default != null:
-return $default(_that.isOwner,_that.isCheckingOwner,_that.confirmation,_that.isDeleting,_that.errorMessage);case _:
+return $default(_that.isOwner,_that.confirmation,_that.errorMessage);case _:
   return orElse();
 
 }
@@ -186,10 +184,10 @@ return $default(_that.isOwner,_that.isCheckingOwner,_that.confirmation,_that.isD
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool? isOwner,  bool isCheckingOwner,  String confirmation,  bool isDeleting,  String errorMessage)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( bool? isOwner,  String confirmation,  String errorMessage)  $default,) {final _that = this;
 switch (_that) {
 case _MyAccountState():
-return $default(_that.isOwner,_that.isCheckingOwner,_that.confirmation,_that.isDeleting,_that.errorMessage);case _:
+return $default(_that.isOwner,_that.confirmation,_that.errorMessage);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -206,10 +204,10 @@ return $default(_that.isOwner,_that.isCheckingOwner,_that.confirmation,_that.isD
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool? isOwner,  bool isCheckingOwner,  String confirmation,  bool isDeleting,  String errorMessage)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( bool? isOwner,  String confirmation,  String errorMessage)?  $default,) {final _that = this;
 switch (_that) {
 case _MyAccountState() when $default != null:
-return $default(_that.isOwner,_that.isCheckingOwner,_that.confirmation,_that.isDeleting,_that.errorMessage);case _:
+return $default(_that.isOwner,_that.confirmation,_that.errorMessage);case _:
   return null;
 
 }
@@ -221,17 +219,15 @@ return $default(_that.isOwner,_that.isCheckingOwner,_that.confirmation,_that.isD
 
 
 class _MyAccountState implements MyAccountState {
-  const _MyAccountState({this.isOwner, this.isCheckingOwner = false, this.confirmation = '', this.isDeleting = false, this.errorMessage = ''});
+  const _MyAccountState({this.isOwner, this.confirmation = '', this.errorMessage = ''});
   
 
 /// Whether the person owns the bound organization; `null` while it is
 /// being read or when it could not be read, and then nothing can be
 /// deleted.
 @override final  bool? isOwner;
-@override@JsonKey() final  bool isCheckingOwner;
 /// What the owner typed to confirm (the organization's id).
 @override@JsonKey() final  String confirmation;
-@override@JsonKey() final  bool isDeleting;
 /// Why the last load or deletion failed; empty when it did not.
 @override@JsonKey() final  String errorMessage;
 
@@ -245,18 +241,18 @@ _$MyAccountStateCopyWith<_MyAccountState> get copyWith => __$MyAccountStateCopyW
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MyAccountState&&(identical(other.isOwner, isOwner) || other.isOwner == isOwner)&&(identical(other.isCheckingOwner, isCheckingOwner) || other.isCheckingOwner == isCheckingOwner)&&(identical(other.confirmation, confirmation) || other.confirmation == confirmation)&&(identical(other.isDeleting, isDeleting) || other.isDeleting == isDeleting)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MyAccountState&&(identical(other.isOwner, isOwner) || other.isOwner == isOwner)&&(identical(other.confirmation, confirmation) || other.confirmation == confirmation)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,isOwner,isCheckingOwner,confirmation,isDeleting,errorMessage);
+    return Object.hash(runtimeType,isOwner,confirmation,errorMessage);
 }
 
 @override
 String toString() {
-    return 'MyAccountState(isOwner: $isOwner, isCheckingOwner: $isCheckingOwner, confirmation: $confirmation, isDeleting: $isDeleting, errorMessage: $errorMessage)';
+    return 'MyAccountState(isOwner: $isOwner, confirmation: $confirmation, errorMessage: $errorMessage)';
 }
 
 
@@ -267,7 +263,7 @@ abstract mixin class _$MyAccountStateCopyWith<$Res> implements $MyAccountStateCo
   factory _$MyAccountStateCopyWith(_MyAccountState value, $Res Function(_MyAccountState) _then) = __$MyAccountStateCopyWithImpl;
 @override @useResult
 $Res call({
- bool? isOwner, bool isCheckingOwner, String confirmation, bool isDeleting, String errorMessage
+ bool? isOwner, String confirmation, String errorMessage
 });
 
 
@@ -284,13 +280,11 @@ class __$MyAccountStateCopyWithImpl<$Res>
 
 /// Create a copy of MyAccountState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? isOwner = freezed,Object? isCheckingOwner = null,Object? confirmation = null,Object? isDeleting = null,Object? errorMessage = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? isOwner = freezed,Object? confirmation = null,Object? errorMessage = null,}) {
   return _then(_MyAccountState(
 isOwner: freezed == isOwner ? _self.isOwner : isOwner // ignore: cast_nullable_to_non_nullable
-as bool?,isCheckingOwner: null == isCheckingOwner ? _self.isCheckingOwner : isCheckingOwner // ignore: cast_nullable_to_non_nullable
-as bool,confirmation: null == confirmation ? _self.confirmation : confirmation // ignore: cast_nullable_to_non_nullable
-as String,isDeleting: null == isDeleting ? _self.isDeleting : isDeleting // ignore: cast_nullable_to_non_nullable
-as bool,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
+as bool?,confirmation: null == confirmation ? _self.confirmation : confirmation // ignore: cast_nullable_to_non_nullable
+as String,errorMessage: null == errorMessage ? _self.errorMessage : errorMessage // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

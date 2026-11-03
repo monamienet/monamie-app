@@ -4,15 +4,12 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
-import 'dart:async' as _i4;
-
 import 'package:flutter/foundation.dart' as _i2;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i7;
 import 'package:monamie_app/ui/home/view_models/tracking_toggle_view_model.dart'
-    as _i3;
-import 'package:monamie_app/utils/result.dart' as _i5;
-import 'package:monamie_app/utils/user_notice.dart' as _i6;
+    as _i4;
+import 'package:monamie_app/utils/command.dart' as _i3;
+import 'package:monamie_app/utils/user_notice.dart' as _i5;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -36,11 +33,16 @@ class _FakeValueListenable_0<T> extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
+class _FakeCommand0_1<T> extends _i1.SmartFake implements _i3.Command0<T> {
+  _FakeCommand0_1(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [TrackingToggleViewModel].
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockTrackingToggleViewModel extends _i1.Mock
-    implements _i3.TrackingToggleViewModel {
+    implements _i4.TrackingToggleViewModel {
   @override
   _i2.ValueListenable<bool> get isTrackingEnabled =>
       (super.noSuchMethod(
@@ -57,37 +59,17 @@ class MockTrackingToggleViewModel extends _i1.Mock
           as _i2.ValueListenable<bool>);
 
   @override
-  _i2.ValueListenable<bool> get isTrackingLoading =>
+  _i3.Command0<_i5.UserNotice?> get toggleService =>
       (super.noSuchMethod(
-            Invocation.getter(#isTrackingLoading),
-            returnValue: _FakeValueListenable_0<bool>(
+            Invocation.getter(#toggleService),
+            returnValue: _FakeCommand0_1<_i5.UserNotice?>(
               this,
-              Invocation.getter(#isTrackingLoading),
+              Invocation.getter(#toggleService),
             ),
-            returnValueForMissingStub: _FakeValueListenable_0<bool>(
+            returnValueForMissingStub: _FakeCommand0_1<_i5.UserNotice?>(
               this,
-              Invocation.getter(#isTrackingLoading),
+              Invocation.getter(#toggleService),
             ),
           )
-          as _i2.ValueListenable<bool>);
-
-  @override
-  _i4.Future<_i5.Result<_i6.UserNotice?>> toggleService() =>
-      (super.noSuchMethod(
-            Invocation.method(#toggleService, []),
-            returnValue: _i4.Future<_i5.Result<_i6.UserNotice?>>.value(
-              _i7.dummyValue<_i5.Result<_i6.UserNotice?>>(
-                this,
-                Invocation.method(#toggleService, []),
-              ),
-            ),
-            returnValueForMissingStub:
-                _i4.Future<_i5.Result<_i6.UserNotice?>>.value(
-                  _i7.dummyValue<_i5.Result<_i6.UserNotice?>>(
-                    this,
-                    Invocation.method(#toggleService, []),
-                  ),
-                ),
-          )
-          as _i4.Future<_i5.Result<_i6.UserNotice?>>);
+          as _i3.Command0<_i5.UserNotice?>);
 }

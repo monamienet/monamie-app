@@ -18,6 +18,7 @@ import 'package:monamie_app/domain/models/user_model.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_toggle_view_model.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/utils/user_notice.dart';
@@ -71,7 +72,6 @@ class TrackingViewModel implements TrackingToggleViewModel {
   final _firebaseUsers = ValueNotifier<List<UserModel>>(const []);
   final _groupUsers = ValueNotifier<List<UserModel>>(const []);
   final _isTrackingEnabled = ValueNotifier<bool>(false);
-  final _isTrackingLoading = ValueNotifier<bool>(false);
   final _heading = ValueNotifier<double?>(null);
   final _ownPosition = ValueNotifier<LatLng?>(null);
   final _animatedMarkerPositions = ValueNotifier<Map<String, LatLng>>(const {});
@@ -90,8 +90,6 @@ class TrackingViewModel implements TrackingToggleViewModel {
   final MapController mapController = MapController();
   @override
   ValueListenable<bool> get isTrackingEnabled => _isTrackingEnabled;
-  @override
-  ValueListenable<bool> get isTrackingLoading => _isTrackingLoading;
 
   /// The compass heading, in degrees, or `null` (the compass is off).
   ValueListenable<double?> get heading => _heading;
@@ -681,12 +679,11 @@ class TrackingViewModel implements TrackingToggleViewModel {
 
   /// Starts or stops sharing. Completes with [Ok] (holding a [UserNotice]
   /// when sharing started without a GPS fix yet), or [Err] when sharing could
-  /// not start; [Ok] with `null` while another toggle is running.
+  /// not start; ignores a call while another toggle is running.
   @override
-  Future<Result<UserNotice?>> toggleService() async {
-    if (_isTrackingLoading.value) return const Ok(null);
+  late final Command0<UserNotice?> toggleService = Command0(_toggleService);
 
-    _set(_isTrackingLoading, true);
+  Future<Result<UserNotice?>> _toggleService() async {
     try {
       final isRunning = await _service.isRunning();
 
@@ -708,8 +705,6 @@ class TrackingViewModel implements TrackingToggleViewModel {
         error: e,
         stackTrace: stackTrace,
       );
-    } finally {
-      _set(_isTrackingLoading, false);
     }
   }
 
@@ -813,7 +808,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
       _firebaseUsers,
       _groupUsers,
       _isTrackingEnabled,
-      _isTrackingLoading,
+      toggleService,
       _heading,
       _ownPosition,
       _animatedMarkerPositions,

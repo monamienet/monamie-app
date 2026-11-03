@@ -27,7 +27,7 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    controller.load();
+    controller.load.execute();
   }
 
   @override
@@ -43,10 +43,10 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
         centerTitle: false,
       ),
       body: ListenableBuilder(
-        listenable: controller,
+        listenable: Listenable.merge([controller, controller.save]),
         builder: (context, _) {
           final draft = controller.state.draft;
-          final saving = controller.state.isSaving;
+          final saving = controller.save.running;
           String minutes(int n) => n == 1 ? '1 min' : '$n min';
           return Column(
             children: [
@@ -177,7 +177,7 @@ class _TrackingSettingsScreenState extends State<TrackingSettingsScreen> {
                         ),
                         onPressed: saving || !controller.hasChanges
                             ? null
-                            : controller.save,
+                            : controller.save.execute,
                         child: saving
                             ? Row(
                                 mainAxisSize: MainAxisSize.min,

@@ -4,6 +4,7 @@ import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/account/view_models/deletion_pending_state.dart';
+import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 
 export 'deletion_pending_state.dart';
@@ -55,61 +56,61 @@ class DeletionPendingViewModel extends ChangeNotifier {
     _disposed = true;
     _session.session.removeListener(_onSession);
     _session.leaving.removeListener(_onLeaving);
+    cancelAccountDeletion.dispose();
+    enter.dispose();
+    logout.dispose();
     super.dispose();
   }
 
   /// "Cancelar exclusão": signs in again if needed (the deletion signed the
-  /// account out), then cancels it.
-  Future<void> cancelAccountDeletion() async {
-    if (_state.cancellingDeletion || _state.isLoading) return;
-    _emit(_state.copyWith(cancellingDeletion: true, deletionError: ''));
+  /// account out), then cancels it. The failure is also kept in
+  /// [DeletionPendingState.deletionError], which the screen shows. Ignored
+  /// while [enter] runs.
+  late final Command0<void> cancelAccountDeletion = Command0(
+    _cancelAccountDeletion,
+    blocked: () => enter.running,
+  );
+
+  /// "Entrar", once the deletion is cancelled: asks again which
+  /// organizations the person belongs to, without the deletion check. [Err]
+  /// says why it could not.
+  late final Command0<void> enter = Command0(_enter);
+
+  /// "Sair". [Ok] holds whether the sign-out finished (`false` while
+  /// another one runs); [Err] says why it failed.
+  late final Command0<bool> logout = Command0(() => _signOut());
+
+  Future<Result<void>> _cancelAccountDeletion() async {
+    _emit(_state.copyWith(deletionError: ''));
     try {
-      if (await _session.keptOrSignIn() == null) return;
-      switch (await _repository.cancel()) {
+      if (await _session.keptOrSignIn() == null) return const Ok(null);
+      final cancelled = await _repository.cancel();
+      switch (cancelled) {
         case Ok():
           _emit(_state.copyWith(deletionRestored: true));
         case Err(:final message):
           _emit(_state.copyWith(deletionError: message));
       }
-    } catch (e) {
+      return cancelled;
+    } catch (e, stackTrace) {
       // Signing in to Google again failed.
       debugPrint('[Account] Cancel failed: $e');
-      _emit(
-        _state.copyWith(
-          deletionError:
-              'Não foi possível cancelar agora. Verifique a conexão e tente '
-              'de novo.',
-        ),
-      );
-    } finally {
-      _emit(_state.copyWith(cancellingDeletion: false));
+      const message =
+          'Não foi possível cancelar agora. Verifique a conexão e tente '
+          'de novo.';
+      _emit(_state.copyWith(deletionError: message));
+      return Err(message, error: e, stackTrace: stackTrace);
     }
   }
 
-  /// "Entrar", once the deletion is cancelled: asks again which
-  /// organizations the person belongs to, without the deletion check. [Err]
-  /// says why it could not; [Ok] also while another operation runs.
-  Future<Result<void>> enter() async {
-    if (_state.isLoading) return const Ok(null);
-    _emit(_state.copyWith(isLoading: true));
-    try {
-      return switch (await _enterOrganization.withKeptSignIn(
-        checkDeletion: !_state.deletionRestored,
-      )) {
-        Ok() => const Ok(null),
-        Err(:final error, :final stackTrace) => Err(
-          "Não foi possível verificar agora: $error",
-          title: EnterOrganization.errorTitle,
-          error: error,
-          stackTrace: stackTrace,
-        ),
-      };
-    } finally {
-      _emit(_state.copyWith(isLoading: false));
-    }
-  }
-
-  /// "Sair". [Ok] holds whether the sign-out finished (`false` while
-  /// another one runs); [Err] says why it failed.
-  Future<Result<bool>> logout() => _signOut();
+  Future<Result<void>> _enter() async => switch (await _enterOrganization
+      .withKeptSignIn(checkDeletion: !_state.deletionRestored)) {
+    Ok() => const Ok(null),
+    Err(:final error, :final stackTrace) => Err(
+      "Não foi possível verificar agora: $error",
+      title: EnterOrganization.errorTitle,
+      error: error,
+      stackTrace: stackTrace,
+    ),
+  };
 }

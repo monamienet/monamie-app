@@ -24,7 +24,6 @@ abstract class InviteState with _$InviteState {
 
     /// Why the last e-mail typed could not be added; empty when it could.
     @Default('') String draftError,
-    @Default(false) bool isSending,
 
     /// Why the last send failed; empty when it did not.
     @Default('') String errorMessage,

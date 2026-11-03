@@ -11,12 +11,6 @@ abstract class GroupsState with _$GroupsState {
     /// The groups the person manages (every group for an administrator).
     @Default([]) List<Group> groups,
 
-    /// Whether the list is being (re)loaded.
-    @Default(false) bool isLoading,
-
-    /// Whether an operation (create, rename, delete, roles, remove) runs.
-    @Default(false) bool isWorking,
-
     /// Why the last load or operation failed; empty when it did not.
     @Default('') String errorMessage,
   }) = _GroupsState;
