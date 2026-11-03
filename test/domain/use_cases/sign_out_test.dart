@@ -113,8 +113,9 @@ class _Harness {
       log.add('freshIdToken');
       return freshToken;
     });
-    when(repository.signInGoogle(onAccountChosen: anyNamed('onAccountChosen')))
-        .thenAnswer((_) async => null);
+    when(
+      repository.signInGoogle(onAccountChosen: anyNamed('onAccountChosen')),
+    ).thenAnswer((_) async => null);
 
     when(stopper.stop(email: anyNamed('email'))).thenAnswer((_) {
       log.add('stop');
@@ -136,8 +137,9 @@ class _Harness {
       return organizations;
     });
     when(brandingLoader.load(any)).thenAnswer(
-      (invocation) async =>
-          _binding(invocation.positionalArguments.single as OrganizationCandidate),
+      (invocation) async => _binding(
+        invocation.positionalArguments.single as OrganizationCandidate,
+      ),
     );
     when(invites.mine()).thenAnswer((_) async => const Ok([]));
 
@@ -437,19 +439,22 @@ void main() {
       );
     });
 
-    test('Sad Path: a failing sign-out stays on the map and shows why', () async {
-      // 1. Arrange
-      final harness = _Harness(logoutError: Exception('falha de rede'));
+    test(
+      'Sad Path: a failing sign-out stays on the map and shows why',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(logoutError: Exception('falha de rede'));
 
-      // 2. Act
-      await harness.signOut.afterAccessLost();
+        // 2. Act
+        await harness.signOut.afterAccessLost();
 
-      // 3. Assert
-      expect(harness.session.session.value, const SessionState.bound());
-      verify(
-        harness.notices.show(argThat(_noticeTitled('Erro ao sair'))),
-      ).called(1);
-    });
+        // 3. Assert
+        expect(harness.session.session.value, const SessionState.bound());
+        verify(
+          harness.notices.show(argThat(_noticeTitled('Erro ao sair'))),
+        ).called(1);
+      },
+    );
   });
 
   group('SignOut.afterAccountDeleted - Unit Test Suite', () {
@@ -488,7 +493,9 @@ void main() {
       expect(
         harness.session.session.value,
         SessionState.deletionPending(
-          deletion.copyWith(ownedOrganizationNames: const {'rotasul': 'Rota Sul'}),
+          deletion.copyWith(
+            ownedOrganizationNames: const {'rotasul': 'Rota Sul'},
+          ),
         ),
       );
     });
@@ -513,21 +520,24 @@ void main() {
       );
     });
 
-    test('Sad Path: a failing sign-out stays on the map and shows why', () async {
-      // 1. Arrange
-      final harness = _Harness(logoutError: Exception('offline'));
+    test(
+      'Sad Path: a failing sign-out stays on the map and shows why',
+      () async {
+        // 1. Arrange
+        final harness = _Harness(logoutError: Exception('offline'));
 
-      // 2. Act
-      await harness.signOut.afterAccountDeleted(
-        AccountDeletion(deleteAt: DateTime.utc(2026, 12, 2)),
-      );
+        // 2. Act
+        await harness.signOut.afterAccountDeleted(
+          AccountDeletion(deleteAt: DateTime.utc(2026, 12, 2)),
+        );
 
-      // 3. Assert
-      expect(harness.session.session.value, const SessionState.bound());
-      verify(
-        harness.notices.show(argThat(_noticeTitled('Erro ao sair'))),
-      ).called(1);
-    });
+        // 3. Assert
+        expect(harness.session.session.value, const SessionState.bound());
+        verify(
+          harness.notices.show(argThat(_noticeTitled('Erro ao sair'))),
+        ).called(1);
+      },
+    );
   });
 
   group('SignOut.switchOrganization - Unit Test Suite', () {
@@ -588,19 +598,22 @@ void main() {
       expect(harness.session.idToken, _kFreshToken);
     });
 
-    test('Happy Path: leaving is a switch while it runs and clear after', () async {
-      // 1. Arrange
-      final harness = _Harness();
+    test(
+      'Happy Path: leaving is a switch while it runs and clear after',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
 
-      // 2. Act
-      await harness.signOut.switchOrganization();
+        // 2. Act
+        await harness.signOut.switchOrganization();
 
-      // 3. Assert
-      expect(harness.session.leavingHistory, [
-        SessionExit.switchOrganization,
-        null,
-      ]);
-    });
+        // 3. Assert
+        expect(harness.session.leavingHistory, [
+          SessionExit.switchOrganization,
+          null,
+        ]);
+      },
+    );
 
     test('Edge Case: nothing left ends in noOrganization, still signed in to '
         'MonAmie', () async {
@@ -611,7 +624,10 @@ void main() {
       await harness.signOut.switchOrganization();
 
       // 3. Assert
-      expect(harness.session.session.value, const SessionState.noOrganization());
+      expect(
+        harness.session.session.value,
+        const SessionState.noOrganization(),
+      );
       verifyNever(harness.session.repository.signOut());
     });
 

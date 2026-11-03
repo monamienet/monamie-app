@@ -33,10 +33,11 @@ import 'package:provider/single_child_widget.dart';
   MockSpec<BackgroundTrackingService>(),
   MockSpec<MembershipService>(),
   MockSpec<PermissionsService>(),
-  MockSpec<PositionsRepository>(),
-  MockSpec<UserGoogleRepository>(),
 ])
 import 'organization_scope_test.mocks.dart';
+
+import '../../testing/fakes/repositories/fake_positions_repository.dart';
+import '../../testing/fakes/repositories/fake_user_google_repository.dart';
 
 /// What the home route's page read, as it builds.
 MembershipRepository? groupMap;
@@ -160,17 +161,16 @@ Future<void> pumpRouter(WidgetTester tester, GoRouter router) async {
   await tester.pumpAndSettle();
 }
 
-/// The data layer [OrganizationScope] reads. The profile, the memberships,
-/// the positions, the tracking service and the permissions are mocks
-/// (nobody signed in, no group, the service stopped, every permission
-/// denied), which keeps the real tracking view model and permissions
+/// The data layer [OrganizationScope] reads. The profile and the positions
+/// are in-memory fakes and the memberships, the tracking service and the
+/// permissions are mocks (nobody signed in, no group, the service stopped,
+/// every permission denied), which keeps the real tracking view model and permissions
 /// repository the scope builds away from the device; the GPS and the
 /// background checks are the app's own. The scope creates the tracking
 /// settings repository itself: with no organization bound in the test, its
 /// reads fail, are ignored, and it keeps the defaults.
 List<SingleChildWidget> dependencies() {
-  final profile = MockUserGoogleRepository();
-  when(profile.getUserGoogleModel()).thenAnswer((_) async => null);
+  final profile = FakeUserGoogleRepository();
   final service = MockBackgroundTrackingService();
   when(service.isRunning()).thenAnswer((_) async => false);
   final permissions = MockPermissionsService();
@@ -182,7 +182,7 @@ List<SingleChildWidget> dependencies() {
   return [
     Provider<UserGoogleRepository>.value(value: profile),
     Provider<MembershipService>.value(value: MockMembershipService()),
-    Provider<PositionsRepository>.value(value: MockPositionsRepository()),
+    Provider<PositionsRepository>.value(value: FakePositionsRepository()),
     Provider<BackgroundTrackingService>.value(value: service),
     Provider<PermissionsService>.value(value: permissions),
     Provider<DeviceLocation>.value(value: const GeolocatorDeviceLocation()),

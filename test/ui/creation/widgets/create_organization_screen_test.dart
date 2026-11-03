@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -7,22 +5,18 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:monamie_app/domain/models/organization/organization_theme.dart';
-import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/ui/creation/view_models/create_organization_view_model.dart';
 import 'package:monamie_app/ui/creation/widgets/create_organization_screen.dart';
-import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
 import 'package:monamie_app/data/repositories/session/session_repository.dart';
 import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/routing/routes.dart';
 import 'package:monamie_app/utils/result.dart';
 
-import '../../../support/session_double.dart';
+import '../../../../testing/fakes/repositories/fake_creation_repository.dart';
+import '../../../../testing/fakes/repositories/fake_session_repository.dart';
+import '../../../../testing/fakes/repositories/fake_theme_repository.dart';
 
-@GenerateNiceMocks([
-  MockSpec<CreationRepository>(),
-  MockSpec<EnterOrganization>(),
-  MockSpec<ThemeRepository>(),
-])
+@GenerateNiceMocks([MockSpec<EnterOrganization>()])
 import 'create_organization_screen_test.mocks.dart';
 
 const _white = Color(0xFFFFFFFF);
@@ -39,27 +33,10 @@ final oceano = OrganizationTheme(
   active: true,
 );
 
-/// The `create` stub of [repository], with any arguments.
-Future<Result<String>> anyCreate() => repository.create(
-  id: anyNamed('id'),
-  name: anyNamed('name'),
-  themeId: anyNamed('themeId'),
-  plan: anyNamed('plan'),
-);
-
-/// Makes `create` wait on [wait] before returning `active` or, with
-/// [failure], an [Err] with that message.
-void stubCreate(Future<void> Function() wait, {String? failure}) {
-  when(anyCreate()).thenAnswer((_) async {
-    await wait();
-    return failure == null ? const Ok('active') : Err(failure);
-  });
-}
-
-late MockCreationRepository repository;
-late MockThemeRepository catalog;
+late FakeCreationRepository repository;
+late FakeThemeRepository catalog;
 late MockEnterOrganization enterOrganization;
-late SessionDouble session;
+late FakeSessionRepository session;
 
 /// The `withKeptSignIn` stub of [enterOrganization], with any arguments.
 Future<Result<void>> anyEntry() => enterOrganization.withKeptSignIn(
@@ -80,7 +57,7 @@ CreateOrganizationViewModel newController({
   repository: repository,
   themes: catalog,
   enterOrganization: enterOrganization,
-  session: session.repository,
+  session: session,
   debounce: debounce,
 );
 
@@ -134,24 +111,15 @@ Future<void> acceptTerms(WidgetTester tester) async {
 }
 
 void main() {
-  provideDummy<Result<String?>>(const Ok(null));
-  provideDummy<Result<String>>(const Ok('active'));
   provideDummy<Result<void>>(const Ok(null));
 
   setUp(() {
-    repository = MockCreationRepository();
+    repository = FakeCreationRepository();
     enterOrganization = MockEnterOrganization();
     stubEntry(() async => const Ok(null));
-    session = SessionDouble(signedInEmail: 'ana@example.com');
+    session = FakeSessionRepository(signedInEmail: 'ana@example.com');
     addTearDown(session.dispose);
-    when(repository.idProblem(any)).thenAnswer((_) async => const Ok(null));
-    stubCreate(() async {});
-    catalog = MockThemeRepository();
-    when(catalog.themes()).thenAnswer(
-      (_) async => {
-        for (final t in [defaultOrganizationTheme, oceano]) t.id: t,
-      },
-    );
+    catalog = FakeThemeRepository(themes: [defaultOrganizationTheme, oceano]);
   });
 
   group('CreateOrganizationScreen - Unit Test Suite', () {
@@ -169,7 +137,7 @@ void main() {
         await tester.pump();
 
         // 3. Assert
-        verifyNever(anyCreate());
+        expect(repository.callCount('create'), 0);
         expect(_createButton, findsOneWidget);
         expect(find.text('Community'), findsOneWidget);
       },
@@ -210,7 +178,7 @@ void main() {
 
         // 3. Assert
         expect(tester.widget<FilledButton>(_createButton).enabled, isFalse);
-        verifyNever(anyCreate());
+        expect(repository.callCount('create'), 0);
       },
     );
 
@@ -219,8 +187,7 @@ void main() {
       'not create twice',
       (tester) async {
         // 1. Arrange
-        final gate = Completer<void>();
-        stubCreate(() => gate.future);
+        final gate = repository.hold('create');
         await goToReview(tester);
         await acceptTerms(tester);
         await tester.tap(_createButton);
@@ -231,7 +198,7 @@ void main() {
         await tester.pump();
 
         // 3. Assert
-        verify(anyCreate()).called(1);
+        expect(repository.callCount('create'), 1);
         expect(
           tester
               .widget<FilledButton>(
@@ -249,7 +216,7 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      stubCreate(() async {}, failure: 'Identificador já em uso.');
+      repository.fail('create', 'Identificador já em uso.');
       await goToReview(tester);
       await acceptTerms(tester);
 
@@ -275,15 +242,9 @@ void main() {
         await tester.pump();
 
         // 3. Assert
-        final sent = verify(
-          repository.create(
-            id: captureAnyNamed('id'),
-            name: captureAnyNamed('name'),
-            themeId: captureAnyNamed('themeId'),
-            plan: captureAnyNamed('plan'),
-          ),
-        ).captured;
-        expect(sent, ['rotasul', 'Rota Sul', 'oceano', 'community']);
+        expect(repository.argumentsOf('create'), [
+          ['rotasul', 'Rota Sul', 'oceano', 'community'],
+        ]);
         expect(_createButton, findsNothing);
         expect(
           find.widgetWithText(FilledButton, 'Entrar na Rota Sul'),
@@ -358,7 +319,7 @@ void main() {
       tester.view.devicePixelRatio = 2;
       addTearDown(tester.view.reset);
       stubEntry(() async {
-        session.session.value = const SessionState.picking([]);
+        session.moveTo(const SessionState.picking([]));
         return const Ok(null);
       });
       final controller = newController(debounce: Duration.zero);
@@ -439,7 +400,7 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      verify(catalog.themes()).called(1);
+      expect(catalog.callCount('themes'), 1);
       expect(
         controller.state.themes.map((t) => t.id),
         unorderedEquals([defaultOrganizationTheme.id, 'oceano']),
@@ -472,7 +433,7 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
 
       // 3. Assert
-      verifyNever(repository.idProblem(any));
+      expect(repository.callCount('idProblem'), 0);
     });
   });
 }

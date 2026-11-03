@@ -1,207 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-import 'package:monamie_app/domain/models/account_deletion.dart';
-import 'package:monamie_app/domain/models/group.dart';
-import 'package:monamie_app/domain/models/invite.dart';
-import 'package:monamie_app/domain/models/organization/organization_theme.dart';
-import 'package:monamie_app/utils/result.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
-import 'package:monamie_app/data/repositories/administrators/administrators_repository.dart';
-import 'package:monamie_app/data/repositories/appearance/appearance_repository.dart';
-import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
-import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
-import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
-import 'package:monamie_app/data/services/firestore/membership_service.dart';
-import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
-import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
-import 'package:monamie_app/data/repositories/organization/organization_session.dart';
-import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
-import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
-import 'package:monamie_app/data/services/auth/google_bond_check.dart';
-import 'package:monamie_app/data/services/background_restriction_checker.dart';
-import 'package:monamie_app/data/services/background_tracking_service.dart';
-import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
-import 'package:monamie_app/data/services/call_service.dart';
-import 'package:monamie_app/data/services/device_location.dart';
-import 'package:monamie_app/data/services/permissions_service.dart';
-import 'package:monamie_app/domain/models/administrators.dart';
-import 'package:monamie_app/data/repositories/organization/organization_binder.dart';
-import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
-import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
-import 'package:monamie_app/data/services/background_tracking_stopper.dart';
+import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/groups/view_models/groups_view_model.dart';
 import 'package:monamie_app/ui/groups/widgets/create_group_screen.dart';
 import 'package:monamie_app/ui/groups/widgets/group_screen.dart';
 import 'package:monamie_app/ui/groups/widgets/groups_screen.dart';
 import 'package:monamie_app/ui/creation/widgets/create_organization_screen.dart';
-import 'package:monamie_app/data/repositories/session/session_repository.dart';
-import 'package:monamie_app/data/repositories/session/session_repository_google.dart';
-import 'package:monamie_app/data/services/auth/auth_google_service.dart';
-import 'package:monamie_app/domain/use_cases/enter_organization.dart';
-import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/auth/widgets/login_screen.dart';
 import 'package:monamie_app/ui/auth/widgets/no_organization_screen.dart';
 import 'package:monamie_app/ui/home/widgets/home_screen.dart';
-import 'package:monamie_app/routing/router.dart';
 import 'package:monamie_app/routing/routes.dart';
-import 'package:monamie_app/utils/notice_presenter.dart';
-import 'package:provider/provider.dart';
-import 'package:provider/single_child_widget.dart';
 
-@GenerateNiceMocks([
-  MockSpec<AccountDeletionRepository>(),
-  MockSpec<AdministratorsRepository>(),
-  MockSpec<AppearanceRepository>(),
-  MockSpec<AuthGoogleService>(),
-  MockSpec<BackgroundRestrictionChecker>(),
-  MockSpec<BackgroundTrackingService>(),
-  MockSpec<BackgroundTrackingStopper>(),
-  MockSpec<BackgroundUsageSettingsLauncher>(),
-  MockSpec<CallService>(),
-  MockSpec<CreationRepository>(),
-  MockSpec<DeviceLocation>(),
-  MockSpec<GoogleBondCheck>(),
-  MockSpec<GroupsRepository>(),
-  MockSpec<InvitesRepository>(),
-  MockSpec<MembershipService>(),
-  MockSpec<NoticePresenter>(),
-  MockSpec<OrganizationBinder>(),
-  MockSpec<OrganizationBrandingLoader>(),
-  MockSpec<OrganizationDirectory>(),
-  MockSpec<OrganizationLocalData>(),
-  MockSpec<OrganizationSession>(),
-  MockSpec<PermissionsService>(),
-  MockSpec<PositionsRepository>(),
-  MockSpec<ThemeRepository>(),
-  MockSpec<UserGoogleRepository>(),
-])
-import 'router_test.mocks.dart';
+import '../support/test_app.dart';
+import '../support/test_organization.dart';
 
-/// The app's router ([buildAppRouter]) over a real [SessionRepository]
-/// and real use cases whose services are mocks; the session is never
-/// started, so Google Sign-In is never initialized. The session moves only
-/// as in the app: [SessionRepository.moveTo] to bound (what *Login* does for
-/// a remembered session), [SignOut.call] signs out and
-/// [SignOut.afterAccessLost] leads to *Sem organização*.
-class _App {
-  _App() {
-    when(stopper.stop(email: anyNamed('email'))).thenAnswer((_) async => true);
-    // The organization's scope builds the real permissions repository: every
-    // permission answers "denied".
-    when(permissions.isGranted(any)).thenAnswer((_) async => false);
-    when(permissions.isPermanentlyDenied(any)).thenAnswer((_) async => false);
-    when(
-      permissions.request(any),
-    ).thenAnswer((_) async => AppPermissionStatus.denied);
-    // *Administradores* reads an organization with nobody in it.
-    when(
-      administrators.list(any),
-    ).thenAnswer((_) async => const Ok(OrganizationAdministrators()));
-    when(auth.onWebSignIn).thenAnswer((_) => const Stream<String?>.empty());
-    session = SessionRepositoryGoogle(auth: auth);
-    signOut = SignOut(
-      session: session,
-      trackingStopper: stopper,
-      userRepository: userRepository,
-      binder: MockOrganizationBinder(),
-      localData: MockOrganizationLocalData(),
-      directory: directory,
-      brandingLoader: MockOrganizationBrandingLoader(),
-      invites: invites,
-      notices: MockNoticePresenter(),
-    );
-    enterOrganization = EnterOrganization(
-      session: session,
-      directory: directory,
-      brandingLoader: MockOrganizationBrandingLoader(),
-      binder: MockOrganizationBinder(),
-      memberships: MockMembershipService(),
-      userRepository: userRepository,
-      deletions: deletion,
-      invites: invites,
-    );
-    router = buildAppRouter(session: session);
-  }
+/// The app's router over [TestApp]: in-memory repositories, real use
+/// cases, service mocks. The session moves only as in the app:
+/// [SessionRepository.moveTo] to bound (what *Login* does for a remembered
+/// session), `SignOut.call` signs out and `SignOut.afterAccessLost` leads to
+/// *Sem organização*.
+typedef _App = TestApp;
 
-  final auth = MockAuthGoogleService();
-  final directory = MockOrganizationDirectory();
-  final stopper = MockBackgroundTrackingStopper();
-  final userRepository = MockUserGoogleRepository();
-  final invites = MockInvitesRepository();
-  final deletion = MockAccountDeletionRepository();
-  final positions = MockPositionsRepository();
-  final permissions = MockPermissionsService();
-  final administrators = MockAdministratorsRepository();
+Future<void> _pump(WidgetTester tester, _App app) => app.pump(tester);
 
-  /// The data layer the routes read, as `appDependencies` provides it in
-  /// the app: every object a mock.
-  late final List<SingleChildWidget> dependencies = [
-    Provider<UserGoogleRepository>.value(value: userRepository),
-    Provider<OrganizationSession>.value(value: MockOrganizationSession()),
-    Provider<ThemeRepository>.value(value: MockThemeRepository()),
-    Provider<GoogleBondCheck>.value(value: MockGoogleBondCheck()),
-    Provider<InvitesRepository>.value(value: invites),
-    Provider<AccountDeletionRepository>.value(value: deletion),
-    Provider<GroupsRepository>.value(value: MockGroupsRepository()),
-    Provider<AdministratorsRepository>.value(value: administrators),
-    Provider<AppearanceRepository>.value(value: MockAppearanceRepository()),
-    Provider<CreationRepository>.value(value: MockCreationRepository()),
-    Provider<MembershipService>.value(value: MockMembershipService()),
-    Provider<PositionsRepository>.value(value: positions),
-    Provider<BackgroundTrackingService>.value(
-      value: MockBackgroundTrackingService(),
-    ),
-    Provider<PermissionsService>.value(value: permissions),
-    Provider<DeviceLocation>.value(value: MockDeviceLocation()),
-    Provider<BackgroundRestrictionChecker>.value(
-      value: MockBackgroundRestrictionChecker(),
-    ),
-    Provider<BackgroundUsageSettingsLauncher>.value(
-      value: MockBackgroundUsageSettingsLauncher(),
-    ),
-    Provider<CallService>.value(value: MockCallService()),
-    Provider<OrganizationDirectory>.value(value: directory),
-    Provider<SessionRepository>.value(value: session),
-    Provider<EnterOrganization>.value(value: enterOrganization),
-    Provider<SignOut>.value(value: signOut),
-  ];
-  late final SessionRepository session;
-  late final SignOut signOut;
-  late final EnterOrganization enterOrganization;
-  late final GoRouter router;
-
-  /// The path of the screen on top (pushed screens included).
-  String get location => router.state.uri.path;
-}
-
-/// Opens [app] as `main` and `MonAmieApp` do (the data layer, the session
-/// and the use cases provided above the router), on *Login*.
-Future<void> _pump(WidgetTester tester, _App app) async {
-  // Larger than a phone (800 x 2000): the test font's square glyphs take
-  // more room than the real font's (the map's attribution needs ~600).
-  tester.view.physicalSize = const Size(1600, 4000);
-  tester.view.devicePixelRatio = 2;
-  addTearDown(tester.view.reset);
-  addTearDown(app.router.dispose);
-  await tester.pumpWidget(
-    MultiProvider(
-      providers: app.dependencies,
-      child: MaterialApp.router(routerConfig: app.router),
-    ),
-  );
-  await _settle(tester);
-}
-
-/// Lets the navigation and its page transition finish. Not
-/// `pumpAndSettle`: *Login* shows an endless spinner while Google Sign-In
-/// is not ready.
-Future<void> _settle(WidgetTester tester) async {
-  await tester.pump();
-  await tester.pump(const Duration(seconds: 1));
-}
+Future<void> _settle(WidgetTester tester) => TestApp.settle(tester);
 
 /// Opens [app] and binds its session: the person is on the map.
 Future<void> _pumpBound(WidgetTester tester, _App app) async {
@@ -225,14 +48,10 @@ bool _isDisposed(Listenable listenable) {
 void _noop() {}
 
 void main() {
-  provideDummy<Result<List<Invite>>>(const Ok([]));
-  provideDummy<Result<AccountDeletion?>>(const Ok(null));
-  provideDummy<Result<List<Group>>>(const Ok([]));
-  provideDummy<Result<OrganizationAdministrators>>(
-    const Ok(OrganizationAdministrators()),
-  );
-  provideDummy<Result<List<OrganizationTheme>>>(const Ok([]));
-  provideDummy<Result<String?>>(const Ok(null));
+  // Signing out forgets the organization (`Organization.current`), which
+  // the shell's routes read: every test starts bound to the test one.
+  setUp(() => Organization.bind(testOrganization));
+  tearDown(() => Organization.bind(testOrganization));
 
   group('buildAppRouter sign-in flow - Widget Test Suite', () {
     testWidgets('Happy Path: the app starts on Login while signed out', (

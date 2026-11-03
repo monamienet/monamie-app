@@ -19,7 +19,9 @@ const _kRotaSul = OrganizationCandidate(id: 'rotasul', options: _kOptions);
 const _kVerdeMar = OrganizationCandidate(id: 'verdemar', options: _kOptions);
 
 /// A [MockOrganizationDirectory] answering [organizations].
-MockOrganizationDirectory _directory(List<OrganizationCandidate> organizations) {
+MockOrganizationDirectory _directory(
+  List<OrganizationCandidate> organizations,
+) {
   final directory = MockOrganizationDirectory();
   when(
     directory.organizationsOfSignedInUser(),

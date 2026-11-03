@@ -141,8 +141,9 @@ class _Harness {
       return organizations;
     });
     when(brandingLoader.load(any)).thenAnswer(
-      (invocation) async =>
-          _binding(invocation.positionalArguments.single as OrganizationCandidate),
+      (invocation) async => _binding(
+        invocation.positionalArguments.single as OrganizationCandidate,
+      ),
     );
     when(binder.bind(any, remember: anyNamed('remember'))).thenAnswer((
       invocation,
@@ -459,7 +460,10 @@ void main() {
       await harness.enterOrganization.afterSignIn(_kIdToken);
 
       // 3. Assert
-      expect(harness.session.session.value, const SessionState.noOrganization());
+      expect(
+        harness.session.session.value,
+        const SessionState.noOrganization(),
+      );
     });
   });
 
@@ -511,10 +515,7 @@ void main() {
       expect(harness.boundIds, ['rotasul']);
       expect(harness.session.session.value, SessionState.welcome(_kInvite));
       verify(harness.directory.organizationsOfSignedInUser()).called(1);
-      expect(
-        harness.log,
-        containsAllInOrder(['bind', 'signInToOrganization']),
-      );
+      expect(harness.log, containsAllInOrder(['bind', 'signInToOrganization']));
     });
 
     test("Edge Case: an invite of another organization than the one entered "
@@ -546,7 +547,10 @@ void main() {
       // 3. Assert
       verify(harness.directory.organizationsOfSignedInUser()).called(1);
       expect(harness.log, isNot(contains('bind')));
-      expect(harness.session.session.value, const SessionState.noOrganization());
+      expect(
+        harness.session.session.value,
+        const SessionState.noOrganization(),
+      );
     });
 
     test('Edge Case: checkDeletion false skips the pending deletion', () async {
@@ -595,20 +599,23 @@ void main() {
       expect(harness.session.moves, isEmpty);
     });
 
-    test('Sad Path: a failing Google sign-in returns the login error', () async {
-      // 1. Arrange
-      final harness = _Harness();
-      when(
-        harness.session.repository.keptOrSignIn(),
-      ).thenAnswer((_) async => throw Exception('offline'));
+    test(
+      'Sad Path: a failing Google sign-in returns the login error',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        when(
+          harness.session.repository.keptOrSignIn(),
+        ).thenAnswer((_) async => throw Exception('offline'));
 
-      // 2. Act
-      final result = await harness.enterOrganization.withKeptSignIn();
+        // 2. Act
+        final result = await harness.enterOrganization.withKeptSignIn();
 
-      // 3. Assert
-      expect(result, _errTitled(_kLoginErrorTitle));
-      verifyNever(harness.directory.organizationsOfSignedInUser());
-    });
+        // 3. Assert
+        expect(result, _errTitled(_kLoginErrorTitle));
+        verifyNever(harness.directory.organizationsOfSignedInUser());
+      },
+    );
   });
 
   group('EnterOrganization.choose - Unit Test Suite', () {

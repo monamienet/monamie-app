@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
-import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
 import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/ui/account/view_models/my_account_view_model.dart';
 import 'package:monamie_app/ui/account/widgets/my_account_screen.dart';
 
-@GenerateNiceMocks([
-  MockSpec<AccountDeletionRepository>(),
-  MockSpec<OrganizationDirectory>(),
-  MockSpec<SignOut>(),
-])
+import '../../../../testing/fakes/repositories/fake_account_deletion_repository.dart';
+import '../../../../testing/fakes/repositories/fake_organization_directory.dart';
+
+@GenerateNiceMocks([MockSpec<SignOut>()])
 import 'my_account_screen_test.mocks.dart';
 
 void main() {
@@ -21,12 +17,9 @@ void main() {
       tester,
     ) async {
       // 1. Arrange
-      final directory = MockOrganizationDirectory();
-      when(
-        directory.organizationsOfSignedInUser(),
-      ).thenAnswer((_) async => const []);
+      final directory = FakeOrganizationDirectory();
       final controller = MyAccountViewModel(
-        repository: MockAccountDeletionRepository(),
+        repository: FakeAccountDeletionRepository(),
         organizationId: 'rotasul',
         directory: directory,
         signOut: MockSignOut(),
@@ -45,7 +38,7 @@ void main() {
       await tester.pump();
 
       // 3. Assert
-      verify(directory.organizationsOfSignedInUser()).called(1);
+      expect(directory.callCount('organizationsOfSignedInUser'), 1);
       expect(controller.state.isOwner, isFalse);
     });
   });

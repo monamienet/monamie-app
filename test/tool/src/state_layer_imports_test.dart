@@ -856,17 +856,20 @@ import 'package:geolocator/geolocator.dart' as geo;
       expect(result.map((v) => (v.uri, v.rule)), [(uri, domainImportsOuter)]);
     });
 
-    test('a package URI with `..` that stays inside lib/domain/ is allowed', () {
-      // 1. Arrange
-      const content =
-          "import 'package:monamie_app/domain/models/../models/x.dart';\n";
+    test(
+      'a package URI with `..` that stays inside lib/domain/ is allowed',
+      () {
+        // 1. Arrange
+        const content =
+            "import 'package:monamie_app/domain/models/../models/x.dart';\n";
 
-      // 2. Act
-      final result = findLayerViolations(domainPath, content);
+        // 2. Act
+        final result = findLayerViolations(domainPath, content);
 
-      // 3. Assert
-      expect(result, isEmpty);
-    });
+        // 3. Assert
+        expect(result, isEmpty);
+      },
+    );
 
     test('a relative import resolves from a Windows path', () {
       // 1. Arrange

@@ -7,13 +7,9 @@
 import 'dart:async' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i6;
-import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart'
-    as _i2;
-import 'package:monamie_app/data/repositories/organization/organization_directory.dart'
-    as _i7;
-import 'package:monamie_app/domain/models/account_deletion.dart' as _i5;
-import 'package:monamie_app/domain/use_cases/sign_out.dart' as _i8;
+import 'package:mockito/src/dummies.dart' as _i5;
+import 'package:monamie_app/domain/models/account_deletion.dart' as _i6;
+import 'package:monamie_app/domain/use_cases/sign_out.dart' as _i2;
 import 'package:monamie_app/utils/result.dart' as _i4;
 
 // ignore_for_file: type=lint
@@ -32,109 +28,22 @@ import 'package:monamie_app/utils/result.dart' as _i4;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-/// A class which mocks [AccountDeletionRepository].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockAccountDeletionRepository extends _i1.Mock
-    implements _i2.AccountDeletionRepository {
-  @override
-  _i3.Future<_i4.Result<_i5.AccountDeletion>> request({
-    List<String>? confirmIds = const [],
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(#request, [], {#confirmIds: confirmIds}),
-            returnValue: _i3.Future<_i4.Result<_i5.AccountDeletion>>.value(
-              _i6.dummyValue<_i4.Result<_i5.AccountDeletion>>(
-                this,
-                Invocation.method(#request, [], {#confirmIds: confirmIds}),
-              ),
-            ),
-            returnValueForMissingStub:
-                _i3.Future<_i4.Result<_i5.AccountDeletion>>.value(
-                  _i6.dummyValue<_i4.Result<_i5.AccountDeletion>>(
-                    this,
-                    Invocation.method(#request, [], {#confirmIds: confirmIds}),
-                  ),
-                ),
-          )
-          as _i3.Future<_i4.Result<_i5.AccountDeletion>>);
-
-  @override
-  _i3.Future<_i4.Result<void>> cancel() =>
-      (super.noSuchMethod(
-            Invocation.method(#cancel, []),
-            returnValue: _i3.Future<_i4.Result<void>>.value(
-              _i6.dummyValue<_i4.Result<void>>(
-                this,
-                Invocation.method(#cancel, []),
-              ),
-            ),
-            returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
-              _i6.dummyValue<_i4.Result<void>>(
-                this,
-                Invocation.method(#cancel, []),
-              ),
-            ),
-          )
-          as _i3.Future<_i4.Result<void>>);
-
-  @override
-  _i3.Future<_i4.Result<_i5.AccountDeletion?>> pending() =>
-      (super.noSuchMethod(
-            Invocation.method(#pending, []),
-            returnValue: _i3.Future<_i4.Result<_i5.AccountDeletion?>>.value(
-              _i6.dummyValue<_i4.Result<_i5.AccountDeletion?>>(
-                this,
-                Invocation.method(#pending, []),
-              ),
-            ),
-            returnValueForMissingStub:
-                _i3.Future<_i4.Result<_i5.AccountDeletion?>>.value(
-                  _i6.dummyValue<_i4.Result<_i5.AccountDeletion?>>(
-                    this,
-                    Invocation.method(#pending, []),
-                  ),
-                ),
-          )
-          as _i3.Future<_i4.Result<_i5.AccountDeletion?>>);
-}
-
-/// A class which mocks [OrganizationDirectory].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockOrganizationDirectory extends _i1.Mock
-    implements _i7.OrganizationDirectory {
-  @override
-  _i3.Future<List<_i7.OrganizationCandidate>> organizationsOfSignedInUser() =>
-      (super.noSuchMethod(
-            Invocation.method(#organizationsOfSignedInUser, []),
-            returnValue: _i3.Future<List<_i7.OrganizationCandidate>>.value(
-              <_i7.OrganizationCandidate>[],
-            ),
-            returnValueForMissingStub:
-                _i3.Future<List<_i7.OrganizationCandidate>>.value(
-                  <_i7.OrganizationCandidate>[],
-                ),
-          )
-          as _i3.Future<List<_i7.OrganizationCandidate>>);
-}
-
 /// A class which mocks [SignOut].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockSignOut extends _i1.Mock implements _i8.SignOut {
+class MockSignOut extends _i1.Mock implements _i2.SignOut {
   @override
   _i3.Future<_i4.Result<bool>> call() =>
       (super.noSuchMethod(
             Invocation.method(#call, []),
             returnValue: _i3.Future<_i4.Result<bool>>.value(
-              _i6.dummyValue<_i4.Result<bool>>(
+              _i5.dummyValue<_i4.Result<bool>>(
                 this,
                 Invocation.method(#call, []),
               ),
             ),
             returnValueForMissingStub: _i3.Future<_i4.Result<bool>>.value(
-              _i6.dummyValue<_i4.Result<bool>>(
+              _i5.dummyValue<_i4.Result<bool>>(
                 this,
                 Invocation.method(#call, []),
               ),
@@ -152,7 +61,7 @@ class MockSignOut extends _i1.Mock implements _i8.SignOut {
           as _i3.Future<void>);
 
   @override
-  _i3.Future<void> afterAccountDeleted(_i5.AccountDeletion? deletion) =>
+  _i3.Future<void> afterAccountDeleted(_i6.AccountDeletion? deletion) =>
       (super.noSuchMethod(
             Invocation.method(#afterAccountDeleted, [deletion]),
             returnValue: _i3.Future<void>.value(),
@@ -165,13 +74,13 @@ class MockSignOut extends _i1.Mock implements _i8.SignOut {
       (super.noSuchMethod(
             Invocation.method(#switchOrganization, []),
             returnValue: _i3.Future<_i4.Result<void>>.value(
-              _i6.dummyValue<_i4.Result<void>>(
+              _i5.dummyValue<_i4.Result<void>>(
                 this,
                 Invocation.method(#switchOrganization, []),
               ),
             ),
             returnValueForMissingStub: _i3.Future<_i4.Result<void>>.value(
-              _i6.dummyValue<_i4.Result<void>>(
+              _i5.dummyValue<_i4.Result<void>>(
                 this,
                 Invocation.method(#switchOrganization, []),
               ),

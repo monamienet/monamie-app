@@ -57,20 +57,23 @@ MockAuthGoogleService _auth({
 
 void main() {
   group('SessionRepositoryGoogle.start - Unit Test Suite', () {
-    test('Happy Path: start initializes Google and then marks it ready', () async {
-      // 1. Arrange
-      final auth = _auth();
-      when(auth.ensureInitialized()).thenAnswer((_) async {});
-      final session = SessionRepositoryGoogle(auth: auth);
+    test(
+      'Happy Path: start initializes Google and then marks it ready',
+      () async {
+        // 1. Arrange
+        final auth = _auth();
+        when(auth.ensureInitialized()).thenAnswer((_) async {});
+        final session = SessionRepositoryGoogle(auth: auth);
 
-      // 2. Act
-      session.start();
-      await pumpEventQueue();
+        // 2. Act
+        session.start();
+        await pumpEventQueue();
 
-      // 3. Assert
-      expect(session.googleReady.value, isTrue);
-      verify(auth.ensureInitialized()).called(1);
-    });
+        // 3. Assert
+        expect(session.googleReady.value, isTrue);
+        verify(auth.ensureInitialized()).called(1);
+      },
+    );
 
     test('Edge Case: Google is not ready before start', () {
       // 1. Arrange
@@ -100,21 +103,24 @@ void main() {
       verify(auth.ensureInitialized()).called(1);
     });
 
-    test('Sad Path: a failing initialization still marks Google ready', () async {
-      // 1. Arrange
-      final auth = _auth();
-      when(
-        auth.ensureInitialized(),
-      ).thenAnswer((_) async => throw StateError('no Play services'));
-      final session = SessionRepositoryGoogle(auth: auth);
+    test(
+      'Sad Path: a failing initialization still marks Google ready',
+      () async {
+        // 1. Arrange
+        final auth = _auth();
+        when(
+          auth.ensureInitialized(),
+        ).thenAnswer((_) async => throw StateError('no Play services'));
+        final session = SessionRepositoryGoogle(auth: auth);
 
-      // 2. Act
-      session.start();
-      await pumpEventQueue();
+        // 2. Act
+        session.start();
+        await pumpEventQueue();
 
-      // 3. Assert
-      expect(session.googleReady.value, isTrue);
-    });
+        // 3. Assert
+        expect(session.googleReady.value, isTrue);
+      },
+    );
   });
 
   group('SessionRepositoryGoogle.dispose - Unit Test Suite', () {
@@ -302,17 +308,20 @@ void main() {
       expect(session.idToken, _kIdToken);
     });
 
-    test('Happy Path: calls onAccountChosen once an account is chosen', () async {
-      // 1. Arrange
-      final session = SessionRepositoryGoogle(auth: _auth());
-      var chosen = 0;
+    test(
+      'Happy Path: calls onAccountChosen once an account is chosen',
+      () async {
+        // 1. Arrange
+        final session = SessionRepositoryGoogle(auth: _auth());
+        var chosen = 0;
 
-      // 2. Act
-      await session.signInGoogle(onAccountChosen: () => chosen++);
+        // 2. Act
+        await session.signInGoogle(onAccountChosen: () => chosen++);
 
-      // 3. Assert
-      expect(chosen, 1);
-    });
+        // 3. Assert
+        expect(chosen, 1);
+      },
+    );
 
     test('Edge Case: a sign-in with no token (the web) keeps the previous '
         'token', () async {
@@ -496,17 +505,20 @@ void main() {
   });
 
   group('SessionRepositoryGoogle organization sign-in - Unit Test Suite', () {
-    test('Happy Path: signs in to the organization with the given token', () async {
-      // 1. Arrange
-      final auth = _auth();
-      final session = SessionRepositoryGoogle(auth: auth);
+    test(
+      'Happy Path: signs in to the organization with the given token',
+      () async {
+        // 1. Arrange
+        final auth = _auth();
+        final session = SessionRepositoryGoogle(auth: auth);
 
-      // 2. Act
-      await session.signInToOrganization(_kIdToken);
+        // 2. Act
+        await session.signInToOrganization(_kIdToken);
 
-      // 3. Assert
-      verify(auth.signInToOrganization(_kIdToken)).called(1);
-    });
+        // 3. Assert
+        verify(auth.signInToOrganization(_kIdToken)).called(1);
+      },
+    );
 
     test("Happy Path: saves the organization's Google profile", () async {
       // 1. Arrange

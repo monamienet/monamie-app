@@ -155,16 +155,19 @@ void main() {
   });
 
   group('HomeSessionViewModel.loadOwnership - Unit Test Suite', () {
-    test('Happy Path: the owner of the organization is recorded as such', () async {
-      // 1. Arrange
-      final harness = _Harness();
+    test(
+      'Happy Path: the owner of the organization is recorded as such',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
 
-      // 2. Act
-      await harness.controller.loadOwnership.execute('rotasul');
+        // 2. Act
+        await harness.controller.loadOwnership.execute('rotasul');
 
-      // 3. Assert
-      expect(harness.controller.state.ownership, {'rotasul': true});
-    });
+        // 3. Assert
+        expect(harness.controller.state.ownership, {'rotasul': true});
+      },
+    );
 
     test('Happy Path: a member who does not own it is recorded as not the '
         'owner', () async {
@@ -234,16 +237,19 @@ void main() {
       expect(harness.controller.loadOwnership.argument, isNull);
     });
 
-    test('Edge Case: reading the ownership does not move the session', () async {
-      // 1. Arrange
-      final harness = _Harness();
+    test(
+      'Edge Case: reading the ownership does not move the session',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
 
-      // 2. Act
-      await harness.controller.loadOwnership.execute('rotasul');
+        // 2. Act
+        await harness.controller.loadOwnership.execute('rotasul');
 
-      // 3. Assert
-      expect(harness.session.moves, isEmpty);
-    });
+        // 3. Assert
+        expect(harness.session.moves, isEmpty);
+      },
+    );
 
     test('Sad Path: a failed read leaves the ownership unknown (hidden) and '
         'notifies nobody', () async {
@@ -259,7 +265,10 @@ void main() {
       await harness.controller.loadOwnership.execute('rotasul');
 
       // 3. Assert
-      expect(harness.controller.state.ownership.containsKey('rotasul'), isFalse);
+      expect(
+        harness.controller.state.ownership.containsKey('rotasul'),
+        isFalse,
+      );
       expect(notifications, 0);
     });
 

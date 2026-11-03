@@ -45,7 +45,7 @@ jobs:
           test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
 
       - name: Formatting
-        run: dart format --output=none --set-exit-if-changed lib test tool
+        run: dart format --output=none --set-exit-if-changed lib test tool testing
 
       - name: Analyzer
         run: flutter analyze

@@ -8,16 +8,9 @@ import 'dart:async' as _i3;
 
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i5;
-import 'package:monamie_app/data/model/organization_binding.dart' as _i9;
-import 'package:monamie_app/data/repositories/creation/creation_repository.dart'
-    as _i2;
-import 'package:monamie_app/data/repositories/theme/theme_repository.dart'
-    as _i10;
-import 'package:monamie_app/domain/models/creation.dart' as _i6;
-import 'package:monamie_app/domain/models/invite.dart' as _i8;
-import 'package:monamie_app/domain/models/organization/organization_theme.dart'
-    as _i11;
-import 'package:monamie_app/domain/use_cases/enter_organization.dart' as _i7;
+import 'package:monamie_app/data/model/organization_binding.dart' as _i7;
+import 'package:monamie_app/domain/models/invite.dart' as _i6;
+import 'package:monamie_app/domain/use_cases/enter_organization.dart' as _i2;
 import 'package:monamie_app/utils/result.dart' as _i4;
 
 // ignore_for_file: type=lint
@@ -36,94 +29,10 @@ import 'package:monamie_app/utils/result.dart' as _i4;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-/// A class which mocks [CreationRepository].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockCreationRepository extends _i1.Mock
-    implements _i2.CreationRepository {
-  @override
-  _i3.Future<_i4.Result<String?>> idProblem(String? id) =>
-      (super.noSuchMethod(
-            Invocation.method(#idProblem, [id]),
-            returnValue: _i3.Future<_i4.Result<String?>>.value(
-              _i5.dummyValue<_i4.Result<String?>>(
-                this,
-                Invocation.method(#idProblem, [id]),
-              ),
-            ),
-            returnValueForMissingStub: _i3.Future<_i4.Result<String?>>.value(
-              _i5.dummyValue<_i4.Result<String?>>(
-                this,
-                Invocation.method(#idProblem, [id]),
-              ),
-            ),
-          )
-          as _i3.Future<_i4.Result<String?>>);
-
-  @override
-  _i3.Future<_i4.Result<String>> create({
-    required String? id,
-    required String? name,
-    required String? themeId,
-    required String? plan,
-  }) =>
-      (super.noSuchMethod(
-            Invocation.method(#create, [], {
-              #id: id,
-              #name: name,
-              #themeId: themeId,
-              #plan: plan,
-            }),
-            returnValue: _i3.Future<_i4.Result<String>>.value(
-              _i5.dummyValue<_i4.Result<String>>(
-                this,
-                Invocation.method(#create, [], {
-                  #id: id,
-                  #name: name,
-                  #themeId: themeId,
-                  #plan: plan,
-                }),
-              ),
-            ),
-            returnValueForMissingStub: _i3.Future<_i4.Result<String>>.value(
-              _i5.dummyValue<_i4.Result<String>>(
-                this,
-                Invocation.method(#create, [], {
-                  #id: id,
-                  #name: name,
-                  #themeId: themeId,
-                  #plan: plan,
-                }),
-              ),
-            ),
-          )
-          as _i3.Future<_i4.Result<String>>);
-
-  @override
-  _i3.Future<_i4.Result<List<_i6.Creation>>> mine() =>
-      (super.noSuchMethod(
-            Invocation.method(#mine, []),
-            returnValue: _i3.Future<_i4.Result<List<_i6.Creation>>>.value(
-              _i5.dummyValue<_i4.Result<List<_i6.Creation>>>(
-                this,
-                Invocation.method(#mine, []),
-              ),
-            ),
-            returnValueForMissingStub:
-                _i3.Future<_i4.Result<List<_i6.Creation>>>.value(
-                  _i5.dummyValue<_i4.Result<List<_i6.Creation>>>(
-                    this,
-                    Invocation.method(#mine, []),
-                  ),
-                ),
-          )
-          as _i3.Future<_i4.Result<List<_i6.Creation>>>);
-}
-
 /// A class which mocks [EnterOrganization].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockEnterOrganization extends _i1.Mock implements _i7.EnterOrganization {
+class MockEnterOrganization extends _i1.Mock implements _i2.EnterOrganization {
   @override
   _i3.Future<_i4.Result<void>> afterSignIn(
     String? idToken, {
@@ -162,7 +71,7 @@ class MockEnterOrganization extends _i1.Mock implements _i7.EnterOrganization {
   @override
   _i3.Future<_i4.Result<void>> withKeptSignIn({
     String? enter,
-    _i8.Invite? welcome,
+    _i6.Invite? welcome,
     bool? checkDeletion = true,
     void Function(String)? onEntering,
   }) =>
@@ -200,7 +109,7 @@ class MockEnterOrganization extends _i1.Mock implements _i7.EnterOrganization {
 
   @override
   _i3.Future<_i4.Result<void>> choose(
-    _i9.OrganizationBinding? binding, {
+    _i7.OrganizationBinding? binding, {
     void Function(String)? onEntering,
   }) =>
       (super.noSuchMethod(
@@ -227,23 +136,4 @@ class MockEnterOrganization extends _i1.Mock implements _i7.EnterOrganization {
             ),
           )
           as _i3.Future<_i4.Result<void>>);
-}
-
-/// A class which mocks [ThemeRepository].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockThemeRepository extends _i1.Mock implements _i10.ThemeRepository {
-  @override
-  _i3.Future<Map<String, _i11.OrganizationTheme>> themes() =>
-      (super.noSuchMethod(
-            Invocation.method(#themes, []),
-            returnValue: _i3.Future<Map<String, _i11.OrganizationTheme>>.value(
-              <String, _i11.OrganizationTheme>{},
-            ),
-            returnValueForMissingStub:
-                _i3.Future<Map<String, _i11.OrganizationTheme>>.value(
-                  <String, _i11.OrganizationTheme>{},
-                ),
-          )
-          as _i3.Future<Map<String, _i11.OrganizationTheme>>);
 }

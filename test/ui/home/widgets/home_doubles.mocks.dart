@@ -5,32 +5,25 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
 import 'dart:async' as _i11;
-import 'dart:ui' as _i18;
+import 'dart:ui' as _i17;
 
 import 'package:flutter/foundation.dart' as _i2;
 import 'package:flutter_map/flutter_map.dart' as _i4;
 import 'package:latlong2/latlong.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i9;
-import 'package:monamie_app/data/repositories/membership/membership_repository.dart'
-    as _i12;
-import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart'
-    as _i17;
 import 'package:monamie_app/data/services/call_service.dart' as _i10;
-import 'package:monamie_app/domain/models/capabilities.dart' as _i13;
-import 'package:monamie_app/domain/models/group_member.dart' as _i16;
 import 'package:monamie_app/domain/models/history_month.dart' as _i8;
-import 'package:monamie_app/domain/models/location_point.dart' as _i20;
-import 'package:monamie_app/domain/models/map_group.dart' as _i14;
-import 'package:monamie_app/domain/models/user_model.dart' as _i15;
+import 'package:monamie_app/domain/models/location_point.dart' as _i14;
+import 'package:monamie_app/domain/models/user_model.dart' as _i13;
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart'
     as _i7;
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart'
-    as _i19;
+    as _i12;
 import 'package:monamie_app/ui/home/view_models/user_state.dart' as _i6;
-import 'package:monamie_app/ui/home/view_models/user_view_model.dart' as _i22;
+import 'package:monamie_app/ui/home/view_models/user_view_model.dart' as _i16;
 import 'package:monamie_app/utils/command.dart' as _i5;
-import 'package:monamie_app/utils/user_notice.dart' as _i21;
+import 'package:monamie_app/utils/user_notice.dart' as _i15;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -192,453 +185,10 @@ class MockCallService extends _i1.Mock implements _i10.CallService {
           as _i11.Future<void>);
 }
 
-/// A class which mocks [MembershipRepository].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockMembershipRepository extends _i1.Mock
-    implements _i12.MembershipRepository {
-  @override
-  _i2.ValueListenable<_i13.Capabilities> get capabilities =>
-      (super.noSuchMethod(
-            Invocation.getter(#capabilities),
-            returnValue: _FakeValueListenable_0<_i13.Capabilities>(
-              this,
-              Invocation.getter(#capabilities),
-            ),
-            returnValueForMissingStub:
-                _FakeValueListenable_0<_i13.Capabilities>(
-                  this,
-                  Invocation.getter(#capabilities),
-                ),
-          )
-          as _i2.ValueListenable<_i13.Capabilities>);
-
-  @override
-  bool get isAdmin =>
-      (super.noSuchMethod(
-            Invocation.getter(#isAdmin),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  bool get canWatch =>
-      (super.noSuchMethod(
-            Invocation.getter(#canWatch),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  bool get canPublish =>
-      (super.noSuchMethod(
-            Invocation.getter(#canPublish),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  _i2.ValueListenable<bool> get isLoading =>
-      (super.noSuchMethod(
-            Invocation.getter(#isLoading),
-            returnValue: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#isLoading),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#isLoading),
-            ),
-          )
-          as _i2.ValueListenable<bool>);
-
-  @override
-  _i2.ValueListenable<String> get loadError =>
-      (super.noSuchMethod(
-            Invocation.getter(#loadError),
-            returnValue: _FakeValueListenable_0<String>(
-              this,
-              Invocation.getter(#loadError),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<String>(
-              this,
-              Invocation.getter(#loadError),
-            ),
-          )
-          as _i2.ValueListenable<String>);
-
-  @override
-  _i2.ValueListenable<List<_i14.MapGroup>> get mapGroups =>
-      (super.noSuchMethod(
-            Invocation.getter(#mapGroups),
-            returnValue: _FakeValueListenable_0<List<_i14.MapGroup>>(
-              this,
-              Invocation.getter(#mapGroups),
-            ),
-            returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i14.MapGroup>>(
-                  this,
-                  Invocation.getter(#mapGroups),
-                ),
-          )
-          as _i2.ValueListenable<List<_i14.MapGroup>>);
-
-  @override
-  _i2.ValueListenable<List<_i14.MapGroup>> get publishGroups =>
-      (super.noSuchMethod(
-            Invocation.getter(#publishGroups),
-            returnValue: _FakeValueListenable_0<List<_i14.MapGroup>>(
-              this,
-              Invocation.getter(#publishGroups),
-            ),
-            returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i14.MapGroup>>(
-                  this,
-                  Invocation.getter(#publishGroups),
-                ),
-          )
-          as _i2.ValueListenable<List<_i14.MapGroup>>);
-
-  @override
-  _i2.ValueListenable<_i14.MapGroup?> get selectedGroup =>
-      (super.noSuchMethod(
-            Invocation.getter(#selectedGroup),
-            returnValue: _FakeValueListenable_0<_i14.MapGroup?>(
-              this,
-              Invocation.getter(#selectedGroup),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<_i14.MapGroup?>(
-              this,
-              Invocation.getter(#selectedGroup),
-            ),
-          )
-          as _i2.ValueListenable<_i14.MapGroup?>);
-
-  @override
-  _i2.ValueListenable<bool> get switchingGroup =>
-      (super.noSuchMethod(
-            Invocation.getter(#switchingGroup),
-            returnValue: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#switchingGroup),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#switchingGroup),
-            ),
-          )
-          as _i2.ValueListenable<bool>);
-
-  @override
-  _i2.ValueListenable<List<_i15.UserModel>> get groupPositions =>
-      (super.noSuchMethod(
-            Invocation.getter(#groupPositions),
-            returnValue: _FakeValueListenable_0<List<_i15.UserModel>>(
-              this,
-              Invocation.getter(#groupPositions),
-            ),
-            returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i15.UserModel>>(
-                  this,
-                  Invocation.getter(#groupPositions),
-                ),
-          )
-          as _i2.ValueListenable<List<_i15.UserModel>>);
-
-  @override
-  _i2.ValueListenable<List<_i16.GroupMember>> get observedMembers =>
-      (super.noSuchMethod(
-            Invocation.getter(#observedMembers),
-            returnValue: _FakeValueListenable_0<List<_i16.GroupMember>>(
-              this,
-              Invocation.getter(#observedMembers),
-            ),
-            returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i16.GroupMember>>(
-                  this,
-                  Invocation.getter(#observedMembers),
-                ),
-          )
-          as _i2.ValueListenable<List<_i16.GroupMember>>);
-
-  @override
-  _i2.ValueListenable<List<_i16.GroupMember>> get historyMembers =>
-      (super.noSuchMethod(
-            Invocation.getter(#historyMembers),
-            returnValue: _FakeValueListenable_0<List<_i16.GroupMember>>(
-              this,
-              Invocation.getter(#historyMembers),
-            ),
-            returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i16.GroupMember>>(
-                  this,
-                  Invocation.getter(#historyMembers),
-                ),
-          )
-          as _i2.ValueListenable<List<_i16.GroupMember>>);
-
-  @override
-  _i2.ValueListenable<Map<String, int>> get groupSizes =>
-      (super.noSuchMethod(
-            Invocation.getter(#groupSizes),
-            returnValue: _FakeValueListenable_0<Map<String, int>>(
-              this,
-              Invocation.getter(#groupSizes),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<Map<String, int>>(
-              this,
-              Invocation.getter(#groupSizes),
-            ),
-          )
-          as _i2.ValueListenable<Map<String, int>>);
-
-  @override
-  _i2.ValueListenable<List<_i16.GroupMember>> get highlightedObservedUsers =>
-      (super.noSuchMethod(
-            Invocation.getter(#highlightedObservedUsers),
-            returnValue: _FakeValueListenable_0<List<_i16.GroupMember>>(
-              this,
-              Invocation.getter(#highlightedObservedUsers),
-            ),
-            returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i16.GroupMember>>(
-                  this,
-                  Invocation.getter(#highlightedObservedUsers),
-                ),
-          )
-          as _i2.ValueListenable<List<_i16.GroupMember>>);
-
-  @override
-  _i2.ValueListenable<String?> get selectedMemberEmail =>
-      (super.noSuchMethod(
-            Invocation.getter(#selectedMemberEmail),
-            returnValue: _FakeValueListenable_0<String?>(
-              this,
-              Invocation.getter(#selectedMemberEmail),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<String?>(
-              this,
-              Invocation.getter(#selectedMemberEmail),
-            ),
-          )
-          as _i2.ValueListenable<String?>);
-
-  @override
-  _i11.Future<void> pickGroup(_i14.MapGroup? group) =>
-      (super.noSuchMethod(
-            Invocation.method(#pickGroup, [group]),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
-          )
-          as _i11.Future<void>);
-
-  @override
-  _i11.Future<void> loadGroupSizes() =>
-      (super.noSuchMethod(
-            Invocation.method(#loadGroupSizes, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
-          )
-          as _i11.Future<void>);
-
-  @override
-  _i11.Future<List<_i16.GroupMember>> loadHistoryMembers() =>
-      (super.noSuchMethod(
-            Invocation.method(#loadHistoryMembers, []),
-            returnValue: _i11.Future<List<_i16.GroupMember>>.value(
-              <_i16.GroupMember>[],
-            ),
-            returnValueForMissingStub:
-                _i11.Future<List<_i16.GroupMember>>.value(<_i16.GroupMember>[]),
-          )
-          as _i11.Future<List<_i16.GroupMember>>);
-
-  @override
-  void toggleHighlight(_i16.GroupMember? member) => super.noSuchMethod(
-    Invocation.method(#toggleHighlight, [member]),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  bool isHighlighted(_i16.GroupMember? member) =>
-      (super.noSuchMethod(
-            Invocation.method(#isHighlighted, [member]),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  void toggleSelected(String? email) => super.noSuchMethod(
-    Invocation.method(#toggleSelected, [email]),
-    returnValueForMissingStub: null,
-  );
-
-  @override
-  void clearSelected() => super.noSuchMethod(
-    Invocation.method(#clearSelected, []),
-    returnValueForMissingStub: null,
-  );
-}
-
-/// A class which mocks [PermissionsRepository].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockPermissionsRepository extends _i1.Mock
-    implements _i17.PermissionsRepository {
-  @override
-  _i2.ValueListenable<bool> get hasWhenInUseLocationPermission =>
-      (super.noSuchMethod(
-            Invocation.getter(#hasWhenInUseLocationPermission),
-            returnValue: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#hasWhenInUseLocationPermission),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#hasWhenInUseLocationPermission),
-            ),
-          )
-          as _i2.ValueListenable<bool>);
-
-  @override
-  _i2.ValueListenable<bool> get hasAlwaysLocationPermission =>
-      (super.noSuchMethod(
-            Invocation.getter(#hasAlwaysLocationPermission),
-            returnValue: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#hasAlwaysLocationPermission),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#hasAlwaysLocationPermission),
-            ),
-          )
-          as _i2.ValueListenable<bool>);
-
-  @override
-  _i2.ValueListenable<bool> get hasNotificationPermission =>
-      (super.noSuchMethod(
-            Invocation.getter(#hasNotificationPermission),
-            returnValue: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#hasNotificationPermission),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#hasNotificationPermission),
-            ),
-          )
-          as _i2.ValueListenable<bool>);
-
-  @override
-  _i2.ValueListenable<bool> get isBackgroundRestricted =>
-      (super.noSuchMethod(
-            Invocation.getter(#isBackgroundRestricted),
-            returnValue: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#isBackgroundRestricted),
-            ),
-            returnValueForMissingStub: _FakeValueListenable_0<bool>(
-              this,
-              Invocation.getter(#isBackgroundRestricted),
-            ),
-          )
-          as _i2.ValueListenable<bool>);
-
-  @override
-  _i11.Future<void> start() =>
-      (super.noSuchMethod(
-            Invocation.method(#start, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
-          )
-          as _i11.Future<void>);
-
-  @override
-  void didChangeAppLifecycleState(_i18.AppLifecycleState? state) =>
-      super.noSuchMethod(
-        Invocation.method(#didChangeAppLifecycleState, [state]),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  _i11.Future<bool> refreshBackgroundRestriction() =>
-      (super.noSuchMethod(
-            Invocation.method(#refreshBackgroundRestriction, []),
-            returnValue: _i11.Future<bool>.value(false),
-            returnValueForMissingStub: _i11.Future<bool>.value(false),
-          )
-          as _i11.Future<bool>);
-
-  @override
-  _i11.Future<void> requestWhenInUsePermission() =>
-      (super.noSuchMethod(
-            Invocation.method(#requestWhenInUsePermission, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
-          )
-          as _i11.Future<void>);
-
-  @override
-  _i11.Future<void> requestAlwaysPermission() =>
-      (super.noSuchMethod(
-            Invocation.method(#requestAlwaysPermission, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
-          )
-          as _i11.Future<void>);
-
-  @override
-  _i11.Future<void> requestNotificationPermission() =>
-      (super.noSuchMethod(
-            Invocation.method(#requestNotificationPermission, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
-          )
-          as _i11.Future<void>);
-
-  @override
-  bool arePermissionsGranted() =>
-      (super.noSuchMethod(
-            Invocation.method(#arePermissionsGranted, []),
-            returnValue: false,
-            returnValueForMissingStub: false,
-          )
-          as bool);
-
-  @override
-  _i11.Future<void> openBackgroundUsageSettings() =>
-      (super.noSuchMethod(
-            Invocation.method(#openBackgroundUsageSettings, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
-          )
-          as _i11.Future<void>);
-
-  @override
-  _i11.Future<void> notifyGpsDisabled() =>
-      (super.noSuchMethod(
-            Invocation.method(#notifyGpsDisabled, []),
-            returnValue: _i11.Future<void>.value(),
-            returnValueForMissingStub: _i11.Future<void>.value(),
-          )
-          as _i11.Future<void>);
-
-  @override
-  void dispose() => super.noSuchMethod(
-    Invocation.method(#dispose, []),
-    returnValueForMissingStub: null,
-  );
-}
-
 /// A class which mocks [TrackingViewModel].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockTrackingViewModel extends _i1.Mock implements _i19.TrackingViewModel {
+class MockTrackingViewModel extends _i1.Mock implements _i12.TrackingViewModel {
   @override
   _i3.LatLng get position =>
       (super.noSuchMethod(
@@ -652,36 +202,36 @@ class MockTrackingViewModel extends _i1.Mock implements _i19.TrackingViewModel {
           as _i3.LatLng);
 
   @override
-  _i2.ValueListenable<List<_i15.UserModel>> get firebaseUsers =>
+  _i2.ValueListenable<List<_i13.UserModel>> get firebaseUsers =>
       (super.noSuchMethod(
             Invocation.getter(#firebaseUsers),
-            returnValue: _FakeValueListenable_0<List<_i15.UserModel>>(
+            returnValue: _FakeValueListenable_0<List<_i13.UserModel>>(
               this,
               Invocation.getter(#firebaseUsers),
             ),
             returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i15.UserModel>>(
+                _FakeValueListenable_0<List<_i13.UserModel>>(
                   this,
                   Invocation.getter(#firebaseUsers),
                 ),
           )
-          as _i2.ValueListenable<List<_i15.UserModel>>);
+          as _i2.ValueListenable<List<_i13.UserModel>>);
 
   @override
-  _i2.ValueListenable<List<_i15.UserModel>> get groupUsers =>
+  _i2.ValueListenable<List<_i13.UserModel>> get groupUsers =>
       (super.noSuchMethod(
             Invocation.getter(#groupUsers),
-            returnValue: _FakeValueListenable_0<List<_i15.UserModel>>(
+            returnValue: _FakeValueListenable_0<List<_i13.UserModel>>(
               this,
               Invocation.getter(#groupUsers),
             ),
             returnValueForMissingStub:
-                _FakeValueListenable_0<List<_i15.UserModel>>(
+                _FakeValueListenable_0<List<_i13.UserModel>>(
                   this,
                   Invocation.getter(#groupUsers),
                 ),
           )
-          as _i2.ValueListenable<List<_i15.UserModel>>);
+          as _i2.ValueListenable<List<_i13.UserModel>>);
 
   @override
   _i4.MapController get mapController =>
@@ -753,13 +303,13 @@ class MockTrackingViewModel extends _i1.Mock implements _i19.TrackingViewModel {
           as bool);
 
   @override
-  List<_i15.UserModel> get markedUsers =>
+  List<_i13.UserModel> get markedUsers =>
       (super.noSuchMethod(
             Invocation.getter(#markedUsers),
-            returnValue: <_i15.UserModel>[],
-            returnValueForMissingStub: <_i15.UserModel>[],
+            returnValue: <_i13.UserModel>[],
+            returnValueForMissingStub: <_i13.UserModel>[],
           )
-          as List<_i15.UserModel>);
+          as List<_i13.UserModel>);
 
   @override
   _i2.ValueListenable<Map<String, _i3.LatLng>> get animatedMarkerPositions =>
@@ -793,37 +343,37 @@ class MockTrackingViewModel extends _i1.Mock implements _i19.TrackingViewModel {
           as _i2.ValueListenable<Set<String>>);
 
   @override
-  _i2.ValueListenable<Map<String, List<_i20.LocationPoint>>>
+  _i2.ValueListenable<Map<String, List<_i14.LocationPoint>>>
   get highlightedTrajectories =>
       (super.noSuchMethod(
             Invocation.getter(#highlightedTrajectories),
             returnValue:
-                _FakeValueListenable_0<Map<String, List<_i20.LocationPoint>>>(
+                _FakeValueListenable_0<Map<String, List<_i14.LocationPoint>>>(
                   this,
                   Invocation.getter(#highlightedTrajectories),
                 ),
             returnValueForMissingStub:
-                _FakeValueListenable_0<Map<String, List<_i20.LocationPoint>>>(
+                _FakeValueListenable_0<Map<String, List<_i14.LocationPoint>>>(
                   this,
                   Invocation.getter(#highlightedTrajectories),
                 ),
           )
-          as _i2.ValueListenable<Map<String, List<_i20.LocationPoint>>>);
+          as _i2.ValueListenable<Map<String, List<_i14.LocationPoint>>>);
 
   @override
-  _i5.Command0<_i21.UserNotice?> get toggleService =>
+  _i5.Command0<_i15.UserNotice?> get toggleService =>
       (super.noSuchMethod(
             Invocation.getter(#toggleService),
-            returnValue: _FakeCommand0_3<_i21.UserNotice?>(
+            returnValue: _FakeCommand0_3<_i15.UserNotice?>(
               this,
               Invocation.getter(#toggleService),
             ),
-            returnValueForMissingStub: _FakeCommand0_3<_i21.UserNotice?>(
+            returnValueForMissingStub: _FakeCommand0_3<_i15.UserNotice?>(
               this,
               Invocation.getter(#toggleService),
             ),
           )
-          as _i5.Command0<_i21.UserNotice?>);
+          as _i5.Command0<_i15.UserNotice?>);
 
   @override
   set position(_i3.LatLng? value) => super.noSuchMethod(
@@ -841,7 +391,7 @@ class MockTrackingViewModel extends _i1.Mock implements _i19.TrackingViewModel {
           as bool);
 
   @override
-  bool isFaded(_i15.UserModel? user, DateTime? now) =>
+  bool isFaded(_i13.UserModel? user, DateTime? now) =>
       (super.noSuchMethod(
             Invocation.method(#isFaded, [user, now]),
             returnValue: false,
@@ -889,7 +439,7 @@ class MockTrackingViewModel extends _i1.Mock implements _i19.TrackingViewModel {
 /// A class which mocks [UserViewModel].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockUserViewModel extends _i1.Mock implements _i22.UserViewModel {
+class MockUserViewModel extends _i1.Mock implements _i16.UserViewModel {
   @override
   _i6.UserState get state =>
       (super.noSuchMethod(
@@ -969,13 +519,13 @@ class MockUserViewModel extends _i1.Mock implements _i22.UserViewModel {
   );
 
   @override
-  void addListener(_i18.VoidCallback? listener) => super.noSuchMethod(
+  void addListener(_i17.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#addListener, [listener]),
     returnValueForMissingStub: null,
   );
 
   @override
-  void removeListener(_i18.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i17.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#removeListener, [listener]),
     returnValueForMissingStub: null,
   );
