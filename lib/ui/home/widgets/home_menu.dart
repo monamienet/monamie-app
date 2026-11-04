@@ -190,7 +190,7 @@ class HomeMenu extends StatelessWidget {
                           AppLocalizations.of(context).mapGroupName(group),
                       ],
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: HomeColors.muted,

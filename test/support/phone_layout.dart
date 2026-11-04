@@ -1,3 +1,4 @@
+import 'dart:io' show Directory;
 import 'dart:math' show max;
 
 import 'package:flutter/material.dart';
@@ -240,5 +241,187 @@ Future<void> expectNoWorseThanPortuguese(
         '${translated.languageCode} reported ${found.length} error(s):\n'
         '${found.map((e) => e.text).join('\n')}\n'
         'Portuguese reported ${baseline.length}',
+  );
+}
+
+/// A text drawn cut short on screen: ellipsized or clipped to its
+/// `maxLines`.
+class TruncatedText {
+  const TruncatedText(this.text, this.where, {this.familyless = false});
+
+  /// The whole text, as the widget holds it (not the part that shows).
+  final String text;
+
+  /// Where the widget that draws it is created, as `file:line` of the nearest
+  /// widget created in this project (the text itself is often drawn by a
+  /// framework widget, a field's helper or an app bar's title, that the
+  /// project's code created); the widget's type when there is none.
+  final String where;
+
+  /// Whether the text's style names no font family, so the test draws it with
+  /// Ahem, far wider than the font a phone has (see [isFontArtifact]): the cut
+  /// may exist only in the test.
+  final bool familyless;
+
+  @override
+  String toString() =>
+      '"$text" ($where)${familyless ? ' [family-less style: drawn in Ahem]' : ''}';
+}
+
+/// The texts drawn truncated on screen now: every [RenderParagraph] whose
+/// [RenderParagraph.didExceedMaxLines] is true, which a text cut with an
+/// ellipsis (or clipped at its `maxLines`) is and which throws nothing, unlike
+/// a `RenderFlex` overflow.
+///
+/// A text that is data (an e-mail address, a person's or an organization's
+/// name) is cut on purpose when it is too long: the texts a [Pattern] of
+/// [ignoring] matches are left out. A `String` matches any text that contains
+/// it (`'@example.com'`); a `RegExp` can match a whole text
+/// (`RegExp(r'^Rota Sul$')`), so a translated sentence that holds the name is
+/// still checked.
+List<TruncatedText> findTruncatedTexts(
+  WidgetTester tester, {
+  Iterable<Pattern> ignoring = const [],
+}) {
+  final found = <TruncatedText>[];
+  void visit(Element element) {
+    // Only the element that owns the render object: a widget above it
+    // (`Text`) reports its descendant's.
+    final object = element is RenderObjectElement ? element.renderObject : null;
+    if (object is RenderParagraph && _exceedsMaxLines(object)) {
+      final text = object.text.toPlainText(includePlaceholders: false);
+      if (!ignoring.any((piece) => piece.allMatches(text).isNotEmpty)) {
+        found.add(
+          TruncatedText(
+            text,
+            _whereIs(element),
+            familyless: _isFamilyless(object),
+          ),
+        );
+      }
+    }
+    element.visitChildren(visit);
+  }
+
+  final root = tester.binding.rootElement;
+  if (root != null) visit(root);
+  return found;
+}
+
+/// The plain text of each text [findTruncatedTexts] finds.
+List<String> truncatedTexts(
+  WidgetTester tester, {
+  Iterable<Pattern> ignoring = const [],
+}) => [
+  for (final truncated in findTruncatedTexts(tester, ignoring: ignoring))
+    truncated.text,
+];
+
+/// Whether [paragraph] was laid out and drew less than its whole text.
+bool _exceedsMaxLines(RenderParagraph paragraph) {
+  // A paragraph that was not laid out (it sits where nothing asked for one)
+  // has not cut anything.
+  if (!paragraph.hasSize) return false;
+  try {
+    return paragraph.didExceedMaxLines;
+  } on Object {
+    return false;
+  }
+}
+
+/// The creation place of the nearest widget above [element] (itself
+/// included) that was created in this project, for a failure to point at.
+String _whereIs(Element element) {
+  final project = Directory.current.path;
+  var where = element.widget.runtimeType.toString();
+  var found = false;
+  void check(Element candidate) {
+    if (found) return;
+    final location = _creationLocation(candidate.widget);
+    if (location != null && location.startsWith('$project/')) {
+      where = location;
+      found = true;
+    }
+  }
+
+  check(element);
+  element.visitAncestorElements((ancestor) {
+    check(ancestor);
+    return !found;
+  });
+  return where;
+}
+
+String? _creationLocation(Widget widget) {
+  try {
+    final json = widget.toDiagnosticsNode().toJsonMap(
+      InspectorSerializationDelegate(
+        groupName: 'phone_layout',
+        service: WidgetInspectorService.instance,
+      ),
+    );
+    final location = json['creationLocation'];
+    if (location is Map && location['file'] is String) {
+      final file = (location['file'] as String).replaceFirst('file://', '');
+      return '$file:${location['line']}';
+    }
+  } on Object {
+    // No creation location (the tracking is off): the type names the widget.
+  }
+  return null;
+}
+
+/// Expects the screen [open] draws in [translated] to cut no text short where
+/// the same screen, drawn the same way, cuts none in Portuguese.
+///
+/// A [RenderFlex] overflow throws; a text cut with an ellipsis (a field's
+/// helper text drawn on one line, a title clipped at `maxLines`) does not, so
+/// [expectNoLayoutError] and [expectNoRealOverflow] never see it, and a
+/// translation longer than the Portuguese text it replaces hides there. With
+/// no truncation in Portuguese the translation must have none either. A text
+/// the translation cuts is excused only when Portuguese cuts a text drawn by
+/// the widget created at the same place (`TruncatedText.where`), or when its
+/// style names no font family ([TruncatedText.familyless]): the test draws it
+/// with Ahem, about twice as wide as the font on a phone, so the cut may exist
+/// only here (the same rule as [isFontArtifact]; Portuguese is cut at the same
+/// place at some text sizes and not at others).
+///
+/// [open] builds the screen in the locale it gets (on a phone's screen, at the
+/// text scale the test chose) and leaves it open. The overflows [open] reports
+/// are left to those other checks, but any other error fails. [ignoring] lists
+/// the texts that are data and cut on purpose, see [findTruncatedTexts].
+Future<void> expectNoNewTruncation(
+  WidgetTester tester,
+  Locale translated,
+  Future<void> Function(Locale locale) open, {
+  Iterable<Pattern> ignoring = const [],
+}) async {
+  Future<List<TruncatedText>> truncatedIn(Locale locale) async {
+    final errors = await collectFlutterErrors(() => open(locale));
+    final others = [
+      for (final error in errors)
+        if (error.overflow == null) error.text,
+    ];
+    expect(others, isEmpty, reason: 'errors other than overflows:\n$others');
+    return findTruncatedTexts(tester, ignoring: ignoring);
+  }
+
+  final baseline = await truncatedIn(const Locale('pt', 'BR'));
+  // Takes the first screen away before the second one is built.
+  await tester.pumpWidget(const SizedBox());
+  final found = await truncatedIn(translated);
+
+  final excused = {for (final cut in baseline) cut.where};
+  final newOnes = [
+    for (final cut in found)
+      if (!cut.familyless && !excused.contains(cut.where)) cut,
+  ];
+  expect(
+    newOnes,
+    isEmpty,
+    reason:
+        '${translated.languageCode} cuts ${newOnes.length} text(s) short that '
+        'Portuguese does not:\n${newOnes.join('\n')}\n'
+        'Portuguese cuts ${baseline.length}:\n${baseline.join('\n')}',
   );
 }

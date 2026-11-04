@@ -95,6 +95,7 @@ class _InviteScreenState extends State<InviteScreen> {
                     errorText: c.state.firstGroupName.isEmpty
                         ? null
                         : c.firstGroupProblem?.message(l10n),
+                    errorMaxLines: 2,
                   ),
                   onChanged: c.setFirstGroupName,
                 ),
@@ -149,6 +150,7 @@ class _InviteScreenState extends State<InviteScreen> {
                         hintText: l10n.inviteEmailHint,
                         border: const OutlineInputBorder(),
                         errorText: c.state.draftFailure?.message(l10n),
+                        errorMaxLines: 2,
                       ),
                       onSubmitted: (_) => _add(),
                     ),
