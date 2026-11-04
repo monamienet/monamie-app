@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:monamie_app/data/repositories/account/account_deletion_repository.dart';
 import 'package:monamie_app/data/repositories/account/account_deletion_repository_remote.dart';
@@ -35,6 +36,9 @@ import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/data/services/call_service.dart';
+import 'package:monamie_app/data/services/crash_reporting/crash_reporting_service.dart';
+import 'package:monamie_app/data/services/crash_reporting/firebase_crash_reporting_service.dart';
+import 'package:monamie_app/data/services/crash_reporting/no_op_crash_reporting_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/services/firestore/positions_firestore_service.dart';
@@ -72,12 +76,16 @@ import 'package:provider/single_child_widget.dart';
 /// [organizationSession], [brandingLoader] and [languageRepository] come from
 /// [createOrganizationSession], [createBrandingLoader] and
 /// [createLanguageRepository]: `main` uses them before the app runs, to
-/// restore the remembered organization and language.
+/// restore the remembered organization and language. [crashReporting] comes
+/// from [createCrashReportingService]: `main` sends it the errors nothing
+/// else caught, from before the app runs.
 List<SingleChildWidget> appDependencies({
   required OrganizationSession organizationSession,
   required OrganizationBrandingLoader brandingLoader,
   required LanguageRepository languageRepository,
+  required CrashReportingService crashReporting,
 }) => [
+  Provider<CrashReportingService>.value(value: crashReporting),
   Provider<UserProfileHiveService>(
     create: (_) => const UserProfileHiveService(),
   ),
@@ -218,3 +226,10 @@ OrganizationBrandingLoader createBrandingLoader() =>
 /// `restore` on it before the app runs.
 LanguageRepository createLanguageRepository() =>
     LanguageRepositoryPreferences(service: LanguagePreferencesService());
+
+/// Crash reports to the central project on Android; none on the web, where
+/// Crashlytics does not run. Call `start` on it once the central Firebase app
+/// is initialized.
+CrashReportingService createCrashReportingService() => kIsWeb
+    ? const NoOpCrashReportingService()
+    : FirebaseCrashReportingService();

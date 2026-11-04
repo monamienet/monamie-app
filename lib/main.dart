@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -27,6 +29,16 @@ Future<void> main() async {
     return;
   }
 
+  // Errors nothing else caught go to the crash reports: those the framework
+  // caught (build, layout, gestures) and those of asynchronous code.
+  final crashReporting = createCrashReportingService();
+  await crashReporting.start();
+  FlutterError.onError = crashReporting.recordFlutterFatalError;
+  PlatformDispatcher.instance.onError = (error, stackTrace) {
+    crashReporting.recordError(error, stackTrace, fatal: true);
+    return true;
+  };
+
   // The organization remembered from the last sign-in, if any: the app opens in
   // its brand without asking the central project again.
   final session = createOrganizationSession();
@@ -47,6 +59,7 @@ Future<void> main() async {
         organizationSession: session,
         brandingLoader: brandingLoader,
         languageRepository: language,
+        crashReporting: crashReporting,
       ),
       child: const MonAmieApp(),
     ),

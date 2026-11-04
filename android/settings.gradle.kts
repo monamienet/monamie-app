@@ -23,6 +23,9 @@ plugins {
     // START: FlutterFire Configuration
     id("com.google.gms.google-services") version "4.4.4" apply false
     // END: FlutterFire Configuration
+    // Uploads the R8 mapping of release builds, so Crashlytics deobfuscates
+    // the Java/Kotlin frames of a report.
+    id("com.google.firebase.crashlytics") version "3.0.8" apply false
     id("org.jetbrains.kotlin.android") version "2.3.20" apply false
 }
 
