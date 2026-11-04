@@ -277,7 +277,11 @@ class _PresetTile extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          // A Wrap: the "in use" tag drops to its own line when a
+                          // language's words do not fit beside the name.
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 8,
                             children: [
                               Text(
                                 l10n.presetName(option),
@@ -287,8 +291,7 @@ class _PresetTile extends StatelessWidget {
                                   color: _ink,
                                 ),
                               ),
-                              if (current) ...[
-                                const SizedBox(width: 8),
+                              if (current)
                                 Text(
                                   l10n.trackingInUse,
                                   style: TextStyle(
@@ -297,7 +300,6 @@ class _PresetTile extends StatelessWidget {
                                     color: color,
                                   ),
                                 ),
-                              ],
                             ],
                           ),
                           Text(

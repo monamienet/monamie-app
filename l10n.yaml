@@ -14,7 +14,11 @@ output-class: AppLocalizations
 nullable-getter: false
 # Every key in the template needs its @key entry (with a description).
 required-resource-attributes: true
-# Portuguese first: it is the fallback for a device language the app does not
-# have.
-preferred-supported-locales: [pt]
+# English first: it is the fallback for a device language the app does not
+# have (lib/ui/core/app_locales.dart).
+preferred-supported-locales: [en]
 format: true
+# Messages an ARB file lacks (the template's keys it does not translate) are
+# listed here, `{}` when none: the PR checks fail on anything else, so a
+# language never ships half translated. Under build/, which git ignores.
+untranslated-messages-file: build/untranslated_messages.json

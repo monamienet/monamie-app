@@ -14,6 +14,8 @@ import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/home_header.dart';
 import 'package:monamie_app/ui/home/widgets/home_menu.dart';
 import 'package:monamie_app/ui/home/widgets/home_sheet.dart';
+import 'package:monamie_app/ui/home/widgets/sharing_notification_refresher.dart';
+import 'package:monamie_app/ui/language/view_models/language_view_model.dart';
 import 'package:monamie_app/ui/core/ui/logout_progress_overlay.dart';
 import 'package:monamie_app/ui/core/themes/color_palette.dart';
 import 'package:latlong2/latlong.dart' hide Path;
@@ -30,6 +32,7 @@ class HomeScreen extends StatelessWidget {
     required this.trackingCtrl,
     required this.calendar,
     required this.session,
+    required this.language,
   });
 
   final UserViewModel userCtrl;
@@ -42,6 +45,9 @@ class HomeScreen extends StatelessWidget {
   /// The session: the menu's sign-out and switch, and their overlay.
   final HomeSessionViewModel session;
 
+  /// The language picker, opened from the menu.
+  final LanguageViewModel language;
+
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -53,10 +59,13 @@ class HomeScreen extends StatelessWidget {
           user: userCtrl,
           session: session,
           tracking: trackingCtrl,
+          language: language,
         ),
         body: Stack(
           fit: StackFit.expand,
           children: [
+            // Keeps the sharing notification in the app's language.
+            SharingNotificationRefresher(tracking: trackingCtrl),
             Column(
               children: [
                 HomeHeader(home: home, user: userCtrl, calendar: calendar),

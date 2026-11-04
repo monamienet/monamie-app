@@ -317,7 +317,8 @@ the *Conventional Commits* convention:
 After the upload, the `tag` job tags the commit `vX.Y.Z`, and that tag is the starting point of the next
 computation. Every build with a change becomes a version, so the name and the notes always match.
 
-The **release notes** (`distribution/whatsnew/whatsnew-pt-BR` and `whatsnew-en-US`) are written by the
+The **release notes** (`distribution/whatsnew/whatsnew-pt-BR`, `whatsnew-en-US`, `whatsnew-es-419` and
+`whatsnew-fr-FR`) are written by the
 AI agents in every PR with a visible change (rule in `AGENTS.md`, *Releases*). They cover everything
 since the `play-closed` tag, the last version promoted to closed testing. Step 1b
 ([check-release-notes.sh](../../.github/scripts/check-release-notes.sh)) checks that they exist, that
@@ -337,7 +338,7 @@ sequenceDiagram
     participant Pro as promote-play-closed
     participant Play as Google Play
 
-    IA->>GH: feat: PR with code + notes (pt-BR/en-US)
+    IA->>GH: feat: PR with code + notes (pt-BR/en-US/es-419/fr-FR)
     Dev->>GH: reviews and merges
     GH->>Dep: push to main
     Dep->>Dep: 1b checks the notes · 1c computes 1.1.0

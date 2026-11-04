@@ -1030,6 +1030,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get languageName => 'English';
+
+  @override
+  String get languageTitle => 'Language';
+
+  @override
+  String languageButtonLabel(String language) {
+    return 'Language: $language';
+  }
+
+  @override
   String get menuSwitchOrganization => 'Switch organization';
 
   @override
@@ -1554,6 +1565,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get failureSharingNotChanged =>
       'Could not change sharing right now. Try again.';
+
+  @override
+  String get failureLanguageNotSaved =>
+      'Could not save the language. Try again.';
 
   @override
   String get failureTitleSignIn => 'Sign-in error';

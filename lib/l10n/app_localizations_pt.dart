@@ -1031,6 +1031,17 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get languageName => 'Português';
+
+  @override
+  String get languageTitle => 'Idioma';
+
+  @override
+  String languageButtonLabel(String language) {
+    return 'Idioma: $language';
+  }
+
+  @override
   String get menuSwitchOrganization => 'Trocar de organização';
 
   @override
@@ -1559,6 +1570,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get failureSharingNotChanged =>
       'Não foi possível alterar o compartilhamento agora. Tente de novo.';
+
+  @override
+  String get failureLanguageNotSaved =>
+      'Não foi possível guardar o idioma. Tente de novo.';
 
   @override
   String get failureTitleSignIn => 'Erro de Login';

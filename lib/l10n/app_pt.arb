@@ -1411,6 +1411,24 @@
       }
     }
   },
+  "languageName": "Português",
+  "@languageName": {
+    "description": "The language's own name, in the language picker and on the menu item: each ARB file writes its own language here, so it never changes with the app's language."
+  },
+  "languageTitle": "Idioma",
+  "@languageTitle": {
+    "description": "Title of the language picker and label of the menu item that opens it."
+  },
+  "languageButtonLabel": "Idioma: {language}",
+  "@languageButtonLabel": {
+    "description": "Accessibility label of the globe button on the entry screens, which opens the language picker; {language} is the language in use.",
+    "placeholders": {
+      "language": {
+        "type": "String",
+        "example": "Português"
+      }
+    }
+  },
   "menuSwitchOrganization": "Trocar de organização",
   "@menuSwitchOrganization": {
     "description": "Menu item that goes back to the organization picker."
@@ -2178,6 +2196,10 @@
   "failureSharingNotChanged": "Não foi possível alterar o compartilhamento agora. Tente de novo.",
   "@failureSharingNotChanged": {
     "description": "Turning sharing on or off failed."
+  },
+  "failureLanguageNotSaved": "Não foi possível guardar o idioma. Tente de novo.",
+  "@failureLanguageNotSaved": {
+    "description": "The language the person chose could not be stored on the device."
   },
   "failureTitleSignIn": "Erro de Login",
   "@failureTitleSignIn": {

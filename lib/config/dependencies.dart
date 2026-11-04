@@ -11,6 +11,8 @@ import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
 import 'package:monamie_app/data/repositories/groups/groups_repository_remote.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository_remote.dart';
+import 'package:monamie_app/data/repositories/language/language_repository.dart';
+import 'package:monamie_app/data/repositories/language/language_repository_preferences.dart';
 import 'package:monamie_app/data/repositories/organization/central_organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/hive_organization_local_data.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
@@ -38,6 +40,7 @@ import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/services/firestore/positions_firestore_service.dart';
 import 'package:monamie_app/data/services/flutter_background_service_tracking_stopper.dart';
 import 'package:monamie_app/data/services/functions/functions_service.dart';
+import 'package:monamie_app/data/services/language_preferences_service.dart';
 import 'package:monamie_app/data/services/geolocator_device_location.dart';
 import 'package:monamie_app/data/services/method_channel_background_restriction_checker.dart';
 import 'package:monamie_app/data/services/method_channel_background_usage_settings_launcher.dart';
@@ -66,12 +69,14 @@ import 'package:provider/single_child_widget.dart';
 /// them) is created by `OrganizationScope`, with the organization's view
 /// models.
 ///
-/// [organizationSession] and [brandingLoader] come from [createOrganizationSession]
-/// and [createBrandingLoader]: `main` uses them before the app runs, to
-/// restore the remembered organization.
+/// [organizationSession], [brandingLoader] and [languageRepository] come from
+/// [createOrganizationSession], [createBrandingLoader] and
+/// [createLanguageRepository]: `main` uses them before the app runs, to
+/// restore the remembered organization and language.
 List<SingleChildWidget> appDependencies({
   required OrganizationSession organizationSession,
   required OrganizationBrandingLoader brandingLoader,
+  required LanguageRepository languageRepository,
 }) => [
   Provider<UserProfileHiveService>(
     create: (_) => const UserProfileHiveService(),
@@ -91,6 +96,7 @@ List<SingleChildWidget> appDependencies({
     dispose: (_, session) => session.dispose(),
   ),
   Provider<OrganizationSession>.value(value: organizationSession),
+  Provider<LanguageRepository>.value(value: languageRepository),
   Provider<ThemeRepository>(create: (_) => const ThemeRepositoryFirestore()),
   Provider<OrganizationBrandingLoader>.value(value: brandingLoader),
   Provider<OrganizationDirectory>(
@@ -207,3 +213,8 @@ OrganizationSession createOrganizationSession() =>
 /// Reads organizations' branding, with themes from the central catalog.
 OrganizationBrandingLoader createBrandingLoader() =>
     OrganizationBrandingLoader(themes: const ThemeRepositoryFirestore());
+
+/// The language the person chose, remembered in SharedPreferences. Call
+/// `restore` on it before the app runs.
+LanguageRepository createLanguageRepository() =>
+    LanguageRepositoryPreferences(service: LanguagePreferencesService());

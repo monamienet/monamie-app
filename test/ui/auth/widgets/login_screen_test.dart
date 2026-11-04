@@ -3,11 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/ui/auth/view_models/login_view_model.dart';
+import 'package:monamie_app/ui/language/view_models/language_view_model.dart';
+import 'package:monamie_app/ui/language/widgets/language_button.dart';
 import 'package:monamie_app/ui/auth/widgets/login_screen.dart';
 import 'package:monamie_app/utils/command.dart';
 import 'package:monamie_app/utils/result.dart';
 import 'package:monamie_app/l10n/app_localizations.dart';
 import 'package:monamie_app/ui/core/app_locales.dart';
+
+import '../../../../testing/fakes/repositories/fake_language_repository.dart';
 
 @GenerateNiceMocks([MockSpec<LoginViewModel>()])
 import 'login_screen_test.mocks.dart';
@@ -28,6 +32,12 @@ import 'login_screen_test.mocks.dart';
   return (controller: controller, restores: restores);
 }
 
+/// The language picker the screen receives, over an in-memory repository.
+LanguageViewModel _languageViewModel() => LanguageViewModel(
+  repository: FakeLanguageRepository(),
+  deviceLocales: () => const [Locale('pt', 'BR')],
+);
+
 void main() {
   group('LoginScreen - Unit Test Suite', () {
     testWidgets('Happy Path: the first frame restores the session once', (
@@ -42,12 +52,39 @@ void main() {
           locale: const Locale('pt', 'BR'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: appSupportedLocales,
-          home: LoginScreen(controller: controller),
+          home: LoginScreen(
+            controller: controller,
+            language: _languageViewModel(),
+          ),
         ),
       );
 
       // 3. Assert
       expect(restores, hasLength(1));
+    });
+
+    testWidgets('Happy Path: shows the language button in the corner', (
+      WidgetTester tester,
+    ) async {
+      // 1. Arrange
+      final (:controller, restores: _) = _loginViewModel();
+
+      // 2. Act
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          home: LoginScreen(
+            controller: controller,
+            language: _languageViewModel(),
+          ),
+        ),
+      );
+
+      // 3. Assert
+      expect(find.byType(LanguageButton), findsOneWidget);
+      expect(find.text('PT'), findsOneWidget);
     });
 
     testWidgets('Edge Case: later frames do not restore the session again', (
@@ -60,7 +97,10 @@ void main() {
           locale: const Locale('pt', 'BR'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: appSupportedLocales,
-          home: LoginScreen(controller: controller),
+          home: LoginScreen(
+            controller: controller,
+            language: _languageViewModel(),
+          ),
         ),
       );
 
@@ -83,7 +123,10 @@ void main() {
             locale: const Locale('pt', 'BR'),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: appSupportedLocales,
-            home: LoginScreen(controller: controller),
+            home: LoginScreen(
+              controller: controller,
+              language: _languageViewModel(),
+            ),
           ),
         );
 

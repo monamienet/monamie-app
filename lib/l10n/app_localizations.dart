@@ -6,6 +6,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
+import 'app_localizations_es.dart';
+import 'app_localizations_fr.dart';
 import 'app_localizations_pt.dart';
 
 // ignore_for_file: type=lint
@@ -94,8 +96,10 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
-    Locale('pt'),
     Locale('en'),
+    Locale('es'),
+    Locale('fr'),
+    Locale('pt'),
   ];
 
   /// MonAmie's tagline under its logo on the sign-in screen.
@@ -1604,6 +1608,24 @@ abstract class AppLocalizations {
   /// **'{group} · em campo'**
   String menuInTheField(String group);
 
+  /// The language's own name, in the language picker and on the menu item: each ARB file writes its own language here, so it never changes with the app's language.
+  ///
+  /// In pt, this message translates to:
+  /// **'Português'**
+  String get languageName;
+
+  /// Title of the language picker and label of the menu item that opens it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Idioma'**
+  String get languageTitle;
+
+  /// Accessibility label of the globe button on the entry screens, which opens the language picker; {language} is the language in use.
+  ///
+  /// In pt, this message translates to:
+  /// **'Idioma: {language}'**
+  String languageButtonLabel(String language);
+
   /// Menu item that goes back to the organization picker.
   ///
   /// In pt, this message translates to:
@@ -2384,6 +2406,12 @@ abstract class AppLocalizations {
   /// **'Não foi possível alterar o compartilhamento agora. Tente de novo.'**
   String get failureSharingNotChanged;
 
+  /// The language the person chose could not be stored on the device.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível guardar o idioma. Tente de novo.'**
+  String get failureLanguageNotSaved;
+
   /// Title of the messages about a failed sign-in or entry.
   ///
   /// In pt, this message translates to:
@@ -2504,7 +2532,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'pt'].contains(locale.languageCode);
+      <String>['en', 'es', 'fr', 'pt'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -2515,6 +2543,10 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   switch (locale.languageCode) {
     case 'en':
       return AppLocalizationsEn();
+    case 'es':
+      return AppLocalizationsEs();
+    case 'fr':
+      return AppLocalizationsFr();
     case 'pt':
       return AppLocalizationsPt();
   }

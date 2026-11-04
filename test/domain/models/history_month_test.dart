@@ -57,23 +57,192 @@ void main() {
   });
 
   group('HistoryMonth.leadingBlanks - Unit Test Suite', () {
-    final cases = <(String, int, int, int)>[
-      ('Happy Path: October 2026 starts on a Thursday', 2026, 10, 4),
-      ('Edge Case: November 2026 starts on a Sunday', 2026, 11, 0),
-      ('Edge Case: August 2026 starts on a Saturday', 2026, 8, 6),
+    const sunday = 0;
+    const monday = 1;
+    const saturday = 6;
+    final cases = <(String, int, int, int, int)>[
+      // (label, year, month, first day of the week, expected blanks)
+      (
+        'Happy Path: October 2026 starts on a Thursday, Sunday first',
+        2026,
+        10,
+        sunday,
+        4,
+      ),
+      (
+        'Edge Case: November 2026 starts on a Sunday, Sunday first',
+        2026,
+        11,
+        sunday,
+        0,
+      ),
+      (
+        'Edge Case: August 2026 starts on a Saturday, Sunday first',
+        2026,
+        8,
+        sunday,
+        6,
+      ),
+      (
+        'Happy Path: October 2026 starts on a Thursday, Monday first',
+        2026,
+        10,
+        monday,
+        3,
+      ),
+      (
+        'Edge Case: November 2026 starts on a Sunday, Monday first',
+        2026,
+        11,
+        monday,
+        6,
+      ),
+      (
+        'Edge Case: August 2026 starts on a Saturday, Monday first',
+        2026,
+        8,
+        monday,
+        5,
+      ),
+      (
+        'Edge Case: a month starting on a Monday has none, Monday first',
+        2026,
+        6,
+        monday,
+        0,
+      ),
+      (
+        'Edge Case: a month starting on a Monday has one, Sunday first',
+        2026,
+        6,
+        sunday,
+        1,
+      ),
+      (
+        'Edge Case: a month starting on a Saturday has none, Saturday first',
+        2026,
+        8,
+        saturday,
+        0,
+      ),
+      (
+        'Edge Case: October 2026 (Thursday), Saturday first',
+        2026,
+        10,
+        saturday,
+        5,
+      ),
+      (
+        'Edge Case: November 2026 (Sunday), Saturday first',
+        2026,
+        11,
+        saturday,
+        1,
+      ),
     ];
-    for (final (label, year, month, expected) in cases) {
+    for (final (label, year, month, firstDay, expected) in cases) {
       test(label, () {
         // 1. Arrange
         final shown = monthOf(year, month);
 
         // 2. Act
-        final blanks = shown.leadingBlanks;
+        final blanks = shown.leadingBlanks(firstDay);
 
         // 3. Assert
         expect(blanks, expected);
       });
     }
+
+    test('Edge Case: the blanks are always between 0 and 6', () {
+      // 1. Arrange
+      final months = [
+        for (var m = 1; m <= 12; m++) monthOf(2026, m),
+        for (var m = 1; m <= 12; m++) monthOf(2028, m),
+      ];
+
+      // 2. Act
+      final all = [
+        for (final shown in months)
+          for (var firstDay = 0; firstDay <= 6; firstDay++)
+            shown.leadingBlanks(firstDay),
+      ];
+
+      // 3. Assert
+      expect(all.every((blanks) => blanks >= 0 && blanks <= 6), isTrue);
+    });
+  });
+
+  group('HistoryMonth.weekdaysFrom - Unit Test Suite', () {
+    const letters = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+    final cases = <(String, List<String>, int, List<String>)>[
+      (
+        'Happy Path: Sunday first keeps the order',
+        ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+        0,
+        ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+      ),
+      (
+        'Happy Path: Monday first starts at the second label and ends with '
+            'the first',
+        ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+        1,
+        ['b', 'c', 'd', 'e', 'f', 'g', 'a'],
+      ),
+      (
+        'Edge Case: Saturday first starts at the last label',
+        ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
+        6,
+        ['g', 'a', 'b', 'c', 'd', 'e', 'f'],
+      ),
+      (
+        'Edge Case: the Portuguese narrow labels, Monday first',
+        letters,
+        1,
+        ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'],
+      ),
+      (
+        'Edge Case: the Portuguese narrow labels, Sunday first',
+        letters,
+        0,
+        letters,
+      ),
+    ];
+    for (final (label, input, firstDay, expected) in cases) {
+      test(label, () {
+        // 1. Arrange
+        final sundayFirst = input;
+
+        // 2. Act
+        final rotated = HistoryMonth.weekdaysFrom(sundayFirst, firstDay);
+
+        // 3. Assert
+        expect(rotated, expected);
+      });
+    }
+
+    test('Edge Case: the input list is not changed', () {
+      // 1. Arrange
+      final sundayFirst = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+      // 2. Act
+      HistoryMonth.weekdaysFrom(sundayFirst, 1);
+
+      // 3. Assert
+      expect(sundayFirst, ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']);
+    });
+
+    test('Happy Path: the header and the grid agree on Monday first', () {
+      // 1. Arrange
+      final shown = monthOf(2026, 10); // starts on a Thursday
+      const sundayFirst = ['0', '1', '2', '3', '4', '5', '6'];
+
+      // 2. Act
+      final header = HistoryMonth.weekdaysFrom(sundayFirst, 1);
+      final column = shown.leadingBlanks(1);
+
+      // 3. Assert: day 1 sits under Thursday's label (index 4 of the week).
+      expect(header[column], '4');
+    });
   });
 
   group('HistoryMonth.daysInMonth - Unit Test Suite', () {

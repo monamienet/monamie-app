@@ -9,6 +9,7 @@ import 'package:monamie_app/data/repositories/appearance/appearance_repository.d
 import 'package:monamie_app/data/repositories/creation/creation_repository.dart';
 import 'package:monamie_app/data/repositories/groups/groups_repository.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
+import 'package:monamie_app/data/repositories/language/language_repository.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
@@ -26,6 +27,7 @@ import 'package:monamie_app/data/services/call_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/services/permissions_service.dart';
+import 'package:monamie_app/domain/models/app_language.dart';
 import 'package:monamie_app/domain/use_cases/enter_organization.dart';
 import 'package:monamie_app/domain/use_cases/sign_out.dart';
 import 'package:monamie_app/routing/router.dart';
@@ -41,6 +43,7 @@ import '../../testing/fakes/repositories/fake_appearance_repository.dart';
 import '../../testing/fakes/repositories/fake_creation_repository.dart';
 import '../../testing/fakes/repositories/fake_groups_repository.dart';
 import '../../testing/fakes/repositories/fake_invites_repository.dart';
+import '../../testing/fakes/repositories/fake_language_repository.dart';
 import '../../testing/fakes/repositories/fake_organization_branding_loader.dart';
 import '../../testing/fakes/repositories/fake_organization_directory.dart';
 import '../../testing/fakes/repositories/fake_organization_local_data.dart';
@@ -124,6 +127,7 @@ class TestApp {
   final creation = FakeCreationRepository();
   final positions = FakePositionsRepository();
   final themes = FakeThemeRepository();
+  final language = FakeLanguageRepository();
 
   // The services, mocks.
   final stopper = MockBackgroundTrackingStopper();
@@ -142,6 +146,7 @@ class TestApp {
     Provider<UserGoogleRepository>.value(value: userRepository),
     Provider<SessionRepository>.value(value: session),
     Provider<OrganizationSession>.value(value: organizationSession),
+    Provider<LanguageRepository>.value(value: language),
     Provider<ThemeRepository>.value(value: themes),
     Provider<OrganizationBrandingLoader>.value(value: brandingLoader),
     Provider<OrganizationDirectory>.value(value: directory),
@@ -176,27 +181,57 @@ class TestApp {
   String get location => router.state.uri.path;
 
   /// Opens the app as `main` and `MonAmieApp` do (the data layer, the
-  /// session and the use cases provided above the router), on *Login*, in
-  /// [locale] (Brazilian Portuguese unless a test checks another language).
+  /// session and the use cases provided above the router), on *Login*.
+  ///
+  /// The language is the one in [language] (chosen or stored, restored here)
+  /// and, when none, [locale]'s (Brazilian Portuguese unless a test checks
+  /// another one), which stands for the device's language: the app's locale
+  /// follows [language] as `MonAmieApp`'s does.
+  ///
+  /// The defaults keep the screen larger than a phone and the app on
+  /// Flutter's default theme and text scale. A layout test passes [theme]
+  /// (`AppTheme.lightTheme`), [textScale], and a phone's [physicalSize] and
+  /// [devicePixelRatio] (see `test/support/phone_layout.dart`).
   Future<void> pump(
     WidgetTester tester, {
     Locale locale = const Locale('pt', 'BR'),
+    ThemeData? theme,
+    double textScale = 1,
+    Size physicalSize = const Size(1600, 4000),
+    double devicePixelRatio = 2,
   }) async {
     // Larger than a phone (800 x 2000): the test font's square glyphs take
     // more room than the real font's (the map's attribution needs ~600).
-    tester.view.physicalSize = const Size(1600, 4000);
-    tester.view.devicePixelRatio = 2;
+    tester.view.physicalSize = physicalSize;
+    tester.view.devicePixelRatio = devicePixelRatio;
     addTearDown(tester.view.reset);
+    // The device's language, which the language picker marks while the
+    // person has not chosen one.
+    tester.platformDispatcher.localesTestValue = [locale];
+    addTearDown(tester.platformDispatcher.clearLocalesTestValue);
     addTearDown(router.dispose);
     addTearDown(session.dispose);
+    await language.restore();
     await tester.pumpWidget(
       MultiProvider(
         providers: dependencies,
-        child: MaterialApp.router(
-          locale: locale,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: appSupportedLocales,
-          routerConfig: router,
+        child: ValueListenableBuilder<AppLanguage?>(
+          valueListenable: language.language,
+          builder: (context, chosen, _) => MaterialApp.router(
+            locale: chosen?.locale ?? locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: appSupportedLocales,
+            theme: theme,
+            builder: textScale == 1
+                ? null
+                : (context, child) => MediaQuery(
+                    data: MediaQuery.of(
+                      context,
+                    ).copyWith(textScaler: TextScaler.linear(textScale)),
+                    child: child!,
+                  ),
+            routerConfig: router,
+          ),
         ),
       ),
     );

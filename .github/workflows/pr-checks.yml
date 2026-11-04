@@ -46,6 +46,15 @@ jobs:
           git diff --exit-code
           test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
 
+      # `flutter gen-l10n` exits 0 even when an ARB file lacks a key of the
+      # template; it lists the missing ones in
+      # build/untranslated_messages.json (l10n.yaml), `{}` when every language
+      # is complete. A language never ships half translated.
+      - name: Translations complete
+        run: |
+          flutter gen-l10n
+          test "$(tr -d ' \n' < build/untranslated_messages.json)" = '{}' || { cat build/untranslated_messages.json; exit 1; }
+
       - name: Formatting
         run: dart format --output=none --set-exit-if-changed lib test tool testing
 

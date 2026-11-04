@@ -136,8 +136,9 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
       children: [
         Transform.translate(
           offset: const Offset(-12, 0),
-          child: SizedBox(
-            height: 56,
+          child: ConstrainedBox(
+            // At least 56 px: a longer title wraps and the header grows.
+            constraints: const BoxConstraints(minHeight: 56),
             child: Row(
               children: [
                 IconButton(
@@ -151,15 +152,20 @@ class _CreateOrganizationScreenState extends State<CreateOrganizationScreen> {
                   icon: const Icon(Icons.arrow_back, color: _navy),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  l10n.creationTitle,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: _navy,
+                // Expanded: the step counter keeps its room, and a longer
+                // title in another language wraps to a second line.
+                Expanded(
+                  child: Text(
+                    l10n.creationTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: _navy,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: Text(

@@ -88,7 +88,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             labelText: l10n.groupNameLabel,
             hintText: l10n.groupNameHint,
             errorText: problem,
+            // Room for a longer language: French needs a third line at a
+            // larger text size, next to the character counter.
+            errorMaxLines: 3,
             helperText: l10n.groupNameHelper,
+            helperMaxLines: 3,
             border: const OutlineInputBorder(),
           ),
         ),

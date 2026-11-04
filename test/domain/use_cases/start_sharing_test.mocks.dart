@@ -103,6 +103,16 @@ class MockBackgroundTrackingService extends _i1.Mock
   );
 
   @override
+  void updateNotification({required String? title, required String? content}) =>
+      super.noSuchMethod(
+        Invocation.method(#updateNotification, [], {
+          #title: title,
+          #content: content,
+        }),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   void sendUser({required String? email, required String? name}) =>
       super.noSuchMethod(
         Invocation.method(#sendUser, [], {#email: email, #name: name}),

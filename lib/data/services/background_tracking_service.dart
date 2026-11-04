@@ -47,6 +47,16 @@ class BackgroundTrackingService {
   /// event is lost when the isolate is not listening yet.
   void stop() => _service.invoke('stopService');
 
+  /// Replaces the texts of the notification shown while the service runs
+  /// (`setNotificationInfo`), for example after the app's language changed.
+  /// The service's isolate applies them with
+  /// `AndroidServiceInstance.setForegroundNotificationInfo`.
+  void updateNotification({required String title, required String content}) =>
+      _service.invoke('setNotificationInfo', {
+        'title': title,
+        'content': content,
+      });
+
   /// Each time the service's isolate is ready to receive who shares
   /// ([sendUser]).
   Stream<void> get ready => _service.on('ready').map((_) {});

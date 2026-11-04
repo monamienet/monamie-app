@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/config/dependencies.dart';
 
+import '../../testing/fakes/repositories/fake_language_repository.dart';
 import '../../testing/fakes/repositories/fake_organization_branding_loader.dart';
 import '../../testing/fakes/repositories/fake_organization_session.dart';
 import '../support/test_app.dart';
@@ -21,6 +22,7 @@ void main() {
     final provided = appDependencies(
       organizationSession: FakeOrganizationSession(),
       brandingLoader: FakeOrganizationBrandingLoader(),
+      languageRepository: FakeLanguageRepository(),
     ).map((provider) => provider.runtimeType).toList();
 
     test('Happy Path: it provides every type the routes and the '

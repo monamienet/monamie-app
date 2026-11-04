@@ -188,4 +188,7 @@ sealed class Failure with _$Failure {
 
   /// Turning sharing on or off failed.
   const factory Failure.sharingNotChanged() = SharingNotChanged;
+
+  /// The language the person chose could not be stored on the device.
+  const factory Failure.languageNotSaved() = LanguageNotSaved;
 }

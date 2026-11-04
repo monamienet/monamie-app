@@ -56,7 +56,7 @@ extension FailurePatterns on Failure {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( ConnectionFailure value)?  connection,TResult Function( LoadFailure value)?  load,TResult Function( ServerRefusal value)?  serverRefusal,TResult Function( UnexplainedRefusal value)?  unexplainedRefusal,TResult Function( UnexpectedResponse value)?  unexpectedResponse,TResult Function( OrganizationIdFailure value)?  organizationId,TResult Function( GroupNameTooShort value)?  groupNameTooShort,TResult Function( GroupNameTooLong value)?  groupNameTooLong,TResult Function( GroupNameTaken value)?  groupNameTaken,TResult Function( NoRoleChosen value)?  noRoleChosen,TResult Function( InvalidEmail value)?  invalidEmail,TResult Function( EmailAlreadyListed value)?  emailAlreadyListed,TResult Function( LogoTooLarge value)?  logoTooLarge,TResult Function( LogoUnreadable value)?  logoUnreadable,TResult Function( LogoNotConverted value)?  logoNotConverted,TResult Function( LogoNotOpened value)?  logoNotOpened,TResult Function( EntryFailure value)?  entry,TResult Function( OrganizationEntryFailure value)?  organizationEntry,TResult Function( GoogleAuthFailure value)?  googleAuth,TResult Function( GoogleRenewalFailure value)?  googleRenewal,TResult Function( SignOutFailure value)?  signOut,TResult Function( AccessLost value)?  accessLost,TResult Function( RemovedFromOrganization value)?  removedFromOrganization,TResult Function( SharingNotAllowed value)?  sharingNotAllowed,TResult Function( SharingNotChanged value)?  sharingNotChanged,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( ConnectionFailure value)?  connection,TResult Function( LoadFailure value)?  load,TResult Function( ServerRefusal value)?  serverRefusal,TResult Function( UnexplainedRefusal value)?  unexplainedRefusal,TResult Function( UnexpectedResponse value)?  unexpectedResponse,TResult Function( OrganizationIdFailure value)?  organizationId,TResult Function( GroupNameTooShort value)?  groupNameTooShort,TResult Function( GroupNameTooLong value)?  groupNameTooLong,TResult Function( GroupNameTaken value)?  groupNameTaken,TResult Function( NoRoleChosen value)?  noRoleChosen,TResult Function( InvalidEmail value)?  invalidEmail,TResult Function( EmailAlreadyListed value)?  emailAlreadyListed,TResult Function( LogoTooLarge value)?  logoTooLarge,TResult Function( LogoUnreadable value)?  logoUnreadable,TResult Function( LogoNotConverted value)?  logoNotConverted,TResult Function( LogoNotOpened value)?  logoNotOpened,TResult Function( EntryFailure value)?  entry,TResult Function( OrganizationEntryFailure value)?  organizationEntry,TResult Function( GoogleAuthFailure value)?  googleAuth,TResult Function( GoogleRenewalFailure value)?  googleRenewal,TResult Function( SignOutFailure value)?  signOut,TResult Function( AccessLost value)?  accessLost,TResult Function( RemovedFromOrganization value)?  removedFromOrganization,TResult Function( SharingNotAllowed value)?  sharingNotAllowed,TResult Function( SharingNotChanged value)?  sharingNotChanged,TResult Function( LanguageNotSaved value)?  languageNotSaved,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case ConnectionFailure() when connection != null:
@@ -84,7 +84,8 @@ return signOut(_that);case AccessLost() when accessLost != null:
 return accessLost(_that);case RemovedFromOrganization() when removedFromOrganization != null:
 return removedFromOrganization(_that);case SharingNotAllowed() when sharingNotAllowed != null:
 return sharingNotAllowed(_that);case SharingNotChanged() when sharingNotChanged != null:
-return sharingNotChanged(_that);case _:
+return sharingNotChanged(_that);case LanguageNotSaved() when languageNotSaved != null:
+return languageNotSaved(_that);case _:
   return orElse();
 
 }
@@ -102,7 +103,7 @@ return sharingNotChanged(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( ConnectionFailure value)  connection,required TResult Function( LoadFailure value)  load,required TResult Function( ServerRefusal value)  serverRefusal,required TResult Function( UnexplainedRefusal value)  unexplainedRefusal,required TResult Function( UnexpectedResponse value)  unexpectedResponse,required TResult Function( OrganizationIdFailure value)  organizationId,required TResult Function( GroupNameTooShort value)  groupNameTooShort,required TResult Function( GroupNameTooLong value)  groupNameTooLong,required TResult Function( GroupNameTaken value)  groupNameTaken,required TResult Function( NoRoleChosen value)  noRoleChosen,required TResult Function( InvalidEmail value)  invalidEmail,required TResult Function( EmailAlreadyListed value)  emailAlreadyListed,required TResult Function( LogoTooLarge value)  logoTooLarge,required TResult Function( LogoUnreadable value)  logoUnreadable,required TResult Function( LogoNotConverted value)  logoNotConverted,required TResult Function( LogoNotOpened value)  logoNotOpened,required TResult Function( EntryFailure value)  entry,required TResult Function( OrganizationEntryFailure value)  organizationEntry,required TResult Function( GoogleAuthFailure value)  googleAuth,required TResult Function( GoogleRenewalFailure value)  googleRenewal,required TResult Function( SignOutFailure value)  signOut,required TResult Function( AccessLost value)  accessLost,required TResult Function( RemovedFromOrganization value)  removedFromOrganization,required TResult Function( SharingNotAllowed value)  sharingNotAllowed,required TResult Function( SharingNotChanged value)  sharingNotChanged,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( ConnectionFailure value)  connection,required TResult Function( LoadFailure value)  load,required TResult Function( ServerRefusal value)  serverRefusal,required TResult Function( UnexplainedRefusal value)  unexplainedRefusal,required TResult Function( UnexpectedResponse value)  unexpectedResponse,required TResult Function( OrganizationIdFailure value)  organizationId,required TResult Function( GroupNameTooShort value)  groupNameTooShort,required TResult Function( GroupNameTooLong value)  groupNameTooLong,required TResult Function( GroupNameTaken value)  groupNameTaken,required TResult Function( NoRoleChosen value)  noRoleChosen,required TResult Function( InvalidEmail value)  invalidEmail,required TResult Function( EmailAlreadyListed value)  emailAlreadyListed,required TResult Function( LogoTooLarge value)  logoTooLarge,required TResult Function( LogoUnreadable value)  logoUnreadable,required TResult Function( LogoNotConverted value)  logoNotConverted,required TResult Function( LogoNotOpened value)  logoNotOpened,required TResult Function( EntryFailure value)  entry,required TResult Function( OrganizationEntryFailure value)  organizationEntry,required TResult Function( GoogleAuthFailure value)  googleAuth,required TResult Function( GoogleRenewalFailure value)  googleRenewal,required TResult Function( SignOutFailure value)  signOut,required TResult Function( AccessLost value)  accessLost,required TResult Function( RemovedFromOrganization value)  removedFromOrganization,required TResult Function( SharingNotAllowed value)  sharingNotAllowed,required TResult Function( SharingNotChanged value)  sharingNotChanged,required TResult Function( LanguageNotSaved value)  languageNotSaved,}){
 final _that = this;
 switch (_that) {
 case ConnectionFailure():
@@ -130,7 +131,8 @@ return signOut(_that);case AccessLost():
 return accessLost(_that);case RemovedFromOrganization():
 return removedFromOrganization(_that);case SharingNotAllowed():
 return sharingNotAllowed(_that);case SharingNotChanged():
-return sharingNotChanged(_that);}
+return sharingNotChanged(_that);case LanguageNotSaved():
+return languageNotSaved(_that);}
 }
 /// A variant of `map` that fallback to returning `null`.
 ///
@@ -144,7 +146,7 @@ return sharingNotChanged(_that);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( ConnectionFailure value)?  connection,TResult? Function( LoadFailure value)?  load,TResult? Function( ServerRefusal value)?  serverRefusal,TResult? Function( UnexplainedRefusal value)?  unexplainedRefusal,TResult? Function( UnexpectedResponse value)?  unexpectedResponse,TResult? Function( OrganizationIdFailure value)?  organizationId,TResult? Function( GroupNameTooShort value)?  groupNameTooShort,TResult? Function( GroupNameTooLong value)?  groupNameTooLong,TResult? Function( GroupNameTaken value)?  groupNameTaken,TResult? Function( NoRoleChosen value)?  noRoleChosen,TResult? Function( InvalidEmail value)?  invalidEmail,TResult? Function( EmailAlreadyListed value)?  emailAlreadyListed,TResult? Function( LogoTooLarge value)?  logoTooLarge,TResult? Function( LogoUnreadable value)?  logoUnreadable,TResult? Function( LogoNotConverted value)?  logoNotConverted,TResult? Function( LogoNotOpened value)?  logoNotOpened,TResult? Function( EntryFailure value)?  entry,TResult? Function( OrganizationEntryFailure value)?  organizationEntry,TResult? Function( GoogleAuthFailure value)?  googleAuth,TResult? Function( GoogleRenewalFailure value)?  googleRenewal,TResult? Function( SignOutFailure value)?  signOut,TResult? Function( AccessLost value)?  accessLost,TResult? Function( RemovedFromOrganization value)?  removedFromOrganization,TResult? Function( SharingNotAllowed value)?  sharingNotAllowed,TResult? Function( SharingNotChanged value)?  sharingNotChanged,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( ConnectionFailure value)?  connection,TResult? Function( LoadFailure value)?  load,TResult? Function( ServerRefusal value)?  serverRefusal,TResult? Function( UnexplainedRefusal value)?  unexplainedRefusal,TResult? Function( UnexpectedResponse value)?  unexpectedResponse,TResult? Function( OrganizationIdFailure value)?  organizationId,TResult? Function( GroupNameTooShort value)?  groupNameTooShort,TResult? Function( GroupNameTooLong value)?  groupNameTooLong,TResult? Function( GroupNameTaken value)?  groupNameTaken,TResult? Function( NoRoleChosen value)?  noRoleChosen,TResult? Function( InvalidEmail value)?  invalidEmail,TResult? Function( EmailAlreadyListed value)?  emailAlreadyListed,TResult? Function( LogoTooLarge value)?  logoTooLarge,TResult? Function( LogoUnreadable value)?  logoUnreadable,TResult? Function( LogoNotConverted value)?  logoNotConverted,TResult? Function( LogoNotOpened value)?  logoNotOpened,TResult? Function( EntryFailure value)?  entry,TResult? Function( OrganizationEntryFailure value)?  organizationEntry,TResult? Function( GoogleAuthFailure value)?  googleAuth,TResult? Function( GoogleRenewalFailure value)?  googleRenewal,TResult? Function( SignOutFailure value)?  signOut,TResult? Function( AccessLost value)?  accessLost,TResult? Function( RemovedFromOrganization value)?  removedFromOrganization,TResult? Function( SharingNotAllowed value)?  sharingNotAllowed,TResult? Function( SharingNotChanged value)?  sharingNotChanged,TResult? Function( LanguageNotSaved value)?  languageNotSaved,}){
 final _that = this;
 switch (_that) {
 case ConnectionFailure() when connection != null:
@@ -172,7 +174,8 @@ return signOut(_that);case AccessLost() when accessLost != null:
 return accessLost(_that);case RemovedFromOrganization() when removedFromOrganization != null:
 return removedFromOrganization(_that);case SharingNotAllowed() when sharingNotAllowed != null:
 return sharingNotAllowed(_that);case SharingNotChanged() when sharingNotChanged != null:
-return sharingNotChanged(_that);case _:
+return sharingNotChanged(_that);case LanguageNotSaved() when languageNotSaved != null:
+return languageNotSaved(_that);case _:
   return null;
 
 }
@@ -189,7 +192,7 @@ return sharingNotChanged(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( FailedAction action)?  connection,TResult Function( LoadTarget target)?  load,TResult Function( String serverMessage)?  serverRefusal,TResult Function( RefusedAction action)?  unexplainedRefusal,TResult Function( bool creatingGroup)?  unexpectedResponse,TResult Function( OrganizationIdProblem problem,  int maxLength)?  organizationId,TResult Function()?  groupNameTooShort,TResult Function()?  groupNameTooLong,TResult Function( String existingName)?  groupNameTaken,TResult Function()?  noRoleChosen,TResult Function()?  invalidEmail,TResult Function( String email)?  emailAlreadyListed,TResult Function( int megabytes)?  logoTooLarge,TResult Function()?  logoUnreadable,TResult Function()?  logoNotConverted,TResult Function()?  logoNotOpened,TResult Function( EntryStage stage,  String detail)?  entry,TResult Function( String organizationName,  String detail)?  organizationEntry,TResult Function()?  googleAuth,TResult Function()?  googleRenewal,TResult Function( String detail)?  signOut,TResult Function( String organizationName)?  accessLost,TResult Function( String? organizationName)?  removedFromOrganization,TResult Function()?  sharingNotAllowed,TResult Function()?  sharingNotChanged,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( FailedAction action)?  connection,TResult Function( LoadTarget target)?  load,TResult Function( String serverMessage)?  serverRefusal,TResult Function( RefusedAction action)?  unexplainedRefusal,TResult Function( bool creatingGroup)?  unexpectedResponse,TResult Function( OrganizationIdProblem problem,  int maxLength)?  organizationId,TResult Function()?  groupNameTooShort,TResult Function()?  groupNameTooLong,TResult Function( String existingName)?  groupNameTaken,TResult Function()?  noRoleChosen,TResult Function()?  invalidEmail,TResult Function( String email)?  emailAlreadyListed,TResult Function( int megabytes)?  logoTooLarge,TResult Function()?  logoUnreadable,TResult Function()?  logoNotConverted,TResult Function()?  logoNotOpened,TResult Function( EntryStage stage,  String detail)?  entry,TResult Function( String organizationName,  String detail)?  organizationEntry,TResult Function()?  googleAuth,TResult Function()?  googleRenewal,TResult Function( String detail)?  signOut,TResult Function( String organizationName)?  accessLost,TResult Function( String? organizationName)?  removedFromOrganization,TResult Function()?  sharingNotAllowed,TResult Function()?  sharingNotChanged,TResult Function()?  languageNotSaved,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case ConnectionFailure() when connection != null:
 return connection(_that.action);case LoadFailure() when load != null:
@@ -216,7 +219,8 @@ return signOut(_that.detail);case AccessLost() when accessLost != null:
 return accessLost(_that.organizationName);case RemovedFromOrganization() when removedFromOrganization != null:
 return removedFromOrganization(_that.organizationName);case SharingNotAllowed() when sharingNotAllowed != null:
 return sharingNotAllowed();case SharingNotChanged() when sharingNotChanged != null:
-return sharingNotChanged();case _:
+return sharingNotChanged();case LanguageNotSaved() when languageNotSaved != null:
+return languageNotSaved();case _:
   return orElse();
 
 }
@@ -234,7 +238,7 @@ return sharingNotChanged();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( FailedAction action)  connection,required TResult Function( LoadTarget target)  load,required TResult Function( String serverMessage)  serverRefusal,required TResult Function( RefusedAction action)  unexplainedRefusal,required TResult Function( bool creatingGroup)  unexpectedResponse,required TResult Function( OrganizationIdProblem problem,  int maxLength)  organizationId,required TResult Function()  groupNameTooShort,required TResult Function()  groupNameTooLong,required TResult Function( String existingName)  groupNameTaken,required TResult Function()  noRoleChosen,required TResult Function()  invalidEmail,required TResult Function( String email)  emailAlreadyListed,required TResult Function( int megabytes)  logoTooLarge,required TResult Function()  logoUnreadable,required TResult Function()  logoNotConverted,required TResult Function()  logoNotOpened,required TResult Function( EntryStage stage,  String detail)  entry,required TResult Function( String organizationName,  String detail)  organizationEntry,required TResult Function()  googleAuth,required TResult Function()  googleRenewal,required TResult Function( String detail)  signOut,required TResult Function( String organizationName)  accessLost,required TResult Function( String? organizationName)  removedFromOrganization,required TResult Function()  sharingNotAllowed,required TResult Function()  sharingNotChanged,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( FailedAction action)  connection,required TResult Function( LoadTarget target)  load,required TResult Function( String serverMessage)  serverRefusal,required TResult Function( RefusedAction action)  unexplainedRefusal,required TResult Function( bool creatingGroup)  unexpectedResponse,required TResult Function( OrganizationIdProblem problem,  int maxLength)  organizationId,required TResult Function()  groupNameTooShort,required TResult Function()  groupNameTooLong,required TResult Function( String existingName)  groupNameTaken,required TResult Function()  noRoleChosen,required TResult Function()  invalidEmail,required TResult Function( String email)  emailAlreadyListed,required TResult Function( int megabytes)  logoTooLarge,required TResult Function()  logoUnreadable,required TResult Function()  logoNotConverted,required TResult Function()  logoNotOpened,required TResult Function( EntryStage stage,  String detail)  entry,required TResult Function( String organizationName,  String detail)  organizationEntry,required TResult Function()  googleAuth,required TResult Function()  googleRenewal,required TResult Function( String detail)  signOut,required TResult Function( String organizationName)  accessLost,required TResult Function( String? organizationName)  removedFromOrganization,required TResult Function()  sharingNotAllowed,required TResult Function()  sharingNotChanged,required TResult Function()  languageNotSaved,}) {final _that = this;
 switch (_that) {
 case ConnectionFailure():
 return connection(_that.action);case LoadFailure():
@@ -261,7 +265,8 @@ return signOut(_that.detail);case AccessLost():
 return accessLost(_that.organizationName);case RemovedFromOrganization():
 return removedFromOrganization(_that.organizationName);case SharingNotAllowed():
 return sharingNotAllowed();case SharingNotChanged():
-return sharingNotChanged();}
+return sharingNotChanged();case LanguageNotSaved():
+return languageNotSaved();}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -275,7 +280,7 @@ return sharingNotChanged();}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( FailedAction action)?  connection,TResult? Function( LoadTarget target)?  load,TResult? Function( String serverMessage)?  serverRefusal,TResult? Function( RefusedAction action)?  unexplainedRefusal,TResult? Function( bool creatingGroup)?  unexpectedResponse,TResult? Function( OrganizationIdProblem problem,  int maxLength)?  organizationId,TResult? Function()?  groupNameTooShort,TResult? Function()?  groupNameTooLong,TResult? Function( String existingName)?  groupNameTaken,TResult? Function()?  noRoleChosen,TResult? Function()?  invalidEmail,TResult? Function( String email)?  emailAlreadyListed,TResult? Function( int megabytes)?  logoTooLarge,TResult? Function()?  logoUnreadable,TResult? Function()?  logoNotConverted,TResult? Function()?  logoNotOpened,TResult? Function( EntryStage stage,  String detail)?  entry,TResult? Function( String organizationName,  String detail)?  organizationEntry,TResult? Function()?  googleAuth,TResult? Function()?  googleRenewal,TResult? Function( String detail)?  signOut,TResult? Function( String organizationName)?  accessLost,TResult? Function( String? organizationName)?  removedFromOrganization,TResult? Function()?  sharingNotAllowed,TResult? Function()?  sharingNotChanged,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( FailedAction action)?  connection,TResult? Function( LoadTarget target)?  load,TResult? Function( String serverMessage)?  serverRefusal,TResult? Function( RefusedAction action)?  unexplainedRefusal,TResult? Function( bool creatingGroup)?  unexpectedResponse,TResult? Function( OrganizationIdProblem problem,  int maxLength)?  organizationId,TResult? Function()?  groupNameTooShort,TResult? Function()?  groupNameTooLong,TResult? Function( String existingName)?  groupNameTaken,TResult? Function()?  noRoleChosen,TResult? Function()?  invalidEmail,TResult? Function( String email)?  emailAlreadyListed,TResult? Function( int megabytes)?  logoTooLarge,TResult? Function()?  logoUnreadable,TResult? Function()?  logoNotConverted,TResult? Function()?  logoNotOpened,TResult? Function( EntryStage stage,  String detail)?  entry,TResult? Function( String organizationName,  String detail)?  organizationEntry,TResult? Function()?  googleAuth,TResult? Function()?  googleRenewal,TResult? Function( String detail)?  signOut,TResult? Function( String organizationName)?  accessLost,TResult? Function( String? organizationName)?  removedFromOrganization,TResult? Function()?  sharingNotAllowed,TResult? Function()?  sharingNotChanged,TResult? Function()?  languageNotSaved,}) {final _that = this;
 switch (_that) {
 case ConnectionFailure() when connection != null:
 return connection(_that.action);case LoadFailure() when load != null:
@@ -302,7 +307,8 @@ return signOut(_that.detail);case AccessLost() when accessLost != null:
 return accessLost(_that.organizationName);case RemovedFromOrganization() when removedFromOrganization != null:
 return removedFromOrganization(_that.organizationName);case SharingNotAllowed() when sharingNotAllowed != null:
 return sharingNotAllowed();case SharingNotChanged() when sharingNotChanged != null:
-return sharingNotChanged();case _:
+return sharingNotChanged();case LanguageNotSaved() when languageNotSaved != null:
+return languageNotSaved();case _:
   return null;
 
 }
@@ -1612,6 +1618,38 @@ int get hashCode => runtimeType.hashCode;
 @override
 String toString() {
     return 'Failure.sharingNotChanged()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
+class LanguageNotSaved implements Failure {
+  const LanguageNotSaved();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LanguageNotSaved);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'Failure.languageNotSaved()';
 }
 
 

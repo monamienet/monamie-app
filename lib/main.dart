@@ -31,6 +31,9 @@ Future<void> main() async {
   // its brand without asking the central project again.
   final session = createOrganizationSession();
   final brandingLoader = createBrandingLoader();
+  // The language chosen, read before the first frame so it is drawn in it.
+  final language = createLanguageRepository();
+  await language.restore();
   final binding = await session.restore();
   if (binding != null) {
     // Picks up branding changes for the next launch, without changing the
@@ -43,6 +46,7 @@ Future<void> main() async {
       providers: appDependencies(
         organizationSession: session,
         brandingLoader: brandingLoader,
+        languageRepository: language,
       ),
       child: const MonAmieApp(),
     ),

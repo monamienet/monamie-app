@@ -320,7 +320,8 @@ Commits*:
 Depois do envio, o job `tag` marca o commit com `vX.Y.Z`, e essa tag é o ponto de partida do próximo
 cálculo. Cada build com novidade vira uma versão, então nome e notas sempre batem.
 
-As **notas da versão** (`distribution/whatsnew/whatsnew-pt-BR` e `whatsnew-en-US`) são escritas pelos
+As **notas da versão** (`distribution/whatsnew/whatsnew-pt-BR`, `whatsnew-en-US`, `whatsnew-es-419` e
+`whatsnew-fr-FR`) são escritas pelos
 agentes de IA em cada PR com mudança visível (regra em `AGENTS.md`, *Releases*). Elas cobrem tudo
 desde a tag `play-closed`, a última versão promovida ao teste fechado. O passo 1b
 ([check-release-notes.sh](../../.github/scripts/check-release-notes.sh)) confere que elas existem, que
@@ -340,7 +341,7 @@ sequenceDiagram
     participant Pro as promote-play-closed
     participant Play as Google Play
 
-    IA->>GH: PR feat: com código + notas (pt-BR/en-US)
+    IA->>GH: PR feat: com código + notas (pt-BR/en-US/es-419/fr-FR)
     Dev->>GH: revisa e faz o merge
     GH->>Dep: push na main
     Dep->>Dep: 1b confere as notas · 1c calcula 1.1.0

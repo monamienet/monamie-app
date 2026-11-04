@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:monamie_app/ui/language/view_models/language_view_model.dart';
 import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 import 'package:monamie_app/data/repositories/tracking/tracking_settings_repository.dart';
@@ -83,17 +84,25 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
           // The web sign-in's failures arrive with no tap waiting for them.
           notices: const ScaffoldNoticePresenter(),
         ),
-        builder: (login) => LoginScreen(controller: login),
+        builder: (login) => _withLanguage(
+          context,
+          (language) => LoginScreen(controller: login, language: language),
+        ),
       ),
     ),
     GoRoute(
       path: Routes.noOrganization,
       builder: (context, state) => _owned(
         create: () => _organizationChoice(context),
-        builder: (controller) => NoOrganizationScreen(
-          controller: controller,
-          onCreateOrganization: () =>
-              context.go(Routes.createOrganizationOver(Routes.noOrganization)),
+        builder: (controller) => _withLanguage(
+          context,
+          (language) => NoOrganizationScreen(
+            controller: controller,
+            language: language,
+            onCreateOrganization: () => context.go(
+              Routes.createOrganizationOver(Routes.noOrganization),
+            ),
+          ),
         ),
       ),
       routes: [_createOrganizationRoute()],
@@ -102,10 +111,14 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
       path: Routes.organizationPicker,
       builder: (context, state) => _owned(
         create: () => _organizationChoice(context),
-        builder: (controller) => OrganizationPickerScreen(
-          controller: controller,
-          onCreateOrganization: () => context.go(
-            Routes.createOrganizationOver(Routes.organizationPicker),
+        builder: (controller) => _withLanguage(
+          context,
+          (language) => OrganizationPickerScreen(
+            controller: controller,
+            language: language,
+            onCreateOrganization: () => context.go(
+              Routes.createOrganizationOver(Routes.organizationPicker),
+            ),
           ),
         ),
       ),
@@ -150,12 +163,16 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
                 permissions: context.read(),
                 calls: context.read(),
               ),
-              builder: (home) => HomeScreen(
-                userCtrl: context.read(),
-                home: home,
-                trackingCtrl: context.read(),
-                calendar: context.read(),
-                session: session,
+              builder: (home) => _withLanguage(
+                context,
+                (language) => HomeScreen(
+                  userCtrl: context.read(),
+                  home: home,
+                  trackingCtrl: context.read(),
+                  calendar: context.read(),
+                  session: session,
+                  language: language,
+                ),
               ),
             ),
           ),
@@ -322,6 +339,19 @@ OrganizationChoiceViewModel _organizationChoice(BuildContext context) =>
       signOut: context.read(),
       invites: context.read(),
     );
+
+/// The language picker's view model of a screen that opens it, over the app's
+/// `LanguageRepository`; it reads the device's languages from the platform.
+Widget _withLanguage(
+  BuildContext context,
+  Widget Function(LanguageViewModel language) builder,
+) => _owned(
+  create: () => LanguageViewModel(
+    repository: context.read(),
+    deviceLocales: () => WidgetsBinding.instance.platformDispatcher.locales,
+  ),
+  builder: builder,
+);
 
 /// A screen whose controller lives as long as its route: [create] runs
 /// once, when the route is first built, and the controller is disposed when
