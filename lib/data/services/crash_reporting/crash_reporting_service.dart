@@ -10,6 +10,10 @@ abstract interface class CrashReportingService {
   /// Firebase app is initialized, before the first report.
   Future<void> start();
 
+  /// Marks every later report of this isolate with [key] = [value] (a
+  /// non-personal tag, such as which isolate it came from).
+  Future<void> setCustomKey(String key, String value);
+
   /// Records an error the Flutter framework caught (`FlutterError.onError`)
   /// as a crash.
   Future<void> recordFlutterFatalError(FlutterErrorDetails details);

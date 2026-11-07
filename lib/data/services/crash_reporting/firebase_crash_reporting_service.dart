@@ -17,6 +17,10 @@ class FirebaseCrashReportingService implements CrashReportingService {
       _crashlytics.setCrashlyticsCollectionEnabled(!kDebugMode);
 
   @override
+  Future<void> setCustomKey(String key, String value) =>
+      _crashlytics.setCustomKey(key, value);
+
+  @override
   Future<void> recordFlutterFatalError(FlutterErrorDetails details) =>
       // Also prints the error to the console, as Flutter's default handler.
       _crashlytics.recordFlutterFatalError(details);

@@ -11,6 +11,9 @@ class NoOpCrashReportingService implements CrashReportingService {
   Future<void> start() async {}
 
   @override
+  Future<void> setCustomKey(String key, String value) async {}
+
+  @override
   Future<void> recordFlutterFatalError(FlutterErrorDetails details) async =>
       FlutterError.presentError(details);
 

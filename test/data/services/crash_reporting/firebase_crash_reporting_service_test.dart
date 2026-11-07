@@ -24,7 +24,28 @@ void main() {
       when(
         crashlytics.recordError(any, any, fatal: anyNamed('fatal')),
       ).thenAnswer((_) => Future.value());
+      when(
+        crashlytics.setCustomKey(any, any),
+      ).thenAnswer((_) => Future.value());
       service = FirebaseCrashReportingService(crashlytics: crashlytics);
+    });
+
+    test('Happy Path: setCustomKey forwards key and value', () async {
+      // Act
+      await service.setCustomKey('isolate', 'tracking_service');
+
+      // Assert
+      verify(crashlytics.setCustomKey('isolate', 'tracking_service')).called(1);
+    });
+
+    test('Edge Case: a setCustomKey failure reaches the caller', () async {
+      // Arrange
+      when(
+        crashlytics.setCustomKey(any, any),
+      ).thenAnswer((_) => Future.error(StateError('plugin missing')));
+
+      // Act & Assert
+      await expectLater(service.setCustomKey('k', 'v'), throwsStateError);
     });
 
     test('Happy Path: start turns collection off in debug builds', () async {

@@ -11,6 +11,11 @@ void main() {
       await expectLater(service.start(), completes);
     });
 
+    test('Happy Path: setCustomKey completes without doing anything', () async {
+      // Act & Assert
+      await expectLater(service.setCustomKey('isolate', 'ui'), completes);
+    });
+
     test(
       'Happy Path: recordFlutterFatalError presents the error on the console',
       () async {
