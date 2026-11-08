@@ -130,6 +130,7 @@ A ferramenta usa as contas do seu `firebase login` e `gcloud auth login`. O `che
 
 - **Android:** `flutter build apk` (sem `--flavor`). O build busca o `google-services.json` central quando ele não existe; `REFRESH_FIREBASE_CONFIG=1` força a atualização.
 - **Web:** `dart run tool/organization.dart web` grava `web/central/firebase.json` (opções do Firebase central e o client id do Google); depois, `flutter build web`. Veja `rodar-web-localmente.md`.
+- **Relatórios de falha:** todo build envia as falhas e os erros não tratados de todas as organizações ao painel do Crashlytics do projeto central `monamienet-app` (console do Firebase → Crashlytics, app `org.monamienet.app`), sem configuração por organização e sem identificador de pessoa. Os relatórios do serviço de rastreamento levam a chave personalizada `isolate = tracking_service`, e os do app, `ui`. Os builds de release enviam sozinhos o mapeamento do R8 e os símbolos nativos, então nenhuma credencial entra na CI.
 - **Funções:** a CI só publica o app. Depois de um merge que mude `central/`, publique de novo o projeto central (seção 4, passo 6); depois de um que mude `functions/`, `firestore.rules`, `firestore.indexes.json` ou `storage.rules`, publique de novo **todos** os projetos de organização e o `monamienet-community` (seção 5, passo 5).
 
 ## 7. Status da organização
