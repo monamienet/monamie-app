@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:monamie_app/config/dependencies.dart';
+import 'package:monamie_app/data/services/crash_reporting/no_op_crash_reporting_service.dart';
 
 import '../../testing/fakes/repositories/fake_language_repository.dart';
 import '../../testing/fakes/repositories/fake_organization_branding_loader.dart';
@@ -23,6 +24,7 @@ void main() {
       organizationSession: FakeOrganizationSession(),
       brandingLoader: FakeOrganizationBrandingLoader(),
       languageRepository: FakeLanguageRepository(),
+      crashReporting: const NoOpCrashReportingService(),
     ).map((provider) => provider.runtimeType).toList();
 
     test('Happy Path: it provides every type the routes and the '

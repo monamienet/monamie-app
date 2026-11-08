@@ -79,11 +79,12 @@ class PublishOutcome {
 
   /// Some group refused the write for lack of permission (the person may
   /// have just lost `publisher` there).
-  bool get anyPermissionDenied => failed.values.any(
-    (e) =>
-        (e is FirebaseException && e.code == 'permission-denied') ||
-        e.toString().contains('permission-denied'),
-  );
+  bool get anyPermissionDenied => failed.values.any(isPermissionDenied);
+
+  /// Whether [error] is a refusal for lack of permission.
+  static bool isPermissionDenied(Object error) =>
+      (error is FirebaseException && error.code == 'permission-denied') ||
+      error.toString().contains('permission-denied');
 }
 
 /// Runs [write] for every group of [groupIds] at once, one write (one batch)

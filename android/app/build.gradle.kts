@@ -1,3 +1,4 @@
+import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import java.util.Properties
 
 plugins {
@@ -5,6 +6,7 @@ plugins {
     // START: FlutterFire Configuration
     id("com.google.gms.google-services")
     // END: FlutterFire Configuration
+    id("com.google.firebase.crashlytics")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -58,6 +60,11 @@ android {
 
     buildTypes {
         release {
+            configure<CrashlyticsExtension> {
+                // Uploads the symbols of the native libraries (libflutter.so and
+                // the plugins'), so a native crash report shows readable frames.
+                nativeSymbolUploadEnabled = true
+            }
             // Always signs with the upload key from android/key.properties.
             // validateReleaseSigning fails the build when it is missing instead
             // of falling back to the debug key, which Google Play rejects.
@@ -140,4 +147,8 @@ dependencies {
     // picks the higher one if the plugin moves ahead.
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-common")
+    // Native signal handler: without it a crash in libflutter.so or in a
+    // plugin's native code ends the process with no report. The BoM picks the
+    // version.
+    implementation("com.google.firebase:firebase-crashlytics-ndk")
 }

@@ -6,6 +6,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:monamie_app/data/services/crash_reporting/crash_reporting_installer.dart';
+import 'package:monamie_app/data/services/crash_reporting/crash_reporting_service.dart';
+import 'package:monamie_app/data/services/crash_reporting/firebase_crash_reporting_service.dart';
 import 'package:monamie_app/data/services/firebase/current_organization_firebase.dart';
 import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/services/firestore/positions_firestore_service.dart';
@@ -16,6 +19,27 @@ import 'package:monamie_app/data/services/group_publisher.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
+
+/// This isolate's crash reporter, set in [onStart] once Firebase is up.
+/// Failures this file survives (and only logs) are recorded through it as
+/// non-fatal reports, with no e-mail, name or coordinates.
+CrashReportingService? _crashReporting;
+
+/// Records [error], a failure the service survived, in the crash reports.
+void _reportFailure(Object error, StackTrace stackTrace) {
+  _crashReporting?.recordError(error, stackTrace).ignore();
+}
+
+/// Records the failures of one round of group writes, except permission
+/// refusals: those happen when a person just lost `publisher`, and a service
+/// that keeps being refused reports once, when it gives up.
+void _reportWriteFailures(PublishOutcome outcome) {
+  for (final error in outcome.failed.values) {
+    if (!PublishOutcome.isPermissionDenied(error)) {
+      _reportFailure(error, StackTrace.current);
+    }
+  }
+}
 
 Timer? _heartbeatTimer;
 StreamSubscription<Position>? _positionSubscription;
@@ -52,8 +76,9 @@ Future<Duration> _readMinPeriod() async {
     return minutes is int && minutes > 0
         ? Duration(minutes: minutes)
         : Duration.zero;
-  } catch (e) {
+  } catch (e, stackTrace) {
     debugPrint('[ForegroundService] Could not read the plan: $e');
+    _reportFailure(e, stackTrace);
     return Duration.zero;
   }
 }
@@ -71,6 +96,14 @@ void onStart(ServiceInstance service) async {
   // [DEFAULT] is the central project (from google-services.json); the
   // organization's app was created natively by MonAmieApplication.
   await Firebase.initializeApp();
+  // This engine's own error handlers: those of the screen's engine do not
+  // reach this isolate.
+  final crashReporting = FirebaseCrashReportingService();
+  _crashReporting = crashReporting;
+  await installCrashReporting(
+    crashReporting,
+    isolate: CrashIsolate.trackingService,
+  );
   // The UI stored the bound organization; without one there is nowhere to write.
   // This isolate is its own composition root: it shares no object with the UI.
   final session = OrganizationSession(
@@ -191,8 +224,9 @@ Future<void> _followPublisherGroups(String email) async {
           debugPrint('[ForegroundService] Publishing in: $_publisherGroupIds');
           if (!first.isCompleted) first.complete();
         },
-        onError: (Object e) {
+        onError: (Object e, StackTrace stackTrace) {
           debugPrint('[ForegroundService] Could not read the groups: $e');
+          _reportFailure(e, stackTrace);
           if (!first.isCompleted) first.complete();
         },
       );
@@ -217,6 +251,7 @@ Future<bool> _publish(String email, String name, Position position) async {
   for (final MapEntry(:key, :value) in outcome.failed.entries) {
     debugPrint('[ForegroundService] Not published in $key: $value');
   }
+  _reportWriteFailures(outcome);
   if (!outcome.noneSucceeded) {
     _consecutivePermissionErrors = 0;
     return true;
@@ -227,6 +262,14 @@ Future<bool> _publish(String email, String name, Position position) async {
       '[ForegroundService] PERMISSION_DENIED em todos os grupos '
       '(tentativa $_consecutivePermissionErrors/$_maxConsecutivePermissionErrors).',
     );
+    if (_consecutivePermissionErrors == _maxConsecutivePermissionErrors) {
+      // The service stops writing here, while its notification still says
+      // sharing is on: that is a failure worth seeing.
+      _reportFailure(
+        outcome.failed.values.firstWhere(PublishOutcome.isPermissionDenied),
+        StackTrace.current,
+      );
+    }
   }
   return false;
 }
@@ -257,8 +300,9 @@ Future<void> updateLocation(
               updateLocation(service, email, name);
             }
           },
-          onError: (Object e) {
+          onError: (Object e, StackTrace stackTrace) {
             debugPrint('[ForegroundService] Could not read the settings: $e');
+            _reportFailure(e, stackTrace);
             if (!first.isCompleted) first.complete();
           },
         );
@@ -312,6 +356,7 @@ Future<void> updateLocation(
       debugPrint(
         '[ForegroundService] Heartbeat failed in ${outcome.failed.keys}',
       );
+      _reportWriteFailures(outcome);
     }
   });
 
@@ -336,48 +381,57 @@ Future<void> updateLocation(
 
   await _positionSubscription?.cancel();
   _positionSubscription =
-      Geolocator.getPositionStream(locationSettings: locationSettings).listen((
-        Position position,
-      ) async {
-        // TODO: Filtro de precisão: Se o erro for maior que 20 metros, ignorar
-        // e.g.: if (position.accuracy > 20) return;
+      Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+        (Position position) async {
+          // TODO: Filtro de precisão: Se o erro for maior que 20 metros, ignorar
+          // e.g.: if (position.accuracy > 20) return;
 
-        // Se muitos erros de permissão consecutivos, parar de tentar
-        if (_consecutivePermissionErrors >= _maxConsecutivePermissionErrors) {
-          debugPrint(
-            '[ForegroundService] Muitos erros de permissão consecutivos '
-            '($_consecutivePermissionErrors). Parando tentativas de escrita.',
-          );
-          return;
-        }
+          // Se muitos erros de permissão consecutivos, parar de tentar
+          if (_consecutivePermissionErrors >= _maxConsecutivePermissionErrors) {
+            debugPrint(
+              '[ForegroundService] Muitos erros de permissão consecutivos '
+              '($_consecutivePermissionErrors). Parando tentativas de escrita.',
+            );
+            return;
+          }
 
-        // Evita duplicatas se a posição for essencialmente idêntica à última registrada
-        // (por exemplo, primeiro evento do stream emitindo o mesmo fix da posição inicial).
-        if (_lastRecordedPosition != null) {
-          final distanceMoved = Geolocator.distanceBetween(
-            _lastRecordedPosition!.latitude,
-            _lastRecordedPosition!.longitude,
-            position.latitude,
-            position.longitude,
-          );
-          if (distanceMoved < radius) {
+          // Evita duplicatas se a posição for essencialmente idêntica à última registrada
+          // (por exemplo, primeiro evento do stream emitindo o mesmo fix da posição inicial).
+          if (_lastRecordedPosition != null) {
+            final distanceMoved = Geolocator.distanceBetween(
+              _lastRecordedPosition!.latitude,
+              _lastRecordedPosition!.longitude,
+              position.latitude,
+              position.longitude,
+            );
+            if (distanceMoved < radius) {
+              service.invoke('updateLocationLocally', {'position': position});
+              return;
+            }
+          }
+
+          // The plan limits how often a position may be written.
+          if (!_minPeriodElapsed(DateTime.now())) {
             service.invoke('updateLocationLocally', {'position': position});
             return;
           }
-        }
 
-        // The plan limits how often a position may be written.
-        if (!_minPeriodElapsed(DateTime.now())) {
+          if (await _publish(email, name, position)) {
+            _lastRecordedPosition = position;
+            _lastPositionWriteAt = DateTime.now();
+          }
+
+          // Envia para o app principal
           service.invoke('updateLocationLocally', {'position': position});
-          return;
-        }
-
-        if (await _publish(email, name, position)) {
-          _lastRecordedPosition = position;
-          _lastPositionWriteAt = DateTime.now();
-        }
-
-        // Envia para o app principal
-        service.invoke('updateLocationLocally', {'position': position});
-      });
+        },
+        onError: (Object e, StackTrace stackTrace) {
+          debugPrint('[ForegroundService] Position stream error: $e');
+          // The person turning the GPS off or taking the permission back is
+          // not a bug; anything else is.
+          if (e is! LocationServiceDisabledException &&
+              e is! PermissionDeniedException) {
+            _reportFailure(e, stackTrace);
+          }
+        },
+      );
 }

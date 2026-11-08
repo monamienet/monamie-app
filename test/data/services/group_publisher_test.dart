@@ -168,4 +168,37 @@ void main() {
       expect(result, isFalse);
     });
   });
+
+  group('PublishOutcome.isPermissionDenied - Unit Test Suite', () {
+    test('Happy Path: a permission-denied FirebaseException is denied', () {
+      expect(PublishOutcome.isPermissionDenied(denied()), isTrue);
+    });
+
+    test('Edge Case: an error whose text says permission-denied is denied', () {
+      expect(
+        PublishOutcome.isPermissionDenied(
+          Exception('[cloud_firestore/permission-denied] no'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('Sad Path: an unrelated error is not denied', () {
+      expect(
+        PublishOutcome.isPermissionDenied(
+          FirebaseException(plugin: 'cloud_firestore', code: 'unavailable'),
+        ),
+        isFalse,
+      );
+      expect(
+        PublishOutcome.isPermissionDenied(TimeoutException('slow')),
+        isFalse,
+      );
+    });
+
+    test('Edge Case: anyPermissionDenied is false with no failures', () {
+      final outcome = PublishOutcome(succeeded: const ['g1'], failed: const {});
+      expect(outcome.anyPermissionDenied, isFalse);
+    });
+  });
 }

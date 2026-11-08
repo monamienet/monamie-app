@@ -78,6 +78,16 @@ Who belongs where lives in Firestore documents of the organization's project, **
 - **User-Facing Transparency**: Never silently swallow hardware or sensor timeouts (e.g., GPS satellite fix) with developer-only `debugPrint`. When a service starts but sensor calibration is pending, provide transparent, non-blocking user feedback (e.g., an informative SnackBar or status banner) clarifying that the service is running while satellites/hardware sync.
 - **Defensive Timeouts**: Guard platform hardware and sensor calls (e.g., `Geolocator.getCurrentPosition()`) with sensible timeouts (e.g., 5 seconds) and `try/catch` blocks to prevent freezing or unhandled crashes during cold starts or weak-signal environments.
 
+### Crash Reporting
+
+- **Firebase Crashlytics, in the central project** `monamienet-app` (the `[DEFAULT]` app), for every organization and plan: one dashboard, no step per organization. Reports carry no person identifier (no e-mail, name or `personKey`) and no coordinates; collection is off in debug builds. Play's Data safety and the privacy policy declare them as crash logs and diagnostics.
+- **Behind a contract**: `CrashReportingService` (`lib/data/services/crash_reporting/`) has a Crashlytics implementation and a no-op one for web (the plugin has no web support) and tests; `createCrashReportingService()` picks one. Plugins stay under `lib/data/`.
+- **One installer per engine**: error handlers are per isolate, and the tracking service runs in its own `FlutterEngine`. `installCrashReporting(service, isolate: …)` starts the service, sets the `isolate` custom key (`ui` or `tracking_service`) and installs `FlutterError.onError` and `PlatformDispatcher.instance.onError` as fatal; `main()` and the tracking service's `onStart` each call it, the latter creating its own service.
+- **Failures the app survives are non-fatal records** (`recordError(fatal: false)`), never `debugPrint` alone: the tracking service's plan read, its listeners, its publishing and its position stream. Expected refusals (`ServerRefusal`, a permission refusal, a GPS timeout, a disabled location service) are not recorded, and no recorded message may hold an e-mail, name or coordinates.
+- **Android build**: the Crashlytics Gradle plugin uploads the R8 mapping, and `firebase-crashlytics-ndk` with `nativeSymbolUploadEnabled` in the release build type captures native crashes (`libflutter.so`, plugins) with symbolicated frames. Dart is not obfuscated, so Dart stack traces stay readable.
+- **Known SDK limit**: right after a fresh install the SDK has no cached settings and queues fatal reports behind their download, so a second fatal error of the first launch can be lost if the process ends first (#250).
+- The class diagram is in `docs/crash-reporting/class-diagram.md`.
+
 
 ## Testing
 

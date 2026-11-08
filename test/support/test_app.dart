@@ -24,6 +24,8 @@ import 'package:monamie_app/data/services/background_tracking_service.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/data/services/background_usage_settings_launcher.dart';
 import 'package:monamie_app/data/services/call_service.dart';
+import 'package:monamie_app/data/services/crash_reporting/crash_reporting_service.dart';
+import 'package:monamie_app/data/services/crash_reporting/no_op_crash_reporting_service.dart';
 import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/services/permissions_service.dart';
@@ -147,6 +149,9 @@ class TestApp {
     Provider<SessionRepository>.value(value: session),
     Provider<OrganizationSession>.value(value: organizationSession),
     Provider<LanguageRepository>.value(value: language),
+    Provider<CrashReportingService>.value(
+      value: const NoOpCrashReportingService(),
+    ),
     Provider<ThemeRepository>.value(value: themes),
     Provider<OrganizationBrandingLoader>.value(value: brandingLoader),
     Provider<OrganizationDirectory>.value(value: directory),

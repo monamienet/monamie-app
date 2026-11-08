@@ -130,6 +130,7 @@ The tool uses your `firebase login` and `gcloud auth login` accounts. `check` an
 
 - **Android:** `flutter build apk` (no `--flavor`). The build fetches the central `google-services.json` when it is missing; `REFRESH_FIREBASE_CONFIG=1` refreshes it.
 - **Web:** `dart run tool/organization.dart web` writes `web/central/firebase.json` (central Firebase options and the Google client id), then `flutter build web`. See `run-web-locally.md`.
+- **Crash reports:** every build sends crashes and unhandled errors of every organization to the Crashlytics dashboard of the central project `monamienet-app` (Firebase console → Crashlytics, app `org.monamienet.app`), with no per-organization setup and no person identifier. Reports from the tracking service carry the custom key `isolate = tracking_service`, the app's own `ui`. Release builds upload the R8 mapping and the native symbols on their own, so no CI credential is involved.
 - **Functions:** CI only ships the app. After a merge that changes `central/`, redeploy the central project (section 4, step 6); after one that changes `functions/`, `firestore.rules`, `firestore.indexes.json` or `storage.rules`, redeploy **every** organization project and `monamienet-community` (section 5, step 5).
 
 ## 7. Organization status
