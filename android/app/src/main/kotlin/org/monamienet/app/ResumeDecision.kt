@@ -21,6 +21,9 @@ sealed interface ResumeDecision {
         /** `ResumeFailure.batteryRestricted` in Dart. */
         const val BATTERY_RESTRICTED = "batteryRestricted"
 
+        /** `ResumeFailure.locationOff` in Dart. */
+        const val LOCATION_OFF = "locationOff"
+
         /**
          * [optionOn]: the person chose to resume; [sharing]: they were sharing
          * (the intent is stored); [bound]: an organization is bound;
@@ -29,7 +32,10 @@ sealed interface ResumeDecision {
          * would fail: on Android 14+ a `location` foreground service started
          * without location permission throws, and one started from the
          * background only gets positions with background location; a
-         * "Restricted" app loses the foreground status as soon as it starts.
+         * "Restricted" app loses the foreground status as soon as it starts;
+         * with the device's location off ([locationEnabled] false) Android
+         * refuses a `location` foreground service started from the
+         * background, and the process dies without it (seen on Android 15).
          */
         fun decide(
             optionOn: Boolean,
@@ -39,10 +45,12 @@ sealed interface ResumeDecision {
             fineLocation: Boolean,
             backgroundLocation: Boolean,
             backgroundRestricted: Boolean,
+            locationEnabled: Boolean,
         ): ResumeDecision = when {
             !optionOn || !sharing || !bound || !serviceConfigured -> Skip
             !fineLocation || !backgroundLocation -> Fail(BACKGROUND_LOCATION)
             backgroundRestricted -> Fail(BATTERY_RESTRICTED)
+            !locationEnabled -> Fail(LOCATION_OFF)
             else -> Start
         }
     }

@@ -408,11 +408,11 @@
   "resumeOnRestartSubtitle": "Si vous partagez quand l’appareil s’éteint ou que l’application est mise à jour, le partage reprend tout seul.",
   "resumeOnRestartNeedsAlwaysLocation": "Pour reprendre, la localisation doit être autorisée en permanence. Touchez pour l’autoriser.",
   "resumeOnRestartBatteryRestricted": "Pour reprendre, la batterie de l’application ne doit pas être sur « Restreinte ». Touchez pour la modifier.",
-  "resumeWaitingForGps": "Le partage a repris et attend que le GPS soit activé.",
   "resumeFailureChannel": "Reprise du partage",
   "resumeFailureTitle": "Le partage n’a pas repris",
   "resumeFailureBackgroundLocation": "La localisation n’est pas autorisée en permanence. Touchez pour ouvrir l’application.",
   "resumeFailureBatteryRestricted": "La batterie de l’application est sur « Restreinte ». Touchez pour ouvrir l’application.",
+  "resumeFailureLocationOff": "La localisation de l’appareil était désactivée. Touchez pour ouvrir l’application.",
   "resumeFailureSignedOut": "Votre compte n’est plus connecté. Touchez pour ouvrir l’application.",
   "resumeFailureNoGroup": "Vous ne partagez plus votre position dans aucun groupe. Touchez pour ouvrir l’application."
 }

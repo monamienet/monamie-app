@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.os.Build
 import android.util.Log
 import id.flutter.flutter_background_service.BackgroundService
@@ -44,6 +45,7 @@ class ResumeSharingReceiver : BroadcastReceiver() {
                 granted(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION),
             backgroundRestricted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
                 context.getSystemService(ActivityManager::class.java).isBackgroundRestricted,
+            locationEnabled = locationEnabled(context),
         )
         Log.i(TAG, "${intent.action}: $decision")
         when (decision) {
@@ -96,6 +98,17 @@ class ResumeSharingReceiver : BroadcastReceiver() {
             Log.w(TAG, "Could not resume sharing", error)
             preferences.edit().remove(ResumeFailures.RESUMING_KEY).apply()
             forgetIntent(context)
+        }
+    }
+
+    /** The device's location switch (the GPS, as the app calls it). */
+    private fun locationEnabled(context: Context): Boolean {
+        val manager = context.getSystemService(LocationManager::class.java)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            manager.isLocationEnabled
+        } else {
+            manager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
         }
     }
 

@@ -2550,12 +2550,6 @@ abstract class AppLocalizations {
   /// **'Para retomar, a bateria do app não pode estar em “Restrito”. Toque para mudar.'**
   String get resumeOnRestartBatteryRestricted;
 
-  /// Text of the sharing notification after sharing resumed by itself while the GPS is off.
-  ///
-  /// In pt, this message translates to:
-  /// **'O compartilhamento voltou e está aguardando o GPS ser ligado.'**
-  String get resumeWaitingForGps;
-
   /// Name, in the system's notification settings, of the channel of the notifications saying sharing could not resume.
   ///
   /// In pt, this message translates to:
@@ -2579,6 +2573,12 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'A bateria do app está em “Restrito”. Toque para abrir o app.'**
   String get resumeFailureBatteryRestricted;
+
+  /// Notification text: sharing did not resume because the device's location was off when it restarted or the app was updated.
+  ///
+  /// In pt, this message translates to:
+  /// **'A localização do aparelho estava desligada. Toque para abrir o app.'**
+  String get resumeFailureLocationOff;
 
   /// Notification text: sharing did not resume because the account that was sharing is no longer signed in.
   ///

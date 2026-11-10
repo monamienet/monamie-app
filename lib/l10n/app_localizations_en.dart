@@ -1650,10 +1650,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'To resume, the app\'s battery use cannot be “Restricted”. Tap to change it.';
 
   @override
-  String get resumeWaitingForGps =>
-      'Sharing is back on and waiting for the GPS to be turned on.';
-
-  @override
   String get resumeFailureChannel => 'Resuming sharing';
 
   @override
@@ -1666,6 +1662,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get resumeFailureBatteryRestricted =>
       'The app\'s battery use is “Restricted”. Tap to open the app.';
+
+  @override
+  String get resumeFailureLocationOff =>
+      'The device\'s location was off. Tap to open the app.';
 
   @override
   String get resumeFailureSignedOut =>

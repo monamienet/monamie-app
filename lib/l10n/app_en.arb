@@ -408,11 +408,11 @@
   "resumeOnRestartSubtitle": "If you are sharing when the device turns off or the app is updated, sharing comes back on by itself.",
   "resumeOnRestartNeedsAlwaysLocation": "To resume, location must be allowed all the time. Tap to allow.",
   "resumeOnRestartBatteryRestricted": "To resume, the app's battery use cannot be “Restricted”. Tap to change it.",
-  "resumeWaitingForGps": "Sharing is back on and waiting for the GPS to be turned on.",
   "resumeFailureChannel": "Resuming sharing",
   "resumeFailureTitle": "Sharing did not resume",
   "resumeFailureBackgroundLocation": "Location is not allowed all the time. Tap to open the app.",
   "resumeFailureBatteryRestricted": "The app's battery use is “Restricted”. Tap to open the app.",
+  "resumeFailureLocationOff": "The device's location was off. Tap to open the app.",
   "resumeFailureSignedOut": "Your account is no longer signed in. Tap to open the app.",
   "resumeFailureNoGroup": "You no longer share your location in any group. Tap to open the app."
 }

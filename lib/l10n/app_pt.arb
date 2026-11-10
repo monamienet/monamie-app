@@ -2293,10 +2293,6 @@
   "@resumeOnRestartBatteryRestricted": {
     "description": "Warning under the resume switch when the app's battery use is Restricted; tapping it opens the battery settings."
   },
-  "resumeWaitingForGps": "O compartilhamento voltou e está aguardando o GPS ser ligado.",
-  "@resumeWaitingForGps": {
-    "description": "Text of the sharing notification after sharing resumed by itself while the GPS is off."
-  },
   "resumeFailureChannel": "Retomada do compartilhamento",
   "@resumeFailureChannel": {
     "description": "Name, in the system's notification settings, of the channel of the notifications saying sharing could not resume."
@@ -2312,6 +2308,10 @@
   "resumeFailureBatteryRestricted": "A bateria do app está em “Restrito”. Toque para abrir o app.",
   "@resumeFailureBatteryRestricted": {
     "description": "Notification text: sharing did not resume because the app's battery use is Restricted."
+  },
+  "resumeFailureLocationOff": "A localização do aparelho estava desligada. Toque para abrir o app.",
+  "@resumeFailureLocationOff": {
+    "description": "Notification text: sharing did not resume because the device's location was off when it restarted or the app was updated."
   },
   "resumeFailureSignedOut": "Sua conta não está mais conectada. Toque para abrir o app.",
   "@resumeFailureSignedOut": {

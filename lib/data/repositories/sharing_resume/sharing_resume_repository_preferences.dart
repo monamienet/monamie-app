@@ -50,7 +50,6 @@ class SharingResumeRepositoryPreferences implements SharingResumeRepository {
   Future<void> saveTexts(SharingResumeTexts texts) => _service.writeTexts({
     'notificationTitle': texts.notificationTitle,
     'notificationContent': texts.notificationContent,
-    'waitingForGps': texts.waitingForGps,
     'failureChannel': texts.failureChannel,
     'failureTitle': texts.failureTitle,
     'failures': {

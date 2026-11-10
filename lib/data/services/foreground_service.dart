@@ -78,10 +78,6 @@ _GroupsAnswer _groupsAnswer = _GroupsAnswer.unknown;
 /// resumed by itself) does nothing.
 String? _sharingAs;
 
-/// Waits for the GPS to be turned on before publishing, when sharing
-/// resumed by itself with the GPS off.
-StreamSubscription<ServiceStatus>? _gpsSubscription;
-
 /// The plan's minimum period (*período mínimo*: the least time between two
 /// positions, Community), read from
 /// `organizations/{id}/config/plan` at start. The rules refuse a sooner write.
@@ -190,7 +186,6 @@ void onStart(ServiceInstance service) async {
       'title': final String title,
       'content': final String body,
     }) {
-      _notificationTitle = title;
       service.setForegroundNotificationInfo(title: title, content: body);
     }
   });
@@ -257,28 +252,9 @@ Future<void> _resumeWithoutScreen(
     return;
   }
   debugPrint('[ForegroundService] Resuming as ${intent.email}.');
-
-  if (await Geolocator.isLocationServiceEnabled()) {
-    await updateLocation(service, intent.email, intent.name);
-    return;
-  }
-  // The GPS is often still off right after a restart: wait for it, saying
-  // so in the notification, instead of giving up.
-  final texts = await _readTexts(preferences);
-  if (texts != null) {
-    _notificationTitle ??= texts.notificationTitle;
-    _setNotificationContent(service, texts.waitingForGps);
-  }
-  await _gpsSubscription?.cancel();
-  _gpsSubscription = Geolocator.getServiceStatusStream().listen((status) {
-    if (status != ServiceStatus.enabled) return;
-    _gpsSubscription?.cancel();
-    _gpsSubscription = null;
-    if (texts != null) {
-      _setNotificationContent(service, texts.notificationContent);
-    }
-    updateLocation(service, intent.email, intent.name);
-  });
+  // The device's location is on: the native receiver does not start the
+  // service otherwise, since Android refuses it then.
+  await updateLocation(service, intent.email, intent.name);
 }
 
 /// Stops resuming for [reason]: the native side shows the notification, and
@@ -298,46 +274,6 @@ Future<void> _giveUp(
   _stopTracking(service);
 }
 
-/// The texts the screen stored, `null` when there are none.
-Future<
-  ({
-    String notificationTitle,
-    String notificationContent,
-    String waitingForGps,
-  })?
->
-_readTexts(SharingResumePreferencesService preferences) async {
-  try {
-    if (await preferences.readTexts() case {
-      'notificationTitle': final String notificationTitle,
-      'notificationContent': final String notificationContent,
-      'waitingForGps': final String waitingForGps,
-    }) {
-      return (
-        notificationTitle: notificationTitle,
-        notificationContent: notificationContent,
-        waitingForGps: waitingForGps,
-      );
-    }
-  } catch (e) {
-    debugPrint('[ForegroundService] Could not read the texts: $e');
-  }
-  return null;
-}
-
-/// Replaces the sharing notification's text, keeping its title.
-void _setNotificationContent(ServiceInstance service, String content) {
-  if (service is! AndroidServiceInstance) return;
-  service.setForegroundNotificationInfo(
-    title: _notificationTitle ?? '',
-    content: content,
-  );
-}
-
-/// The sharing notification's title in use, to keep it when only the text
-/// changes.
-String? _notificationTitle;
-
 void _stopTracking(ServiceInstance service) {
   _authSubscription?.cancel();
   _authSubscription = null;
@@ -348,8 +284,6 @@ void _stopTracking(ServiceInstance service) {
   _publisherGroupIds = const [];
   _groupsAnswer = _GroupsAnswer.unknown;
   _sharingAs = null;
-  _gpsSubscription?.cancel();
-  _gpsSubscription = null;
   _heartbeatTimer?.cancel();
   _heartbeatTimer = null;
   _positionSubscription?.cancel();

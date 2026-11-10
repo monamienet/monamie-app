@@ -1655,10 +1655,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Para reanudar, la batería de la app no puede estar en “Restringido”. Toca para cambiarlo.';
 
   @override
-  String get resumeWaitingForGps =>
-      'Compartir volvió a activarse y está esperando que se encienda el GPS.';
-
-  @override
   String get resumeFailureChannel => 'Reanudación de compartir';
 
   @override
@@ -1671,6 +1667,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get resumeFailureBatteryRestricted =>
       'La batería de la app está en “Restringido”. Toca para abrir la app.';
+
+  @override
+  String get resumeFailureLocationOff =>
+      'La ubicación del dispositivo estaba desactivada. Toca para abrir la app.';
 
   @override
   String get resumeFailureSignedOut =>

@@ -1664,10 +1664,6 @@ class AppLocalizationsFr extends AppLocalizations {
       'Pour reprendre, la batterie de l’application ne doit pas être sur « Restreinte ». Touchez pour la modifier.';
 
   @override
-  String get resumeWaitingForGps =>
-      'Le partage a repris et attend que le GPS soit activé.';
-
-  @override
   String get resumeFailureChannel => 'Reprise du partage';
 
   @override
@@ -1680,6 +1676,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get resumeFailureBatteryRestricted =>
       'La batterie de l’application est sur « Restreinte ». Touchez pour ouvrir l’application.';
+
+  @override
+  String get resumeFailureLocationOff =>
+      'La localisation de l’appareil était désactivée. Touchez pour ouvrir l’application.';
 
   @override
   String get resumeFailureSignedOut =>

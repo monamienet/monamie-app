@@ -14,6 +14,7 @@ class ResumeDecisionTest {
         fineLocation: Boolean = true,
         backgroundLocation: Boolean = true,
         backgroundRestricted: Boolean = false,
+        locationEnabled: Boolean = true,
     ) = ResumeDecision.decide(
         optionOn = optionOn,
         sharing = sharing,
@@ -22,6 +23,7 @@ class ResumeDecisionTest {
         fineLocation = fineLocation,
         backgroundLocation = backgroundLocation,
         backgroundRestricted = backgroundRestricted,
+        locationEnabled = locationEnabled,
     )
 
     @Test
@@ -103,8 +105,69 @@ class ResumeDecisionTest {
     }
 
     @Test
+    fun `fails on the location when the device's location is off`() {
+        assertEquals(
+            ResumeDecision.Fail(ResumeDecision.LOCATION_OFF),
+            decide(locationEnabled = false),
+        )
+    }
+
+    @Test
+    fun `skips silently with the option off even when the location is off`() {
+        assertEquals(
+            ResumeDecision.Skip,
+            decide(optionOn = false, locationEnabled = false),
+        )
+    }
+
+    @Test
+    fun `skips silently when not sharing even when the location is off`() {
+        assertEquals(
+            ResumeDecision.Skip,
+            decide(sharing = false, locationEnabled = false),
+        )
+    }
+
+    @Test
+    fun `skips silently when no organization is bound even when the location is off`() {
+        assertEquals(
+            ResumeDecision.Skip,
+            decide(bound = false, locationEnabled = false),
+        )
+    }
+
+    @Test
+    fun `skips silently when the service was never configured even when the location is off`() {
+        assertEquals(
+            ResumeDecision.Skip,
+            decide(serviceConfigured = false, locationEnabled = false),
+        )
+    }
+
+    @Test
+    fun `names the missing permission before the location being off`() {
+        assertEquals(
+            ResumeDecision.Fail(ResumeDecision.BACKGROUND_LOCATION),
+            decide(backgroundLocation = false, locationEnabled = false),
+        )
+        assertEquals(
+            ResumeDecision.Fail(ResumeDecision.BACKGROUND_LOCATION),
+            decide(fineLocation = false, locationEnabled = false),
+        )
+    }
+
+    @Test
+    fun `names the battery before the location being off`() {
+        assertEquals(
+            ResumeDecision.Fail(ResumeDecision.BATTERY_RESTRICTED),
+            decide(backgroundRestricted = true, locationEnabled = false),
+        )
+    }
+
+    @Test
     fun `failure reasons are the Dart ResumeFailure names`() {
         assertEquals("backgroundLocation", ResumeDecision.BACKGROUND_LOCATION)
         assertEquals("batteryRestricted", ResumeDecision.BATTERY_RESTRICTED)
+        assertEquals("locationOff", ResumeDecision.LOCATION_OFF)
     }
 }

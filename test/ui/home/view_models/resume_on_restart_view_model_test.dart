@@ -19,7 +19,6 @@ import 'resume_on_restart_view_model_test.mocks.dart';
 const _kTexts = SharingResumeTexts(
   notificationTitle: 'Sua localização está sendo compartilhada',
   notificationContent: 'O compartilhamento está ligado.',
-  waitingForGps: 'Aguardando o GPS',
   failureChannel: 'Compartilhamento',
   failureTitle: 'Não foi possível retomar o compartilhamento',
   failures: {ResumeFailure.noGroup: 'Você não compartilha em nenhum grupo'},
@@ -481,7 +480,6 @@ void main() {
       const english = SharingResumeTexts(
         notificationTitle: 'Your location is being shared',
         notificationContent: 'Sharing is on.',
-        waitingForGps: 'Waiting for GPS',
         failureChannel: 'Sharing',
         failureTitle: 'Sharing could not resume',
         failures: {ResumeFailure.noGroup: 'You share in no group'},

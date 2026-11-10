@@ -20,12 +20,12 @@ const _kIntent = SharingIntent(email: 'ana@example.com', name: 'Ana Souza');
 const _kTexts = SharingResumeTexts(
   notificationTitle: 'Sua localização está sendo compartilhada',
   notificationContent: 'O compartilhamento está ligado.',
-  waitingForGps: 'Aguardando o GPS',
   failureChannel: 'Compartilhamento',
   failureTitle: 'Não foi possível retomar o compartilhamento',
   failures: {
     ResumeFailure.backgroundLocation: 'Precisa da localização o tempo todo',
     ResumeFailure.batteryRestricted: 'A bateria do app está em Restrito',
+    ResumeFailure.locationOff: 'A localização do aparelho está desligada',
     ResumeFailure.signedOut: 'Você saiu da conta',
     ResumeFailure.noGroup: 'Você não compartilha em nenhum grupo',
   },
@@ -287,12 +287,12 @@ void main() {
       expect(jsonDecode(raw! as String), {
         'notificationTitle': 'Sua localização está sendo compartilhada',
         'notificationContent': 'O compartilhamento está ligado.',
-        'waitingForGps': 'Aguardando o GPS',
         'failureChannel': 'Compartilhamento',
         'failureTitle': 'Não foi possível retomar o compartilhamento',
         'failures': {
           'backgroundLocation': 'Precisa da localização o tempo todo',
           'batteryRestricted': 'A bateria do app está em Restrito',
+          'locationOff': 'A localização do aparelho está desligada',
           'signedOut': 'Você saiu da conta',
           'noGroup': 'Você não compartilha em nenhum grupo',
         },
@@ -310,12 +310,31 @@ void main() {
       // 3. Assert
       final texts = await SharingResumePreferencesService().readTexts();
       final failures = texts!['failures']! as Map<String, Object?>;
-      // `ResumeDecision.BACKGROUND_LOCATION` and `BATTERY_RESTRICTED` in
-      // ResumeDecision.kt.
+      // `ResumeDecision.BACKGROUND_LOCATION`, `BATTERY_RESTRICTED` and
+      // `LOCATION_OFF` in ResumeDecision.kt.
       expect(
         failures.keys,
-        containsAll(['backgroundLocation', 'batteryRestricted']),
+        containsAll(['backgroundLocation', 'batteryRestricted', 'locationOff']),
       );
+    });
+
+    test('Happy Path: stores the location-off text and no text for '
+        'waiting for the GPS', () async {
+      // 1. Arrange
+      final repository = _repository();
+
+      // 2. Act
+      await repository.saveTexts(_kTexts);
+
+      // 3. Assert
+      final texts = await SharingResumePreferencesService().readTexts();
+      final failures = texts!['failures']! as Map<String, Object?>;
+      expect(
+        failures['locationOff'],
+        'A localização do aparelho está desligada',
+      );
+      expect(texts.keys, isNot(contains('waitingForGps')));
+      expect(failures.keys, isNot(contains('waitingForGps')));
     });
 
     test('Edge Case: saving again replaces the texts', () async {
@@ -325,7 +344,6 @@ void main() {
       const english = SharingResumeTexts(
         notificationTitle: 'Your location is being shared',
         notificationContent: 'Sharing is on.',
-        waitingForGps: 'Waiting for GPS',
         failureChannel: 'Sharing',
         failureTitle: 'Sharing could not resume',
         failures: {ResumeFailure.noGroup: 'You share in no group'},

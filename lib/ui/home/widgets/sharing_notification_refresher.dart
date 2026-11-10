@@ -48,12 +48,12 @@ class _SharingNotificationRefresherState
     final texts = SharingResumeTexts(
       notificationTitle: notification.title,
       notificationContent: notification.content,
-      waitingForGps: l10n.resumeWaitingForGps,
       failureChannel: l10n.resumeFailureChannel,
       failureTitle: l10n.resumeFailureTitle,
       failures: {
         ResumeFailure.backgroundLocation: l10n.resumeFailureBackgroundLocation,
         ResumeFailure.batteryRestricted: l10n.resumeFailureBatteryRestricted,
+        ResumeFailure.locationOff: l10n.resumeFailureLocationOff,
         ResumeFailure.signedOut: l10n.resumeFailureSignedOut,
         ResumeFailure.noGroup: l10n.resumeFailureNoGroup,
       },

@@ -35,6 +35,10 @@ enum ResumeFailure {
   /// The app's battery use is "Restricted" (checked natively).
   batteryRestricted,
 
+  /// The device's location is off (checked natively): Android refuses the
+  /// tracking service then, so sharing cannot resume and wait for it.
+  locationOff,
+
   /// No account is signed in, or another one than the one that was sharing.
   signedOut,
 
@@ -51,7 +55,6 @@ class SharingResumeTexts {
   const SharingResumeTexts({
     required this.notificationTitle,
     required this.notificationContent,
-    required this.waitingForGps,
     required this.failureChannel,
     required this.failureTitle,
     required this.failures,
@@ -60,9 +63,6 @@ class SharingResumeTexts {
   /// The sharing notification, as `SharingNotification` has it.
   final String notificationTitle;
   final String notificationContent;
-
-  /// The sharing notification's text while the GPS is off.
-  final String waitingForGps;
 
   /// The name of the notification channel of the failures, shown in the
   /// system's notification settings.
@@ -77,7 +77,6 @@ class SharingResumeTexts {
       other is SharingResumeTexts &&
       other.notificationTitle == notificationTitle &&
       other.notificationContent == notificationContent &&
-      other.waitingForGps == waitingForGps &&
       other.failureChannel == failureChannel &&
       other.failureTitle == failureTitle &&
       _sameFailures(other.failures, failures);
@@ -86,7 +85,6 @@ class SharingResumeTexts {
   int get hashCode => Object.hash(
     notificationTitle,
     notificationContent,
-    waitingForGps,
     failureChannel,
     failureTitle,
     Object.hashAll([

@@ -83,8 +83,8 @@ class SharingResumePreferencesService {
   Future<void> clearIntent() => _preferences.remove(sharingResumeIntentKey);
 
   /// Stores the texts, as JSON with the keys `notificationTitle`,
-  /// `notificationContent`, `waitingForGps`, `failureChannel`,
-  /// `failureTitle` and `failures` (one text per `ResumeFailure` name).
+  /// `notificationContent`, `failureChannel`, `failureTitle` and
+  /// `failures` (one text per `ResumeFailure` name).
   Future<void> writeTexts(Map<String, Object> texts) =>
       _preferences.setString(sharingResumeTextsKey, jsonEncode(texts));
 

@@ -51,12 +51,12 @@ SharingResumeTexts _resumeTexts(Locale locale) {
   return SharingResumeTexts(
     notificationTitle: l10n.sharingNotificationTitle,
     notificationContent: l10n.sharingNotificationContent,
-    waitingForGps: l10n.resumeWaitingForGps,
     failureChannel: l10n.resumeFailureChannel,
     failureTitle: l10n.resumeFailureTitle,
     failures: {
       ResumeFailure.backgroundLocation: l10n.resumeFailureBackgroundLocation,
       ResumeFailure.batteryRestricted: l10n.resumeFailureBatteryRestricted,
+      ResumeFailure.locationOff: l10n.resumeFailureLocationOff,
       ResumeFailure.signedOut: l10n.resumeFailureSignedOut,
       ResumeFailure.noGroup: l10n.resumeFailureNoGroup,
     },
@@ -244,6 +244,40 @@ void main() {
       // 3. Assert
       expect(repository.texts, _resumeTexts(_english));
       expect(repository.callCount('saveTexts'), 2);
+    });
+
+    testWidgets('Happy Path: the location-off text is stored in each '
+        'language', (tester) async {
+      // 1. Arrange
+      final (:tracking, refreshed: _) = _tracking();
+      final (:viewModel, :repository) = _resumeOnRestart(tester);
+      final locale = ValueNotifier(_portuguese);
+      addTearDown(locale.dispose);
+      await _pump(
+        tester,
+        locale: locale,
+        tracking: tracking,
+        resumeOnRestart: viewModel,
+      );
+      await tester.pump();
+      final portuguese = repository.texts!.failures[ResumeFailure.locationOff];
+
+      // 2. Act
+      locale.value = _english;
+      await tester.pump();
+      await tester.pump();
+
+      // 3. Assert
+      final english = repository.texts!.failures[ResumeFailure.locationOff];
+      expect(
+        portuguese,
+        lookupAppLocalizations(_portuguese).resumeFailureLocationOff,
+      );
+      expect(
+        english,
+        lookupAppLocalizations(_english).resumeFailureLocationOff,
+      );
+      expect(english, isNot(portuguese));
     });
 
     testWidgets('Edge Case: a rebuild in the same language does not store '
