@@ -23,4 +23,10 @@ abstract final class HomeColors {
 
   /// A person who is not sharing now.
   static const offline = Color(0xFF8A90A0);
+
+  /// The icon of a warning in the menu (what keeps sharing from resuming).
+  static const warning = Color(0xFFB4570C);
+
+  /// The text of a warning in the menu; 7:1 against white.
+  static const warningText = Color(0xFF8A4209);
 }

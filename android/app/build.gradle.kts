@@ -151,4 +151,6 @@ dependencies {
     // plugin's native code ends the process with no report. The BoM picks the
     // version.
     implementation("com.google.firebase:firebase-crashlytics-ndk")
+    // JVM tests of the app's own Kotlin (src/test), e.g. ResumeDecision.
+    testImplementation("junit:junit:4.13.2")
 }

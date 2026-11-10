@@ -5,6 +5,7 @@ import 'package:monamie_app/data/repositories/organization/organization_branding
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
 import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/data/repositories/sharing_resume/sharing_resume_repository.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/domain/models/account_deletion.dart';
@@ -38,6 +39,7 @@ class SignOut {
     required this._directory,
     required this._brandingLoader,
     required this._invites,
+    required this._sharingResume,
     required this._notices,
   });
 
@@ -49,6 +51,7 @@ class SignOut {
   final OrganizationDirectory _directory;
   final OrganizationBrandingLoader _brandingLoader;
   final InvitesRepository _invites;
+  final SharingResumeRepository _sharingResume;
   final NoticePresenter _notices;
 
   /// "Sair". [Ok] holds whether the sign-out finished (`false` while
@@ -177,6 +180,13 @@ class SignOut {
     final stopped = await _trackingStopper.stop(email: await _currentEmail());
     if (!stopped) {
       _notices.show(const UserNotice.trackingStopUnconfirmed());
+    }
+    // Nobody shares here any more: nothing may resume after a restart, for
+    // an organization or an account that is gone.
+    try {
+      await _sharingResume.clearIntent();
+    } catch (e) {
+      debugPrint('Could not forget who was sharing: $e');
     }
   }
 

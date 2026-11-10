@@ -12,6 +12,8 @@ import 'package:monamie_app/data/services/device_location.dart';
 import 'package:monamie_app/domain/use_cases/start_sharing.dart';
 import 'package:monamie_app/ui/home/view_models/live_users.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/data/repositories/sharing_resume/sharing_resume_repository.dart';
+import 'package:monamie_app/domain/models/sharing_resume.dart';
 import 'package:monamie_app/ui/home/widgets/animated_user_marker.dart';
 import 'package:monamie_app/domain/models/location_point.dart';
 import 'package:monamie_app/domain/models/sharing_notification.dart';
@@ -52,6 +54,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
     required this._service,
     required this._location,
     required this._positions,
+    required this._sharingResume,
   });
 
   final NoticePresenter _notices;
@@ -63,6 +66,7 @@ class TrackingViewModel implements TrackingToggleViewModel {
   final BackgroundTrackingService _service;
   final DeviceLocation _location;
   final PositionsRepository _positions;
+  final SharingResumeRepository _sharingResume;
 
   /// The signed-in person (e-mail and name) from the profile saved at
   /// sign-in, once read by [start]; `null` without one.
@@ -566,6 +570,10 @@ class TrackingViewModel implements TrackingToggleViewModel {
 
     final running = await _service.isRunning();
     _set(_isTrackingEnabled, running);
+    // Sharing went on without this screen (it resumed after a restart, or
+    // the screen was closed while it ran): follow the service's positions
+    // again, or the person's own marker would stand still.
+    if (running && !_disposed) await _followService();
   }
 
   /// Reads the profile saved at sign-in: the e-mail and name the tracking
@@ -775,13 +783,44 @@ class TrackingViewModel implements TrackingToggleViewModel {
         started = value;
     }
 
+    await _followService();
+
+    // Atualiza UI (botão).
+    _set(_isTrackingEnabled, true);
+
+    // Remembered on the device: sharing resumes after a restart if the
+    // person chose so (and the service resumes by itself if Android
+    // restarts it).
+    try {
+      await _sharingResume.saveIntent(
+        SharingIntent(email: _user!.email, name: _user!.publishedName),
+      );
+    } catch (e) {
+      debugPrint('[TrackingViewModel] Could not remember the sharing: $e');
+    }
+
+    // Registra imediatamente que o usuário atual possui ponto no dia de hoje
+    _addUserWithPoints(_user!.email);
+
+    // The service turns `isPublishing` on in every group and publishes the
+    // positions: this screen writes nothing while sharing.
+    return Ok(started.notice);
+  }
+
+  /// Listens to the running service: tells it who shares when it is ready,
+  /// and moves the person's own marker with the positions it reads.
+  Future<void> _followService() async {
     await _readySubscription?.cancel();
     await _locationSubscription?.cancel();
+    // Closed while cancelling: nothing would cancel new subscriptions.
+    if (_disposed) return;
 
     // Este listener ouve o serviço em foreground avisar que está pronto para
     // receber informações do usuário.
     _readySubscription = _service.ready.listen((_) {
-      _service.sendUser(email: _user!.email, name: _user!.publishedName);
+      final user = _user;
+      if (user == null) return;
+      _service.sendUser(email: user.email, name: user.publishedName);
     });
 
     // Este listener ouve atualizações da posição por parte do serviço em
@@ -793,19 +832,15 @@ class TrackingViewModel implements TrackingToggleViewModel {
       onError: (Object e) =>
           debugPrint('[TrackingViewModel] Unreadable local position: $e'),
     );
-
-    // Atualiza UI (botão).
-    _set(_isTrackingEnabled, true);
-
-    // Registra imediatamente que o usuário atual possui ponto no dia de hoje
-    _addUserWithPoints(_user!.email);
-
-    // The service turns `isPublishing` on in every group and publishes the
-    // positions: this screen writes nothing while sharing.
-    return Ok(started.notice);
   }
 
   Future<void> _stopService() async {
+    // First: whatever happens next, nothing resumes after a restart.
+    try {
+      await _sharingResume.clearIntent();
+    } catch (e) {
+      debugPrint('[TrackingViewModel] Could not forget the sharing: $e');
+    }
     await _readySubscription?.cancel();
     _readySubscription = null;
     await _locationSubscription?.cancel();

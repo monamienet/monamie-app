@@ -1635,4 +1635,49 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get creationPreviewName => 'Organização';
+
+  @override
+  String get failureResumeOptionNotSaved =>
+      'Não foi possível guardar a opção. Tente de novo.';
+
+  @override
+  String get resumeOnRestartTitle => 'Retomar ao reiniciar';
+
+  @override
+  String get resumeOnRestartSubtitle =>
+      'Se você estiver compartilhando quando o aparelho desligar ou o app for atualizado, o compartilhamento volta sozinho.';
+
+  @override
+  String get resumeOnRestartNeedsAlwaysLocation =>
+      'Para retomar, a localização precisa estar permitida o tempo todo. Toque para permitir.';
+
+  @override
+  String get resumeOnRestartBatteryRestricted =>
+      'Para retomar, a bateria do app não pode estar em “Restrito”. Toque para mudar.';
+
+  @override
+  String get resumeWaitingForGps =>
+      'O compartilhamento voltou e está aguardando o GPS ser ligado.';
+
+  @override
+  String get resumeFailureChannel => 'Retomada do compartilhamento';
+
+  @override
+  String get resumeFailureTitle => 'O compartilhamento não foi retomado';
+
+  @override
+  String get resumeFailureBackgroundLocation =>
+      'A localização não está permitida o tempo todo. Toque para abrir o app.';
+
+  @override
+  String get resumeFailureBatteryRestricted =>
+      'A bateria do app está em “Restrito”. Toque para abrir o app.';
+
+  @override
+  String get resumeFailureSignedOut =>
+      'Sua conta não está mais conectada. Toque para abrir o app.';
+
+  @override
+  String get resumeFailureNoGroup =>
+      'Você não compartilha a localização em nenhum grupo agora. Toque para abrir o app.';
 }

@@ -16,6 +16,7 @@ import 'package:monamie_app/data/repositories/organization/organization_local_da
 import 'package:monamie_app/data/repositories/organization/organization_session.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
 import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/data/repositories/sharing_resume/sharing_resume_repository.dart';
 import 'package:monamie_app/data/repositories/theme/theme_repository.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/auth/google_bond_check.dart';
@@ -52,6 +53,7 @@ import '../../testing/fakes/repositories/fake_organization_local_data.dart';
 import '../../testing/fakes/repositories/fake_organization_session.dart';
 import '../../testing/fakes/repositories/fake_positions_repository.dart';
 import '../../testing/fakes/repositories/fake_session_repository.dart';
+import '../../testing/fakes/repositories/fake_sharing_resume_repository.dart';
 import '../../testing/fakes/repositories/fake_theme_repository.dart';
 import '../../testing/fakes/repositories/fake_user_google_repository.dart';
 
@@ -99,6 +101,7 @@ class TestApp {
       directory: directory,
       brandingLoader: brandingLoader,
       invites: invites,
+      sharingResume: sharingResume,
       notices: notices,
     );
     enterOrganization = EnterOrganization(
@@ -130,6 +133,7 @@ class TestApp {
   final positions = FakePositionsRepository();
   final themes = FakeThemeRepository();
   final language = FakeLanguageRepository();
+  final sharingResume = FakeSharingResumeRepository();
 
   // The services, mocks.
   final stopper = MockBackgroundTrackingStopper();
@@ -149,6 +153,7 @@ class TestApp {
     Provider<SessionRepository>.value(value: session),
     Provider<OrganizationSession>.value(value: organizationSession),
     Provider<LanguageRepository>.value(value: language),
+    Provider<SharingResumeRepository>.value(value: sharingResume),
     Provider<CrashReportingService>.value(
       value: const NoOpCrashReportingService(),
     ),

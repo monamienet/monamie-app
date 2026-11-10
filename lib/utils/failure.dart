@@ -191,4 +191,8 @@ sealed class Failure with _$Failure {
 
   /// The language the person chose could not be stored on the device.
   const factory Failure.languageNotSaved() = LanguageNotSaved;
+
+  /// Whether sharing resumes after a restart could not be stored on the
+  /// device.
+  const factory Failure.resumeOptionNotSaved() = ResumeOptionNotSaved;
 }

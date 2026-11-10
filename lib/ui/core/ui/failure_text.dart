@@ -84,6 +84,7 @@ extension FailureText on Failure {
     SharingNotAllowed() => l10n.failureSharingNotAllowed,
     SharingNotChanged() => l10n.failureSharingNotChanged,
     LanguageNotSaved() => l10n.failureLanguageNotSaved,
+    ResumeOptionNotSaved() => l10n.failureResumeOptionNotSaved,
   };
 
   /// The bold line above [message] in a `SnackBar`, or `null` for none.

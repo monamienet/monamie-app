@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:monamie_app/ui/history/view_models/calendar_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
+import 'package:monamie_app/ui/home/view_models/resume_on_restart_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
@@ -33,6 +34,7 @@ class HomeScreen extends StatelessWidget {
     required this.calendar,
     required this.session,
     required this.language,
+    required this.resumeOnRestart,
   });
 
   final UserViewModel userCtrl;
@@ -48,6 +50,10 @@ class HomeScreen extends StatelessWidget {
   /// The language picker, opened from the menu.
   final LanguageViewModel language;
 
+  /// The menu's choice to resume sharing after a restart, and the texts the
+  /// device shows then.
+  final ResumeOnRestartViewModel resumeOnRestart;
+
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -60,12 +66,16 @@ class HomeScreen extends StatelessWidget {
           session: session,
           tracking: trackingCtrl,
           language: language,
+          resumeOnRestart: resumeOnRestart,
         ),
         body: Stack(
           fit: StackFit.expand,
           children: [
             // Keeps the sharing notification in the app's language.
-            SharingNotificationRefresher(tracking: trackingCtrl),
+            SharingNotificationRefresher(
+              tracking: trackingCtrl,
+              resumeOnRestart: resumeOnRestart,
+            ),
             Column(
               children: [
                 HomeHeader(home: home, user: userCtrl, calendar: calendar),

@@ -1643,4 +1643,49 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get creationPreviewName => 'Organisation';
+
+  @override
+  String get failureResumeOptionNotSaved =>
+      'Impossible d’enregistrer l’option. Réessayez.';
+
+  @override
+  String get resumeOnRestartTitle => 'Reprendre au redémarrage';
+
+  @override
+  String get resumeOnRestartSubtitle =>
+      'Si vous partagez quand l’appareil s’éteint ou que l’application est mise à jour, le partage reprend tout seul.';
+
+  @override
+  String get resumeOnRestartNeedsAlwaysLocation =>
+      'Pour reprendre, la localisation doit être autorisée en permanence. Touchez pour l’autoriser.';
+
+  @override
+  String get resumeOnRestartBatteryRestricted =>
+      'Pour reprendre, la batterie de l’application ne doit pas être sur « Restreinte ». Touchez pour la modifier.';
+
+  @override
+  String get resumeWaitingForGps =>
+      'Le partage a repris et attend que le GPS soit activé.';
+
+  @override
+  String get resumeFailureChannel => 'Reprise du partage';
+
+  @override
+  String get resumeFailureTitle => 'Le partage n’a pas repris';
+
+  @override
+  String get resumeFailureBackgroundLocation =>
+      'La localisation n’est pas autorisée en permanence. Touchez pour ouvrir l’application.';
+
+  @override
+  String get resumeFailureBatteryRestricted =>
+      'La batterie de l’application est sur « Restreinte ». Touchez pour ouvrir l’application.';
+
+  @override
+  String get resumeFailureSignedOut =>
+      'Votre compte n’est plus connecté. Touchez pour ouvrir l’application.';
+
+  @override
+  String get resumeFailureNoGroup =>
+      'Vous ne partagez plus votre position dans aucun groupe. Touchez pour ouvrir l’application.';
 }

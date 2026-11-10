@@ -12,6 +12,7 @@ import 'package:monamie_app/data/repositories/membership/membership_repository.d
 import 'package:monamie_app/data/repositories/membership/membership_repository_firestore.dart';
 import 'package:monamie_app/data/repositories/observed_day/observed_day_repository.dart';
 import 'package:monamie_app/data/repositories/permissions/permissions_repository.dart';
+import 'package:monamie_app/data/repositories/sharing_resume/sharing_resume_repository.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/domain/models/capabilities.dart';
@@ -24,6 +25,7 @@ import 'package:monamie_app/domain/models/group_member.dart';
 import 'package:monamie_app/domain/models/location_point.dart';
 import 'package:monamie_app/domain/models/map_group.dart';
 import 'package:monamie_app/domain/models/sharing_notification.dart';
+import 'package:monamie_app/domain/models/sharing_resume.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/domain/models/user_model.dart';
 import 'package:monamie_app/utils/notice_presenter.dart';
@@ -39,6 +41,7 @@ import 'package:monamie_app/utils/user_notice.dart';
   MockSpec<ObservedDayRepository>(),
   MockSpec<PermissionsRepository>(),
   MockSpec<PositionsRepository>(),
+  MockSpec<SharingResumeRepository>(),
   MockSpec<StartSharing>(),
   MockSpec<UserGoogleRepository>(),
 ])
@@ -177,6 +180,7 @@ class _Harness {
       service: service,
       location: location,
       positions: positions,
+      sharingResume: sharingResume,
     );
   }
 
@@ -189,6 +193,7 @@ class _Harness {
   final service = MockBackgroundTrackingService();
   final location = MockDeviceLocation();
   final positions = MockPositionsRepository();
+  final sharingResume = MockSharingResumeRepository();
 
   final isBackgroundRestricted = ValueNotifier<bool>(false);
   final hasWhenInUsePermission = ValueNotifier<bool>(false);
@@ -2243,6 +2248,270 @@ void main() {
       // 2. Act & 3. Assert
       expect(harness.controller.isFaded(user, now), isTrue);
       harness.controller.dispose();
+    });
+  });
+
+  group('TrackingViewModel - sharing intent - Unit Test Suite', () {
+    test('Happy Path: remembers who shares (e-mail and published name) once '
+        'sharing has started', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      await harness.started();
+
+      // 2. Act
+      final result = await harness.controller.toggleService.execute(
+        _kNotification,
+      );
+
+      // 3. Assert
+      expect(result, isA<Ok<UserNotice?>>());
+      verifyInOrder([
+        _startSharing(harness.startSharing),
+        harness.sharingResume.saveIntent(
+          const SharingIntent(email: _kEmail, name: 'Ana'),
+        ),
+      ]);
+      verifyNever(harness.sharingResume.clearIntent());
+      harness.controller.dispose();
+    });
+
+    test('Edge Case: remembers "Nome não informado" for a profile with no '
+        'name, as the service publishes', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      when(
+        harness.profiles.getUserGoogleModel(),
+      ).thenAnswer((_) async => UserGoogleModel(email: _kEmail, name: ' '));
+      await harness.started();
+
+      // 2. Act
+      await harness.controller.toggleService.execute(_kNotification);
+
+      // 3. Assert
+      verify(
+        harness.sharingResume.saveIntent(
+          const SharingIntent(email: _kEmail, name: UserModel.noName),
+        ),
+      ).called(1);
+      harness.controller.dispose();
+    });
+
+    test('Edge Case: remembers nothing when sharing did not start', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      _answerStartSharing(
+        harness.startSharing,
+        const Ok(SharingStart.notStarted()),
+      );
+      await harness.started();
+
+      // 2. Act
+      await harness.controller.toggleService.execute(_kNotification);
+
+      // 3. Assert
+      verifyNever(harness.sharingResume.saveIntent(any));
+      expect(harness.controller.isTrackingEnabled.value, isFalse);
+      harness.controller.dispose();
+    });
+
+    test(
+      'Sad Path: remembers nothing when starting the sharing fails',
+      () async {
+        // 1. Arrange
+        final harness = _Harness();
+        _answerStartSharing(
+          harness.startSharing,
+          const Err(Failure.sharingNotChanged()),
+        );
+        await harness.started();
+
+        // 2. Act
+        final result = await harness.controller.toggleService.execute(
+          _kNotification,
+        );
+
+        // 3. Assert
+        expect(result, _errWith(const Failure.sharingNotChanged()));
+        verifyNever(harness.sharingResume.saveIntent(any));
+        harness.controller.dispose();
+      },
+    );
+
+    test('Sad Path: sharing stays on when remembering it fails', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      when(
+        harness.sharingResume.saveIntent(any),
+      ).thenThrow(StateError('SharedPreferences indisponível'));
+      await harness.started();
+
+      // 2. Act
+      final result = await harness.controller.toggleService.execute(
+        _kNotification,
+      );
+
+      // 3. Assert
+      expect(result, _okWithoutNotice);
+      expect(harness.controller.isTrackingEnabled.value, isTrue);
+      harness.controller.dispose();
+    });
+
+    test('Happy Path: forgets who shares when sharing is turned off', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      await harness.started();
+      when(harness.service.isRunning()).thenAnswer((_) async => true);
+      _seed(harness.controller.isTrackingEnabled, true);
+
+      // 2. Act
+      await harness.controller.toggleService.execute(_kNotification);
+
+      // 3. Assert
+      verify(harness.sharingResume.clearIntent()).called(1);
+      verify(harness.service.stop()).called(1);
+      verifyNever(harness.sharingResume.saveIntent(any));
+      harness.controller.dispose();
+    });
+
+    test('Sad Path: sharing still turns off when forgetting who shares '
+        'fails', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      await harness.started();
+      when(harness.service.isRunning()).thenAnswer((_) async => true);
+      when(
+        harness.sharingResume.clearIntent(),
+      ).thenThrow(StateError('SharedPreferences indisponível'));
+      _seed(harness.controller.isTrackingEnabled, true);
+
+      // 2. Act
+      final result = await harness.controller.toggleService.execute(
+        _kNotification,
+      );
+
+      // 3. Assert
+      expect(result, isA<Ok<UserNotice?>>());
+      verify(harness.service.stop()).called(1);
+      verify(harness.positions.markNotPublishing(_kEmail)).called(1);
+      expect(harness.controller.isTrackingEnabled.value, isFalse);
+      harness.controller.dispose();
+    });
+
+    test('Edge Case: opening the map with the service already running '
+        'neither remembers nor forgets who shares', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      when(harness.service.isRunning()).thenAnswer((_) async => true);
+
+      // 2. Act
+      await harness.controller.start();
+      await pumpEventQueue();
+
+      // 3. Assert
+      verifyZeroInteractions(harness.sharingResume);
+      harness.controller.dispose();
+    });
+  });
+
+  group('TrackingViewModel.start - service already running - Unit Test '
+      'Suite', () {
+    test("Happy Path: the service's positions move the person's own marker "
+        'when the map opens with sharing already on', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      final located = StreamController<LatLng>();
+      when(harness.service.isRunning()).thenAnswer((_) async => true);
+      when(harness.service.localPositions).thenAnswer((_) => located.stream);
+      await harness.controller.start();
+      await pumpEventQueue();
+
+      // 2. Act
+      located.add(_position(-22.95, -43.2));
+      await pumpEventQueue();
+
+      // 3. Assert
+      expect(harness.controller.ownPosition.value, _position(-22.95, -43.2));
+      expect(harness.controller.toggleService.running, isFalse);
+      harness.controller.dispose();
+      await located.close();
+    });
+
+    test('Happy Path: tells the running service who shares when it says it '
+        'is ready', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      final ready = StreamController<void>();
+      when(harness.service.isRunning()).thenAnswer((_) async => true);
+      when(harness.service.ready).thenAnswer((_) => ready.stream);
+      await harness.controller.start();
+      await pumpEventQueue();
+
+      // 2. Act
+      ready.add(null);
+      await pumpEventQueue();
+
+      // 3. Assert
+      verify(harness.service.sendUser(email: _kEmail, name: 'Ana')).called(1);
+      harness.controller.dispose();
+      await ready.close();
+    });
+
+    test('Edge Case: does not listen to the service when it is not '
+        'running', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      final located = StreamController<LatLng>();
+      when(harness.service.localPositions).thenAnswer((_) => located.stream);
+
+      // 2. Act
+      await harness.controller.start();
+      await pumpEventQueue();
+
+      // 3. Assert
+      expect(located.hasListener, isFalse);
+      harness.controller.dispose();
+    });
+
+    test('Edge Case: closing the map stops following the running '
+        'service', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      final ready = StreamController<void>();
+      final located = StreamController<LatLng>();
+      when(harness.service.isRunning()).thenAnswer((_) async => true);
+      when(harness.service.ready).thenAnswer((_) => ready.stream);
+      when(harness.service.localPositions).thenAnswer((_) => located.stream);
+      await harness.controller.start();
+      await pumpEventQueue();
+      expect(located.hasListener, isTrue);
+
+      // 2. Act
+      harness.controller.dispose();
+      await pumpEventQueue();
+
+      // 3. Assert
+      expect(ready.hasListener, isFalse);
+      expect(located.hasListener, isFalse);
+    });
+
+    test('Edge Case: a map closed while asking whether the service runs '
+        'follows nothing', () async {
+      // 1. Arrange
+      final harness = _Harness();
+      final running = Completer<bool>();
+      final located = StreamController<LatLng>();
+      when(harness.service.isRunning()).thenAnswer((_) => running.future);
+      when(harness.service.localPositions).thenAnswer((_) => located.stream);
+      final starting = harness.controller.start();
+
+      // 2. Act
+      harness.controller.dispose();
+      running.complete(true);
+      await starting;
+      await pumpEventQueue();
+
+      // 3. Assert
+      expect(located.hasListener, isFalse);
     });
   });
 }

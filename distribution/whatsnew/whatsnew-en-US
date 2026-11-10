@@ -1,5 +1,4 @@
 New:
-• The app now speaks Portuguese, English, Spanish and French. It opens in your phone's language (in English, if yours is not on the list).
-• Change the language any time, in the menu (Language) or with the globe on the sign-in screens. The sharing notification follows.
-• The history calendar starts the week on the right day for each language.
-• When the app fails, we now get an error report, with no personal data, to fix it faster.
+• New menu option: Resume after restart. If you are sharing your location when the phone turns off or the app is updated, sharing comes back on by itself.
+• If it cannot come back (for example, location is not allowed all the time), a notification explains why.
+• When you open the app with sharing already on, your dot on the map moves again.

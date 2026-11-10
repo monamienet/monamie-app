@@ -1629,4 +1629,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get creationPreviewName => 'Organization';
+
+  @override
+  String get failureResumeOptionNotSaved =>
+      'Could not save the option. Try again.';
+
+  @override
+  String get resumeOnRestartTitle => 'Resume after restart';
+
+  @override
+  String get resumeOnRestartSubtitle =>
+      'If you are sharing when the device turns off or the app is updated, sharing comes back on by itself.';
+
+  @override
+  String get resumeOnRestartNeedsAlwaysLocation =>
+      'To resume, location must be allowed all the time. Tap to allow.';
+
+  @override
+  String get resumeOnRestartBatteryRestricted =>
+      'To resume, the app\'s battery use cannot be “Restricted”. Tap to change it.';
+
+  @override
+  String get resumeWaitingForGps =>
+      'Sharing is back on and waiting for the GPS to be turned on.';
+
+  @override
+  String get resumeFailureChannel => 'Resuming sharing';
+
+  @override
+  String get resumeFailureTitle => 'Sharing did not resume';
+
+  @override
+  String get resumeFailureBackgroundLocation =>
+      'Location is not allowed all the time. Tap to open the app.';
+
+  @override
+  String get resumeFailureBatteryRestricted =>
+      'The app\'s battery use is “Restricted”. Tap to open the app.';
+
+  @override
+  String get resumeFailureSignedOut =>
+      'Your account is no longer signed in. Tap to open the app.';
+
+  @override
+  String get resumeFailureNoGroup =>
+      'You no longer share your location in any group. Tap to open the app.';
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:monamie_app/ui/language/view_models/language_view_model.dart';
@@ -36,6 +37,7 @@ import 'package:monamie_app/ui/auth/widgets/organization_picker_screen.dart';
 import 'package:monamie_app/data/repositories/membership/membership_repository.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
+import 'package:monamie_app/ui/home/view_models/resume_on_restart_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/routing/organization_scope.dart';
 import 'package:monamie_app/ui/home/widgets/home_screen.dart';
@@ -163,15 +165,26 @@ GoRouter buildAppRouter({required SessionRepository session}) => GoRouter(
                 permissions: context.read(),
                 calls: context.read(),
               ),
-              builder: (home) => _withLanguage(
-                context,
-                (language) => HomeScreen(
-                  userCtrl: context.read(),
-                  home: home,
-                  trackingCtrl: context.read(),
-                  calendar: context.read(),
-                  session: session,
-                  language: language,
+              builder: (home) => _owned(
+                create: () => ResumeOnRestartViewModel(
+                  repository: context.read(),
+                  permissions: context.read(),
+                  // The device resumes sharing by itself only on Android.
+                  available:
+                      !kIsWeb &&
+                      defaultTargetPlatform == TargetPlatform.android,
+                )..load.execute(),
+                builder: (resumeOnRestart) => _withLanguage(
+                  context,
+                  (language) => HomeScreen(
+                    userCtrl: context.read(),
+                    home: home,
+                    trackingCtrl: context.read(),
+                    calendar: context.read(),
+                    session: session,
+                    language: language,
+                    resumeOnRestart: resumeOnRestart,
+                  ),
                 ),
               ),
             ),
