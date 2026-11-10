@@ -48,9 +48,23 @@ class ResumeSharingReceiver : BroadcastReceiver() {
         Log.i(TAG, "${intent.action}: $decision")
         when (decision) {
             is ResumeDecision.Skip -> Unit
-            is ResumeDecision.Fail -> ResumeFailures.show(context, decision.reason)
+            is ResumeDecision.Fail -> {
+                forgetIntent(context)
+                ResumeFailures.show(context, decision.reason)
+            }
             is ResumeDecision.Start -> start(context)
         }
+    }
+
+    /**
+     * A resume that fails is not tried again at the next restart: the screen
+     * then shows sharing off, and sharing must not come back unless the
+     * person turns it on again (as the service's own failures in Dart).
+     */
+    private fun forgetIntent(context: Context) {
+        ResumeFailures.preferences(context).edit()
+            .remove(ResumeFailures.INTENT_KEY)
+            .commit()
     }
 
     private fun start(context: Context) {
@@ -81,6 +95,7 @@ class ResumeSharingReceiver : BroadcastReceiver() {
             // does not treat this broadcast as an exemption.
             Log.w(TAG, "Could not resume sharing", error)
             preferences.edit().remove(ResumeFailures.RESUMING_KEY).apply()
+            forgetIntent(context)
         }
     }
 
