@@ -9,11 +9,13 @@ import 'package:monamie_app/domain/models/organization/organization.dart';
 import 'package:monamie_app/ui/core/ui/organization_icon.dart';
 import 'package:monamie_app/ui/home/view_models/home_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
+import 'package:monamie_app/ui/home/view_models/resume_on_restart_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/tracking_view_model.dart';
 import 'package:monamie_app/ui/home/view_models/user_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/home_colors.dart';
 import 'package:monamie_app/ui/home/widgets/home_layout.dart';
 import 'package:monamie_app/ui/home/widgets/initials.dart';
+import 'package:monamie_app/ui/home/widgets/resume_on_restart_row.dart';
 import 'package:monamie_app/routing/routes.dart';
 import 'package:monamie_app/ui/core/ui/app_messenger.dart';
 import 'package:monamie_app/ui/language/view_models/language_view_model.dart';
@@ -32,6 +34,7 @@ class HomeMenu extends StatelessWidget {
     required this.session,
     required this.tracking,
     required this.language,
+    required this.resumeOnRestart,
   });
 
   final HomeViewModel home;
@@ -43,6 +46,9 @@ class HomeMenu extends StatelessWidget {
 
   /// The language picker.
   final LanguageViewModel language;
+
+  /// Whether sharing resumes after a restart (Android only).
+  final ResumeOnRestartViewModel resumeOnRestart;
 
   HomeViewModel get _home => home;
   UserViewModel get _user => user;
@@ -89,63 +95,80 @@ class HomeMenu extends StatelessWidget {
         borderRadius: BorderRadius.horizontal(right: Radius.circular(24)),
       ),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 24, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _identity(),
-              const SizedBox(height: 8),
-              _account(context),
-              const SizedBox(height: 8),
-              _MenuItem(
-                icon: Icons.swap_horiz,
-                label: l10n.menuSwitchOrganization,
-                onTap: () =>
-                    _closeAndRun(context, _auth.switchOrganization.execute),
-              ),
-              ListenableBuilder(
-                listenable: language,
-                builder: (context, _) => _MenuItem(
-                  icon: Icons.language,
-                  label: l10n.languageTitle,
-                  trailing: languageName(language.state.inUse),
-                  onTap: () => _openLanguage(context),
+        // Scrolls when the items do not fit (a short screen, a larger text
+        // size, a longer language); otherwise fills the height, so sign-out
+        // stays at the bottom.
+        child: CustomScrollView(
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 24, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _identity(),
+                    const SizedBox(height: 8),
+                    _account(context),
+                    const SizedBox(height: 8),
+                    _MenuItem(
+                      icon: Icons.swap_horiz,
+                      label: l10n.menuSwitchOrganization,
+                      onTap: () => _closeAndRun(
+                        context,
+                        _auth.switchOrganization.execute,
+                      ),
+                    ),
+                    ListenableBuilder(
+                      listenable: language,
+                      builder: (context, _) => _MenuItem(
+                        icon: Icons.language,
+                        label: l10n.languageTitle,
+                        trailing: languageName(language.state.inUse),
+                        onTap: () => _openLanguage(context),
+                      ),
+                    ),
+                    ResumeOnRestartRow(controller: resumeOnRestart),
+                    ListenableBuilder(
+                      listenable: _home.capabilities,
+                      builder: (context, _) {
+                        if (_home.isAdmin) return _admin(context);
+                        // A group's maintainer manages only their groups.
+                        if (_home.capabilities.value.canManageGroups) {
+                          return _maintainer(context);
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                    const Spacer(),
+                    const Divider(color: HomeColors.divider, height: 1),
+                    const SizedBox(height: 8),
+                    // Disabled while signing out and while tracking starts or
+                    // stops: leaving in the middle of the start could turn the
+                    // service on after the sign-out.
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        _auth,
+                        _tracking.toggleService,
+                      ]),
+                      builder: (context, _) {
+                        final trackingBusy = _tracking.toggleService.running;
+                        final loggingOut = _auth.state.isLoggingOut;
+                        return _MenuItem(
+                          icon: Icons.logout,
+                          label: l10n.commonSignOut,
+                          onTap: loggingOut || trackingBusy
+                              ? null
+                              : () =>
+                                    _closeAndRun(context, _auth.logout.execute),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
-              ListenableBuilder(
-                listenable: _home.capabilities,
-                builder: (context, _) {
-                  if (_home.isAdmin) return _admin(context);
-                  // A group's maintainer manages only their groups.
-                  if (_home.capabilities.value.canManageGroups) {
-                    return _maintainer(context);
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-              const Spacer(),
-              const Divider(color: HomeColors.divider, height: 1),
-              const SizedBox(height: 8),
-              // Disabled while signing out and while tracking starts or
-              // stops: leaving in the middle of the start could turn the
-              // service on after the sign-out.
-              ListenableBuilder(
-                listenable: Listenable.merge([_auth, _tracking.toggleService]),
-                builder: (context, _) {
-                  final trackingBusy = _tracking.toggleService.running;
-                  final loggingOut = _auth.state.isLoggingOut;
-                  return _MenuItem(
-                    icon: Icons.logout,
-                    label: l10n.commonSignOut,
-                    onTap: loggingOut || trackingBusy
-                        ? null
-                        : () => _closeAndRun(context, _auth.logout.execute),
-                  );
-                },
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

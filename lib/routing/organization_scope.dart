@@ -122,6 +122,7 @@ class OrganizationScope extends StatelessWidget {
           service: context.read(),
           location: context.read(),
           positions: context.read(),
+          sharingResume: context.read(),
         )..start(),
         dispose: (_, tracking) => tracking.dispose(),
       ),

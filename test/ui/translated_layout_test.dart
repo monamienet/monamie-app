@@ -34,6 +34,7 @@ import 'package:monamie_app/ui/groups/widgets/group_screen.dart';
 import 'package:monamie_app/ui/groups/widgets/groups_screen.dart';
 import 'package:monamie_app/ui/history/widgets/history_calendar_sheet.dart';
 import 'package:monamie_app/ui/home/view_models/home_session_view_model.dart';
+import 'package:monamie_app/ui/home/view_models/resume_on_restart_view_model.dart';
 import 'package:monamie_app/ui/home/widgets/home_menu.dart';
 import 'package:monamie_app/ui/home/widgets/home_screen.dart';
 import 'package:monamie_app/ui/invites/view_models/invite_view_model.dart';
@@ -56,6 +57,7 @@ import '../../testing/fakes/repositories/fake_invites_repository.dart';
 import '../../testing/fakes/repositories/fake_language_repository.dart';
 import '../../testing/fakes/repositories/fake_organization_directory.dart';
 import '../../testing/fakes/repositories/fake_session_repository.dart';
+import '../../testing/fakes/repositories/fake_sharing_resume_repository.dart';
 import '../../testing/fakes/repositories/fake_theme_repository.dart';
 import '../../testing/fakes/repositories/fake_tracking_settings_repository.dart';
 import '../support/phone_layout.dart';
@@ -1317,8 +1319,17 @@ Future<void> _pumpMenu(
     repository: FakeLanguageRepository(),
     deviceLocales: () => [translation.device],
   );
+  // The longest "Retomar ao reiniciar" row: on, with its warning.
+  final sharingResume = FakeSharingResumeRepository(storedOption: true);
+  await sharingResume.restore();
+  final resumeOnRestart = ResumeOnRestartViewModel(
+    repository: sharingResume,
+    permissions: doubles.permissions,
+    available: true,
+  );
   addTearDown(session.dispose);
   addTearDown(language.dispose);
+  addTearDown(resumeOnRestart.dispose);
   Organization.bind(testOrganization);
   final scaffold = GlobalKey<ScaffoldState>();
   await pumpOnPhone(
@@ -1331,6 +1342,7 @@ Future<void> _pumpMenu(
         session: session,
         tracking: doubles.tracking,
         language: language,
+        resumeOnRestart: resumeOnRestart,
       ),
     ),
     locale: translation.device,

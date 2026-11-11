@@ -2272,5 +2272,53 @@
   "creationPreviewName": "Organização",
   "@creationPreviewName": {
     "description": "Placeholder name of the organization being created, before one is typed."
+  },
+  "failureResumeOptionNotSaved": "Não foi possível guardar a opção. Tente de novo.",
+  "@failureResumeOptionNotSaved": {
+    "description": "The choice to resume sharing after a restart could not be stored on the device."
+  },
+  "resumeOnRestartTitle": "Retomar ao reiniciar",
+  "@resumeOnRestartTitle": {
+    "description": "Label of the menu switch that makes sharing resume by itself after the device restarts or the app is updated (Android only)."
+  },
+  "resumeOnRestartSubtitle": "Se você estiver compartilhando quando o aparelho desligar ou o app for atualizado, o compartilhamento volta sozinho.",
+  "@resumeOnRestartSubtitle": {
+    "description": "Explanation under the menu switch that makes sharing resume by itself."
+  },
+  "resumeOnRestartNeedsAlwaysLocation": "Para retomar, a localização precisa estar permitida o tempo todo. Toque para permitir.",
+  "@resumeOnRestartNeedsAlwaysLocation": {
+    "description": "Warning under the resume switch when location is not allowed all the time; tapping it asks for the permission."
+  },
+  "resumeOnRestartBatteryRestricted": "Para retomar, a bateria do app não pode estar em “Restrito”. Toque para mudar.",
+  "@resumeOnRestartBatteryRestricted": {
+    "description": "Warning under the resume switch when the app's battery use is Restricted; tapping it opens the battery settings."
+  },
+  "resumeFailureChannel": "Retomada do compartilhamento",
+  "@resumeFailureChannel": {
+    "description": "Name, in the system's notification settings, of the channel of the notifications saying sharing could not resume."
+  },
+  "resumeFailureTitle": "O compartilhamento não foi retomado",
+  "@resumeFailureTitle": {
+    "description": "Title of the system notification saying sharing could not resume by itself after a restart or an update."
+  },
+  "resumeFailureBackgroundLocation": "A localização não está permitida o tempo todo. Toque para abrir o app.",
+  "@resumeFailureBackgroundLocation": {
+    "description": "Notification text: sharing did not resume because location is not allowed all the time."
+  },
+  "resumeFailureBatteryRestricted": "A bateria do app está em “Restrito”. Toque para abrir o app.",
+  "@resumeFailureBatteryRestricted": {
+    "description": "Notification text: sharing did not resume because the app's battery use is Restricted."
+  },
+  "resumeFailureLocationOff": "A localização do aparelho estava desligada. Toque para abrir o app.",
+  "@resumeFailureLocationOff": {
+    "description": "Notification text: sharing did not resume because the device's location was off when it restarted or the app was updated."
+  },
+  "resumeFailureSignedOut": "Sua conta não está mais conectada. Toque para abrir o app.",
+  "@resumeFailureSignedOut": {
+    "description": "Notification text: sharing did not resume because the account that was sharing is no longer signed in."
+  },
+  "resumeFailureNoGroup": "Você não compartilha a localização em nenhum grupo agora. Toque para abrir o app.",
+  "@resumeFailureNoGroup": {
+    "description": "Notification text: sharing did not resume because the person no longer shares their location in any group."
   }
 }

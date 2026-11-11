@@ -1634,4 +1634,49 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get creationPreviewName => 'Organización';
+
+  @override
+  String get failureResumeOptionNotSaved =>
+      'No se pudo guardar la opción. Inténtalo de nuevo.';
+
+  @override
+  String get resumeOnRestartTitle => 'Reanudar al reiniciar';
+
+  @override
+  String get resumeOnRestartSubtitle =>
+      'Si estás compartiendo cuando el dispositivo se apaga o la app se actualiza, compartir vuelve a activarse solo.';
+
+  @override
+  String get resumeOnRestartNeedsAlwaysLocation =>
+      'Para reanudar, la ubicación debe estar permitida todo el tiempo. Toca para permitirla.';
+
+  @override
+  String get resumeOnRestartBatteryRestricted =>
+      'Para reanudar, la batería de la app no puede estar en “Restringido”. Toca para cambiarlo.';
+
+  @override
+  String get resumeFailureChannel => 'Reanudación de compartir';
+
+  @override
+  String get resumeFailureTitle => 'Compartir no se reanudó';
+
+  @override
+  String get resumeFailureBackgroundLocation =>
+      'La ubicación no está permitida todo el tiempo. Toca para abrir la app.';
+
+  @override
+  String get resumeFailureBatteryRestricted =>
+      'La batería de la app está en “Restringido”. Toca para abrir la app.';
+
+  @override
+  String get resumeFailureLocationOff =>
+      'La ubicación del dispositivo estaba desactivada. Toca para abrir la app.';
+
+  @override
+  String get resumeFailureSignedOut =>
+      'Tu cuenta ya no está conectada. Toca para abrir la app.';
+
+  @override
+  String get resumeFailureNoGroup =>
+      'Ya no compartes tu ubicación en ningún grupo. Toca para abrir la app.';
 }

@@ -12,6 +12,7 @@ import 'package:monamie_app/data/repositories/organization/organization_branding
 import 'package:monamie_app/data/repositories/organization/organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/organization_local_data.dart';
 import 'package:monamie_app/data/repositories/session/session_repository.dart';
+import 'package:monamie_app/data/repositories/sharing_resume/sharing_resume_repository.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/background_tracking_stopper.dart';
 import 'package:monamie_app/domain/models/account_deletion.dart';
@@ -35,6 +36,7 @@ import '../../support/test_organization.dart';
   MockSpec<OrganizationBrandingLoader>(),
   MockSpec<OrganizationDirectory>(),
   MockSpec<OrganizationLocalData>(),
+  MockSpec<SharingResumeRepository>(),
   MockSpec<UserGoogleRepository>(),
 ])
 import 'sign_out_test.mocks.dart';
@@ -98,6 +100,7 @@ class _Harness {
     bool stopResult = true,
     Completer<bool>? pendingStop,
     Object? logoutError,
+    Object? clearIntentError,
     List<OrganizationCandidate> organizations = const [_kRotaSul],
     String? freshToken = _kFreshToken,
   }) : session = SessionDouble(initial: const SessionState.bound()) {
@@ -145,6 +148,10 @@ class _Harness {
       ),
     );
     when(invites.mine()).thenAnswer((_) async => const Ok([]));
+    when(sharingResume.clearIntent()).thenAnswer((_) async {
+      log.add('clearIntent');
+      if (clearIntentError != null) throw clearIntentError;
+    });
 
     signOut = SignOut(
       session: repository,
@@ -155,6 +162,7 @@ class _Harness {
       directory: directory,
       brandingLoader: brandingLoader,
       invites: invites,
+      sharingResume: sharingResume,
       notices: notices,
     );
   }
@@ -168,6 +176,7 @@ class _Harness {
   final directory = MockOrganizationDirectory();
   final brandingLoader = MockOrganizationBrandingLoader();
   final invites = MockInvitesRepository();
+  final sharingResume = MockSharingResumeRepository();
   final notices = MockNoticePresenter();
   late final SignOut signOut;
 
@@ -179,6 +188,7 @@ class _Harness {
 /// The steps of a sign-out that finished, in order.
 const _kSignOutSteps = [
   'stop',
+  'clearIntent',
   'signOut',
   'deleteUserGoogleModel',
   'forget',
@@ -573,6 +583,7 @@ void main() {
         'freshIdToken',
         'directory',
         'stop',
+        'clearIntent',
         'signOutOfOrganization',
         'deleteUserGoogleModel',
         'forget',
@@ -687,7 +698,11 @@ void main() {
       );
       expect(
         harness.log.where(
-          (e) => e == 'stop' || e == 'signOutOfOrganization' || e == 'forget',
+          (e) =>
+              e == 'stop' ||
+              e == 'clearIntent' ||
+              e == 'signOutOfOrganization' ||
+              e == 'forget',
         ),
         isEmpty,
       );
@@ -696,6 +711,125 @@ void main() {
         SessionExit.switchOrganization,
         null,
       ]);
+    });
+  });
+
+  group('SignOut - sharing intent - Unit Test Suite', () {
+    test('Happy Path: "Sair" forgets who was sharing right after stopping '
+        'the tracking, before signing out', () async {
+      // 1. Arrange
+      final harness = _Harness(storedUser: _storedUser());
+
+      // 2. Act
+      await harness.signOut();
+
+      // 3. Assert
+      verify(harness.sharingResume.clearIntent()).called(1);
+      expect(harness.log.take(3), ['stop', 'clearIntent', 'signOut']);
+    });
+
+    test('Happy Path: losing access forgets who was sharing', () async {
+      // 1. Arrange
+      final harness = _Harness();
+
+      // 2. Act
+      await harness.signOut.afterAccessLost();
+
+      // 3. Assert
+      verify(harness.sharingResume.clearIntent()).called(1);
+    });
+
+    test('Happy Path: deleting the account forgets who was sharing', () async {
+      // 1. Arrange
+      final harness = _Harness();
+
+      // 2. Act
+      await harness.signOut.afterAccountDeleted(
+        AccountDeletion(deleteAt: DateTime.utc(2026, 12, 2)),
+      );
+
+      // 3. Assert
+      verify(harness.sharingResume.clearIntent()).called(1);
+    });
+
+    test('Happy Path: switching organization forgets who was sharing before '
+        'leaving the organization', () async {
+      // 1. Arrange
+      final harness = _Harness();
+
+      // 2. Act
+      await harness.signOut.switchOrganization();
+
+      // 3. Assert
+      verify(harness.sharingResume.clearIntent()).called(1);
+      expect(
+        harness.log.indexOf('clearIntent'),
+        lessThan(harness.log.indexOf('signOutOfOrganization')),
+      );
+    });
+
+    test('Edge Case: forgets who was sharing even when the tracking stop is '
+        'not confirmed', () async {
+      // 1. Arrange
+      final harness = _Harness(storedUser: _storedUser(), stopResult: false);
+
+      // 2. Act
+      await harness.signOut();
+
+      // 3. Assert
+      verify(harness.sharingResume.clearIntent()).called(1);
+    });
+
+    test('Edge Case: a sign-out ignored while another runs forgets nothing '
+        'more', () async {
+      // 1. Arrange
+      final pendingStop = Completer<bool>();
+      final harness = _Harness(pendingStop: pendingStop);
+      final first = harness.signOut();
+      await pumpEventQueue();
+
+      // 2. Act
+      await harness.signOut();
+      pendingStop.complete(true);
+      await first;
+
+      // 3. Assert
+      verify(harness.sharingResume.clearIntent()).called(1);
+    });
+
+    test('Sad Path: a failing clear does not break "Sair": it still signs '
+        'out, forgets the organization and returns Ok(true)', () async {
+      // 1. Arrange
+      final harness = _Harness(
+        storedUser: _storedUser(),
+        clearIntentError: StateError('SharedPreferences indisponível'),
+      );
+
+      // 2. Act
+      final result = await harness.signOut();
+
+      // 3. Assert
+      expect(result, isA<Ok<bool>>().having((ok) => ok.value, 'value', true));
+      expect(harness.log, [..._kSignOutSteps, 'move:SessionSignedOut']);
+      verifyNever(harness.notices.show(any));
+    });
+
+    test('Sad Path: a failing clear does not break the switch of '
+        'organization', () async {
+      // 1. Arrange
+      final harness = _Harness(
+        clearIntentError: StateError('SharedPreferences indisponível'),
+      );
+
+      // 2. Act
+      final result = await harness.signOut.switchOrganization();
+
+      // 3. Assert
+      expect(result, isA<Ok<void>>());
+      expect(
+        harness.session.session.value,
+        SessionState.picking([_binding(_kRotaSul)]),
+      );
     });
   });
 }

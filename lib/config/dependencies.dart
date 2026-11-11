@@ -14,6 +14,9 @@ import 'package:monamie_app/data/repositories/invites/invites_repository.dart';
 import 'package:monamie_app/data/repositories/invites/invites_repository_remote.dart';
 import 'package:monamie_app/data/repositories/language/language_repository.dart';
 import 'package:monamie_app/data/repositories/language/language_repository_preferences.dart';
+import 'package:monamie_app/data/repositories/sharing_resume/sharing_resume_repository.dart';
+import 'package:monamie_app/data/repositories/sharing_resume/sharing_resume_repository_preferences.dart';
+import 'package:monamie_app/data/services/sharing_resume_preferences_service.dart';
 import 'package:monamie_app/data/repositories/organization/central_organization_directory.dart';
 import 'package:monamie_app/data/repositories/organization/hive_organization_local_data.dart';
 import 'package:monamie_app/data/repositories/organization/organization_branding_loader.dart';
@@ -105,6 +108,13 @@ List<SingleChildWidget> appDependencies({
   ),
   Provider<OrganizationSession>.value(value: organizationSession),
   Provider<LanguageRepository>.value(value: languageRepository),
+  // The device's choice to resume sharing after a restart, kept across
+  // organizations; `SignOut` and the tracking write who is sharing.
+  Provider<SharingResumeRepository>(
+    create: (_) => SharingResumeRepositoryPreferences(
+      service: SharingResumePreferencesService(),
+    ),
+  ),
   Provider<ThemeRepository>(create: (_) => const ThemeRepositoryFirestore()),
   Provider<OrganizationBrandingLoader>.value(value: brandingLoader),
   Provider<OrganizationDirectory>(
@@ -207,6 +217,7 @@ List<SingleChildWidget> appDependencies({
       directory: context.read(),
       brandingLoader: context.read(),
       invites: context.read(),
+      sharingResume: context.read(),
       // Messages no screen waits for go through the root messenger.
       notices: const ScaffoldNoticePresenter(),
     ),

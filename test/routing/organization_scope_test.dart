@@ -5,6 +5,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:monamie_app/data/services/firestore/membership_service.dart';
 import 'package:monamie_app/data/repositories/positions/positions_repository.dart';
+import 'package:monamie_app/data/repositories/sharing_resume/sharing_resume_repository.dart';
 import 'package:monamie_app/data/repositories/user/user_google_repository.dart';
 import 'package:monamie_app/data/services/background_restriction_checker.dart';
 import 'package:monamie_app/data/services/background_tracking_service.dart';
@@ -39,6 +40,7 @@ import 'package:monamie_app/ui/core/app_locales.dart';
 import 'organization_scope_test.mocks.dart';
 
 import '../../testing/fakes/repositories/fake_positions_repository.dart';
+import '../../testing/fakes/repositories/fake_sharing_resume_repository.dart';
 import '../../testing/fakes/repositories/fake_user_google_repository.dart';
 
 /// What the home route's page read, as it builds.
@@ -190,6 +192,9 @@ List<SingleChildWidget> dependencies() {
     Provider<UserGoogleRepository>.value(value: profile),
     Provider<MembershipService>.value(value: MockMembershipService()),
     Provider<PositionsRepository>.value(value: FakePositionsRepository()),
+    Provider<SharingResumeRepository>.value(
+      value: FakeSharingResumeRepository(),
+    ),
     Provider<BackgroundTrackingService>.value(value: service),
     Provider<PermissionsService>.value(value: permissions),
     Provider<DeviceLocation>.value(value: const GeolocatorDeviceLocation()),

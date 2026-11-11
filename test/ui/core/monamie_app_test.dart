@@ -35,6 +35,7 @@ import 'package:monamie_app/utils/notice_presenter.dart';
 import 'package:provider/provider.dart';
 
 import '../../../testing/fakes/repositories/fake_language_repository.dart';
+import '../../../testing/fakes/repositories/fake_sharing_resume_repository.dart';
 import '../../support/test_organization.dart';
 
 @GenerateNiceMocks([
@@ -145,6 +146,7 @@ Future<SessionRepository> _pumpApp(
             directory: directory,
             brandingLoader: brandingLoader,
             invites: invites,
+            sharingResume: FakeSharingResumeRepository(),
             notices: MockNoticePresenter(),
           ),
         ),

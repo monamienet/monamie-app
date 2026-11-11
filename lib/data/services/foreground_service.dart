@@ -16,6 +16,8 @@ import 'package:monamie_app/data/repositories/organization/organization_session.
 import 'package:monamie_app/data/repositories/organization/shared_preferences_organization_binding_store.dart';
 import 'package:monamie_app/data/repositories/tracking/firestore_tracking_settings_repository.dart';
 import 'package:monamie_app/data/services/group_publisher.dart';
+import 'package:monamie_app/data/services/sharing_resume_preferences_service.dart';
+import 'package:monamie_app/domain/models/sharing_resume.dart';
 import 'package:monamie_app/domain/models/sharing_times.dart';
 import 'package:monamie_app/domain/models/tracking_settings.dart';
 import 'package:monamie_app/data/services/firebase/firestore_paths.dart';
@@ -56,6 +58,25 @@ Position? _lastRecordedPosition;
 /// position goes to all of them, one batch per group.
 List<String> _publisherGroupIds = const [];
 StreamSubscription<Map<String, Object?>>? _membershipSubscription;
+
+/// What the first read of the person's groups said.
+enum _GroupsAnswer {
+  /// The groups arrived ([_publisherGroupIds] holds the publisher ones).
+  answered,
+
+  /// The rules refused the read: the person left the organization.
+  denied,
+
+  /// No answer yet, or the read failed for another reason (no network).
+  unknown,
+}
+
+_GroupsAnswer _groupsAnswer = _GroupsAnswer.unknown;
+
+/// The e-mail this isolate publishes as, `null` until it starts publishing;
+/// a second start for the same person (the screen's, after the service
+/// resumed by itself) does nothing.
+String? _sharingAs;
 
 /// The plan's minimum period (*período mínimo*: the least time between two
 /// positions, Community), read from
@@ -171,11 +192,86 @@ void onStart(ServiceInstance service) async {
 
   service.on('setUserInfo').listen((event) async {
     if (event case {'email': final String email, 'name': final String name}) {
+      if (_sharingAs == email) return;
+      _sharingAs = email;
       await updateLocation(service, email, name);
     }
   });
 
   service.invoke('ready');
+
+  await _resumeWithoutScreen(service, currentUser?.email);
+}
+
+/// Publishes as the person who was sharing ([SharingIntent], stored by the
+/// screen), without waiting for the screen to say who shares: the service
+/// may have started with no screen at all.
+///
+/// After a restart or an update the native `ResumeSharingReceiver` started
+/// it and marked it `resuming`: whatever stops it from publishing then is
+/// told in a notification and forgets the intent. Otherwise (Android
+/// restarted the service, or the screen is starting it) a mismatch only
+/// means waiting for the screen, as before.
+Future<void> _resumeWithoutScreen(
+  ServiceInstance service,
+  String? signedInEmail,
+) async {
+  final preferences = SharingResumePreferencesService();
+  final ({String email, String name})? stored;
+  final bool resuming;
+  try {
+    stored = await preferences.readIntent();
+    resuming = await preferences.takeResuming();
+  } catch (e, stackTrace) {
+    debugPrint('[ForegroundService] Could not read who was sharing: $e');
+    _reportFailure(e, stackTrace);
+    return;
+  }
+  if (_sharingAs != null) return; // The screen was faster.
+  final intent = stored;
+  if (intent == null) {
+    // Turned off meanwhile: a receiver start has nobody to publish as.
+    if (resuming) _stopTracking(service);
+    return;
+  }
+  if (signedInEmail == null ||
+      signedInEmail.toLowerCase() != intent.email.toLowerCase()) {
+    if (resuming) {
+      await _giveUp(service, preferences, ResumeFailure.signedOut);
+    }
+    return;
+  }
+
+  _sharingAs = intent.email;
+  await _followPublisherGroups(intent.email);
+  final noGroup =
+      _groupsAnswer == _GroupsAnswer.denied ||
+      (_groupsAnswer == _GroupsAnswer.answered && _publisherGroupIds.isEmpty);
+  if (noGroup && resuming) {
+    await _giveUp(service, preferences, ResumeFailure.noGroup);
+    return;
+  }
+  debugPrint('[ForegroundService] Resuming as ${intent.email}.');
+  // The device's location is on: the native receiver does not start the
+  // service otherwise, since Android refuses it then.
+  await updateLocation(service, intent.email, intent.name);
+}
+
+/// Stops resuming for [reason]: the native side shows the notification, and
+/// nothing resumes again until the person shares again.
+Future<void> _giveUp(
+  ServiceInstance service,
+  SharingResumePreferencesService preferences,
+  ResumeFailure reason,
+) async {
+  debugPrint('[ForegroundService] Not resuming: ${reason.name}.');
+  try {
+    await preferences.clearIntent();
+    await preferences.writeFailure(reason.name);
+  } catch (e, stackTrace) {
+    _reportFailure(e, stackTrace);
+  }
+  _stopTracking(service);
 }
 
 void _stopTracking(ServiceInstance service) {
@@ -186,6 +282,8 @@ void _stopTracking(ServiceInstance service) {
   _membershipSubscription?.cancel();
   _membershipSubscription = null;
   _publisherGroupIds = const [];
+  _groupsAnswer = _GroupsAnswer.unknown;
+  _sharingAs = null;
   _heartbeatTimer?.cancel();
   _heartbeatTimer = null;
   _positionSubscription?.cancel();
@@ -219,6 +317,7 @@ Future<void> _followPublisherGroups(String email) async {
       .listen(
         (roles) {
           _publisherGroupIds = groupsWithRole(roles, GroupRoles.publisher);
+          _groupsAnswer = _GroupsAnswer.answered;
           // New groups deserve new attempts.
           _consecutivePermissionErrors = 0;
           debugPrint('[ForegroundService] Publishing in: $_publisherGroupIds');
@@ -226,7 +325,11 @@ Future<void> _followPublisherGroups(String email) async {
         },
         onError: (Object e, StackTrace stackTrace) {
           debugPrint('[ForegroundService] Could not read the groups: $e');
-          _reportFailure(e, stackTrace);
+          if (e is FirebaseException && e.code == 'permission-denied') {
+            _groupsAnswer = _GroupsAnswer.denied;
+          } else {
+            _reportFailure(e, stackTrace);
+          }
           if (!first.isCompleted) first.complete();
         },
       );

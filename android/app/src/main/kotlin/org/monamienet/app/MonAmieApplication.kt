@@ -25,6 +25,9 @@ class MonAmieApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createOrganizationApp()
+        // The tracking service may run without the screen (after a restart):
+        // its failures to resume become notifications from here.
+        ResumeFailures.listen(this)
     }
 
     private fun createOrganizationApp() {
@@ -49,8 +52,8 @@ class MonAmieApplication : Application() {
         }
     }
 
-    private companion object {
-        const val TAG = "MonAmieApplication"
+    companion object {
+        private const val TAG = "MonAmieApplication"
         const val BINDING_FILE = "monamie_organization_binding"
         const val BINDING_KEY = "binding"
     }

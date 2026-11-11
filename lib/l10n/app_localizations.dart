@@ -2519,6 +2519,78 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Organização'**
   String get creationPreviewName;
+
+  /// The choice to resume sharing after a restart could not be stored on the device.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não foi possível guardar a opção. Tente de novo.'**
+  String get failureResumeOptionNotSaved;
+
+  /// Label of the menu switch that makes sharing resume by itself after the device restarts or the app is updated (Android only).
+  ///
+  /// In pt, this message translates to:
+  /// **'Retomar ao reiniciar'**
+  String get resumeOnRestartTitle;
+
+  /// Explanation under the menu switch that makes sharing resume by itself.
+  ///
+  /// In pt, this message translates to:
+  /// **'Se você estiver compartilhando quando o aparelho desligar ou o app for atualizado, o compartilhamento volta sozinho.'**
+  String get resumeOnRestartSubtitle;
+
+  /// Warning under the resume switch when location is not allowed all the time; tapping it asks for the permission.
+  ///
+  /// In pt, this message translates to:
+  /// **'Para retomar, a localização precisa estar permitida o tempo todo. Toque para permitir.'**
+  String get resumeOnRestartNeedsAlwaysLocation;
+
+  /// Warning under the resume switch when the app's battery use is Restricted; tapping it opens the battery settings.
+  ///
+  /// In pt, this message translates to:
+  /// **'Para retomar, a bateria do app não pode estar em “Restrito”. Toque para mudar.'**
+  String get resumeOnRestartBatteryRestricted;
+
+  /// Name, in the system's notification settings, of the channel of the notifications saying sharing could not resume.
+  ///
+  /// In pt, this message translates to:
+  /// **'Retomada do compartilhamento'**
+  String get resumeFailureChannel;
+
+  /// Title of the system notification saying sharing could not resume by itself after a restart or an update.
+  ///
+  /// In pt, this message translates to:
+  /// **'O compartilhamento não foi retomado'**
+  String get resumeFailureTitle;
+
+  /// Notification text: sharing did not resume because location is not allowed all the time.
+  ///
+  /// In pt, this message translates to:
+  /// **'A localização não está permitida o tempo todo. Toque para abrir o app.'**
+  String get resumeFailureBackgroundLocation;
+
+  /// Notification text: sharing did not resume because the app's battery use is Restricted.
+  ///
+  /// In pt, this message translates to:
+  /// **'A bateria do app está em “Restrito”. Toque para abrir o app.'**
+  String get resumeFailureBatteryRestricted;
+
+  /// Notification text: sharing did not resume because the device's location was off when it restarted or the app was updated.
+  ///
+  /// In pt, this message translates to:
+  /// **'A localização do aparelho estava desligada. Toque para abrir o app.'**
+  String get resumeFailureLocationOff;
+
+  /// Notification text: sharing did not resume because the account that was sharing is no longer signed in.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sua conta não está mais conectada. Toque para abrir o app.'**
+  String get resumeFailureSignedOut;
+
+  /// Notification text: sharing did not resume because the person no longer shares their location in any group.
+  ///
+  /// In pt, this message translates to:
+  /// **'Você não compartilha a localização em nenhum grupo agora. Toque para abrir o app.'**
+  String get resumeFailureNoGroup;
 }
 
 class _AppLocalizationsDelegate

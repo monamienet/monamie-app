@@ -1,5 +1,4 @@
 Novidades:
-• O app agora fala português, inglês, espanhol e francês. Ele abre no idioma do celular (em inglês, se o seu não estiver na lista).
-• Troque o idioma quando quiser, no menu (Idioma) ou pelo globo das telas de entrada. A notificação do compartilhamento acompanha.
-• O calendário do histórico começa a semana no dia certo para cada idioma.
-• Quando o app falha, recebemos um relatório do erro, sem dados pessoais, para corrigir mais rápido.
+• Nova opção no menu: Retomar ao reiniciar. Se você estiver compartilhando a localização quando o celular desligar ou o app for atualizado, o compartilhamento volta sozinho.
+• Se não der para voltar (por exemplo, sem permissão de localização o tempo todo), uma notificação explica o motivo.
+• Ao abrir o app com o compartilhamento já ligado, seu ponto no mapa volta a se mover.
