@@ -91,6 +91,28 @@ esconde a pessoa.
 O ponto "você está aqui", que cada pessoa vê de si mesma, não depende do Firestore: ele aparece só enquanto o
 compartilhamento do próprio aparelho está ligado.
 
+### Reiniciar o aparelho ou atualizar o app
+
+Quando o aparelho reinicia ou o app é atualizado, o serviço que compartilha para junto. O que acontece
+depois depende da opção **Retomar ao reiniciar**, no menu do mapa. Ela existe só no Android, vem desligada e
+vale para o aparelho, não para a conta:
+
+- **Opção desligada:** é o caso do aparelho morto da tabela acima. A pessoa some do mapa depois da
+  **validade**, até abrir o app e ligar o compartilhamento de novo.
+- **Opção ligada, e a pessoa estava compartilhando:** o compartilhamento volta sozinho, sem abrir a tela,
+  pouco depois do primeiro desbloqueio. O Android só avisa os apps de que o aparelho ligou depois desse
+  desbloqueio, porque antes dele o login do Firebase ainda está trancado. No Community, as primeiras posições
+  podem ser recusadas pelo **período mínimo** (#224); o **heartbeat** mantém a pessoa no mapa.
+- **Opção ligada, mas algo impede:** sem a localização "o tempo todo", com a bateria do app em "Restrito",
+  com a localização do aparelho desligada, sem a conta conectada ou sem um grupo em que a pessoa publique, o
+  compartilhamento não volta. Uma notificação diz o motivo, e o app esquece que a pessoa compartilhava:
+  nada volta até ela ligar de novo. Assim a tela, que mostra o compartilhamento desligado, nunca é
+  desmentida por uma volta sozinha mais tarde.
+
+Em aparelhos com processador Unisoc, como o Moto g35, um recurso do fabricante fecha o app um minuto depois
+do bloqueio da tela quando o aparelho está na bateria, com ou sem esta opção (#258). No mesmo aparelho, uma
+atualização do app pode voltar a bateria para "Restrito" e impedir a volta (#259).
+
 ## 5. Por que a validade é 12 minutos
 
 A **validade** precisa atender a duas exigências que puxam em direções opostas:
