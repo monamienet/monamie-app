@@ -100,11 +100,6 @@ Who belongs where lives in Firestore documents of the organization's project, **
 
 Security rules are tested for real against the emulators in `test/rules/` (Node, `@firebase/rules-unit-testing`): `cd test/rules && npm ci && nice -n 10 npm test`. Each test file uses its own `demo-*` project id so they share one emulator run.
 
-## Resource Limits on Dev Machines
-
-Dev laptops have 8 GB of RAM shared with the IDE and a browser. Run heavy commands at low priority and low parallelism: `nice -n 15 flutter test -j 2`, `nice -n 15 dart run build_runner build` (never its `watch` mode), and Gradle with at most two workers (`org.gradle.workers.max=2` in `~/.gradle/gradle.properties`; `flutter build` gives no flag for it). The project caps the Gradle heap at 2 GB. Avoid running more than one build or test process at a time.
-
-
 ## Running the Web App Locally
 
 Follow `docs/en-us/run-web-locally.md`. Serve `build/web` on `http://localhost:5000` with `dart run tool/serve_web.dart`: it is the only local origin the OAuth web client accepts for Google sign-in, and the app uses path URLs (`usePathUrlStrategy`, no `#`), so the server answers every path that is not a file with `index.html`. For unattended checks, capture the screenshot through CDP after Flutter paints, never with `--screenshot`.
